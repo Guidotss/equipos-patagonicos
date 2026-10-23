@@ -5,16 +5,22 @@
 create extension if not exists unaccent with schema extensions;
 create extension if not exists pg_trgm with schema extensions;
 
--- Nada nuevo en public queda expuesto a anon/authenticated sin un GRANT explícito.
+-- Ninguna función nueva queda ejecutable por PUBLIC (y por lo tanto por anon/authenticated) sin un GRANT explícito.
+-- Va sin "in schema" a propósito: el EXECUTE a PUBLIC es un privilegio por defecto global, y un revoke
+-- por schema no puede quitarlo (los privilegios por defecto de un schema solo se suman a los globales).
+alter default privileges for role postgres revoke execute on functions from public;
+
+-- Nada nuevo en public queda expuesto a anon/authenticated sin un GRANT explícito
+-- (revierte los privilegios por defecto que Supabase les otorga en ese schema).
 alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;
 alter default privileges for role postgres in schema public revoke all on sequences from anon, authenticated;
-alter default privileges for role postgres in schema public revoke execute on functions from public, anon, authenticated;
+alter default privileges for role postgres in schema public revoke execute on functions from anon, authenticated;
 
 -- Schema privado: no lo expone la API; aloja helpers de seguridad y triggers.
+-- Sus funciones no las ejecuta nadie salvo GRANT explícito (por el revoke global de arriba).
 create schema if not exists private;
 revoke all on schema private from public;
 grant usage on schema private to authenticated;
-alter default privileges for role postgres in schema private revoke execute on functions from public;
 
 create or replace function private.set_updated_at()
 returns trigger
@@ -86,6 +92,7 @@ as $$
   );
 $$;
 
+-- Las políticas RLS las evalúan como authenticated: sin este GRANT no podrían llamarlas.
 grant execute on function private.es_usuario_activo() to authenticated;
 grant execute on function private.es_admin() to authenticated;
 
