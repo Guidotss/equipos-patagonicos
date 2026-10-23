@@ -19,6 +19,18 @@ describe('fechaEnLetras', () => {
     expect(() => fechaEnLetras('22/10/2026')).toThrow('Fecha inválida')
     expect(() => fechaEnLetras('2026-13-01')).toThrow('Fecha inválida')
   })
+
+  it('rechaza fechas que no existen en el calendario', () => {
+    expect(() => fechaEnLetras('2026-02-30')).toThrow('Fecha inválida')
+    expect(() => fechaEnLetras('2027-02-29')).toThrow('Fecha inválida')
+    expect(() => formatFechaCorta('2026-04-31')).toThrow('Fecha inválida')
+    expect(() => sumarDias('2026-02-30', 0)).toThrow('Fecha inválida')
+    expect(() => sumarDias('0050-01-01', 1)).toThrow('Fecha inválida')
+  })
+
+  it('acepta el 29 de febrero en año bisiesto', () => {
+    expect(fechaEnLetras('2028-02-29')).toBe('29 de febrero de 2028')
+  })
 })
 
 describe('encabezadoFecha', () => {

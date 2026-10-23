@@ -13,7 +13,12 @@ function partes(iso: string) {
   const anio = Number(m[1])
   const mes = Number(m[2])
   const dia = Number(m[3])
-  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) throw new Error(`Fecha inválida: ${iso}`)
+  // Date.UTC corre en silencio las fechas imposibles (30/02 -> 02/03) y pasa los
+  // años 0-99 a 1900+año; si no vuelve igual, la fecha no existe.
+  const d = new Date(Date.UTC(anio, mes - 1, dia))
+  if (d.getUTCFullYear() !== anio || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) {
+    throw new Error(`Fecha inválida: ${iso}`)
+  }
   return { anio, mes, dia }
 }
 
