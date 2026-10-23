@@ -219,7 +219,9 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-enable_signup = false
+# Ojo: en la CLI esta clave habilita o apaga el proveedor email entero (GOTRUE_EXTERNAL_EMAIL_ENABLED),
+# login con contraseña incluido. Va en true; el registro público lo bloquea `[auth] enable_signup = false`.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
