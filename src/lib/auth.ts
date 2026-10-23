@@ -1,4 +1,5 @@
 import 'server-only'
+import { type AuthError, isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
@@ -17,21 +18,38 @@ type EstadoSesion =
   | { estado: 'inactivo'; email: string }
   | { estado: 'activo'; usuario: UsuarioActual }
 
+/**
+ * getClaims da error tanto si la sesión no sirve (token adulterado, o vencido con el refresh
+ * revocado: 4xx de Auth) como si Auth no respondió (red caída, 5xx, 429). Lo primero equivale
+ * a no tener sesión; lo segundo no dice nada de la sesión y tiene que llegar al error boundary
+ * (si se tratara como anónimo, el proxy, que sí validó la sesión, rebotaría /login a /).
+ */
+function esSesionInvalida(error: AuthError): boolean {
+  return (
+    isAuthSessionMissingError(error) ||
+    error.name === 'AuthInvalidJwtError' ||
+    (isAuthApiError(error) && error.status >= 400 && error.status < 500 && error.status !== 429)
+  )
+}
+
 /** Valida la sesión con getClaims (nunca getSession en el servidor) y lee el perfil. */
 export const getEstadoSesion = cache(async (): Promise<EstadoSesion> => {
   const supabase = await createClient()
-  const { data } = await supabase.auth.getClaims()
+  const { data, error: errorSesion } = await supabase.auth.getClaims()
+  if (errorSesion && !esSesionInvalida(errorSesion)) throw errorSesion
   const claims = data?.claims
   if (!claims) return { estado: 'anonimo' }
 
   const email = typeof claims.email === 'string' ? claims.email : ''
 
-  // Por RLS, un usuario inactivo no puede leer ni su propio perfil.
-  const { data: perfil } = await supabase
+  // Por RLS, un usuario inactivo no puede leer ni su propio perfil (la consulta no da error,
+  // devuelve null). Un error acá es una falla real y no se puede confundir con "inactivo".
+  const { data: perfil, error: errorPerfil } = await supabase
     .from('profiles')
     .select('nombre, rol, activo')
     .eq('id', claims.sub)
     .maybeSingle()
+  if (errorPerfil) throw errorPerfil
 
   if (!perfil?.activo) return { estado: 'inactivo', email }
 
