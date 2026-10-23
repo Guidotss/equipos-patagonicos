@@ -1,0 +1,1 @@
+-- Datos iniciales para desarrollo local. Se completan en el plan 2 (catálogos).
