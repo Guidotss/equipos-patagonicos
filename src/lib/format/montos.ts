@@ -28,17 +28,16 @@ export function formatMoneda(monto: number): string {
  * Interpreta un precio escrito o pegado al estilo argentino.
  * El punto es separador de miles salvo que haya un único punto seguido de 1 o 2 dígitos ("2.5").
  * La coma es decimal y admite 1 o 2 dígitos: "260,000" se rechaza en vez de leerse como 260.
+ * Rechaza espacios internos: "100 200" o dos celdas pegadas ("39000000\t5000") no se juntan en un número.
  * Devuelve null si el texto no es un monto válido (no admite negativos).
  */
 export function parsePrecio(entrada: string): number | null {
   let s = entrada
     .trim()
     .replace(/^\$\s*/, '')
-    .replace(/\.-$/, '')
-    .replace(/-$/, '')
-    .replace(/\s+/g, '')
+    .replace(/\s*\.?-$/, '')
 
-  if (s === '') return null
+  if (s === '' || /\s/.test(s)) return null
 
   if (s.includes(',')) {
     if (!/^(\d{1,3}(\.\d{3})+|\d+),\d{1,2}$/.test(s)) return null

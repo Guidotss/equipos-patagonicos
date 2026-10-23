@@ -45,7 +45,19 @@ describe('parsePrecio', () => {
     expect(parsePrecio(entrada)).toBe(esperado)
   })
 
-  it.each(['', '   ', 'abc', '-5', '1.95.000', '1,2,3', '12a', '260,000', '1,999'])('rechaza %j', (entrada) => {
+  it.each([
+    '',
+    '   ',
+    'abc',
+    '-5',
+    '1.95.000',
+    '1,2,3',
+    '12a',
+    '260,000',
+    '1,999',
+    '100 200',
+    '39000000\t5000',
+  ])('rechaza %j', (entrada) => {
     expect(parsePrecio(entrada)).toBeNull()
   })
 })
