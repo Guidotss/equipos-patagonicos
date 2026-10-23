@@ -16,7 +16,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "env:local": "node scripts/env-local.mjs"
+    "env:local": "node scripts/env-local.mjs",
+    "usuario:crear": "node --env-file=.env.local scripts/crear-usuario.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
