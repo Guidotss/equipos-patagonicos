@@ -6,7 +6,9 @@
 
 **Architecture:** Next.js App Router con Server Components y Server Actions. Supabase (Postgres, Auth y Storage) corre localmente con la CLI y Docker. La sesión se maneja con `@supabase/ssr`: `src/proxy.ts` refresca la sesión y redirige a `/login`, y en el servidor siempre se valida con `auth.getClaims()`. La seguridad vive en Postgres: RLS en todas las tablas y la función `private.es_usuario_activo()`.
 
-**Tech Stack:** Next.js 16.4.3, React 19, TypeScript, Tailwind v4, shadcn/ui 4.22.1, Supabase CLI 2.122.0, @supabase/supabase-js 2.118.0, @supabase/ssr 0.12.7, Zod 4, Vitest 5.0.5, Playwright 1.64.1, pg 8.23.1.
+**Tech Stack:** Next.js 16.4.3, React 19, TypeScript, Tailwind v4, shadcn/ui 4.22.1, Supabase CLI 2.122.0, @supabase/supabase-js 2.118.0, @supabase/ssr 0.12.7, Zod 4, Vitest 5.0.5, Playwright 1.64.1, pg 8.23.1, @types/node 24.
+
+> **Desvío registrado (Task 2):** el scaffold trae `@types/node@^20`, pero Vitest 5.0.5 declara el peer `@types/node: ^22.0.0 || >=24.0.0`, así que `npm install -D vitest@5.0.5` falla con `ERESOLVE`. Se subió a `@types/node@^24.19.2`. Vitest 5.0.5 además pide Node `^22.12.0 || ^24.0.0 || >=26.0.0` (`engines`): los tipos quedan alineados con Node 24 LTS, a tener en cuenta al elegir la imagen de Node para Railway (plan 6). En local se usa Node 25, que funciona pero queda fuera de ese rango.
 
 **Diseño de referencia:** `docs/plans/2026-10-23-equipos-patagonicos-mvp-design.md`.
 
