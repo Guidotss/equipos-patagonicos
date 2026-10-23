@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Equipos Patagónicos · Administración y logística
 
-## Getting Started
+App interna para cotizaciones, clientes, presupuestos y documentos del circuito de venta (OC, remitos, facturas y órdenes de pago).
 
-First, run the development server:
+- Diseño: `docs/plans/2026-10-23-equipos-patagonicos-mvp-design.md`
+- Planes de implementación: `docs/superpowers/plans/`
+
+## Requisitos
+
+- Node.js 22 o superior
+- Docker (para Supabase local)
+
+## Puesta en marcha local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db:start          # levanta Supabase local (Docker)
+npm run env:local         # genera .env.local con las keys locales
+npm run db:reset          # aplica migraciones y seed
+npm run usuario:crear -- --email tu@email.com --password 'una-clave-segura' --nombre 'Tu Nombre'
+npm run dev               # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Supabase Studio local: http://127.0.0.1:54323
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | Qué hace |
+|---|---|
+| `npm run check` | lint + typecheck + tests unitarios |
+| `npm run test:int` | tests de integración contra Supabase local (RLS, triggers) |
+| `npm run test:e2e` | tests E2E con Playwright |
+| `npm run db:types` | regenera `src/lib/supabase/database.types.ts` |
+| `npm run usuario:crear` | crea un usuario activo |
 
-## Learn More
+## Seguridad
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- El registro público está deshabilitado: los usuarios se crean con `usuario:crear` (o desde el panel de Supabase) y nacen inactivos hasta que se los activa.
+- Todas las tablas tienen RLS y GRANTs explícitos; `anon` no accede a nada.
+- `SUPABASE_SECRET_KEY` solo se usa en scripts y en el servidor, nunca con prefijo `NEXT_PUBLIC_`.
