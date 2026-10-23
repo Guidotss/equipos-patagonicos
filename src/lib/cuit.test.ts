@@ -21,7 +21,7 @@ describe('validarCuit', () => {
     ['30-71952967-1', 'dígito verificador incorrecto'],
     ['3071952967', 'menos de 11 dígitos'],
     ['307195296701', 'más de 11 dígitos'],
-    ['11-71952967-0', 'prefijo inexistente'],
+    ['11-71952967-6', 'prefijo inexistente con dígito verificador correcto'],
     ['', 'vacío'],
   ])('rechaza %s (%s)', (cuit) => {
     expect(validarCuit(cuit)).toBe(false)
