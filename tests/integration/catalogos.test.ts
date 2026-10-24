@@ -1,5 +1,7 @@
 // tests/integration/catalogos.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { leerBloques, leerItemsPlantilla } from '@/lib/plantillas/contenido'
+import { variablesDesconocidas } from '@/lib/plantillas/variables'
 import { borrarUsuario, crearUsuario, sql } from './helpers'
 
 const MARCA = `test-${crypto.randomUUID().slice(0, 8)}`
@@ -89,5 +91,39 @@ describe('firmantes, equipos y plantillas', () => {
     await operador.client.from('plantillas').insert({ nombre, formato: 'mensual' })
     const repetida = await operador.client.from('plantillas').insert({ nombre, formato: 'jornada' })
     expect(repetida.error?.code).toBe('23505')
+  })
+})
+
+describe('datos iniciales', () => {
+  it('cargan la empresa, los dos firmantes y los dos equipos', async () => {
+    const [empresa] = await sql<{ razon_social: string; ciudad: string }>(
+      'select razon_social, ciudad from public.empresa_config',
+    )
+    expect(empresa).toEqual({ razon_social: 'Equipos Patagónicos', ciudad: 'Neuquén' })
+
+    const firmantes = await sql<{ nombre: string }>(
+      `select nombre from public.firmantes where nombre in ('Julio Rojas', 'Thomas Cravero') order by nombre`,
+    )
+    expect(firmantes.map((f) => f.nombre)).toEqual(['Julio Rojas', 'Thomas Cravero'])
+
+    const equipos = await sql<{ capacidad_tn: string }>(
+      `select capacidad_tn from public.equipos where nombre like 'Grúa telescópica XCMG%' order by capacidad_tn`,
+    )
+    expect(equipos.map((e) => Number(e.capacidad_tn))).toEqual([40, 70])
+  })
+
+  it('las dos plantillas tienen contenido válido y solo usan variables conocidas', async () => {
+    const plantillas = await sql<{ nombre: string; formato: string; asunto: string; intro: string; bloques: unknown; items: unknown }>(
+      `select nombre, formato, asunto, intro, bloques, items from public.plantillas
+       where nombre in ('Mensual - Grúa con operador', 'Por jornada - Grúa con operador') order by formato`,
+    )
+    expect(plantillas.map((p) => p.formato)).toEqual(['jornada', 'mensual'])
+
+    for (const plantilla of plantillas) {
+      const bloques = leerBloques(plantilla.bloques)
+      const items = leerItemsPlantilla(plantilla.items)
+      const textos = [plantilla.asunto, plantilla.intro, ...bloques.flatMap((b) => [b.titulo, b.contenido]), ...items.map((i) => i.descripcion)]
+      expect(variablesDesconocidas(textos.join('\n'))).toEqual([])
+    }
   })
 })
