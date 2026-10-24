@@ -19,13 +19,13 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={activo ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors',
               activo
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent/50',
             )}
           >
-            <Icon className="size-4" aria-hidden />
+            <Icon className={cn('size-[18px]', activo ? null : 'text-slate-500')} aria-hidden />
             {label}
           </Link>
         )

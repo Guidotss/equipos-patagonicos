@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { Equipos } from '@/components/configuracion/equipos'
+import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
+import { Equipos, NuevoEquipo } from '@/components/configuracion/equipos'
 import { BotonEstado } from '@/components/formulario/boton-estado'
 import { createClient } from '@/lib/supabase/server'
 import { actualizarEquipo, cambiarEstadoEquipo, crearEquipo } from '../actions'
@@ -34,12 +35,16 @@ export default async function EquiposPage() {
   }))
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Equipos</h1>
-        <p className="text-sm text-muted-foreground">La descripción de cada equipo se usa como &quot;Equipo ofrecido&quot; en las cotizaciones.</p>
-      </div>
-      <Equipos equipos={equipos} crear={crearEquipo} />
-    </section>
+    <>
+      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Equipos' }]} />
+      <Contenido className="space-y-6">
+        <EncabezadoPagina
+          titulo="Equipos"
+          descripcion="La descripción de cada equipo se usa como “Equipo ofrecido” en las cotizaciones."
+          acciones={<NuevoEquipo crear={crearEquipo} />}
+        />
+        <Equipos equipos={equipos} />
+      </Contenido>
+    </>
   )
 }

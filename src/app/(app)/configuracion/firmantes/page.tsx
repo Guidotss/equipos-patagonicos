@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { Firmantes } from '@/components/configuracion/firmantes'
+import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
+import { Firmantes, NuevoFirmante } from '@/components/configuracion/firmantes'
 import { BotonEstado } from '@/components/formulario/boton-estado'
 import { createClient } from '@/lib/supabase/server'
 import { actualizarFirmante, cambiarEstadoFirmante, crearFirmante } from '../actions'
@@ -28,12 +29,16 @@ export default async function FirmantesPage() {
   }))
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Firmantes</h1>
-        <p className="text-sm text-muted-foreground">Nombre, cargo y teléfono que aparecen al pie de cada cotización.</p>
-      </div>
-      <Firmantes firmantes={firmantes} crear={crearFirmante} />
-    </section>
+    <>
+      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Firmantes' }]} />
+      <Contenido className="space-y-6">
+        <EncabezadoPagina
+          titulo="Firmantes"
+          descripcion="Nombre, cargo y teléfono que aparecen al pie de cada cotización."
+          acciones={<NuevoFirmante crear={crearFirmante} />}
+        />
+        <Firmantes firmantes={firmantes} />
+      </Contenido>
+    </>
   )
 }

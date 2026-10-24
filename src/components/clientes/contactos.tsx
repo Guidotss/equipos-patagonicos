@@ -1,6 +1,6 @@
 'use client'
 
-import { Mail, Pencil, Phone, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { Campo } from '@/components/formulario/campo'
 import { DialogoFormulario } from '@/components/formulario/dialogo-formulario'
 import {
@@ -26,6 +26,15 @@ export type ContactoConAcciones = {
   telefono: string
   actualizar: AccionFormulario
   borrar: () => Promise<void>
+}
+
+function iniciales(nombre: string) {
+  return nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase())
+    .join('')
 }
 
 function CamposContacto({ estado, inicial }: { estado: EstadoFormulario; inicial?: Partial<Record<CampoContacto, string>> }) {
@@ -54,8 +63,13 @@ function BorrarContacto({ nombre, accion }: { nombre: string; accion: () => Prom
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Borrar a ${nombre}`}>
-          <Trash2 className="size-4" />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-destructive"
+          aria-label={`Borrar a ${nombre}`}
+        >
+          <Trash2 />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -81,14 +95,14 @@ export function Contactos({ contactos, crear }: { contactos: ContactoConAcciones
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Contactos</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Contactos</h2>
         <DialogoFormulario
           titulo="Nuevo contacto"
           accion={crear}
           textoBoton="Guardar contacto"
           disparador={
-            <Button variant="outline" size="sm">
-              <Plus className="size-4" aria-hidden />
+            <Button variant="outline">
+              <Plus aria-hidden />
               Agregar contacto
             </Button>
           }
@@ -98,44 +112,59 @@ export function Contactos({ contactos, crear }: { contactos: ContactoConAcciones
       </div>
 
       {contactos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sin contactos. El contacto es el &quot;Atte.&quot; de la cotización.</p>
+        <p className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+          Sin contactos. El contacto es el &quot;Atte.&quot; de la cotización.
+        </p>
       ) : (
-        <ul className="divide-y rounded-md border">
+        <ul className="space-y-4">
           {contactos.map((contacto) => (
-            <li key={contacto.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
-              <div className="min-w-0">
-                <p className="font-medium">{contacto.nombre}</p>
-                <p className="flex flex-wrap gap-x-4 text-sm text-muted-foreground">
-                  {contacto.cargo ? <span>{contacto.cargo}</span> : null}
+            <li key={contacto.id} className="rounded-xl border bg-card p-4 shadow-xs">
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-[15px] font-medium text-slate-600"
+                >
+                  {iniciales(contacto.nombre)}
+                </span>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <p className="truncate font-semibold">{contacto.nombre}</p>
+                  {contacto.cargo ? <p className="text-sm text-muted-foreground">{contacto.cargo}</p> : null}
+                </div>
+                <div className="-mt-1 -mr-1 flex items-center">
+                  <DialogoFormulario
+                    titulo={`Editar a ${contacto.nombre}`}
+                    accion={contacto.actualizar}
+                    textoBoton="Guardar contacto"
+                    disparador={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground"
+                        aria-label={`Editar a ${contacto.nombre}`}
+                      >
+                        <Pencil />
+                      </Button>
+                    }
+                  >
+                    {(estado) => <CamposContacto estado={estado} inicial={contacto} />}
+                  </DialogoFormulario>
+                  <BorrarContacto nombre={contacto.nombre} accion={contacto.borrar} />
+                </div>
+              </div>
+              {contacto.email || contacto.telefono ? (
+                <div className="mt-3 space-y-1 text-[15px]">
                   {contacto.email ? (
-                    <a className="inline-flex items-center gap-1 hover:underline" href={`mailto:${contacto.email}`}>
-                      <Mail className="size-3" aria-hidden />
+                    <a className="block truncate hover:text-primary hover:underline" href={`mailto:${contacto.email}`}>
                       {contacto.email}
                     </a>
                   ) : null}
                   {contacto.telefono ? (
-                    <a className="inline-flex items-center gap-1 hover:underline" href={`tel:${contacto.telefono}`}>
-                      <Phone className="size-3" aria-hidden />
+                    <a className="block tabular-nums hover:text-primary hover:underline" href={`tel:${contacto.telefono}`}>
                       {contacto.telefono}
                     </a>
                   ) : null}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <DialogoFormulario
-                  titulo={`Editar a ${contacto.nombre}`}
-                  accion={contacto.actualizar}
-                  textoBoton="Guardar contacto"
-                  disparador={
-                    <Button variant="ghost" size="icon" aria-label={`Editar a ${contacto.nombre}`}>
-                      <Pencil className="size-4" />
-                    </Button>
-                  }
-                >
-                  {(estado) => <CamposContacto estado={estado} inicial={contacto} />}
-                </DialogoFormulario>
-                <BorrarContacto nombre={contacto.nombre} accion={contacto.borrar} />
-              </div>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

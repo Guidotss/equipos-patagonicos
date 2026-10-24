@@ -12,7 +12,7 @@ export function BotonEstado({
 }) {
   return (
     <form action={accion}>
-      <Button type="submit" variant="ghost" size="sm" aria-label={`${activo ? 'Desactivar' : 'Activar'} ${etiqueta}`}>
+      <Button type="submit" variant="outline" aria-label={`${activo ? 'Desactivar' : 'Activar'} ${etiqueta}`}>
         {activo ? 'Desactivar' : 'Activar'}
       </Button>
     </form>

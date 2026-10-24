@@ -14,7 +14,7 @@ export function ClienteForm({
   textoBoton: string
 }) {
   return (
-    <FormularioAccion accion={accion} textoBoton={textoBoton} className="max-w-3xl">
+    <FormularioAccion accion={accion} textoBoton={textoBoton}>
       {(estado) => <CamposCliente estado={estado} inicial={inicial} />}
     </FormularioAccion>
   )

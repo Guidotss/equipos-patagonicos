@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { BarraMigas, Contenido, EncabezadoFicha } from '@/components/app-shell/encabezado'
 import { ClienteForm } from '@/components/clientes/cliente-form'
 import { Contactos } from '@/components/clientes/contactos'
 import { BotonEstado } from '@/components/formulario/boton-estado'
-import { Badge } from '@/components/ui/badge'
+import { Pastilla } from '@/components/ui/pastilla'
+import { CONDICIONES_IVA } from '@/lib/clientes/esquemas'
 import { formatCuit } from '@/lib/cuit'
 import { createClient } from '@/lib/supabase/server'
 import { esUuid } from '@/lib/validacion'
@@ -31,30 +33,41 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
     borrar: borrarContacto.bind(null, id, contacto.id),
   }))
 
+  const datosClave = [
+    cliente.cuit ? `CUIT ${formatCuit(cliente.cuit)}` : null,
+    CONDICIONES_IVA[cliente.condicion_iva as keyof typeof CONDICIONES_IVA] ?? null,
+    [cliente.localidad, cliente.provincia].filter(Boolean).join(', ') || null,
+  ].filter(Boolean)
+
   return (
-    <section className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{cliente.razon_social}</h1>
-          {cliente.activo ? null : <Badge variant="secondary">Inactivo</Badge>}
-        </div>
-        <BotonEstado
-          activo={cliente.activo}
-          etiqueta={cliente.razon_social}
-          accion={cambiarEstadoCliente.bind(null, id, !cliente.activo)}
-        />
-      </div>
+    <>
+      <BarraMigas migas={[{ texto: 'Clientes', href: '/clientes' }, { texto: cliente.razon_social }]} />
+      <EncabezadoFicha
+        titulo={cliente.razon_social}
+        recuadro={cliente.razon_social.trim().charAt(0).toUpperCase()}
+        estado={cliente.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>}
+        datos={datosClave.length > 0 ? datosClave.join(' • ') : null}
+        acciones={
+          <BotonEstado
+            activo={cliente.activo}
+            etiqueta={cliente.razon_social}
+            accion={cambiarEstadoCliente.bind(null, id, !cliente.activo)}
+          />
+        }
+      />
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Datos</h2>
-        <ClienteForm
-          accion={actualizarCliente.bind(null, id)}
-          inicial={{ ...cliente, cuit: cliente.cuit ? formatCuit(cliente.cuit) : '' }}
-          textoBoton="Guardar cambios"
-        />
-      </section>
+      <Contenido className="grid items-start gap-x-9 gap-y-10 space-y-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold tracking-tight">Datos</h2>
+          <ClienteForm
+            accion={actualizarCliente.bind(null, id)}
+            inicial={{ ...cliente, cuit: cliente.cuit ? formatCuit(cliente.cuit) : '' }}
+            textoBoton="Guardar cambios"
+          />
+        </section>
 
-      <Contactos contactos={contactos} crear={crearContacto.bind(null, id)} />
-    </section>
+        <Contactos contactos={contactos} crear={crearContacto.bind(null, id)} />
+      </Contenido>
+    </>
   )
 }

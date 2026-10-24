@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
 import { EmpresaForm } from '@/components/configuracion/empresa-form'
 import { requireUsuario } from '@/lib/auth'
 import { formatCuit } from '@/lib/cuit'
@@ -14,18 +15,25 @@ export default async function EmpresaPage() {
   if (error) throw error
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Empresa</h1>
-        {usuario.rol === 'admin' ? null : (
-          <p className="text-sm text-muted-foreground">Solo un administrador puede modificar estos datos.</p>
-        )}
-      </div>
-      <EmpresaForm
-        accion={actualizarEmpresa}
-        inicial={{ ...empresa, cuit: empresa.cuit ? formatCuit(empresa.cuit) : '' }}
-        soloLectura={usuario.rol !== 'admin'}
-      />
-    </section>
+    <>
+      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Empresa' }]} />
+      <Contenido className="space-y-6">
+        <EncabezadoPagina
+          titulo="Empresa"
+          descripcion={
+            usuario.rol === 'admin'
+              ? 'Membrete, contacto e índice de actualización que se imprimen en cada cotización.'
+              : 'Solo un administrador puede modificar estos datos.'
+          }
+        />
+        <div className="max-w-3xl rounded-xl border bg-card p-6 shadow-xs">
+          <EmpresaForm
+            accion={actualizarEmpresa}
+            inicial={{ ...empresa, cuit: empresa.cuit ? formatCuit(empresa.cuit) : '' }}
+            soloLectura={usuario.rol !== 'admin'}
+          />
+        </div>
+      </Contenido>
+    </>
   )
 }

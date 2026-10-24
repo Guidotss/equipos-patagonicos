@@ -17,8 +17,10 @@ export function Campo({
   children: React.ReactNode
 }) {
   return (
-    <div className={cn('space-y-1.5', className)}>
-      <Label htmlFor={id}>{etiqueta}</Label>
+    <div className={cn('space-y-1', className)}>
+      <Label htmlFor={id} className="text-[13px] font-normal text-muted-foreground">
+        {etiqueta}
+      </Label>
       {children}
       {error ? (
         <p id={`${id}-error`} className="text-sm text-destructive">

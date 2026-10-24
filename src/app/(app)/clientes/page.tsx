@@ -1,6 +1,7 @@
-import { Plus } from 'lucide-react'
+import { Plus, Search, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
 import { TablaClientes } from '@/components/clientes/tabla-clientes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,31 +16,53 @@ export default async function ClientesPage({ searchParams }: { searchParams: Pro
   if (error) throw error
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
-        <Button asChild>
-          <Link href="/clientes/nuevo">
-            <Plus className="size-4" aria-hidden />
-            Nuevo cliente
-          </Link>
-        </Button>
-      </div>
+    <>
+      <BarraMigas migas={[{ texto: 'Clientes' }]} />
+      <Contenido className="space-y-6">
+        <EncabezadoPagina
+          titulo="Clientes"
+          extra={
+            <span className="rounded-md bg-muted px-2 py-0.5 text-base font-medium text-muted-foreground tabular-nums">
+              {clientes.length}
+            </span>
+          }
+          acciones={
+            <Button asChild>
+              <Link href="/clientes/nuevo">
+                <Plus className="size-4" aria-hidden />
+                Nuevo cliente
+              </Link>
+            </Button>
+          }
+        />
 
-      <form role="search" className="flex max-w-md gap-2">
-        <Input name="q" defaultValue={q} placeholder="Razón social, CUIT o contacto" aria-label="Buscar clientes" />
-        <Button type="submit" variant="secondary">
-          Buscar
-        </Button>
-      </form>
+        <form role="search" className="flex max-w-xl gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder="Buscar por razón social, CUIT o contacto"
+              aria-label="Buscar clientes"
+              className="h-9 bg-background pl-9"
+            />
+          </div>
+          <Button type="submit" variant="outline" className="h-9">
+            Buscar
+          </Button>
+        </form>
 
-      {clientes.length === 0 ? (
-        <p className="text-muted-foreground">
-          {q ? `No hay clientes que coincidan con "${q}".` : 'Todavía no hay clientes cargados.'}
-        </p>
-      ) : (
-        <TablaClientes clientes={clientes} />
-      )}
-    </section>
+        {clientes.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-12 text-center">
+            <Users className="size-6 text-muted-foreground" aria-hidden />
+            <p className="text-muted-foreground">
+              {q ? `No hay clientes que coincidan con "${q}".` : 'Todavía no hay clientes cargados.'}
+            </p>
+          </div>
+        ) : (
+          <TablaClientes clientes={clientes} />
+        )}
+      </Contenido>
+    </>
   )
 }
