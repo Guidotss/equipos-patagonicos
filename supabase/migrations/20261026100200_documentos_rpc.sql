@@ -4,13 +4,20 @@
 create or replace function private.validar_presupuestos(p_cliente_id uuid, p_presupuestos uuid[])
 returns void
 language plpgsql
-stable
 set search_path = ''
 as $$
 begin
   if p_presupuestos is null or cardinality(p_presupuestos) = 0 then
     raise exception 'Elegí al menos un presupuesto' using errcode = 'P0001';
   end if;
+  -- Bloquea los presupuestos (en orden) antes de mirar su estado y los deja así hasta confirmar el documento:
+  -- si a la vez se revierte la aprobación o se anula el presupuesto, el vínculo espera y ve el estado nuevo;
+  -- un revertir que llega después espera y ve el documento.
+  perform 1 from public.cotizaciones
+  where id = any (p_presupuestos)
+  order by id
+  for share;
+
   if exists (
     select 1 from unnest(p_presupuestos) as p(id)
     where not exists (
@@ -464,6 +471,13 @@ begin
   ) then
     raise exception 'No se puede restaurar: las órdenes de pago vigentes superan el monto de la factura' using errcode = 'P0001';
   end if;
+
+  -- Bloquea sus presupuestos (en orden) antes de que el trigger mire si siguen aprobados: si a la vez se
+  -- revierte la aprobación, el que llega segundo espera y ve lo que hizo el otro.
+  perform 1 from public.cotizaciones
+  where id in (select dp.cotizacion_id from public.documento_presupuestos dp where dp.documento_id = p_id)
+  order by id
+  for share;
 
   update public.documentos set deleted_at = null, deleted_by = null where id = p_id;
 end;

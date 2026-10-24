@@ -38,6 +38,10 @@ set search_path = ''
 as $$
 begin
   perform private.exigir_usuario_activo();
+  -- Bloquea la cotización antes de buscar documentos: un documento que se está vinculando o restaurando a la
+  -- vez (que la tiene bloqueada para compartir) termina primero y acá se lo ve; uno que llega después espera
+  -- y ve la cotización ya revertida.
+  perform 1 from public.cotizaciones where id = p_id for update;
   if exists (
     select 1
     from public.documento_presupuestos dp
