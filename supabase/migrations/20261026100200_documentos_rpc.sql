@@ -188,6 +188,9 @@ immutable
 set search_path = ''
 as $$
 begin
+  if p_aplicaciones is not null and jsonb_typeof(p_aplicaciones) <> 'array' then
+    raise exception 'Las facturas canceladas tienen que ser una lista' using errcode = 'P0001';
+  end if;
   if p_tipo <> 'factura' and coalesce(cardinality(p_remitos), 0) > 0 then
     raise exception 'Solo una factura cubre remitos' using errcode = 'P0001';
   end if;
@@ -243,14 +246,18 @@ end;
 $$;
 
 -- Corrige los datos de un documento (incluido el tipo, si no tiene vínculos que dependan de él).
+-- El cliente no cambia: el documento sigue siendo del cliente con que se registró (cliente_id en p_datos se ignora).
 -- p_datos es el documento completo: reemplaza todos los campos y lo que no venga queda vacío
--- (salvo tipo y fecha, que si faltan conservan el valor anterior). p_presupuestos también se reemplaza.
--- p_remitos (factura) y p_aplicaciones (orden de pago) reemplazan los vínculos solo si vienen:
--- null (o no mandarlos) los deja como están; una lista vacía los quita todos.
+-- (salvo tipo y fecha, que si faltan conservan el valor anterior).
+-- p_presupuestos, p_remitos (factura) y p_aplicaciones (orden de pago) reemplazan los vínculos solo si vienen:
+-- null (o no mandarlos) los deja como están.
+-- Los presupuestos no pueden quedar vacíos y solo se validan los que se agregan: los que ya estaban se conservan
+-- aunque el presupuesto se haya anulado o finalizado después (así se corrige el número de un documento viejo).
+-- Para remitos y aplicaciones, una lista vacía los quita todos.
 create or replace function public.actualizar_documento(
   p_id uuid,
   p_datos jsonb,
-  p_presupuestos uuid[],
+  p_presupuestos uuid[] default null,
   p_remitos uuid[] default null,
   p_aplicaciones jsonb default null
 )
@@ -263,6 +270,7 @@ declare
   o public.documentos%rowtype;
   v public.documentos%rowtype;
   v_cobrado numeric;
+  v_presupuestos_nuevos uuid[];
 begin
   perform private.exigir_usuario_activo();
   select * into o from public.documentos where id = p_id and deleted_at is null for update;
@@ -274,7 +282,8 @@ begin
   v.tipo := coalesce(v.tipo, o.tipo);
 
   if v.tipo <> o.tipo and (
-    exists (select 1 from public.documentos r where r.factura_id = p_id)
+    o.factura_id is not null
+    or exists (select 1 from public.documentos r where r.factura_id = p_id)
     or exists (select 1 from public.op_facturas where op_id = p_id or factura_id = p_id)
   ) then
     raise exception 'Para cambiar el tipo, primero quitá los remitos o facturas vinculados' using errcode = 'P0001';
@@ -296,7 +305,20 @@ begin
     raise exception 'Lo aplicado a facturas supera el monto de la orden de pago' using errcode = 'P0001';
   end if;
 
-  perform private.validar_presupuestos(o.cliente_id, p_presupuestos);
+  if p_presupuestos is not null then
+    if cardinality(p_presupuestos) = 0 then
+      raise exception 'Elegí al menos un presupuesto' using errcode = 'P0001';
+    end if;
+    v_presupuestos_nuevos := array(
+      select p.id from unnest(p_presupuestos) as p(id)
+      where not exists (
+        select 1 from public.documento_presupuestos dp where dp.documento_id = p_id and dp.cotizacion_id = p.id
+      )
+    );
+    if cardinality(v_presupuestos_nuevos) > 0 then
+      perform private.validar_presupuestos(o.cliente_id, v_presupuestos_nuevos);
+    end if;
+  end if;
   perform private.exigir_vinculos_del_tipo(v.tipo, p_remitos, p_aplicaciones);
 
   update public.documentos set
@@ -314,7 +336,9 @@ begin
     notas = coalesce(v.notas, '')
   where id = p_id;
 
-  perform private.reemplazar_presupuestos(p_id, p_presupuestos);
+  if p_presupuestos is not null then
+    perform private.reemplazar_presupuestos(p_id, p_presupuestos);
+  end if;
   if v.tipo = 'factura' and p_remitos is not null then
     perform private.vincular_remitos(p_id, o.cliente_id, p_remitos);
   elsif v.tipo = 'orden_pago' and p_aplicaciones is not null then
@@ -331,7 +355,9 @@ set search_path = ''
 as $$
 begin
   perform private.exigir_usuario_activo();
-  if not exists (select 1 from public.documentos where id = p_documento_id and deleted_at is null) then
+  -- Bloquea el documento antes de calcular el orden de las páginas nuevas: dos llamadas a la vez se esperan.
+  perform 1 from public.documentos where id = p_documento_id and deleted_at is null for update;
+  if not found then
     raise exception 'El documento no existe o está anulado' using errcode = 'P0001';
   end if;
   perform private.adjuntar_archivos(p_documento_id, p_archivos);
@@ -353,10 +379,19 @@ begin
   if not found then
     raise exception 'El archivo no existe' using errcode = 'P0001';
   end if;
+  -- Bloquea el documento antes de contar sus archivos: dos quitas a la vez se esperan
+  -- y la segunda ve lo que quitó la primera.
+  perform 1 from public.documentos where id = v_documento and deleted_at is null for update;
+  if not found then
+    raise exception 'El documento no existe o está anulado' using errcode = 'P0001';
+  end if;
   if (select count(*) from public.documento_archivos where documento_id = v_documento) <= 1 then
     raise exception 'Un documento tiene que tener al menos un archivo' using errcode = 'P0001';
   end if;
   delete from public.documento_archivos where id = p_archivo_id;
+  if not found then
+    raise exception 'El archivo no existe' using errcode = 'P0001';
+  end if;
 end;
 $$;
 

@@ -526,7 +526,7 @@ isOneToOne: false
           }
           Functions: {
             "actualizar_documento":
-{ Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos": (string)[],"p_remitos"?: (string)[] }; Returns: undefined
+{ Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
                            },
 "agregar_archivos":
 { Args: { "p_archivos": Json,"p_documento_id": string }; Returns: undefined

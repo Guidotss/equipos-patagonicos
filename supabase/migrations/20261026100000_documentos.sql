@@ -54,10 +54,10 @@ create table public.documento_archivos (
   mime text not null check (mime in ('application/pdf', 'image/jpeg', 'image/png')),
   tamano bigint not null check (tamano > 0 and tamano <= 10485760),
   orden integer not null check (orden > 0),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- También sirve de índice para listar los archivos de un documento en orden.
+  constraint documento_archivos_orden_unico unique (documento_id, orden)
 );
-
-create index documento_archivos_documento on public.documento_archivos (documento_id, orden);
 
 -- Un documento cubre uno o más presupuestos (una OC abierta, una OP que paga facturas de varios).
 -- Si se borra una cotización (solo posible sin documentos activos), sus vínculos se van con ella.

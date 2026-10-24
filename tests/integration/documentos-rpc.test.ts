@@ -50,34 +50,59 @@ async function esperarBloqueadaPor(pid: number) {
 }
 
 /**
- * Corre `llamada` mientras otra transacción tiene a medio registrar un documento
- * y confirma ese registro recién cuando la llamada ya está esperando.
+ * Corre `llamada` mientras otra transacción (del mismo usuario) ejecutó `consulta` sin confirmar
+ * y la confirma recién cuando la llamada ya está esperando.
  */
-async function contraRegistroEnCurso<T>(
-  datos: Record<string, unknown>,
-  extra: { remitos?: string[]; aplicaciones?: Json[] },
+async function contraTransaccionEnCurso<T>(
+  consulta: string,
+  parametros: unknown[],
   llamada: () => PromiseLike<T>,
 ): Promise<T> {
-  const archivo = await subirArchivo(activo.client, ids.cliente_id)
   return conConexion(async (otra) => {
     await otra.query('begin')
     await otra.query(`select set_config('request.jwt.claims', $1, true)`, [
       JSON.stringify({ sub: activo.id, role: 'authenticated' }),
     ])
     await otra.query('set local role authenticated')
-    await otra.query('select public.registrar_documento($1::jsonb, $2::uuid[], $3::jsonb, $4::uuid[], $5::jsonb)', [
-      JSON.stringify({ cliente_id: ids.cliente_id, notas: MARCA, ...datos }),
-      [presupuesto],
-      JSON.stringify([archivo]),
-      extra.remitos ?? [],
-      JSON.stringify(extra.aplicaciones ?? []),
-    ])
+    await otra.query(consulta, parametros)
     const [{ pid }] = (await otra.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
     const resultado = Promise.resolve(llamada())
     await esperarBloqueadaPor(pid)
     await otra.query('commit')
     return resultado
   })
+}
+
+/** Corre `llamada` mientras otra transacción tiene a medio registrar un documento. */
+async function contraRegistroEnCurso<T>(
+  datos: Record<string, unknown>,
+  extra: { remitos?: string[]; aplicaciones?: Json[] },
+  llamada: () => PromiseLike<T>,
+): Promise<T> {
+  const archivo = await subirArchivo(activo.client, ids.cliente_id)
+  return contraTransaccionEnCurso(
+    'select public.registrar_documento($1::jsonb, $2::uuid[], $3::jsonb, $4::uuid[], $5::jsonb)',
+    [
+      JSON.stringify({ cliente_id: ids.cliente_id, notas: MARCA, ...datos }),
+      [presupuesto],
+      JSON.stringify([archivo]),
+      extra.remitos ?? [],
+      JSON.stringify(extra.aplicaciones ?? []),
+    ],
+    llamada,
+  )
+}
+
+/** Registra un documento con dos archivos y devuelve los ids de los archivos en orden. */
+async function documentoConDosArchivos() {
+  const { data: id } = await registrar({ tipo: 'remito' })
+  const pagina = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.jpg')
+  expect((await activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina] })).error).toBeNull()
+  const archivos = await sql<{ id: string }>(
+    'select id from public.documento_archivos where documento_id = $1 order by orden',
+    [id],
+  )
+  return { id: id!, archivos: archivos.map((a) => a.id) }
 }
 
 describe('registrar_documento', () => {
@@ -194,6 +219,18 @@ describe('registrar_documento', () => {
     expect((await registrar({ tipo: 'orden_compra' }, { remitos: [remito!] })).error?.message).toMatch(/Solo una factura cubre remitos/)
   })
 
+  it('las facturas canceladas tienen que venir como lista', async () => {
+    const archivo = await subirArchivo(activo.client, ids.cliente_id)
+    const { error } = await activo.client.rpc('registrar_documento', {
+      p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
+      p_presupuestos: [presupuesto],
+      p_archivos: [archivo],
+      p_aplicaciones: { factura_id: presupuesto, monto_aplicado: 1 },
+    })
+    expect(error?.code).toBe('P0001')
+    expect(error?.message).toMatch(/tienen que ser una lista/)
+  })
+
   it('un usuario inactivo no registra', async () => {
     const { error } = await inactivo.client.rpc('registrar_documento', {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito' },
@@ -237,6 +274,98 @@ describe('actualizar, archivos, anular y restaurar', () => {
       p_presupuestos: [presupuesto],
     })
     expect(montoMenor.error?.message).toMatch(/menor a lo ya cobrado/)
+  })
+
+  it('un remito cubierto por una factura no cambia de tipo sin desvincularse', async () => {
+    const { data: remito } = await registrar({ tipo: 'remito' })
+    const { data: factura } = await registrar({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [remito!] })
+
+    const { error } = await activo.client.rpc('actualizar_documento', {
+      p_id: remito!,
+      p_datos: { tipo: 'orden_compra', notas: MARCA },
+      p_presupuestos: [presupuesto],
+    })
+    expect(error?.message).toMatch(/primero quitá/)
+    expect((await sql('select tipo, factura_id from public.documentos where id = $1', [remito]))[0]).toEqual({
+      tipo: 'remito',
+      factura_id: factura,
+    })
+  })
+
+  describe('presupuestos al corregir', () => {
+    const presupuestosDe = async (documento: string) =>
+      (
+        await sql<{ cotizacion_id: string }>(
+          'select cotizacion_id from public.documento_presupuestos where documento_id = $1 order by cotizacion_id',
+          [documento],
+        )
+      ).map((v) => v.cotizacion_id)
+    const anularPresupuesto = (id: string) =>
+      sql(`update public.cotizaciones set presupuesto_estado = 'anulado' where id = $1`, [id])
+
+    it('sin p_presupuestos conserva los vínculos; una lista los reemplaza, pero no puede ser vacía', async () => {
+      const otro = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
+      const { data: id } = await registrar({ tipo: 'orden_compra' }, { presupuestos: [presupuesto, otro] })
+      const ambos = [presupuesto, otro].sort()
+
+      const sinLista = await activo.client.rpc('actualizar_documento', {
+        p_id: id!,
+        p_datos: { tipo: 'orden_compra', numero: 'OC-2', notas: MARCA },
+      })
+      expect(sinLista.error).toBeNull()
+      expect(await presupuestosDe(id!)).toEqual(ambos)
+
+      const vacia = await activo.client.rpc('actualizar_documento', {
+        p_id: id!,
+        p_datos: { tipo: 'orden_compra', notas: MARCA },
+        p_presupuestos: [],
+      })
+      expect(vacia.error?.message).toMatch(/al menos un presupuesto/)
+      expect(await presupuestosDe(id!)).toEqual(ambos)
+
+      const conLista = await activo.client.rpc('actualizar_documento', {
+        p_id: id!,
+        p_datos: { tipo: 'orden_compra', notas: MARCA },
+        p_presupuestos: [otro],
+      })
+      expect(conLista.error).toBeNull()
+      expect(await presupuestosDe(id!)).toEqual([otro])
+    })
+
+    it('corrige el número de un documento cuyo presupuesto se anuló después', async () => {
+      const anulado = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
+      const { data: id } = await registrar({ tipo: 'orden_compra', numero: 'OC-1' }, { presupuestos: [anulado] })
+      await anularPresupuesto(anulado)
+
+      const sinLista = await activo.client.rpc('actualizar_documento', {
+        p_id: id!,
+        p_datos: { tipo: 'orden_compra', numero: 'OC-2', notas: MARCA },
+      })
+      expect(sinLista.error).toBeNull()
+      const conLista = await activo.client.rpc('actualizar_documento', {
+        p_id: id!,
+        p_datos: { tipo: 'orden_compra', numero: 'OC-3', notas: MARCA },
+        p_presupuestos: [anulado],
+      })
+      expect(conLista.error).toBeNull()
+
+      expect((await sql('select numero from public.documentos where id = $1', [id]))[0]).toEqual({ numero: 'OC-3' })
+      expect(await presupuestosDe(id!)).toEqual([anulado])
+    })
+
+    it('no agrega un presupuesto anulado que no tenía', async () => {
+      const anulado = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
+      await anularPresupuesto(anulado)
+      const { data: id } = await registrar({ tipo: 'orden_compra' })
+
+      const { error } = await activo.client.rpc('actualizar_documento', {
+        p_id: id!,
+        p_datos: { tipo: 'orden_compra', notas: MARCA },
+        p_presupuestos: [presupuesto, anulado],
+      })
+      expect(error?.message).toMatch(/no anulados/)
+      expect(await presupuestosDe(id!)).toEqual([presupuesto])
+    })
   })
 
   describe('vínculos de factura y orden de pago al corregir', () => {
@@ -321,6 +450,16 @@ describe('actualizar, archivos, anular y restaurar', () => {
     expect((await activo.client.rpc('quitar_archivo', { p_archivo_id: archivos[1].id })).error?.message).toMatch(/al menos un archivo/)
   })
 
+  it('no quita archivos de un documento anulado', async () => {
+    const { id, archivos } = await documentoConDosArchivos()
+    expect((await activo.client.rpc('anular_documento', { p_id: id })).error).toBeNull()
+
+    expect((await activo.client.rpc('quitar_archivo', { p_archivo_id: archivos[0] })).error?.message).toMatch(/anulado/)
+    expect(await sql('select id from public.documento_archivos where documento_id = $1 order by orden', [id])).toEqual(
+      archivos.map((archivo) => ({ id: archivo })),
+    )
+  })
+
   it('anular y restaurar; una OP no se restaura si ya no hay saldo', async () => {
     const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
     const { data: op1 } = await registrar(
@@ -372,5 +511,15 @@ describe('concurrencia', () => {
 
     const segunda = await contraRegistroEnCurso(factura, { remitos: [remito!] }, () => registrar(factura, { remitos: [remito!] }))
     expect(segunda.error?.message).toMatch(/ya está cubierto por otra factura/)
+  })
+
+  it('dos quitas de archivo a la vez dejan al documento con uno', async () => {
+    const { id, archivos } = await documentoConDosArchivos()
+
+    const segunda = await contraTransaccionEnCurso('select public.quitar_archivo($1)', [archivos[0]], () =>
+      activo.client.rpc('quitar_archivo', { p_archivo_id: archivos[1] }),
+    )
+    expect(segunda.error?.message).toMatch(/al menos un archivo/)
+    expect(await sql('select id from public.documento_archivos where documento_id = $1', [id])).toEqual([{ id: archivos[1] }])
   })
 })
