@@ -411,7 +411,9 @@ begin
 end;
 $$;
 
--- Deshace la anulación. Una orden de pago vuelve solo si lo que aplicaba todavía entra en el saldo de cada factura.
+-- Deshace la anulación sin dejar facturas con saldo negativo. Una orden de pago vuelve solo si todas sus
+-- facturas están vigentes y lo que aplicaba todavía entra en el saldo de cada una. Una factura vuelve solo
+-- si lo que le aplican las órdenes de pago vigentes no supera su monto.
 create or replace function public.restaurar_documento(p_id uuid)
 returns void
 language plpgsql
@@ -434,6 +436,17 @@ begin
     order by id
     for update;
 
+    -- v_facturas no tiene las anuladas: si la OP volviera con una factura anulada, al restaurar esa factura
+    -- se sumarían lo de esta OP y lo de la que la cobró mientras tanto.
+    if exists (
+      select 1
+      from public.op_facturas ofa
+      left join public.v_facturas vf on vf.id = ofa.factura_id
+      where ofa.op_id = p_id and vf.id is null
+    ) then
+      raise exception 'No se puede restaurar: alguna factura está anulada (restaurala primero)' using errcode = 'P0001';
+    end if;
+
     if exists (
       select 1
       from public.op_facturas ofa
@@ -442,6 +455,14 @@ begin
     ) then
       raise exception 'No se puede restaurar: alguna factura ya no tiene saldo para esta orden de pago' using errcode = 'P0001';
     end if;
+  elsif o.tipo = 'factura' and o.monto < (
+    -- La factura ya quedó bloqueada arriba: una OP que se restaura a la vez espera y ve el resultado.
+    select coalesce(sum(ofa.monto_aplicado), 0)
+    from public.op_facturas ofa
+    join public.documentos op on op.id = ofa.op_id and op.deleted_at is null
+    where ofa.factura_id = p_id
+  ) then
+    raise exception 'No se puede restaurar: las órdenes de pago vigentes superan el monto de la factura' using errcode = 'P0001';
   end if;
 
   update public.documentos set deleted_at = null, deleted_by = null where id = p_id;

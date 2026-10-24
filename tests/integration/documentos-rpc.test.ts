@@ -475,6 +475,44 @@ describe('actualizar, archivos, anular y restaurar', () => {
     await activo.client.rpc('anular_documento', { p_id: oc! })
     expect((await activo.client.rpc('restaurar_documento', { p_id: oc! })).error).toBeNull()
   })
+
+  describe('restaurar sin dejar saldo negativo', () => {
+    const anular = (id: string) => activo.client.rpc('anular_documento', { p_id: id })
+    const restaurar = (id: string) => activo.client.rpc('restaurar_documento', { p_id: id })
+    const cobro = async (factura: string) =>
+      (await sql('select monto, cobrado, saldo from public.v_facturas where id = $1', [factura]))[0]
+
+    /** Factura de 1000 cobrada por OP2, con OP1 (también de 1000) y la factura anuladas. */
+    async function facturaAnuladaConOpAnulada() {
+      const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+      const op = { tipo: 'orden_pago', monto: 1000 }
+      const aplicaciones = [{ factura_id: factura, monto_aplicado: 1000 }]
+      const { data: op1 } = await registrar(op, { aplicaciones })
+      expect((await anular(op1!)).error).toBeNull()
+      expect((await registrar(op, { aplicaciones })).error).toBeNull()
+      expect((await anular(factura!)).error).toBeNull()
+      return { factura: factura!, op1: op1! }
+    }
+
+    it('una OP no se restaura mientras alguna de sus facturas está anulada', async () => {
+      const { factura, op1 } = await facturaAnuladaConOpAnulada()
+
+      expect((await restaurar(op1)).error?.message).toMatch(/alguna factura está anulada/)
+      expect((await restaurar(factura)).error).toBeNull()
+      expect(await cobro(factura)).toEqual({ monto: '1000.00', cobrado: '1000.00', saldo: '0.00' })
+      expect((await restaurar(op1)).error?.message).toMatch(/ya no tiene saldo/)
+      expect(await cobro(factura)).toEqual({ monto: '1000.00', cobrado: '1000.00', saldo: '0.00' })
+    })
+
+    it('una factura no se restaura si las OP vigentes le aplican más que su monto', async () => {
+      const { factura, op1 } = await facturaAnuladaConOpAnulada()
+      // Un estado que las funciones ya no dejan armar: la OP1 vuelve por fuera mientras la factura está anulada.
+      await sql('update public.documentos set deleted_at = null, deleted_by = null where id = $1', [op1])
+
+      expect((await restaurar(factura)).error?.message).toMatch(/superan el monto de la factura/)
+      expect(await cobro(factura)).toBeUndefined()
+    })
+  })
 })
 
 describe('concurrencia', () => {
