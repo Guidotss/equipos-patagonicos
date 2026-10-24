@@ -351,8 +351,14 @@ isOneToOne: false
 "guardar_cotizacion":
 { Args: { "p_datos": Json,"p_id"?: string,"p_items": Json }; Returns: string
                            },
+"importar_cotizacion":
+{ Args: { "p_datos": Json }; Returns: string
+                           },
 "marcar_enviada":
 { Args: { "p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: undefined
+                           },
+"presupuesto_directo":
+{ Args: { "p_datos": Json,"p_items"?: Json }; Returns: string
                            },
 "reabrir_cotizacion":
 { Args: { "p_id": string }; Returns: undefined
