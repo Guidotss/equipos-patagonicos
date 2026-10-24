@@ -2671,7 +2671,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Servicio de cotizaciones (cargar, generar, enviar, aprobar)
+### Task 10: Servicio de cotizaciones (cargar, enviar, aprobar, PDF a mostrar)
+
+> **Actualizada después de la Task 5.** Las RPC quedaron así (llamadas por nombre desde supabase-js):
+> `marcar_enviada(p_id, p_updated_at, p_pdf_path)` y `aprobar_cotizacion(p_id, p_updated_at, p_pdf_path?, p_fecha?)`.
+> `p_updated_at` es obligatorio: es la versión de la cotización que se usó para generar el PDF (si cambió en el medio, la base rechaza con "La cotización cambió…"). Se manda tal cual la devuelve la API.
+> Las cotizaciones **cargadas** (`origen = 'importada'`) no se envían desde la app y se aprueban **sin** generar PDF (su documento es el PDF original, `archivo_original_path`).
 
 **Files:**
 - Create: `src/lib/cotizaciones/servicio.ts`, `tests/integration/cotizaciones-servicio.test.ts`
@@ -2688,7 +2693,7 @@ import { adminClient, borrarUsuario, crearUsuario, sql } from './helpers'
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 let activo: Awaited<ReturnType<typeof crearUsuario>>
 let ids: Awaited<ReturnType<typeof idsDeEjemplo>>
-const creadas: string[] = []
+const rutas: string[] = []
 
 beforeAll(async () => {
   activo = await crearUsuario({ activo: true, rol: 'operador' })
@@ -2696,13 +2701,14 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  if (creadas.length) {
-    const archivos = await sql<{ name: string }>(
-      `select name from storage.objects where bucket_id = 'documentos' and name like any($1)`,
-      [creadas.map((id) => `cotizaciones/${id}/%`)],
-    )
-    if (archivos.length) await adminClient().storage.from('documentos').remove(archivos.map((a) => a.name))
-  }
+  const archivos = await sql<{ name: string }>(
+    `select o.name from storage.objects o
+     where o.bucket_id = 'documentos'
+       and (o.name = any($1) or exists (
+         select 1 from public.cotizaciones c where c.notas = $2 and o.name like 'cotizaciones/' || c.id || '/%'))`,
+    [rutas, MARCA],
+  )
+  if (archivos.length) await adminClient().storage.from('documentos').remove(archivos.map((a) => a.name))
   await sql('delete from public.cotizaciones where notas = $1', [MARCA])
   await borrarUsuario(activo.id)
 })
@@ -2725,7 +2731,6 @@ async function nueva(datos: Record<string, unknown> = {}): Promise<string> {
     p_items: ITEMS_JORNADA,
   })
   if (error) throw error
-  creadas.push(data)
   return data
 }
 
@@ -2746,10 +2751,12 @@ describe('servicio de cotizaciones', () => {
     expect(Buffer.from(await data!.arrayBuffer()).subarray(0, 5).toString()).toBe('%PDF-')
   })
 
-  it('no envía si faltan variables y dice cuáles', async () => {
+  it('no envía si faltan variables, dice cuáles y no sube nada', async () => {
     const id = await nueva({ datos: {} })
     await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(ErrorCotizacion)
     await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(/Lugar del servicio/)
+    const subidos = await sql(`select 1 from storage.objects where name like $1`, [`cotizaciones/${id}/%`])
+    expect(subidos).toEqual([])
   })
 
   it('aprobar congela el PDF y después se sirve ese mismo archivo', async () => {
@@ -2766,6 +2773,38 @@ describe('servicio de cotizaciones', () => {
     const mostrado = await pdfParaMostrar(activo.client, id)
     expect(mostrado?.nombreArchivo).toBe(`COTIZACION N° ${await numero(id)} VERTICE.pdf`)
     expect(Buffer.compare(mostrado!.pdf, Buffer.from(await guardado.data!.arrayBuffer()))).toBe(0)
+  })
+
+  it('una cotización cargada se aprueba sin generar PDF y se sigue mostrando su original', async () => {
+    const ruta = `importadas/${crypto.randomUUID()}.pdf`
+    rutas.push(ruta)
+    const original = Buffer.from('%PDF-1.4 original cargado')
+    const subida = await activo.client.storage.from('documentos').upload(ruta, original, { contentType: 'application/pdf' })
+    expect(subida.error).toBeNull()
+
+    const { data: id, error } = await activo.client.rpc('importar_cotizacion', {
+      p_datos: {
+        numero: 100000 + Math.floor(Math.random() * 9000),
+        cliente_id: ids.cliente_id,
+        formato: 'jornada',
+        fecha: '2026-10-01',
+        estado: 'enviada',
+        archivo_original_path: ruta,
+        notas: MARCA,
+      },
+    })
+    expect(error).toBeNull()
+
+    await expect(enviarCotizacion(activo.client, id!)).rejects.toThrow(/cargada/)
+    await aprobarCotizacion(activo.client, id!, '2026-10-02')
+
+    const [fila] = await sql<{ estado: string; pdf_aprobado_path: string | null }>(
+      'select estado, pdf_aprobado_path from public.cotizaciones where id = $1',
+      [id],
+    )
+    expect(fila).toEqual({ estado: 'aprobada', pdf_aprobado_path: null })
+    const mostrado = await pdfParaMostrar(activo.client, id!)
+    expect(Buffer.compare(mostrado!.pdf, original)).toBe(0)
   })
 
   it('un borrador se genera en el momento; una cotización inexistente devuelve null', async () => {
@@ -2813,12 +2852,16 @@ const BUCKET = 'documentos'
 /** Error con un mensaje pensado para mostrarle al usuario. */
 export class ErrorCotizacion extends Error {}
 
+/**
+ * Lee la cotización con todo lo que necesita el PDF en una sola consulta: así `updated_at`
+ * (la versión que se manda a las RPC) corresponde exactamente al contenido que se dibuja.
+ */
 async function cargarFuente(supabase: Cliente, id: string) {
   const { data: fila, error } = await supabase
     .from('cotizaciones')
     .select(
       `id, numero, fecha, formato, asunto, intro, validez_dias, mostrar_total, datos, bloques, estado, origen,
-       pdf_aprobado_path, archivo_original_path,
+       updated_at, pdf_aprobado_path, archivo_original_path,
        cliente:clientes(razon_social, cuit),
        contacto:contactos(nombre, email),
        equipo:equipos(capacidad_tn, descripcion),
@@ -2858,19 +2901,20 @@ async function cargarFuente(supabase: Cliente, id: string) {
   return { fila, fuente }
 }
 
-export async function generarPdf(supabase: Cliente, id: string) {
+async function cargarOFallar(supabase: Cliente, id: string) {
   const cargada = await cargarFuente(supabase, id)
   if (!cargada) throw new ErrorCotizacion('La cotización no existe')
-  const documento = armarDocumento(cargada.fuente)
-  const pdf = await renderizarCotizacion(documento)
-  return { pdf, documento, fila: cargada.fila }
+  return cargada
 }
 
-function exigirCompleta(documento: DocumentoCotizacion) {
+/** Arma el documento y exige que no queden variables sin completar. */
+function documentoCompleto(fuente: FuenteDocumento): DocumentoCotizacion {
+  const documento = armarDocumento(fuente)
   if (documento.faltantes.length) {
     const nombres = documento.faltantes.map((nombre) => VARIABLES[nombre]).join(', ')
     throw new ErrorCotizacion(`Faltan completar: ${nombres}`)
   }
+  return documento
 }
 
 async function subirPdf(supabase: Cliente, ruta: string, pdf: Buffer) {
@@ -2884,21 +2928,38 @@ function errorDeRpc(error: { code?: string; message: string }) {
 
 /** Genera el PDF, lo guarda como lo que recibió el cliente y marca la cotización como enviada. */
 export async function enviarCotizacion(supabase: Cliente, id: string): Promise<void> {
-  const { pdf, documento } = await generarPdf(supabase, id)
-  exigirCompleta(documento)
+  const { fila, fuente } = await cargarOFallar(supabase, id)
+  if (fila.origen !== 'app') throw new ErrorCotizacion('Una cotización cargada no se envía desde la app: su documento es el PDF original')
+
+  const pdf = await renderizarCotizacion(documentoCompleto(fuente))
   const ruta = `cotizaciones/${id}/enviada-${Date.now()}.pdf`
   await subirPdf(supabase, ruta, pdf)
-  const { error } = await supabase.rpc('marcar_enviada', { p_id: id, p_pdf_path: ruta })
+  const { error } = await supabase.rpc('marcar_enviada', { p_id: id, p_updated_at: fila.updated_at, p_pdf_path: ruta })
   if (error) throw errorDeRpc(error)
 }
 
-/** Genera el PDF definitivo, lo guarda y aprueba (la cotización queda congelada). */
+/**
+ * Aprueba (la cotización queda congelada). Si se armó en la app, genera y guarda el PDF definitivo;
+ * si es una cotización cargada, se aprueba con su PDF original y no se genera nada.
+ */
 export async function aprobarCotizacion(supabase: Cliente, id: string, fecha?: string): Promise<void> {
-  const { pdf, documento } = await generarPdf(supabase, id)
-  exigirCompleta(documento)
+  const { fila, fuente } = await cargarOFallar(supabase, id)
+
+  if (fila.origen === 'importada') {
+    const { error } = await supabase.rpc('aprobar_cotizacion', { p_id: id, p_updated_at: fila.updated_at, p_fecha: fecha })
+    if (error) throw errorDeRpc(error)
+    return
+  }
+
+  const pdf = await renderizarCotizacion(documentoCompleto(fuente))
   const ruta = `cotizaciones/${id}/aprobada-${Date.now()}.pdf`
   await subirPdf(supabase, ruta, pdf)
-  const { error } = await supabase.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: ruta, p_fecha: fecha })
+  const { error } = await supabase.rpc('aprobar_cotizacion', {
+    p_id: id,
+    p_updated_at: fila.updated_at,
+    p_pdf_path: ruta,
+    p_fecha: fecha,
+  })
   if (error) throw errorDeRpc(error)
 }
 
@@ -2941,7 +3002,7 @@ export async function pdfParaMostrar(
 }
 ```
 
-Si los tipos generados no tipan las relaciones embebidas como objeto único (por ejemplo, las devuelven como arreglo o permiten `null` donde no corresponde), ajustar el mapeo en `cargarFuente` sin cambiar el comportamiento: `cliente` y `empresa` siempre existen; `contacto`, `equipo` y `firmante` pueden ser `null`. Lo mismo si `datos.fecha` llega con otro formato que `YYYY-MM-DD`.
+Si los tipos generados no tipan las relaciones embebidas como objeto único (por ejemplo, las devuelven como arreglo o permiten `null` donde no corresponde), ajustar el mapeo en `cargarFuente` sin cambiar el comportamiento: `cliente` y `empresa` siempre existen; `contacto`, `equipo` y `firmante` pueden ser `null`.
 
 - [ ] **Step 3: Correr**
 
@@ -2956,7 +3017,7 @@ Expected: PASS (todos). El render de PDF tarda alrededor de 1 s por test; si el 
 ```bash
 npm run check
 git add src/lib/cotizaciones/servicio.ts tests/integration/cotizaciones-servicio.test.ts
-git commit -m "feat: servicio de cotizaciones con snapshots de PDF al enviar y aprobar
+git commit -m "feat: servicio de cotizaciones con versión, snapshots de PDF y cotizaciones cargadas
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
