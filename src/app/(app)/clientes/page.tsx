@@ -18,7 +18,7 @@ export default async function ClientesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <BarraMigas migas={[{ texto: 'Clientes' }]} />
-      <Contenido className="space-y-6">
+      <Contenido>
         <EncabezadoPagina
           titulo="Clientes"
           extra={
@@ -27,9 +27,9 @@ export default async function ClientesPage({ searchParams }: { searchParams: Pro
             </span>
           }
           acciones={
-            <Button asChild>
+            <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
               <Link href="/clientes/nuevo">
-                <Plus className="size-4" aria-hidden />
+                <Plus aria-hidden />
                 Nuevo cliente
               </Link>
             </Button>
@@ -47,7 +47,7 @@ export default async function ClientesPage({ searchParams }: { searchParams: Pro
               className="h-9 bg-background pl-9"
             />
           </div>
-          <Button type="submit" variant="outline" className="h-9">
+          <Button type="submit" variant="outline" size="lg">
             Buscar
           </Button>
         </form>

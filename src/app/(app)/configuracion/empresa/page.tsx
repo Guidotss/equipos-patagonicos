@@ -17,7 +17,7 @@ export default async function EmpresaPage() {
   return (
     <>
       <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Empresa' }]} />
-      <Contenido className="space-y-6">
+      <Contenido>
         <EncabezadoPagina
           titulo="Empresa"
           descripcion={
@@ -26,7 +26,7 @@ export default async function EmpresaPage() {
               : 'Solo un administrador puede modificar estos datos.'
           }
         />
-        <div className="max-w-3xl rounded-xl border bg-card p-6 shadow-xs">
+        <div className="max-w-3xl rounded-xl border bg-card p-6 shadow-tarjeta">
           <EmpresaForm
             accion={actualizarEmpresa}
             inicial={{ ...empresa, cuit: empresa.cuit ? formatCuit(empresa.cuit) : '' }}

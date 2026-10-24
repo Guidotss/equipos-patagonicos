@@ -24,6 +24,21 @@ Rasgos que se repiten en todas las pantallas:
 - **Superficies y tipografía:** tarjetas blancas con borde fino, radio de 12 px y sombras muy suaves; títulos grandes y finos; texto secundario gris.
 - **Color:** botón primario azul #3D47CC y secundarios con contorno; estados como pastillas con punto de color; el amarillo #E6DC1F solo como acento mínimo (variables sin completar).
 
+## Piezas ya implementadas (plan 2)
+
+La pasada de clientes y configuración dejó el shell y estas piezas listas para reutilizar en las pantallas del 3B:
+
+- `src/components/app-shell/encabezado.tsx`:
+  - `BarraMigas`: la barra superior con el breadcrumb. Cada página la renderiza, porque el shell ya no tiene barra en escritorio.
+  - `Portada`: la banda con la trama `public/portada-ganchos.svg`.
+  - `EncabezadoFicha`: banda, recuadro superpuesto, título, estado, datos clave y acciones (como en 06 y 04).
+  - `EncabezadoSeccion`: banda baja con título blanco (como en 07 y 01).
+  - `EncabezadoPagina`: título sin banda, bajada y acciones (como en 07b y 02).
+  - `Contenido`: márgenes y espaciado de la página.
+- `src/components/ui/pastilla.tsx`: estados con punto. Tonos `exito`, `info`, `aviso`, `peligro` y `neutro`.
+- Tokens de `globals.css`: `from-portada-desde` y `to-portada-hasta`, `shadow-tarjeta`, y la paleta fría de bordes, sidebar y muted.
+- Medida de comparación: las referencias equivalen a una ventana de ~1200 px de ancho. Para compararlas, escalarlas a 1200 de ancho y capturar la app a 1200×805.
+
 ## Cómo se generaron
 
 - Modelo: fal.ai `google/nano-banana-2.1/edit`, resolución 2K, `thinking_level: high`, relación 3:2 (9:16 la de celular).

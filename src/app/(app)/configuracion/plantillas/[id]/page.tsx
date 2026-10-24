@@ -29,7 +29,7 @@ export default async function PlantillaPage({ params }: { params: Promise<{ id: 
           { texto: plantilla.nombre },
         ]}
       />
-      <Contenido className="max-w-5xl space-y-6">
+      <Contenido className="max-w-5xl">
         <EncabezadoPagina
           titulo={plantilla.nombre}
           extra={
@@ -41,7 +41,7 @@ export default async function PlantillaPage({ params }: { params: Promise<{ id: 
         />
 
         {plantilla.asunto || plantilla.intro ? (
-          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-xs">
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-tarjeta">
             {plantilla.asunto ? (
               <div className="space-y-1">
                 <h2 className="text-[13px] text-muted-foreground">Asunto</h2>
@@ -59,7 +59,7 @@ export default async function PlantillaPage({ params }: { params: Promise<{ id: 
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold tracking-tight">Ítems precargados</h2>
-          <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+          <div className="overflow-hidden rounded-xl border bg-card shadow-tarjeta">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent">
@@ -86,7 +86,7 @@ export default async function PlantillaPage({ params }: { params: Promise<{ id: 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold tracking-tight">Bloques de texto</h2>
           {bloques.map((bloque, indice) => (
-            <article key={indice} className="space-y-1.5 rounded-xl border bg-card p-5 shadow-xs">
+            <article key={indice} className="space-y-1.5 rounded-xl border bg-card p-5 shadow-tarjeta">
               {bloque.titulo ? <h3 className="font-semibold">{bloque.titulo}</h3> : null}
               <p className="text-[15px] whitespace-pre-wrap text-foreground/80">{bloque.contenido}</p>
             </article>

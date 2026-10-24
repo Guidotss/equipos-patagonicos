@@ -25,7 +25,7 @@ export function AppShell({ usuario, children }: { usuario: UsuarioActual; childr
         <Link href="/" className="block px-5 pt-6 pb-10" aria-label="Ir al inicio">
           <Logo className="h-[42px] w-auto" />
         </Link>
-        <div className="flex-1 overflow-y-auto px-3">
+        <div className="flex-1 overflow-y-auto px-3 py-1">
           <SidebarNav />
         </div>
         <div className="border-t border-sidebar-border p-3">

@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CampoContacto } from '@/lib/clientes/esquemas'
+import { iniciales } from '@/lib/format/texto'
 import { valorCampo, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
 
 export type ContactoConAcciones = {
@@ -26,15 +27,6 @@ export type ContactoConAcciones = {
   telefono: string
   actualizar: AccionFormulario
   borrar: () => Promise<void>
-}
-
-function iniciales(nombre: string) {
-  return nombre
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((parte) => parte[0]?.toUpperCase())
-    .join('')
 }
 
 function CamposContacto({ estado, inicial }: { estado: EstadoFormulario; inicial?: Partial<Record<CampoContacto, string>> }) {
@@ -118,7 +110,7 @@ export function Contactos({ contactos, crear }: { contactos: ContactoConAcciones
       ) : (
         <ul className="space-y-4">
           {contactos.map((contacto) => (
-            <li key={contacto.id} className="rounded-xl border bg-card p-4 shadow-xs">
+            <li key={contacto.id} className="rounded-xl border bg-card p-4 shadow-tarjeta">
               <div className="flex items-start gap-3">
                 <span
                   aria-hidden
@@ -127,7 +119,7 @@ export function Contactos({ contactos, crear }: { contactos: ContactoConAcciones
                   {iniciales(contacto.nombre)}
                 </span>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="truncate font-semibold">{contacto.nombre}</p>
+                  <p className="font-semibold break-words">{contacto.nombre}</p>
                   {contacto.cargo ? <p className="text-sm text-muted-foreground">{contacto.cargo}</p> : null}
                 </div>
                 <div className="-mt-1 -mr-1 flex items-center">
@@ -154,7 +146,7 @@ export function Contactos({ contactos, crear }: { contactos: ContactoConAcciones
               {contacto.email || contacto.telefono ? (
                 <div className="mt-3 space-y-1 text-[15px]">
                   {contacto.email ? (
-                    <a className="block truncate hover:text-primary hover:underline" href={`mailto:${contacto.email}`}>
+                    <a className="block [overflow-wrap:anywhere] hover:text-primary hover:underline" href={`mailto:${contacto.email}`}>
                       {contacto.email}
                     </a>
                   ) : null}

@@ -21,7 +21,7 @@ export type PlantillaConAcciones = {
 
 export function Plantillas({ plantillas }: { plantillas: PlantillaConAcciones[] }) {
   return (
-    <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs">
+    <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       {plantillas.map((plantilla) => (
         <li key={plantilla.id} className="flex items-center gap-4 p-4 sm:p-5">
           <span
@@ -33,14 +33,22 @@ export function Plantillas({ plantillas }: { plantillas: PlantillaConAcciones[] 
             <FileText className="size-5 sm:size-6" aria-hidden />
           </span>
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-3">
-            <div className={cn('flex min-w-0 flex-1 basis-64 flex-wrap items-center gap-x-3 gap-y-1', plantilla.activa ? null : 'opacity-60')}>
+            <div className="flex min-w-0 flex-1 basis-64 flex-wrap items-center gap-x-3 gap-y-1">
               <Link
                 href={`/configuracion/plantillas/${plantilla.id}`}
-                className="text-lg font-medium hover:text-primary hover:underline"
+                className={cn(
+                  'text-lg font-medium hover:text-primary hover:underline',
+                  plantilla.activa ? null : 'text-muted-foreground',
+                )}
               >
                 {plantilla.nombre}
               </Link>
-              <span className="inline-flex h-6 items-center rounded-md bg-muted px-2 text-[13px] text-foreground/80">
+              <span
+                className={cn(
+                  'inline-flex h-6 items-center rounded-md bg-slate-200/70 px-2 text-sm',
+                  plantilla.activa ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
                 {plantilla.formato}
               </span>
             </div>

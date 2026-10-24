@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Pastilla } from '@/components/ui/pastilla'
 import type { CampoFirmante } from '@/lib/catalogos/esquemas'
+import { iniciales } from '@/lib/format/texto'
 import { valorCampo, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
 import { cn } from '@/lib/utils'
 
@@ -19,15 +20,6 @@ export type FirmanteConAcciones = {
   activo: boolean
   actualizar: AccionFormulario
   boton: React.ReactNode
-}
-
-function iniciales(nombre: string) {
-  return nombre
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((parte) => parte[0]?.toUpperCase())
-    .join('')
 }
 
 function CamposFirmante({ estado, inicial }: { estado: EstadoFormulario; inicial?: Partial<Record<CampoFirmante, string>> }) {
@@ -58,7 +50,7 @@ export function NuevoFirmante({ crear }: { crear: AccionFormulario }) {
       accion={crear}
       textoBoton="Guardar firmante"
       disparador={
-        <Button size="lg">
+        <Button size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
           <Plus aria-hidden />
           Nuevo firmante
         </Button>
@@ -79,7 +71,7 @@ export function Firmantes({ firmantes }: { firmantes: FirmanteConAcciones[] }) {
   }
 
   return (
-    <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs">
+    <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       {firmantes.map((firmante) => (
         <li key={firmante.id} className="flex items-center gap-4 p-4 sm:p-5">
           <span
@@ -92,12 +84,17 @@ export function Firmantes({ firmantes }: { firmantes: FirmanteConAcciones[] }) {
             {iniciales(firmante.nombre)}
           </span>
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-3">
-            <div className={cn('min-w-0 flex-1 basis-64', firmante.activo ? null : 'opacity-60')}>
-              <p className="text-lg font-medium">{firmante.nombre}</p>
-              <p className="flex flex-wrap gap-x-3 text-[15px] text-foreground/75">
+            <div className="min-w-0 flex-1 basis-64">
+              <p className={cn('text-lg font-medium', firmante.activo ? null : 'text-muted-foreground')}>{firmante.nombre}</p>
+              <p
+                className={cn(
+                  'flex flex-wrap gap-x-3 text-[15px]',
+                  firmante.activo ? 'text-foreground/80' : 'text-muted-foreground',
+                )}
+              >
                 {firmante.cargo ? <span>{firmante.cargo}</span> : null}
                 {firmante.telefono ? <span className="tabular-nums">{firmante.telefono}</span> : null}
-                {firmante.email ? <span>{firmante.email}</span> : null}
+                {firmante.email ? <span className="min-w-0 [overflow-wrap:anywhere]">{firmante.email}</span> : null}
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">

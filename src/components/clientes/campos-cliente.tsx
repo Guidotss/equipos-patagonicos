@@ -22,7 +22,7 @@ export function CamposCliente({ estado, inicial }: { estado: EstadoFormulario; i
   )
 
   return (
-    <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+    <div className="grid gap-x-4 gap-y-2.5 sm:grid-cols-2">
       <Campo id="razon_social" etiqueta="Razón social" error={error('razon_social')} className="sm:col-span-2">
         <Input
           id="razon_social"

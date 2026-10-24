@@ -9,6 +9,7 @@
   --color-portada-desde: var(--portada-desde);
   --color-portada-hasta: var(--portada-hasta);
   --color-brand-yellow: var(--brand-yellow);
+  --shadow-tarjeta: 0 2px 8px -2px rgb(15 23 42 / 0.12);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
@@ -68,7 +69,7 @@
   --accent-foreground: oklch(0.478 0.202 272.6);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.923 0.011 256.7);
-  --input: oklch(0.923 0.011 256.7);
+  --input: oklch(0.86 0.008 250);
   --ring: oklch(0.478 0.202 272.6);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -127,6 +128,10 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /* Las barras sticky (migas en escritorio, barra del celular) miden h-14: el foco no queda debajo. */
+  html {
+    scroll-padding-top: --spacing(14);
   }
   body {
     @apply bg-background text-foreground font-sans;

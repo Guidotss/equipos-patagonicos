@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { CampoEquipo } from '@/lib/catalogos/esquemas'
 import { valorCampo, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
 import { cn } from '@/lib/utils'
+import { IconoGrua } from './icono-grua'
 
 export type EquipoConAcciones = {
   id: string
@@ -22,32 +23,6 @@ export type EquipoConAcciones = {
   activo: boolean
   actualizar: AccionFormulario
   boton: React.ReactNode
-}
-
-/** Grúa sobre camión, con el trazo de lucide (que no trae una). */
-export function IconoGrua({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className={className}
-    >
-      <path d="M2 16v-2.5h13V16" />
-      <path d="M15 16v-4.5h3.5L21 14v2" />
-      <circle cx="5" cy="17.5" r="1.5" />
-      <circle cx="9.5" cy="17.5" r="1.5" />
-      <circle cx="18" cy="17.5" r="1.5" />
-      <path d="M9 13.5v-2.5h3v2.5" />
-      <path d="M12 11 4 3.5" />
-      <path d="M4 3.5V8" />
-      <path d="M4 8a1.25 1.25 0 1 0 1.25 1.25" />
-    </svg>
-  )
 }
 
 function CamposEquipo({ estado, inicial }: { estado: EstadoFormulario; inicial?: Partial<Record<CampoEquipo, string>> }) {
@@ -89,7 +64,7 @@ export function NuevoEquipo({ crear }: { crear: AccionFormulario }) {
       accion={crear}
       textoBoton="Guardar equipo"
       disparador={
-        <Button size="lg">
+        <Button size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
           <Plus aria-hidden />
           Nuevo equipo
         </Button>
@@ -100,8 +75,17 @@ export function NuevoEquipo({ crear }: { crear: AccionFormulario }) {
   )
 }
 
-function Dato({ children }: { children: React.ReactNode }) {
-  return <span className="inline-flex h-6 items-center rounded-md bg-muted px-2 text-sm text-foreground/80">{children}</span>
+function Dato({ activo, children }: { activo: boolean; children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex h-6 items-center rounded-md bg-slate-200/70 px-2 text-sm',
+        activo ? 'text-foreground' : 'text-muted-foreground',
+      )}
+    >
+      {children}
+    </span>
+  )
 }
 
 export function Equipos({ equipos }: { equipos: EquipoConAcciones[] }) {
@@ -114,7 +98,7 @@ export function Equipos({ equipos }: { equipos: EquipoConAcciones[] }) {
   }
 
   return (
-    <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs">
+    <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       {equipos.map((equipo) => (
         <li key={equipo.id} className="flex items-start gap-4 p-4 sm:p-5">
           <span
@@ -125,32 +109,42 @@ export function Equipos({ equipos }: { equipos: EquipoConAcciones[] }) {
           >
             <IconoGrua className="size-6 stroke-[1.5] sm:size-9" />
           </span>
-          <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-4 gap-y-3">
-            <div className={cn('min-w-0 flex-1 basis-64 space-y-1.5', equipo.activo ? null : 'opacity-60')}>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <p className="text-lg font-medium">{equipo.nombre}</p>
-                {equipo.capacidad_tn ? <Dato>{equipo.capacidad_tn} TN</Dato> : null}
-                {equipo.marca || equipo.modelo ? <Dato>{[equipo.marca, equipo.modelo].filter(Boolean).join(' · ')}</Dato> : null}
-                {equipo.identificacion ? <Dato>{equipo.identificacion}</Dato> : null}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+              <div className="min-w-0 flex-1 basis-56 space-y-1.5">
+                <p className={cn('text-lg font-medium', equipo.activo ? null : 'text-muted-foreground')}>{equipo.nombre}</p>
+                {equipo.capacidad_tn || equipo.marca || equipo.modelo || equipo.identificacion ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {equipo.capacidad_tn ? <Dato activo={equipo.activo}>{equipo.capacidad_tn} TN</Dato> : null}
+                    {equipo.marca || equipo.modelo ? (
+                      <Dato activo={equipo.activo}>{[equipo.marca, equipo.modelo].filter(Boolean).join(' · ')}</Dato>
+                    ) : null}
+                    {equipo.identificacion ? <Dato activo={equipo.activo}>{equipo.identificacion}</Dato> : null}
+                  </div>
+                ) : null}
               </div>
-              {equipo.descripcion ? <p className="max-w-3xl text-[15px] text-foreground/80">{equipo.descripcion}</p> : null}
+              <div className="flex items-center gap-2">
+                {equipo.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>}
+                <DialogoFormulario
+                  titulo={`Editar ${equipo.nombre}`}
+                  accion={equipo.actualizar}
+                  textoBoton="Guardar equipo"
+                  disparador={
+                    <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Editar ${equipo.nombre}`}>
+                      <Pencil />
+                    </Button>
+                  }
+                >
+                  {(estado) => <CamposEquipo estado={estado} inicial={equipo} />}
+                </DialogoFormulario>
+                {equipo.boton}
+              </div>
             </div>
-            <div className="ml-auto flex items-center gap-2">
-              {equipo.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>}
-              <DialogoFormulario
-                titulo={`Editar ${equipo.nombre}`}
-                accion={equipo.actualizar}
-                textoBoton="Guardar equipo"
-                disparador={
-                  <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Editar ${equipo.nombre}`}>
-                    <Pencil />
-                  </Button>
-                }
-              >
-                {(estado) => <CamposEquipo estado={estado} inicial={equipo} />}
-              </DialogoFormulario>
-              {equipo.boton}
-            </div>
+            {equipo.descripcion ? (
+              <p className={cn('mt-2 max-w-3xl text-[15px]', equipo.activo ? 'text-foreground/80' : 'text-muted-foreground')}>
+                {equipo.descripcion}
+              </p>
+            ) : null}
           </div>
         </li>
       ))}

@@ -31,7 +31,7 @@ export default async function FirmantesPage() {
   return (
     <>
       <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Firmantes' }]} />
-      <Contenido className="space-y-6">
+      <Contenido>
         <EncabezadoPagina
           titulo="Firmantes"
           descripcion="Nombre, cargo y teléfono que aparecen al pie de cada cotización."

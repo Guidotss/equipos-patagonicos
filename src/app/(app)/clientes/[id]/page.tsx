@@ -7,6 +7,7 @@ import { BotonEstado } from '@/components/formulario/boton-estado'
 import { Pastilla } from '@/components/ui/pastilla'
 import { CONDICIONES_IVA } from '@/lib/clientes/esquemas'
 import { formatCuit } from '@/lib/cuit'
+import { iniciales } from '@/lib/format/texto'
 import { createClient } from '@/lib/supabase/server'
 import { esUuid } from '@/lib/validacion'
 import { actualizarCliente, actualizarContacto, borrarContacto, cambiarEstadoCliente, crearContacto } from '../actions'
@@ -44,7 +45,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
       <BarraMigas migas={[{ texto: 'Clientes', href: '/clientes' }, { texto: cliente.razon_social }]} />
       <EncabezadoFicha
         titulo={cliente.razon_social}
-        recuadro={cliente.razon_social.trim().charAt(0).toUpperCase()}
+        recuadro={iniciales(cliente.razon_social, 1)}
         estado={cliente.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>}
         datos={datosClave.length > 0 ? datosClave.join(' • ') : null}
         acciones={

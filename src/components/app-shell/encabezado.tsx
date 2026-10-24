@@ -10,7 +10,10 @@ export function BarraMigas({ migas }: { migas: Miga[] }) {
       <nav aria-label="Ubicación" className="min-w-0">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
           {migas.map((miga, indice) => (
-            <li key={`${indice}-${miga.texto}`} className="flex min-w-0 items-center gap-1.5">
+            <li
+              key={`${indice}-${miga.texto}`}
+              className={cn('flex items-center gap-1.5', miga.href ? 'shrink-0' : 'min-w-0')}
+            >
               {indice > 0 ? <span aria-hidden>/</span> : null}
               {miga.href ? (
                 <Link href={miga.href} className="transition-colors hover:text-foreground">
@@ -47,7 +50,7 @@ export function EncabezadoSeccion({ titulo, descripcion }: { titulo: string; des
   return (
     <Portada>
       <div className="flex h-full flex-col justify-center gap-1 px-4 md:px-9">
-        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">{titulo}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-[2rem]">{titulo}</h1>
         {descripcion ? <p className="text-white/80 md:text-lg">{descripcion}</p> : null}
       </div>
     </Portada>
@@ -74,18 +77,21 @@ export function EncabezadoFicha({
   return (
     <header>
       <Portada />
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 px-4 md:px-9">
-        <div className="relative -mt-7 grid size-24 shrink-0 place-items-center rounded-2xl bg-[oklch(0.961_0.01_247.9)] text-5xl font-medium text-slate-500 shadow-lg ring-1 ring-black/5">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-3 px-4 md:px-9">
+        <div
+          aria-hidden
+          className="relative -mt-7 grid size-24 shrink-0 place-items-center rounded-2xl bg-[oklch(0.961_0.01_247.9)] text-5xl font-medium text-slate-500 shadow-lg ring-1 ring-black/5"
+        >
           {recuadro}
         </div>
-        <div className="min-w-0 flex-1 basis-72 space-y-1 pb-0.5">
+        <div className="min-w-0 flex-1 basis-72 space-y-1 sm:pt-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">{titulo}</h1>
             {estado}
           </div>
           {datos ? <div className="text-[15px] text-foreground/80">{datos}</div> : null}
         </div>
-        {acciones ? <div className="flex items-center gap-2 pb-1">{acciones}</div> : null}
+        {acciones ? <div className="flex items-center gap-2 sm:pt-4">{acciones}</div> : null}
       </div>
     </header>
   )
@@ -107,7 +113,7 @@ export function EncabezadoPagina({
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
       <div className="min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[2rem] leading-tight font-medium tracking-tight">{titulo}</h1>
+          <h1 className="text-[2.1875rem] leading-tight font-normal tracking-tight">{titulo}</h1>
           {extra}
         </div>
         {descripcion ? <p className="text-[15px] text-muted-foreground">{descripcion}</p> : null}
@@ -119,5 +125,5 @@ export function EncabezadoPagina({
 
 /** Margen del contenido de cada página, debajo de la barra de migas y la banda. */
 export function Contenido({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn('max-w-[90rem] space-y-8 px-4 py-8 md:px-9', className)}>{children}</div>
+  return <div className={cn('max-w-[90rem] space-y-6 px-4 py-8 md:px-9', className)}>{children}</div>
 }

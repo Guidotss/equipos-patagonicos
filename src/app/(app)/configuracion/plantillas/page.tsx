@@ -33,7 +33,7 @@ export default async function PlantillasPage() {
   return (
     <>
       <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Plantillas' }]} />
-      <Contenido className="space-y-6">
+      <Contenido>
         <EncabezadoPagina
           titulo="Plantillas"
           descripcion="Los textos se editan desde una cotización con “Guardar como plantilla” (próxima etapa)."

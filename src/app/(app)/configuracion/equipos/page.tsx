@@ -37,7 +37,7 @@ export default async function EquiposPage() {
   return (
     <>
       <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Equipos' }]} />
-      <Contenido className="space-y-6">
+      <Contenido>
         <EncabezadoPagina
           titulo="Equipos"
           descripcion="La descripción de cada equipo se usa como “Equipo ofrecido” en las cotizaciones."

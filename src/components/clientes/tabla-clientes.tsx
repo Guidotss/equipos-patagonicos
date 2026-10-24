@@ -2,12 +2,14 @@ import Link from 'next/link'
 import { Pastilla } from '@/components/ui/pastilla'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCuit } from '@/lib/cuit'
+import { iniciales } from '@/lib/format/texto'
+import { cn } from '@/lib/utils'
 
 type FilaCliente = { id: string; razon_social: string; cuit: string | null; localidad: string; activo: boolean }
 
 export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+    <div className="overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       <Table>
         <TableHeader className="bg-muted/50">
           <TableRow className="hover:bg-transparent">
@@ -24,11 +26,17 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
                 <div className="flex items-center gap-3">
                   <span
                     aria-hidden
-                    className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-sm font-semibold text-primary"
+                    className={cn(
+                      'grid size-9 shrink-0 place-items-center rounded-lg text-sm font-semibold',
+                      cliente.activo ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground',
+                    )}
                   >
-                    {cliente.razon_social.trim().charAt(0).toUpperCase()}
+                    {iniciales(cliente.razon_social, 1)}
                   </span>
-                  <Link href={`/clientes/${cliente.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                  <Link
+                    href={`/clientes/${cliente.id}`}
+                    className={cn('font-medium hover:text-primary hover:underline', cliente.activo ? 'text-foreground' : null)}
+                  >
                     {cliente.razon_social}
                   </Link>
                 </div>

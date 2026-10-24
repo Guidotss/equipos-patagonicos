@@ -18,7 +18,7 @@ export function Campo({
 }) {
   return (
     <div className={cn('space-y-1', className)}>
-      <Label htmlFor={id} className="text-[13px] font-normal text-muted-foreground">
+      <Label htmlFor={id} className="text-[13px]/none font-normal text-muted-foreground">
         {etiqueta}
       </Label>
       {children}
