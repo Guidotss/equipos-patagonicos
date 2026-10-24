@@ -525,7 +525,16 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "aprobar_cotizacion":
+            "actualizar_documento":
+{ Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos": (string)[],"p_remitos"?: (string)[] }; Returns: undefined
+                           },
+"agregar_archivos":
+{ Args: { "p_archivos": Json,"p_documento_id": string }; Returns: undefined
+                           },
+"anular_documento":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"aprobar_cotizacion":
 { Args: { "p_fecha"?: string,"p_id": string,"p_pdf_path"?: string,"p_updated_at": string }; Returns: undefined
                            },
 "borrar_cotizacion":
@@ -570,10 +579,19 @@ isOneToOne: false
 "presupuesto_directo":
 { Args: { "p_datos": Json,"p_items"?: Json }; Returns: string
                            },
+"quitar_archivo":
+{ Args: { "p_archivo_id": string }; Returns: undefined
+                           },
 "reabrir_cotizacion":
 { Args: { "p_id": string }; Returns: undefined
                            },
 "rechazar_cotizacion":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"registrar_documento":
+{ Args: { "p_aplicaciones"?: Json,"p_archivos": Json,"p_datos": Json,"p_presupuestos": (string)[],"p_remitos"?: (string)[] }; Returns: string
+                           },
+"restaurar_documento":
 { Args: { "p_id": string }; Returns: undefined
                            },
 "revertir_aprobacion":
