@@ -183,6 +183,102 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"documento_archivos": {
+                  Row: {
+                    "created_at": string,"documento_id": string,"id": string,"mime": string,"nombre_original": string,"orden": number,"path": string,"tamano": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"documento_id": string,"id"?: string,"mime": string,"nombre_original": string,"orden": number,"path": string,"tamano": number
+                  }
+                  Update: {
+                    "created_at"?: string,"documento_id"?: string,"id"?: string,"mime"?: string,"nombre_original"?: string,"orden"?: number,"path"?: string,"tamano"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "documento_archivos_documento_id_fkey"
+      columns: ["documento_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"documento_presupuestos": {
+                  Row: {
+                    "cotizacion_id": string,"documento_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cotizacion_id": string,"documento_id": string
+                  }
+                  Update: {
+                    "cotizacion_id"?: string,"documento_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "documento_presupuestos_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documento_presupuestos_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documento_presupuestos_documento_id_fkey"
+      columns: ["documento_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"documentos": {
+                  Row: {
+                    "cliente_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"equipo_id": string | null,"factura_id": string | null,"fecha": string,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"notas": string,"numero": string,"numero_normalizado": string | null,"numero_oc_ref": string,"periodo_desde": string | null,"periodo_hasta": string | null,"tipo": string,"tipo_comprobante": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cliente_id": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo": string,"tipo_comprobante"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "cliente_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo"?: string,"tipo_comprobante"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "documentos_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documentos_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documentos_deleted_by_fkey"
+      columns: ["deleted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documentos_equipo_id_fkey"
+      columns: ["equipo_id"]
+isOneToOne: false
+      referencedRelation: "equipos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documentos_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"empresa_config": {
                   Row: {
                     "ciudad": string,"cuit": string | null,"direccion": string,"email": string,"id": boolean,"indice_base": string,"provincia": string,"proxima_actualizacion": string,"razon_social": string,"telefono": string,"updated_at": string,"web": string
@@ -224,6 +320,32 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"op_facturas": {
+                  Row: {
+                    "factura_id": string,"monto_aplicado": number,"op_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "factura_id": string,"monto_aplicado": number,"op_id": string
+                  }
+                  Update: {
+                    "factura_id"?: string,"monto_aplicado"?: number,"op_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "op_facturas_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "op_facturas_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"plantillas": {
                   Row: {
