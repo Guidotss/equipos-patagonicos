@@ -2677,6 +2677,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 > `marcar_enviada(p_id, p_updated_at, p_pdf_path)` y `aprobar_cotizacion(p_id, p_updated_at, p_pdf_path?, p_fecha?)`.
 > `p_updated_at` es obligatorio: es la versión de la cotización que se usó para generar el PDF (si cambió en el medio, la base rechaza con "La cotización cambió…"). Se manda tal cual la devuelve la API.
 > Las cotizaciones **cargadas** (`origen = 'importada'`) no se envían desde la app y se aprueban **sin** generar PDF (su documento es el PDF original, `archivo_original_path`).
+>
+> **Actualizada después de la Task 7.** `armarDocumento` también devuelve `desconocidas`: nombres entre llaves que no son variables (`{{ubicación}}`, `{{forma**_pago}}`), que quedan tal cual en el texto. Enviar y aprobar los frenan igual que a las faltantes, para que el PDF no le llegue al cliente ni quede congelado con llaves a la vista.
 
 **Files:**
 - Create: `src/lib/cotizaciones/servicio.ts`, `tests/integration/cotizaciones-servicio.test.ts`
@@ -2755,6 +2757,23 @@ describe('servicio de cotizaciones', () => {
     const id = await nueva({ datos: {} })
     await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(ErrorCotizacion)
     await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(/Lugar del servicio/)
+    const subidos = await sql(`select 1 from storage.objects where name like $1`, [`cotizaciones/${id}/%`])
+    expect(subidos).toEqual([])
+  })
+
+  it('no envía ni aprueba con variables mal escritas, dice cuáles y no sube nada', async () => {
+    const id = await nueva({
+      intro: 'Servicios de izaje en {{ubicación}}.',
+      bloques: [{ titulo: 'Alcance', contenido: '- Pago: {{forma**_pago}}' }],
+    })
+    await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(ErrorCotizacion)
+    await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(
+      'Hay variables mal escritas: {{ubicación}}, {{forma**_pago}}',
+    )
+    await expect(aprobarCotizacion(activo.client, id, '2026-10-23')).rejects.toThrow('{{ubicación}}')
+
+    const [fila] = await sql<{ estado: string }>('select estado from public.cotizaciones where id = $1', [id])
+    expect(fila.estado).toBe('borrador')
     const subidos = await sql(`select 1 from storage.objects where name like $1`, [`cotizaciones/${id}/%`])
     expect(subidos).toEqual([])
   })
@@ -2907,13 +2926,17 @@ async function cargarOFallar(supabase: Cliente, id: string) {
   return cargada
 }
 
-/** Arma el documento y exige que no queden variables sin completar. */
+/** Arma el documento y exige que no queden variables sin completar ni mal escritas (informa todas juntas). */
 function documentoCompleto(fuente: FuenteDocumento): DocumentoCotizacion {
   const documento = armarDocumento(fuente)
+  const problemas: string[] = []
   if (documento.faltantes.length) {
-    const nombres = documento.faltantes.map((nombre) => VARIABLES[nombre]).join(', ')
-    throw new ErrorCotizacion(`Faltan completar: ${nombres}`)
+    problemas.push(`Faltan completar: ${documento.faltantes.map((nombre) => VARIABLES[nombre]).join(', ')}`)
   }
+  if (documento.desconocidas.length) {
+    problemas.push(`Hay variables mal escritas: ${documento.desconocidas.map((nombre) => `{{${nombre}}}`).join(', ')}`)
+  }
+  if (problemas.length) throw new ErrorCotizacion(problemas.join('. '))
   return documento
 }
 
