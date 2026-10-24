@@ -23,7 +23,47 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "empresa_config": {
+            "clientes": {
+                  Row: {
+                    "activo": boolean,"condicion_iva": string | null,"condicion_pago": string,"created_at": string,"created_by": string | null,"cuit": string | null,"direccion": string,"email": string,"id": string,"localidad": string,"notas": string,"provincia": string,"razon_social": string,"telefono": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activo"?: boolean,"condicion_iva"?: string | null,"condicion_pago"?: string,"created_at"?: string,"created_by"?: string | null,"cuit"?: string | null,"direccion"?: string,"email"?: string,"id"?: string,"localidad"?: string,"notas"?: string,"provincia"?: string,"razon_social": string,"telefono"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "activo"?: boolean,"condicion_iva"?: string | null,"condicion_pago"?: string,"created_at"?: string,"created_by"?: string | null,"cuit"?: string | null,"direccion"?: string,"email"?: string,"id"?: string,"localidad"?: string,"notas"?: string,"provincia"?: string,"razon_social"?: string,"telefono"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clientes_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"contactos": {
+                  Row: {
+                    "cargo": string,"cliente_id": string,"created_at": string,"email": string,"id": string,"nombre": string,"telefono": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cargo"?: string,"cliente_id": string,"created_at"?: string,"email"?: string,"id"?: string,"nombre": string,"telefono"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "cargo"?: string,"cliente_id"?: string,"created_at"?: string,"email"?: string,"id"?: string,"nombre"?: string,"telefono"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "contactos_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"empresa_config": {
                   Row: {
                     "ciudad": string,"cuit": string | null,"direccion": string,"email": string,"id": boolean,"indice_base": string,"provincia": string,"proxima_actualizacion": string,"razon_social": string,"telefono": string,"updated_at": string,"web": string
                   }
@@ -99,7 +139,30 @@ export type Database = {
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "buscar_clientes":
+{ Args: { "limite"?: number,"texto"?: string }; Returns: {
+              "activo": boolean,
+"condicion_iva": string | null,
+"condicion_pago": string,
+"created_at": string,
+"created_by": string | null,
+"cuit": string | null,
+"direccion": string,
+"email": string,
+"id": string,
+"localidad": string,
+"notas": string,
+"provincia": string,
+"razon_social": string,
+"telefono": string,
+"updated_at": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "clientes"
+        isOneToOne: false
+        isSetofReturn: true
+      } }
           }
           Enums: {
             [_ in never]: never
