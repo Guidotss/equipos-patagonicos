@@ -2017,3 +2017,194 @@ git commit -m "docs: presupuestos y documentos en el README
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
+
+---
+
+## Correcciones de la revisión (agregadas después de la verificación final)
+
+### Task 9: Correcciones de la revisión en las funciones de la base
+
+Origen: hallazgos menores de las revisiones de las Tasks 4, 5 y de la verificación final. Son decisiones del orquestador: aplicalas tal cual. La rama no se mergeó, así que las migraciones de este plan se **editan en el lugar** (`npm run db:reset` después de cada cambio). No toques archivos de `src/` en esta tarea salvo `src/lib/supabase/database.types.ts` si `npm run db:types` lo cambia.
+
+**Files:**
+- Modify: `supabase/migrations/20261026100200_documentos_rpc.sql`
+- Modify: `supabase/migrations/20261026100300_presupuestos_estado.sql`
+- Test: `tests/integration/documentos-rpc.test.ts`, `tests/integration/presupuestos-estado.test.ts` (y `tests/integration/documentos-helpers.ts` si hace falta ajustar rutas)
+
+- [ ] **Step 1: Montos aplicados de una orden de pago (`aplicar_orden_pago`)**
+
+Hoy `monto_aplicado` se lee como `numeric` sin precisión: los controles miran 33,335 pero se guarda 33,34, y una OP de 100,00 queda con 100,01 aplicado. Con 0,001 sale un 23514 en inglés. Además, una aplicación sin `factura_id` da "Una factura aparece dos veces" y el mismo UUID en mayúsculas pasa el control y termina en un 23505.
+
+Validar **cada elemento antes de cualquier otro control**, todos con `errcode = 'P0001'`:
+- que sea un objeto con `factura_id` presente y con forma de UUID (`~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'`): si no, `'Falta la factura en una de las facturas canceladas'`;
+- que `monto_aplicado` (como texto, `e ->> 'monto_aplicado'`) cumpla `^[0-9]+(\.[0-9]{1,2})?$`: si no, `'El monto aplicado tiene que ser un número positivo con hasta 2 decimales'`; y que, ya convertido a `numeric(14,2)`, sea `> 0`: si no, `'El monto aplicado tiene que ser mayor a cero'`.
+
+Recién después, el control de repetidas compara `(e ->> 'factura_id')::uuid` (no el texto), y todos los controles siguientes (≤ saldo, total ≤ monto de la OP) usan el valor `numeric(14,2)` ya validado.
+
+Tests (en `documentos-rpc.test.ts`): 33.335 se rechaza con el mensaje de los decimales; 0.001 da P0001 (no 23514); `"abc"` y `-5` dan P0001; una aplicación sin `factura_id` da el mensaje de la factura faltante; el mismo UUID en minúsculas y en mayúsculas da el mensaje de factura repetida que ya existe.
+
+- [ ] **Step 2: Toda entrada inválida da P0001, nunca un CHECK crudo**
+
+Hoy `registrar_documento` y `actualizar_documento` con una factura u OP sin monto, o con un tipo inválido, fallan con 23514. Crear `private.validar_datos_documento(p_tipo text, p_datos jsonb)` (`search_path = ''`, sin grant a authenticated) y llamarla desde las dos funciones **antes de escribir**. Tiene que cubrir, con mensaje en castellano, cada CHECK de `public.documentos` que se pueda violar con los parámetros:
+- tipo fuera de `orden_compra | remito | factura | orden_pago` → `'Tipo de documento inválido'`;
+- monto con formato inválido, ≤ 0 o con más de 2 decimales → `'El monto tiene que ser un número positivo con hasta 2 decimales'`;
+- factura u orden de pago sin monto → `'Indicá el monto de la factura'` / `'Indicá el monto de la orden de pago'`;
+- factura sin comprobante o con un comprobante fuera de `FA | FCE_A | FB | ND | NC` → `'Elegí un comprobante válido'`;
+- período con desde > hasta → `'El período termina antes de empezar'`.
+
+Los campos que no corresponden al tipo (comprobante en un remito, período en una factura, etc.): verificá si el código actual los limpia antes de insertar; si alguno puede llegar al CHECK, limpialo igual que los demás. Revisá también los CHECK de `documento_archivos` (`nombre_original` vacío → `'Falta el nombre del archivo'`).
+
+Test parametrizado en `documentos-rpc.test.ts`: una tabla de entradas inválidas (una por cada caso de arriba) contra `registrar_documento` y, para las que apliquen, `actualizar_documento`; cada una devuelve `code === 'P0001'` y el mensaje esperado. Ninguna puede dar 23514, 22P02 ni 22023.
+
+- [ ] **Step 3: La ruta del archivo tiene que estar en la carpeta del cliente del documento**
+
+Hoy `private.adjuntar_archivos` acepta cualquier ruta que empiece con `documentos/`, incluso la carpeta de otro cliente. Reemplazar ese control por uno que exija exactamente lo que genera `rutaArchivo` (`src/lib/documentos/archivos.ts`): `'^documentos/' || <cliente_id del documento> || '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|png)$'`. Si no coincide: P0001 `'El archivo no corresponde a la carpeta del cliente'`. Vale para `registrar_documento` y `agregar_archivos`.
+
+Ajustá los helpers de tests que suban con otra forma de ruta. Tests: un archivo subido en la carpeta de otro cliente se rechaza; una ruta con `..` o con una carpeta extra se rechaza.
+
+- [ ] **Step 4: Cambio de tipo de un remito cubierto por una factura anulada**
+
+En `actualizar_documento`, el bloqueo `'Para cambiar el tipo, primero quitá los remitos o facturas vinculados'` por `o.factura_id is not null` debe aplicarse **solo si la factura que lo cubre está vigente**: `exists (select 1 from public.documentos f where f.id = o.factura_id and f.deleted_at is null)`. Así queda coherente con `vincular_remitos`, que trata como libre un remito cuya factura está anulada. Test: un remito cubierto por una factura anulada puede cambiar de tipo; uno cubierto por una factura vigente, no.
+
+- [ ] **Step 5: Agregar archivos: concurrencia y documento anulado**
+
+Tests nuevos en `documentos-rpc.test.ts` (el bloqueo ya está hecho; faltan las pruebas):
+- dos `agregar_archivos` simultáneos sobre un documento con 1 archivo terminan con 3 archivos de orden 1, 2 y 3, sin error de `documento_archivos_orden_unico` (usá `contraTransaccionEnCurso` como en el test de `quitar_archivo`);
+- agregar archivos a un documento anulado da `'El documento no existe o está anulado'`.
+
+- [ ] **Step 6: Presupuestos (`20261026100300_presupuestos_estado.sql`)**
+
+- `cambiar_estado_presupuesto`: el motivo se guarda solo al anular: `presupuesto_motivo = case when p_estado = 'anulado' then btrim(p_motivo) else '' end`. Test: finalizar con motivo `'x'` deja el motivo vacío.
+- `revertir_aprobacion`: primero se bloquea la cotización (`for update`) y se validan existencia, estado y origen (el mensaje de presupuesto directo); **después** se miran los documentos. Así un presupuesto directo con documentos recibe `'Un presupuesto directo no se revierte: anulalo desde el presupuesto'` en vez de pedirle que anule los documentos. Test con un presupuesto directo que tiene una OC.
+
+- [ ] **Step 7: Comentario desactualizado**
+
+En `20261026100200_documentos_rpc.sql`, el comentario de `restaurar_documento` que dice que al restaurar la factura "se sumarían" las aplicaciones de dos OP: corregirlo para que diga que ahora esa restauración se rechaza (la factura no vuelve si las OP vigentes superan su monto).
+
+- [ ] **Step 8: Verificar y commit**
+
+```bash
+npm run db:reset && npm run db:types && npm run check && npm run test:int
+```
+
+Expected: todo en verde.
+
+```bash
+git add supabase/migrations tests/integration src/lib/supabase/database.types.ts
+git commit -m "fix: validar montos, rutas y datos de documentos con mensajes en castellano
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 10: Correcciones de la revisión en esquemas, archivos, servicio y PDF
+
+Origen: hallazgos menores de las revisiones de las Tasks 6 y 7 y de la verificación final. Son decisiones del orquestador: aplicalas tal cual. No toques migraciones en esta tarea (la Task 9 ya las corrigió).
+
+**Files:**
+- Modify: `src/lib/documentos/esquemas.ts`, `src/lib/documentos/esquemas.test.ts`
+- Modify: `src/lib/documentos/archivos.ts`, `src/lib/documentos/archivos.test.ts`
+- Modify: `src/lib/documentos/servicio.ts`, `tests/integration/documentos-servicio.test.ts`
+- Modify: `src/lib/pdf/estilos.ts` (y el componente del PDF por jornada si hace falta)
+
+- [ ] **Step 1: El comprobante inválido muestra el mensaje en castellano (`esquemas.ts`)**
+
+Hoy `tipo_comprobante` es `z.union([z.enum([...], { error }), z.literal('')])`. Zod 4 reporta `invalid_union` con "Invalid input" en inglés y el mensaje propio nunca aparece. Además, rechaza el valor aunque el tipo sea orden de compra o remito, cuando el transform lo iba a descartar igual.
+
+Decisión:
+- `tipo_comprobante` se recibe como `z.string().trim()` y se valida **solo cuando el tipo es factura**, dentro del `superRefine`: vacío → `'Elegí el tipo de comprobante'` (mensaje actual); valor fuera de `TIPOS_COMPROBANTE` → `'Elegí un comprobante válido'`, ambos con `path: ['tipo_comprobante']`. Para los otros tipos se ignora y el transform lo deja en `null` (como hoy).
+- Las listas no se repiten a mano: el enum de `tipo` se deriva de las claves de `TIPOS_DOCUMENTO` (`Object.keys(TIPOS_DOCUMENTO) as [TipoDocumento, ...TipoDocumento[]]`), el control del comprobante usa `Object.hasOwn(TIPOS_COMPROBANTE, valor)`, y `CAMPOS_DOCUMENTO` queda atado al esquema con un chequeo de tipos (por ejemplo `satisfies readonly (keyof z.input<typeof esquemaDocumento>)[]` más un test de que tiene las mismas claves que `esquemaDocumento.shape` del objeto base). El tipo de salida tiene que seguir siendo `TipoComprobante | null` para `tipo_comprobante`.
+
+Tests nuevos en `esquemas.test.ts`, mirando **path y mensaje** de cada issue:
+- comprobante `'XX'` en una factura → `['tipo_comprobante']`, `'Elegí un comprobante válido'`; `'XX'` en un remito → válido y queda `null`;
+- monto `'abc'` → `'Monto inválido'`; monto `'0'` y `'1000000000000'` → `'Monto inválido'`;
+- `equipo_id` que no es UUID en un remito → `'Equipo inválido'`;
+- tipo vacío → `'Elegí el tipo de documento'`;
+- fecha inválida → path `['fecha']` y `'Fecha inválida'` (hoy solo se mira `success === false`);
+- limpieza: el test existente afirma los 6 campos que se vacían (también `fecha_vencimiento`, `periodo_hasta` y `equipo_id`), y uno nuevo cubre el caso inverso: una factura con período y equipo cargados los pierde.
+
+- [ ] **Step 2: Tamaño NaN y cliente que no es UUID (`archivos.ts`, `servicio.ts`)**
+
+- `validarArchivo`: `if (!(archivo.tamano > 0)) return 'El archivo está vacío'` (hoy `NaN` pasa como válido). Test con `NaN`.
+- `rutaArchivo`: si `clienteId` no es UUID (`esUuid` de `@/lib/validacion`), tira `new Error('clienteId inválido')`. Test.
+- `prepararSubida`: valida `esUuid(archivo.clienteId)` **antes** que nada y tira `new ErrorDocumento('Cliente inválido')`. Test en `documentos-servicio.test.ts`.
+
+- [ ] **Step 3: Tests del servicio que hoy no prueban lo que dicen**
+
+En `tests/integration/documentos-servicio.test.ts`:
+- descarga: además de `attachment`, afirmar que `content-disposition` contiene `filename*=UTF-8''Parte%20diario%20Neuqu%C3%A9n%20N%C2%B0%20456.pdf` (o el nombre con tildes que use el test, codificado una sola vez) y que el cuerpo descargado es igual, byte a byte, a lo que se subió;
+- "rechaza tipos y tamaños no permitidos antes de pedir la URL": pasar un cliente falso cuyo `storage.from` registre las llamadas (o tire) y verificar que **no** se llamó.
+
+- [ ] **Step 4: PDF por jornada más fiel al original 112711**
+
+Medido con `pdftoppm` contra `~/Downloads/COTIZACION N° 112711 vertice .pdf`: el logo bajo la firma del original mide ~150 pt de ancho (el plan pedía 110 pt, mal medido) y el pie generado queda ~16 pt más arriba que el del original. Decisión:
+- `logoFirma` pasa a ~150 pt de ancho (alto con `altoLogo`).
+- Bajar el pie (texto y línea azul) para que su posición coincida con la del original con ±3 pt de tolerancia.
+
+Verificación visual obligatoria: generá el PDF por jornada de ejemplo (mirá cómo lo hizo la Task 1 / la verificación final con `pdftoppm`), rasterizalo a 72 dpi junto al original y medí las posiciones del logo bajo la firma y del pie. Dejá la comparación en el scratchpad y reportá las medidas. No cambies el PDF mensual.
+
+- [ ] **Step 5: Verificar y commit**
+
+```bash
+npm run check && npm run test:int
+```
+
+Expected: todo en verde.
+
+```bash
+git add src tests
+git commit -m "fix: mensajes de validación de documentos, rutas solo con UUID y PDF por jornada más fiel
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 11: Higiene de los tests de integración
+
+Origen: hallazgos menores de las revisiones de las Tasks 5 y 7 y de la verificación final. Son decisiones del orquestador: aplicalas tal cual. Esta tarea **no cambia código de producción** (ni `src/` ni migraciones): solo `tests/integration/`.
+
+**Files:**
+- Modify: `tests/integration/helpers.ts`, `tests/integration/documentos-helpers.ts`
+- Modify: `tests/integration/cotizaciones-estados.test.ts`, `tests/integration/documentos-rpc.test.ts`, `tests/integration/presupuestos-estado.test.ts`, `tests/integration/documentos-servicio.test.ts`
+
+- [ ] **Step 1: Un solo lugar para los helpers de concurrencia**
+
+`esperarBloqueadaPor` está copiado idéntico en `cotizaciones-estados`, `documentos-rpc` y `presupuestos-estado`, y `contraTransaccionEnCurso` en dos de ellos. Moverlos a `tests/integration/helpers.ts` y borrar las copias. Lo que hoy toman del closure (el id del usuario `activo`) pasa a ser un parámetro.
+
+Además, `contraTransaccionEnCurso` hoy arranca la llamada con `Promise.resolve(llamada())` y recién la espera después de `esperarBloqueadaPor`: si la llamada falla antes de bloquearse, el error real queda tapado por "La llamada nunca quedó esperando a la otra transacción" y queda una promesa rechazada sin manejar. Corregirlo: si la llamada termina (bien o mal) antes de quedar bloqueada, el helper falla de inmediato con el error real de la llamada, y nunca queda una promesa sin manejar (por ejemplo, `Promise.race` entre la espera y la llamada, o cortar el polling cuando la llamada ya terminó).
+
+- [ ] **Step 2: Los tests no dejan archivos huérfanos en Storage**
+
+Hoy `limpiarDocumentos` solo borra los paths que siguen en `documento_archivos`. Quedan huérfanos los subidos para llamadas que fallan a propósito, los desvinculados con `quitar_archivo` y los de los tests de concurrencia (se midieron 28 a 36 objetos por corrida).
+
+Decisión: el helper que sube archivos en `documentos-helpers.ts` anota **cada path que sube** en un registro del módulo, y una función `limpiarArchivosSubidos()` los borra con `adminClient().storage.from('documentos').remove([...])` (en tandas si son muchos). Cada archivo de test que sube archivos la llama en `afterAll`, además de `limpiarDocumentos`. En `documentos-servicio.test.ts`, el path del archivo subido se guarda en una variable del archivo y también se borra en `afterAll`, aunque el test haya fallado antes de registrar.
+
+Aceptación: contá los objetos del bucket `documentos` (con `pg` sobre `storage.objects where bucket_id = 'documentos'`) antes y después de `npm run test:int`: tiene que dar el mismo número. Reportá los dos conteos.
+
+- [ ] **Step 3: El setup falla con un mensaje claro**
+
+- `cotizacionAprobada` (y cualquier helper de preparación que llame una RPC) comprueba el error de cada llamada y tira `new Error('<qué falló>: ' + error.message)` en vez de dejar que un destructuring tire un `TypeError`.
+- Crear `registrarOrdenDeCompraOk` (tira si hay error y devuelve el id) y usarlo en **todos** los tests donde hoy se hace `const { data: oc } = await registrarOrdenDeCompra(id)` sin mirar el error y después `oc!`. `registrarOrdenDeCompra` queda para los tests donde se espera que falle.
+
+- [ ] **Step 4: Casos que faltan en `presupuestos-estado.test.ts`**
+
+- En "rechaza estados desconocidos y cotizaciones no aprobadas", comprobar el error de `guardar_cotizacion` (si falla, el test hoy pasa sin probar nada).
+- Un usuario inactivo no puede cambiar el estado de un presupuesto (como en `documentos-rpc.test.ts` para registrar).
+- Anular con un motivo de solo espacios da `'Indicá el motivo de la anulación'`.
+
+- [ ] **Step 5: Verificar y commit**
+
+```bash
+npm run check && npm run test:int && npm run test:int
+```
+
+Expected: todo en verde las dos veces, y el conteo de objetos del bucket igual antes y después.
+
+```bash
+git add tests
+git commit -m "test: helpers de concurrencia compartidos, limpieza de Storage y setup que falla claro
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
