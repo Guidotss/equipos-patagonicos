@@ -17,14 +17,16 @@ export const VARIABLES = {
 export type NombreVariable = keyof typeof VARIABLES
 
 // Captura todo lo que haya entre llaves dobles, para que un nombre mal tipeado ({{ubicación}}) se informe como desconocido.
-const PATRON_VARIABLE = /\{\{\s*([^{}]*?)\s*\}\}/g
+// Los espacios se recortan con trim() y no en el patrón: varios cuantificadores que aceptan espacios seguidos
+// tardan O(n^3) con un "{{" sin cerrar seguido de muchos espacios (ReDoS).
+const PATRON_VARIABLE = /\{\{([^{}]*)\}\}/g
 
 export function esVariable(nombre: string): nombre is NombreVariable {
   return Object.hasOwn(VARIABLES, nombre)
 }
 
 export function variablesUsadas(texto: string): string[] {
-  return [...new Set(Array.from(texto.matchAll(PATRON_VARIABLE), (m) => m[1]))]
+  return [...new Set(Array.from(texto.matchAll(PATRON_VARIABLE), (m) => m[1].trim()))]
 }
 
 export function variablesDesconocidas(texto: string): string[] {
@@ -37,7 +39,8 @@ export function resolverVariables(
   valores: Partial<Record<NombreVariable, string>>,
 ): { texto: string; faltantes: NombreVariable[] } {
   const faltantes = new Set<NombreVariable>()
-  const resultado = texto.replace(PATRON_VARIABLE, (original, nombre: string) => {
+  const resultado = texto.replace(PATRON_VARIABLE, (original, capturado: string) => {
+    const nombre = capturado.trim()
     if (!esVariable(nombre)) return original
     const valor = valores[nombre]?.trim()
     if (!valor) {

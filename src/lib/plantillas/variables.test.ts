@@ -34,6 +34,13 @@ describe('resolverVariables', () => {
     })
   })
 
+  it('reemplaza las variables con espacios dentro de las llaves', () => {
+    expect(resolverVariables('Grúa de {{ capacidad }} TN', { capacidad: '70' })).toEqual({
+      texto: 'Grúa de 70 TN',
+      faltantes: [],
+    })
+  })
+
   it('no interpreta los "$" del valor como patrones de reemplazo', () => {
     expect(resolverVariables('Precio: {{forma_pago}}', { forma_pago: '$ 1.950.000 $&' }).texto).toBe(
       'Precio: $ 1.950.000 $&',
