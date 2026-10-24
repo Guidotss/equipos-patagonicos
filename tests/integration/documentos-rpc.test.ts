@@ -239,6 +239,74 @@ describe('actualizar, archivos, anular y restaurar', () => {
     expect(montoMenor.error?.message).toMatch(/menor a lo ya cobrado/)
   })
 
+  describe('vínculos de factura y orden de pago al corregir', () => {
+    const datosFactura = { tipo: 'factura', monto: 1000, tipo_comprobante: 'FA', notas: MARCA }
+    const datosOp = { tipo: 'orden_pago', monto: 600, notas: MARCA }
+
+    async function facturaConRemitoYOp() {
+      const { data: remito } = await registrar({ tipo: 'remito' })
+      const { data: factura } = await registrar(datosFactura, { remitos: [remito!] })
+      const { data: op } = await registrar(datosOp, { aplicaciones: [{ factura_id: factura, monto_aplicado: 600 }] })
+      return { remito: remito!, factura: factura!, op: op! }
+    }
+    const remitosDe = async (factura: string) =>
+      (await sql<{ id: string }>('select id from public.documentos where factura_id = $1', [factura])).map((r) => r.id)
+    const aplicadoPor = (op: string) =>
+      sql('select factura_id, monto_aplicado from public.op_facturas where op_id = $1', [op])
+
+    it('sin p_remitos ni p_aplicaciones los conserva (editar datos no desvincula)', async () => {
+      const { remito, factura, op } = await facturaConRemitoYOp()
+
+      const factura2 = await activo.client.rpc('actualizar_documento', {
+        p_id: factura,
+        p_datos: { ...datosFactura, numero: 'F-2' },
+        p_presupuestos: [presupuesto],
+      })
+      expect(factura2.error).toBeNull()
+      const op2 = await activo.client.rpc('actualizar_documento', {
+        p_id: op,
+        p_datos: { ...datosOp, numero: 'OP-2' },
+        p_presupuestos: [presupuesto],
+      })
+      expect(op2.error).toBeNull()
+
+      expect(await remitosDe(factura)).toEqual([remito])
+      expect(await aplicadoPor(op)).toEqual([{ factura_id: factura, monto_aplicado: '600.00' }])
+    })
+
+    it('sin p_aplicaciones, la OP no baja de lo que ya aplicó', async () => {
+      const { factura, op } = await facturaConRemitoYOp()
+      const { error } = await activo.client.rpc('actualizar_documento', {
+        p_id: op,
+        p_datos: { ...datosOp, monto: 500 },
+        p_presupuestos: [presupuesto],
+      })
+      expect(error?.message).toMatch(/supera el monto de la orden de pago/)
+      expect(await aplicadoPor(op)).toEqual([{ factura_id: factura, monto_aplicado: '600.00' }])
+    })
+
+    it('una lista vacía sí los quita', async () => {
+      const { factura, op } = await facturaConRemitoYOp()
+      const factura2 = await activo.client.rpc('actualizar_documento', {
+        p_id: factura,
+        p_datos: datosFactura,
+        p_presupuestos: [presupuesto],
+        p_remitos: [],
+      })
+      expect(factura2.error).toBeNull()
+      const op2 = await activo.client.rpc('actualizar_documento', {
+        p_id: op,
+        p_datos: datosOp,
+        p_presupuestos: [presupuesto],
+        p_aplicaciones: [],
+      })
+      expect(op2.error).toBeNull()
+
+      expect(await remitosDe(factura)).toEqual([])
+      expect(await aplicadoPor(op)).toEqual([])
+    })
+  })
+
   it('agrega páginas y quita archivos, pero siempre queda uno', async () => {
     const { data: id } = await registrar({ tipo: 'remito' })
     const pagina = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.jpg')

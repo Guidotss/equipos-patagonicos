@@ -243,12 +243,16 @@ end;
 $$;
 
 -- Corrige los datos de un documento (incluido el tipo, si no tiene vínculos que dependan de él).
+-- p_datos es el documento completo: reemplaza todos los campos y lo que no venga queda vacío
+-- (salvo tipo y fecha, que si faltan conservan el valor anterior). p_presupuestos también se reemplaza.
+-- p_remitos (factura) y p_aplicaciones (orden de pago) reemplazan los vínculos solo si vienen:
+-- null (o no mandarlos) los deja como están; una lista vacía los quita todos.
 create or replace function public.actualizar_documento(
   p_id uuid,
   p_datos jsonb,
   p_presupuestos uuid[],
-  p_remitos uuid[] default '{}',
-  p_aplicaciones jsonb default '[]'
+  p_remitos uuid[] default null,
+  p_aplicaciones jsonb default null
 )
 returns void
 language plpgsql
@@ -286,6 +290,12 @@ begin
     end if;
   end if;
 
+  -- Si no se reemplazan las aplicaciones, las que ya tiene la OP tienen que seguir entrando en su monto.
+  if v.tipo = 'orden_pago' and p_aplicaciones is null
+    and v.monto < (select coalesce(sum(monto_aplicado), 0) from public.op_facturas where op_id = p_id) then
+    raise exception 'Lo aplicado a facturas supera el monto de la orden de pago' using errcode = 'P0001';
+  end if;
+
   perform private.validar_presupuestos(o.cliente_id, p_presupuestos);
   perform private.exigir_vinculos_del_tipo(v.tipo, p_remitos, p_aplicaciones);
 
@@ -305,10 +315,10 @@ begin
   where id = p_id;
 
   perform private.reemplazar_presupuestos(p_id, p_presupuestos);
-  if v.tipo = 'factura' then
+  if v.tipo = 'factura' and p_remitos is not null then
     perform private.vincular_remitos(p_id, o.cliente_id, p_remitos);
-  elsif v.tipo = 'orden_pago' then
-    perform private.aplicar_orden_pago(p_id, o.cliente_id, v.monto, coalesce(p_aplicaciones, '[]'));
+  elsif v.tipo = 'orden_pago' and p_aplicaciones is not null then
+    perform private.aplicar_orden_pago(p_id, o.cliente_id, v.monto, p_aplicaciones);
   end if;
 end;
 $$;
