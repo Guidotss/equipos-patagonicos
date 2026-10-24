@@ -28,7 +28,7 @@ export const esquemaCliente = z.object({
   razon_social: textoRequerido('Ingresá la razón social'),
   cuit: cuitOpcional,
   condicion_iva: z
-    .union([z.enum(VALORES_IVA, { error: 'Elegí una condición de IVA válida' }), z.literal('')])
+    .enum(['', ...VALORES_IVA], { error: 'Elegí una condición de IVA válida' })
     .transform((valor) => (valor === '' ? null : valor)),
   direccion: textoOpcional(),
   localidad: textoOpcional(100),

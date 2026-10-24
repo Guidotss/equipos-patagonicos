@@ -30,6 +30,8 @@ describe('esquemaCliente', () => {
     const resultado = esquemaCliente.safeParse(cliente({ email: 'no-es-email', condicion_iva: 'otra' }))
     const campos = resultado.error?.issues.map((i) => i.path[0])
     expect(campos).toEqual(expect.arrayContaining(['razon_social', 'email', 'condicion_iva']))
+    const iva = resultado.error?.issues.find((i) => i.path[0] === 'condicion_iva')
+    expect(iva?.message).toBe('Elegí una condición de IVA válida')
   })
 })
 
