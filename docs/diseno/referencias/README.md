@@ -12,6 +12,7 @@ Imágenes de referencia para el skill `frontend-from-generated-image`. Son el ob
 | `06-cliente.png` | Ficha de cliente | 2 (rediseño) |
 | `07-configuracion.png` | Índice de configuración | 2 (rediseño) |
 | `07b-configuracion-equipos.png` | Configuración › Equipos (pantalla de ejemplo) | 2 (rediseño) |
+| `08-login.png` | Login: panel de marca a la izquierda, formulario a la derecha | 1 (rediseño) |
 
 ## Dirección visual: "SaaS premium"
 
@@ -71,6 +72,8 @@ La pasada de clientes y configuración dejó el shell y estas piezas listas para
 **05 — Subir documento (celular).** Top bar with back arrow, title and logo. Numbered steps: Presupuesto (search + selectable list), Tipo (segmented Remito/OC/Factura/OP), Archivo ("Sacar foto", "Elegir archivo", page thumbnails, "+ página"), Datos opcionales (Número, Fecha). Upload progress and fixed "Guardar".
 
 **07 — Configuración.** Slim cover band with "Configuración" and "Datos que usan las cotizaciones y sus PDF." 2×2 grid of clickable cards with a light-blue icon tile, title, description and chevron: Empresa, Firmantes, Equipos, Plantillas.
+
+**08 — Login.** Prefix like the others but "No sidebar (the user is not logged in)". Split screen: left ~50% full-height brand panel with the gradient and the crane-hook pattern, the logo on a small white rounded plate at the top-left, a large white headline "Administración y logística", a white/80 subtitle "Cotizaciones, presupuestos y cobranzas de Equipos Patagónicos." and "Neuquén · Argentina" at the bottom. Right: white, centered narrow column with "Ingresar", "Usá tu email y contraseña de la empresa.", Email, Contraseña and one full-width "Ingresar" button. No forgot-password, sign-up, social login or remember-me. Elegida entre tres composiciones (dividida, tarjeta sobre la banda y panel con gancho grande).
 
 **07b — Configuración › Equipos.** No band. Title, subtitle and "+ Nuevo equipo". A card listing cranes: icon tile, name, chips (capacidad, marca · modelo, patente), 2-line description, "Activo"/"Inactivo" pill, pencil button and "Desactivar"/"Activar"; inactive rows dimmed.
 
