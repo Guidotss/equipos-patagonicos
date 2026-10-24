@@ -1,7 +1,7 @@
 import { extractText, getDocumentProxy } from 'unpdf'
 import { describe, expect, it } from 'vitest'
 import { armarDocumento } from '@/lib/cotizaciones/documento'
-import { EJEMPLO_MENSUAL } from '@/lib/cotizaciones/ejemplos'
+import { EJEMPLO_JORNADA, EJEMPLO_MENSUAL } from '@/lib/cotizaciones/ejemplos'
 import { renderizarCotizacion } from './render'
 
 async function textoDelPdf(pdf: Buffer): Promise<string> {
@@ -38,5 +38,30 @@ describe('PDF mensual', () => {
       expect(texto).toContain(esperado)
     }
     expect(texto).not.toContain('{{')
+  }, 20_000)
+})
+
+describe('PDF por jornada', () => {
+  it('replica los datos de la cotización 112711', async () => {
+    const texto = await textoDelPdf(await renderizarCotizacion(armarDocumento(EJEMPLO_JORNADA)))
+    for (const esperado of [
+      'Neuquén, 22 de octubre de 2026.',
+      'Señores',
+      'VERTICE SERVICIOS INTEGRALES S.R.L.',
+      'Cuit: 30-71952967-0',
+      'Cotización N° 112711 alquiler de 1 (una) Grúa Telescópica capacidad 40 TN con operador.',
+      'Equipo ofrecido:',
+      'Alcance:',
+      'Precios Jornada:',
+      '$ 1.950.000.- más IVA',
+      'Precios Jornada Adicional:',
+      '$ 2.530.000.- más IVA',
+      'Forma de pago: a 30 - 45 días F.F.',
+      'Thomas Cravero',
+    ]) {
+      expect(texto).toContain(esperado)
+    }
+    expect(texto.indexOf('Alcance:')).toBeLessThan(texto.indexOf('Precios Jornada:'))
+    expect(texto.indexOf('Precios Jornada Adicional:')).toBeLessThan(texto.indexOf('Forma de pago'))
   }, 20_000)
 })
