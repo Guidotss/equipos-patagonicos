@@ -88,6 +88,12 @@ isOneToOne: false
       referencedRelation: "v_cotizaciones"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "cotizacion_envios_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "v_presupuestos"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "cotizacion_envios_created_by_fkey"
       columns: ["created_by"]
 isOneToOne: false
@@ -118,6 +124,12 @@ isOneToOne: false
       columns: ["cotizacion_id"]
 isOneToOne: false
       referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizacion_items_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "v_presupuestos"
       referencedColumns: ["id"]
     }
                   ]
@@ -181,6 +193,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_cotizaciones"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
+      columns: ["reemplaza_a"]
+isOneToOne: false
+      referencedRelation: "v_presupuestos"
+      referencedColumns: ["id"]
     }
                   ]
                 },"documento_archivos": {
@@ -200,6 +218,12 @@ isOneToOne: false
       columns: ["documento_id"]
 isOneToOne: false
       referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documento_archivos_documento_id_fkey"
+      columns: ["documento_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
       referencedColumns: ["id"]
     }
                   ]
@@ -228,10 +252,22 @@ isOneToOne: false
       referencedRelation: "v_cotizaciones"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "documento_presupuestos_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "v_presupuestos"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "documento_presupuestos_documento_id_fkey"
       columns: ["documento_id"]
 isOneToOne: false
       referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documento_presupuestos_documento_id_fkey"
+      columns: ["documento_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
       referencedColumns: ["id"]
     }
                   ]
@@ -276,6 +312,12 @@ isOneToOne: false
       columns: ["factura_id"]
 isOneToOne: false
       referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documentos_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
       referencedColumns: ["id"]
     }
                   ]
@@ -340,10 +382,22 @@ isOneToOne: false
       referencedRelation: "documentos"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "op_facturas_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "op_facturas_op_id_fkey"
       columns: ["op_id"]
 isOneToOne: false
       referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "op_facturas_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
       referencedColumns: ["id"]
     }
                   ]
@@ -431,6 +485,40 @@ isOneToOne: false
       columns: ["reemplaza_a"]
 isOneToOne: false
       referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
+      columns: ["reemplaza_a"]
+isOneToOne: false
+      referencedRelation: "v_presupuestos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"v_facturas": {
+                  Row: {
+                    "cliente_id": string,"cobrado": number | null,"estado_cobro": string | null,"fecha": string,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"numero": string,"saldo": number | null,"tipo_comprobante": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "documentos_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"v_presupuestos": {
+                  Row: {
+                    "asunto": string,"cliente_id": string,"cliente_razon_social": string,"facturado": number | null,"facturas": number | null,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"formato": string,"id": string,"numero": number,"ordenes_compra": number | null,"ordenes_pago": number | null,"origen": string,"presupuesto_estado": string | null,"presupuesto_motivo": string,"remitos": number | null,"remitos_sin_factura": number | null,"saldo": number | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "cotizaciones_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
       referencedColumns: ["id"]
     }
                   ]
