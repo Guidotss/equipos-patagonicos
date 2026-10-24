@@ -24,6 +24,8 @@ npm run dev               # http://localhost:3000
 
 Supabase Studio local: http://127.0.0.1:54323
 
+`db:reset` carga los datos reales de la empresa (firmantes, equipos y plantillas, en una migración) y, solo en local, dos clientes de ejemplo (`supabase/seed.sql`).
+
 ## Scripts
 
 | Script | Qué hace |
