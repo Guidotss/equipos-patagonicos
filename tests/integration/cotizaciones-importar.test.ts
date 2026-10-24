@@ -71,6 +71,19 @@ describe('cargar cotizaciones existentes', () => {
     expect(error?.message).toMatch(new RegExp(`Ya existe una cotización con el número ${numero}`))
   })
 
+  it('rechaza un número muy por encima del próximo sin correr la secuencia', async () => {
+    const antes = await proximoNumero()
+    const errado = antes * 10
+    const { error } = await importar({ numero: errado, estado: 'enviada' })
+    expect(error?.message).toMatch(new RegExp(`El número ${errado} está muy por encima del próximo \\(${antes + 1}\\)`))
+    expect(await proximoNumero()).toBe(antes + 1)
+  })
+
+  it('rechaza una fecha de aprobación anterior a la cotización', async () => {
+    const { error } = await importar({ numero: 3, estado: 'aprobada', fecha_aprobacion: '2026-01-01' })
+    expect(error?.message).toMatch(/La fecha de aprobación no puede ser anterior a la cotización/)
+  })
+
   it('exige número, archivo y estado enviada o aprobada', async () => {
     expect((await importar({ estado: 'enviada' })).error?.message).toMatch(/número/)
     expect((await importar({ numero: 1, estado: 'borrador' })).error?.message).toMatch(/enviada o aprobada/)
@@ -92,6 +105,14 @@ describe('presupuesto directo', () => {
       [id],
     )
     expect(fila).toEqual({ estado: 'aprobada', origen: 'directa', formato: 'jornada', presupuesto_estado: 'en_curso', items: '1' })
+  })
+
+  it('rechaza una fecha de aprobación anterior a la cotización', async () => {
+    const { error } = await activo.client.rpc('presupuesto_directo', {
+      p_datos: { cliente_id: ids.cliente_id, asunto: 'Izaje acordado', fecha_aprobacion: '2025-01-01', notas: MARCA },
+      p_items: [],
+    })
+    expect(error?.message).toMatch(/La fecha de aprobación no puede ser anterior a la cotización/)
   })
 
   it('exige describir el trabajo', async () => {

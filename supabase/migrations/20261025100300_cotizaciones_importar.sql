@@ -2,6 +2,8 @@
 -- Cotizaciones existentes (con su número original) y presupuestos sin cotización formal.
 
 -- Si un número cargado a mano alcanza la secuencia, la corre para que el próximo número nuevo no choque.
+-- Un número muy por encima del próximo es casi seguro un error de tipeo (un dígito de más): correr la
+-- secuencia hasta ahí no se deshace borrando la cotización, así que se rechaza antes de tocarla.
 create or replace function private.avanzar_numeracion(p_numero bigint)
 returns void
 language plpgsql
@@ -16,6 +18,10 @@ declare
 begin
   execute format('select last_value, is_called from %s', v_secuencia) into v_ultimo, v_llamada;
   v_proximo := case when v_llamada then v_ultimo + 1 else v_ultimo end;
+  if p_numero > v_proximo + 1000 then
+    raise exception 'El número % está muy por encima del próximo (%); revisalo', p_numero, v_proximo
+      using errcode = 'P0001';
+  end if;
   if p_numero >= v_proximo then
     perform setval(v_secuencia, p_numero, true);
   end if;
@@ -32,15 +38,24 @@ declare
   v public.cotizaciones%rowtype;
   v_id uuid;
   v_hoy date := private.hoy_argentina();
+  v_fecha date;
+  v_fecha_aprobacion date;
 begin
   perform private.exigir_usuario_activo();
   v := jsonb_populate_record(null::public.cotizaciones, p_datos);
+  v_fecha := coalesce(v.fecha, v_hoy);
 
   if v.numero is null or v.numero <= 0 then
     raise exception 'Ingresá el número de la cotización' using errcode = 'P0001';
   end if;
   if v.estado is null or v.estado not in ('enviada', 'aprobada') then
     raise exception 'Una cotización existente se carga como enviada o aprobada' using errcode = 'P0001';
+  end if;
+  if v.estado = 'aprobada' then
+    v_fecha_aprobacion := coalesce(v.fecha_aprobacion, v_fecha);
+    if v_fecha_aprobacion < v_fecha then
+      raise exception 'La fecha de aprobación no puede ser anterior a la cotización' using errcode = 'P0001';
+    end if;
   end if;
   if v.archivo_original_path is null or left(v.archivo_original_path, 11) <> 'importadas/' then
     raise exception 'Falta el PDF de la cotización' using errcode = 'P0001';
@@ -55,9 +70,8 @@ begin
     numero, origen, fecha, cliente_id, contacto_id, formato, asunto, estado,
     fecha_aprobacion, presupuesto_estado, archivo_original_path, notas
   ) values (
-    v.numero, 'importada', coalesce(v.fecha, v_hoy), v.cliente_id, v.contacto_id,
-    coalesce(v.formato, 'jornada'), coalesce(v.asunto, ''), v.estado,
-    case when v.estado = 'aprobada' then coalesce(v.fecha_aprobacion, v.fecha, v_hoy) end,
+    v.numero, 'importada', v_fecha, v.cliente_id, v.contacto_id,
+    coalesce(v.formato, 'jornada'), coalesce(v.asunto, ''), v.estado, v_fecha_aprobacion,
     case when v.estado = 'aprobada' then 'en_curso' end,
     v.archivo_original_path, coalesce(v.notas, '')
   )
@@ -80,17 +94,24 @@ declare
   v public.cotizaciones%rowtype;
   v_id uuid;
   v_hoy date := private.hoy_argentina();
+  v_fecha date;
+  v_fecha_aprobacion date;
 begin
   perform private.exigir_usuario_activo();
   v := jsonb_populate_record(null::public.cotizaciones, p_datos);
+  v_fecha := coalesce(v.fecha, v_hoy);
+  v_fecha_aprobacion := coalesce(v.fecha_aprobacion, v_fecha);
 
   if coalesce(btrim(v.asunto), '') = '' then
     raise exception 'Describí el trabajo' using errcode = 'P0001';
   end if;
+  if v_fecha_aprobacion < v_fecha then
+    raise exception 'La fecha de aprobación no puede ser anterior a la cotización' using errcode = 'P0001';
+  end if;
   perform private.validar_contacto(v.cliente_id, v.contacto_id);
 
   insert into public.cotizaciones (origen, fecha, cliente_id, contacto_id, formato, equipo_id, asunto, notas)
-  values ('directa', coalesce(v.fecha, v_hoy), v.cliente_id, v.contacto_id, coalesce(v.formato, 'jornada'),
+  values ('directa', v_fecha, v.cliente_id, v.contacto_id, coalesce(v.formato, 'jornada'),
           v.equipo_id, v.asunto, coalesce(v.notas, ''))
   returning id into v_id;
 
@@ -98,7 +119,7 @@ begin
 
   update public.cotizaciones set
     estado = 'aprobada',
-    fecha_aprobacion = coalesce(v.fecha_aprobacion, v.fecha, v_hoy),
+    fecha_aprobacion = v_fecha_aprobacion,
     presupuesto_estado = 'en_curso'
   where id = v_id;
 
