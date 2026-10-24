@@ -37,8 +37,9 @@ export async function updateSession(request: NextRequest) {
 
   // No poner código entre createServerClient y getClaims: esta llamada refresca la sesión.
   const { data, error } = await supabase.auth.getClaims()
-  // Si Auth no respondió no sabemos si hay sesión: se deja pasar y la página muestra el error
-  // (mandar al login confundiría: el login diría "contraseña incorrecta").
+  // Si Auth no respondió no sabemos si hay sesión: se deja pasar. El layout vuelve a validar y,
+  // si Auth sigue caído, se ve src/app/error.tsx con "Reintentar". Mandar al login no ayudaría:
+  // tampoco se podría entrar.
   if (error && !esSesionInvalida(error)) return response
   const autenticado = Boolean(data?.claims)
   const { pathname, search } = request.nextUrl

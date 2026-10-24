@@ -1,9 +1,4 @@
-import {
-  type AuthError,
-  isAuthApiError,
-  isAuthRetryableFetchError,
-  isAuthSessionMissingError,
-} from '@supabase/supabase-js'
+import { type AuthError, isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js'
 
 /**
  * getClaims da error tanto si la sesión no sirve (token adulterado, o vencido con el refresh
@@ -23,8 +18,10 @@ export function mensajeErrorLogin(error: AuthError): string {
   if (error.status === 429 || error.code === 'over_request_rate_limit') {
     return 'Demasiados intentos seguidos. Esperá unos minutos y volvé a probar.'
   }
-  if (isAuthRetryableFetchError(error) || (error.status ?? 0) >= 500) {
-    return 'No pudimos conectar con el servidor. Probá de nuevo en un momento.'
+  // Solo un 400 de Auth habla de las credenciales. Todo lo demás (red caída, 5xx, una respuesta
+  // que no es JSON, una URL o una key mal configuradas) es un problema del servidor.
+  if (isAuthApiError(error) && (error.code === 'invalid_credentials' || error.status === 400)) {
+    return 'Email o contraseña incorrectos'
   }
-  return 'Email o contraseña incorrectos'
+  return 'No pudimos conectar con el servidor. Probá de nuevo en un momento.'
 }
