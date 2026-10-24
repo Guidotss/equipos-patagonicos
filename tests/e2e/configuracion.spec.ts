@@ -19,7 +19,8 @@ test('firmantes: alta y edición', async ({ page }) => {
   await edicion.getByLabel('Teléfono').fill('299 000 0000')
   await edicion.getByRole('button', { name: 'Guardar firmante' }).click()
   await expect(edicion).toBeHidden()
-  await expect(page.getByText('299 000 0000')).toBeVisible()
+  // Acotado a la fila: corridas anteriores dejan otros firmantes con el mismo teléfono.
+  await expect(page.getByRole('listitem').filter({ hasText: nombre }).getByText('299 000 0000')).toBeVisible()
 })
 
 test('equipos: valida la capacidad y acepta decimales con coma', async ({ page }) => {
@@ -38,7 +39,8 @@ test('equipos: valida la capacidad y acepta decimales con coma', async ({ page }
   await dialogo.getByRole('button', { name: 'Guardar equipo' }).click()
   await expect(dialogo).toBeHidden()
   await expect(page.getByText(nombre)).toBeVisible()
-  await expect(page.getByText('60,5 TN')).toBeVisible()
+  // Acotado a la fila: corridas anteriores dejan otros equipos de 60,5 TN.
+  await expect(page.getByRole('listitem').filter({ hasText: nombre }).getByText('60,5 TN')).toBeVisible()
 })
 
 test('plantillas iniciales: mensual y por jornada con sus textos', async ({ page }) => {
