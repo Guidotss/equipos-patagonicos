@@ -54,17 +54,21 @@ export async function borrarUsuario(id: string) {
   if (error) throw error
 }
 
+/** Abre una conexión directa a la base local (como postgres) y la cierra al terminar. */
+export async function conConexion<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
+  const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
+  await client.connect()
+  try {
+    return await fn(client)
+  } finally {
+    await client.end()
+  }
+}
+
 /** Ejecuta SQL directo contra la base local (como postgres). */
 export async function sql<T extends pg.QueryResultRow = pg.QueryResultRow>(
   consulta: string,
   parametros: unknown[] = [],
 ): Promise<T[]> {
-  const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
-  await client.connect()
-  try {
-    const resultado = await client.query<T>(consulta, parametros)
-    return resultado.rows
-  } finally {
-    await client.end()
-  }
+  return conConexion(async (client) => (await client.query<T>(consulta, parametros)).rows)
 }
