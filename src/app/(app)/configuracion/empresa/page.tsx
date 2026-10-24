@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
-import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
+import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
 import { EmpresaForm } from '@/components/configuracion/empresa-form'
 import { requireUsuario } from '@/lib/auth'
 import { formatCuit } from '@/lib/cuit'
+import { hoyArgentina } from '@/lib/format/fechas'
 import { createClient } from '@/lib/supabase/server'
 import { actualizarEmpresa } from '../actions'
 
@@ -18,21 +19,12 @@ export default async function EmpresaPage() {
     <>
       <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Empresa' }]} />
       <Contenido>
-        <EncabezadoPagina
-          titulo="Empresa"
-          descripcion={
-            usuario.rol === 'admin'
-              ? 'Membrete, contacto e índice de actualización que se imprimen en cada cotización.'
-              : 'Solo un administrador puede modificar estos datos.'
-          }
+        <EmpresaForm
+          accion={actualizarEmpresa}
+          inicial={{ ...empresa, cuit: empresa.cuit ? formatCuit(empresa.cuit) : '' }}
+          soloLectura={usuario.rol !== 'admin'}
+          hoy={hoyArgentina()}
         />
-        <div className="max-w-3xl rounded-xl border bg-card p-6 shadow-tarjeta">
-          <EmpresaForm
-            accion={actualizarEmpresa}
-            inicial={{ ...empresa, cuit: empresa.cuit ? formatCuit(empresa.cuit) : '' }}
-            soloLectura={usuario.rol !== 'admin'}
-          />
-        </div>
       </Contenido>
     </>
   )

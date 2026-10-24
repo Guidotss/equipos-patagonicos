@@ -16,6 +16,7 @@ export function FormularioAccion({
   textoBoton,
   className,
   soloLectura = false,
+  boton = true,
   alGuardar,
   children,
 }: {
@@ -23,8 +24,10 @@ export function FormularioAccion({
   textoBoton: string
   className?: string
   soloLectura?: boolean
+  /** false cuando el formulario dibuja su propio botón de envío (p. ej. arriba, junto al título). */
+  boton?: boolean
   alGuardar?: () => void
-  children: (estado: EstadoFormulario) => React.ReactNode
+  children: (estado: EstadoFormulario, pendiente: boolean) => React.ReactNode
 }) {
   const [estado, despachar, pendiente] = useActionState(
     async (previo: EstadoFormulario, formData: FormData) => {
@@ -41,10 +44,10 @@ export function FormularioAccion({
   return (
     <form action={despachar} noValidate className="space-y-4">
       <fieldset disabled={soloLectura || pendiente} className={cn('min-w-0', className)}>
-        {children(estado)}
+        {children(estado, pendiente)}
       </fieldset>
       <MensajeFormulario estado={estado} />
-      {soloLectura ? null : (
+      {soloLectura || !boton ? null : (
         <Button type="submit" disabled={pendiente}>
           {pendiente ? 'Guardando…' : textoBoton}
         </Button>
