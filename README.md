@@ -7,8 +7,9 @@ App interna para cotizaciones, clientes, presupuestos y documentos del circuito 
 
 ## Requisitos
 
-- Node.js 22 o superior
+- Node.js 22.12 o superior (recomendado 24 LTS)
 - Docker (para Supabase local)
+- Navegador de Playwright para los E2E: `npx playwright install chromium`
 
 ## Puesta en marcha local
 

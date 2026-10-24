@@ -7,7 +7,7 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Equipos Patagónicos',
+  title: { default: 'Equipos Patagónicos', template: '%s · Equipos Patagónicos' },
   description: 'Administración y logística',
 }
 
