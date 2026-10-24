@@ -564,6 +564,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"cambiar_estado_presupuesto":
+{ Args: { "p_estado": string,"p_id": string,"p_motivo"?: string }; Returns: undefined
+                           },
 "duplicar_cotizacion":
 { Args: { "p_cliente_id"?: string,"p_id": string }; Returns: string
                            },
