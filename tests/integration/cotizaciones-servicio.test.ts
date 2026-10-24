@@ -1,4 +1,5 @@
 // tests/integration/cotizaciones-servicio.test.ts
+import { extractText, getDocumentProxy } from 'unpdf'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ErrorCotizacion, aprobarCotizacion, enviarCotizacion, pdfParaMostrar } from '@/lib/cotizaciones/servicio'
 import type { Json } from '@/lib/supabase/database.types'
@@ -47,6 +48,33 @@ async function nueva(datos: Record<string, unknown> = {}, items: Json[] = ITEMS_
   })
   if (error) throw error
   return data
+}
+
+/** Guarda la cotización con otra introducción (sigue en el estado en que estaba). */
+async function editar(id: string, intro: string) {
+  const [fila] = await sql<{ datos: Json }>('select datos from public.cotizaciones where id = $1', [id])
+  const { error } = await activo.client.rpc('guardar_cotizacion', {
+    p_id: id,
+    p_datos: {
+      cliente_id: ids.cliente_id,
+      formato: 'jornada',
+      equipo_id: ids.equipo_id,
+      firmante_id: ids.firmante_id,
+      asunto: 'Cotización N° {{numero}} capacidad {{capacidad}} TN',
+      intro,
+      datos: fila.datos,
+      bloques: [{ titulo: 'Alcance', contenido: '- Horario de 8 a 17 hs.' }],
+      notas: MARCA,
+    },
+    p_items: ITEMS_JORNADA,
+  })
+  if (error) throw error
+}
+
+async function textoDelPdf(pdf: Buffer): Promise<string> {
+  const documento = await getDocumentProxy(new Uint8Array(pdf))
+  const { text } = await extractText(documento, { mergePages: true })
+  return text.replace(/\s+/g, ' ')
 }
 
 async function numero(id: string) {
@@ -203,6 +231,37 @@ describe('servicio de cotizaciones', () => {
     const mostrado = await pdfParaMostrar(activo.client, id)
     expect(mostrado?.pdf.subarray(0, 5).toString()).toBe('%PDF-')
     expect(await pdfParaMostrar(activo.client, crypto.randomUUID())).toBeNull()
+  })
+
+  // Una enviada se puede seguir editando sin que cambie de estado: se muestra lo que recibió el cliente.
+  it('una enviada o rechazada muestra su último envío aunque se edite después; reabierta se genera en el momento', async () => {
+    const id = await nueva()
+    await enviarCotizacion(activo.client, id)
+    await editar(id, 'Segunda versión enviada.')
+    await enviarCotizacion(activo.client, id)
+    await editar(id, 'Cambio sin enviar.')
+
+    const envios = await sql<{ pdf_path: string }>(
+      'select pdf_path from public.cotizacion_envios where cotizacion_id = $1 order by enviada_at desc',
+      [id],
+    )
+    expect(envios).toHaveLength(2)
+    const ultimo = await activo.client.storage.from('documentos').download(envios[0].pdf_path)
+    const ultimoEnviado = Buffer.from(await ultimo.data!.arrayBuffer())
+    expect(await textoDelPdf(ultimoEnviado)).toContain('Segunda versión enviada.')
+
+    const enviada = await pdfParaMostrar(activo.client, id)
+    expect(Buffer.compare(enviada!.pdf, ultimoEnviado)).toBe(0)
+
+    const { error: errorRechazo } = await activo.client.rpc('rechazar_cotizacion', { p_id: id })
+    expect(errorRechazo).toBeNull()
+    const rechazada = await pdfParaMostrar(activo.client, id)
+    expect(Buffer.compare(rechazada!.pdf, ultimoEnviado)).toBe(0)
+
+    const { error: errorReapertura } = await activo.client.rpc('reabrir_cotizacion', { p_id: id })
+    expect(errorReapertura).toBeNull()
+    const reabierta = await pdfParaMostrar(activo.client, id)
+    expect(await textoDelPdf(reabierta!.pdf)).toContain('Cambio sin enviar.')
   })
 
   it('se puede ver el PDF de un envío anterior', async () => {

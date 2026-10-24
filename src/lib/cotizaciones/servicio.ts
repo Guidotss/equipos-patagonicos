@@ -178,9 +178,28 @@ async function descargar(supabase: Cliente, ruta: string): Promise<Buffer> {
   return Buffer.from(await data.arrayBuffer())
 }
 
+/** La ruta del PDF del último envío de la cotización, o null si nunca se envió. */
+async function rutaUltimoEnvio(supabase: Cliente, id: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('cotizacion_envios')
+    .select('pdf_path')
+    .eq('cotizacion_id', id)
+    .order('enviada_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data?.pdf_path ?? null
+}
+
+/** Estados en los que se muestra el último envío: lo que recibió el cliente, no lo editado después. */
+const CON_ENVIO = ['enviada', 'rechazada']
+
 /**
  * El PDF que corresponde mostrar: el de un envío puntual, el congelado de una aprobada,
- * el original de una cotización cargada, o uno generado en el momento (borradores).
+ * el original de una cotización cargada, el último envío de una enviada (o rechazada después de
+ * enviarse) o uno generado en el momento (borradores y lo que nunca se envió).
+ * Una enviada se puede seguir editando sin cambiar de estado: generarla en el momento mostraría
+ * algo que el cliente no recibió.
  */
 export async function pdfParaMostrar(
   supabase: Cliente,
@@ -204,7 +223,10 @@ export async function pdfParaMostrar(
     return { pdf: await descargar(supabase, envio.pdf_path), nombreArchivo }
   }
 
-  const guardado = fila.pdf_aprobado_path ?? fila.archivo_original_path
+  const guardado =
+    fila.pdf_aprobado_path ??
+    fila.archivo_original_path ??
+    (CON_ENVIO.includes(fila.estado) ? await rutaUltimoEnvio(supabase, id) : null)
   if (guardado) return { pdf: await descargar(supabase, guardado), nombreArchivo }
 
   return { pdf: await renderizarCotizacion(armarDocumento(fuente)), nombreArchivo }
