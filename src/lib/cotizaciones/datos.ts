@@ -28,9 +28,12 @@ export const esquemaDatos = z.object({
 })
 export type DatosCotizacion = z.infer<typeof esquemaDatos>
 
-/** Lee el jsonb `datos` tolerando claves faltantes (quedan en ""). */
+/** Lee el jsonb `datos` sin fallar: lo que no sea texto queda en "". El largo se valida al guardar (esquemaDatos). */
 export function leerDatos(valor: unknown): DatosCotizacion {
-  return esquemaDatos.parse(valor ?? {})
+  const objeto = valor && typeof valor === 'object' ? (valor as Record<string, unknown>) : {}
+  return Object.fromEntries(
+    CAMPOS_DATOS.map((campo) => [campo, typeof objeto[campo] === 'string' ? (objeto[campo] as string).trim() : '']),
+  ) as DatosCotizacion
 }
 
 export const esquemaItem = z.object({

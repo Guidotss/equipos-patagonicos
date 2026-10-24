@@ -94,6 +94,11 @@ export function valoresVariables(fuente: FuenteDocumento): Partial<Record<Nombre
 
 const redondear = (valor: number) => Math.round(valor * 100) / 100
 
+/** "F.F.." → "F.F." (el valor ya terminaba en punto y la plantilla agrega otro). No toca "...". */
+export function colapsarPuntoDoble(texto: string): string {
+  return texto.replace(/(?<!\.)\.\.(?!\.)/g, '.')
+}
+
 export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
   const valores = valoresVariables(fuente)
   const faltantes = new Set<NombreVariable>()
@@ -101,10 +106,11 @@ export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
   const registrarDesconocidas = (texto: string) => {
     for (const nombre of variablesDesconocidas(texto)) desconocidas.add(nombre)
   }
+  // Todo texto resuelto pasa por acá (asunto, intro, títulos, ítems y cada segmento de los bloques).
   const reemplazar = (texto: string) => {
     const resultado = resolverVariables(texto, valores)
     for (const nombre of resultado.faltantes) faltantes.add(nombre)
-    return resultado.texto
+    return colapsarPuntoDoble(resultado.texto)
   }
   const resolver = (texto: string) => {
     registrarDesconocidas(texto)

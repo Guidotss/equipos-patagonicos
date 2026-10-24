@@ -199,7 +199,7 @@ const CON_ENVIO = ['enviada', 'rechazada']
  * el original de una cotización cargada, el último envío de una enviada (o rechazada después de
  * enviarse) o uno generado en el momento (borradores y lo que nunca se envió).
  * Una enviada se puede seguir editando sin cambiar de estado: generarla en el momento mostraría
- * algo que el cliente no recibió.
+ * algo que el cliente no recibió. Un presupuesto directo no tiene PDF (null, igual que una inexistente).
  */
 export async function pdfParaMostrar(
   supabase: Cliente,
@@ -222,6 +222,9 @@ export async function pdfParaMostrar(
     if (!envio) return null
     return { pdf: await descargar(supabase, envio.pdf_path), nombreArchivo }
   }
+
+  // Un presupuesto directo no tiene PDF: generarlo mostraría una cotización que nunca existió.
+  if (fila.origen === 'directa') return null
 
   const guardado =
     fila.pdf_aprobado_path ??

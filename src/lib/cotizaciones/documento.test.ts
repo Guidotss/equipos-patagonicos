@@ -144,6 +144,19 @@ describe('armarDocumento', () => {
     expect(armarDocumento(sinPrecio).total).toBeNull()
   })
 
+  it('no deja punto doble cuando el valor de la variable ya termina en punto', () => {
+    const doc = armarDocumento(EJEMPLO_JORNADA) // forma_pago = 'a 30 - 45 días F.F.' y la plantilla agrega '.'
+    const ultimo = doc.bloques.at(-1)!
+    const texto = ultimo.nodos.flatMap((nodo) => nodo.segmentos.map((s) => s.texto)).join('')
+    expect(texto).toContain('a 30 - 45 días F.F.')
+    expect(texto).not.toContain('F.F..')
+  })
+
+  it('respeta los puntos suspensivos', () => {
+    const fuente = { ...EJEMPLO_JORNADA, cotizacion: { ...EJEMPLO_JORNADA.cotizacion, intro: 'Texto... sigue' } }
+    expect(armarDocumento(fuente).intro).toBe('Texto... sigue')
+  })
+
   it('arma el pie con los datos de la empresa', () => {
     expect(armarDocumento(EJEMPLO_JORNADA).pie).toEqual({
       linea: 'T. Planas 5168 - Neuquén - Argentina - Tel. 0299 - 6019931 - equipos@equipospatagonicos.com.ar',

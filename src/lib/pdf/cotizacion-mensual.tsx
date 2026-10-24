@@ -33,8 +33,9 @@ function TablaItems({ doc }: { doc: DocumentoCotizacion }) {
           </Celda>
         ))}
       </View>
+      {/* El interlineado se hereda de la página (10 × 1,3 = 13 pt): con 0,25 de padding cada fila mide 13,5 pt, como en el original. */}
       {doc.items.map((item) => (
-        <View key={item.orden} style={{ flexDirection: 'row', paddingVertical: 2.5 }} wrap={false}>
+        <View key={item.orden} style={{ flexDirection: 'row', paddingVertical: 0.25 }} wrap={false}>
           <Celda indice={0}>{item.orden}</Celda>
           <Celda indice={1}>{item.descripcion}</Celda>
           <Celda indice={2}>{item.cantidad.toLocaleString('es-AR')}</Celda>
@@ -60,8 +61,8 @@ export function CotizacionMensual({ doc }: { doc: DocumentoCotizacion }) {
   const { destinatario } = doc
   return (
     <Document title={`Cotización N° ${doc.numero}`} language="es-AR">
-      <Page size="A4" style={estilos.pagina}>
-        <Membrete />
+      <Page size="A4" style={[estilos.pagina, estilos.paginaMensual]}>
+        <Membrete logo={estilos.logoMensual} />
         <Text style={estilos.fecha}>{doc.encabezadoFecha}</Text>
         <View>
           <Text>{destinatario.razonSocial}</Text>

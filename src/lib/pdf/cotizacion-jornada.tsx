@@ -30,7 +30,7 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
 
   return (
     <Document title={`Cotización N° ${doc.numero}`} language="es-AR">
-      <Page size="A4" style={[estilos.pagina, cuerpo]}>
+      <Page size="A4" style={[estilos.pagina, estilos.paginaJornada, cuerpo]}>
         <Membrete />
         <Text style={estilos.fecha}>{doc.encabezadoFecha}</Text>
 
@@ -81,8 +81,8 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
           <TextoFormateado key={indice} nodos={bloque.nodos} estilo={{ marginTop: 16 }} />
         ))}
 
-        <Firma firmante={doc.firmante} />
-        <Pie pie={doc.pie} />
+        <Firma firmante={doc.firmante} conLogo />
+        <Pie pie={doc.pie} linea />
       </Page>
     </Document>
   )

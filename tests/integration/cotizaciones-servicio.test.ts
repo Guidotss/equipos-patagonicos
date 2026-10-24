@@ -264,6 +264,15 @@ describe('servicio de cotizaciones', () => {
     expect(await textoDelPdf(reabierta!.pdf)).toContain('Cambio sin enviar.')
   })
 
+  it('un presupuesto directo no tiene PDF', async () => {
+    const { data: id, error } = await activo.client.rpc('presupuesto_directo', {
+      p_datos: { cliente_id: ids.cliente_id, asunto: 'Trabajo directo', notas: MARCA },
+      p_items: [],
+    })
+    expect(error).toBeNull()
+    expect(await pdfParaMostrar(activo.client, id!)).toBeNull()
+  })
+
   it('se puede ver el PDF de un envío anterior', async () => {
     const id = await nueva()
     await enviarCotizacion(activo.client, id)

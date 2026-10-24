@@ -15,6 +15,13 @@ describe('leerDatos', () => {
     })
     expect(leerDatos(null).forma_pago).toBe('')
   })
+
+  it('leer no falla con valores largos o de otro tipo (la validación es al guardar)', () => {
+    const datos = leerDatos({ ubicacion: 'x'.repeat(600), horario: 8, forma_pago: null })
+    expect(datos.ubicacion).toHaveLength(600)
+    expect(datos.horario).toBe('')
+    expect(datos.forma_pago).toBe('')
+  })
 })
 
 describe('esquemaItem', () => {

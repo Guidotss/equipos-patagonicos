@@ -5,12 +5,14 @@ import { estilos } from './estilos'
 import { RUTA_LOGO } from './fuentes'
 
 type EstiloPdf = React.ComponentProps<typeof View>['style']
+type EstiloImagen = React.ComponentProps<typeof Image>['style']
 
-export function Membrete() {
+/** Logo arriba a la derecha. Cada formato puede pasar su tamaño de logo. */
+export function Membrete({ logo = estilos.logo }: { logo?: EstiloImagen }) {
   return (
     <View style={estilos.membrete} fixed>
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf no tiene alt */}
-      <Image src={RUTA_LOGO} style={estilos.logo} />
+      <Image src={RUTA_LOGO} style={logo} />
     </View>
   )
 }
@@ -49,20 +51,26 @@ export function TextoFormateado({ nodos, estilo }: { nodos: NodoFormato[]; estil
   )
 }
 
-export function Firma({ firmante }: { firmante: DocumentoCotizacion['firmante'] }) {
+/** Con `conLogo`, debajo va un logo más chico alineado a la izquierda (como en la por jornada original). */
+export function Firma({ firmante, conLogo }: { firmante: DocumentoCotizacion['firmante']; conLogo?: boolean }) {
   if (!firmante) return null
   return (
     <View style={estilos.firma} wrap={false}>
       <Text>{firmante.nombre}</Text>
       {firmante.cargo ? <Text>{firmante.cargo}</Text> : null}
       {firmante.telefono ? <Text>{firmante.telefono}</Text> : null}
+      {conLogo ? (
+        // eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf no tiene alt
+        <Image src={RUTA_LOGO} style={estilos.logoFirma} />
+      ) : null}
     </View>
   )
 }
 
-export function Pie({ pie }: { pie: DocumentoCotizacion['pie'] }) {
+/** Con `linea`, arriba va una línea azul fina del ancho del cuerpo. */
+export function Pie({ pie, linea }: { pie: DocumentoCotizacion['pie']; linea?: boolean }) {
   return (
-    <View style={estilos.pie} fixed>
+    <View style={linea ? [estilos.pie, estilos.pieLinea] : estilos.pie} fixed>
       <Text>{pie.linea}</Text>
       {pie.web ? <Text>{pie.web}</Text> : null}
     </View>
