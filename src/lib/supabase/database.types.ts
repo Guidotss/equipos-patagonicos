@@ -63,6 +63,126 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"cotizacion_envios": {
+                  Row: {
+                    "cotizacion_id": string,"created_by": string | null,"enviada_at": string,"id": string,"pdf_path": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cotizacion_id": string,"created_by"?: string | null,"enviada_at"?: string,"id"?: string,"pdf_path": string
+                  }
+                  Update: {
+                    "cotizacion_id"?: string,"created_by"?: string | null,"enviada_at"?: string,"id"?: string,"pdf_path"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "cotizacion_envios_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizacion_envios_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizacion_envios_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"cotizacion_items": {
+                  Row: {
+                    "cantidad": number,"cotizacion_id": string,"descripcion": string,"id": string,"orden": number,"precio_unitario": number | null,"seccion": string,"total": number | null,"unidad": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cantidad"?: number,"cotizacion_id": string,"descripcion": string,"id"?: string,"orden": number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad": string
+                  }
+                  Update: {
+                    "cantidad"?: number,"cotizacion_id"?: string,"descripcion"?: string,"id"?: string,"orden"?: number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "cotizacion_items_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizacion_items_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: false
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"cotizaciones": {
+                  Row: {
+                    "archivo_original_path": string | null,"asunto": string,"bloques": NonNullable<Json>,"cliente_id": string,"contacto_id": string | null,"created_at": string,"created_by": string | null,"datos": NonNullable<Json>,"equipo_id": string | null,"estado": string,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"firmante_id": string | null,"formato": string,"id": string,"intro": string,"mostrar_total": boolean,"notas": string,"numero": number,"origen": string,"pdf_aprobado_path": string | null,"plantilla_id": string | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"reemplaza_a": string | null,"updated_at": string,"validez_dias": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archivo_original_path"?: string | null,"asunto"?: string,"bloques"?: NonNullable<Json>,"cliente_id": string,"contacto_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"datos"?: NonNullable<Json>,"equipo_id"?: string | null,"estado"?: string,"fecha"?: string,"fecha_aprobacion"?: string | null,"fecha_proxima_actualizacion"?: string | null,"firmante_id"?: string | null,"formato": string,"id"?: string,"intro"?: string,"mostrar_total"?: boolean,"notas"?: string,"numero"?: number,"origen"?: string,"pdf_aprobado_path"?: string | null,"plantilla_id"?: string | null,"presupuesto_estado"?: string | null,"presupuesto_motivo"?: string,"reemplaza_a"?: string | null,"updated_at"?: string,"validez_dias"?: number
+                  }
+                  Update: {
+                    "archivo_original_path"?: string | null,"asunto"?: string,"bloques"?: NonNullable<Json>,"cliente_id"?: string,"contacto_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"datos"?: NonNullable<Json>,"equipo_id"?: string | null,"estado"?: string,"fecha"?: string,"fecha_aprobacion"?: string | null,"fecha_proxima_actualizacion"?: string | null,"firmante_id"?: string | null,"formato"?: string,"id"?: string,"intro"?: string,"mostrar_total"?: boolean,"notas"?: string,"numero"?: number,"origen"?: string,"pdf_aprobado_path"?: string | null,"plantilla_id"?: string | null,"presupuesto_estado"?: string | null,"presupuesto_motivo"?: string,"reemplaza_a"?: string | null,"updated_at"?: string,"validez_dias"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "cotizaciones_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_contacto_id_fkey"
+      columns: ["contacto_id"]
+isOneToOne: false
+      referencedRelation: "contactos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_equipo_id_fkey"
+      columns: ["equipo_id"]
+isOneToOne: false
+      referencedRelation: "equipos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_firmante_id_fkey"
+      columns: ["firmante_id"]
+isOneToOne: false
+      referencedRelation: "firmantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_plantilla_id_fkey"
+      columns: ["plantilla_id"]
+isOneToOne: false
+      referencedRelation: "plantillas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
+      columns: ["reemplaza_a"]
+isOneToOne: false
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
+      columns: ["reemplaza_a"]
+isOneToOne: false
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"empresa_config": {
                   Row: {
                     "ciudad": string,"cuit": string | null,"direccion": string,"email": string,"id": boolean,"indice_base": string,"provincia": string,"proxima_actualizacion": string,"razon_social": string,"telefono": string,"updated_at": string,"web": string
@@ -136,7 +256,63 @@ isOneToOne: false
                 }
           }
           Views: {
-            [_ in never]: never
+            "v_cotizaciones": {
+                  Row: {
+                    "archivo_original_path": string | null,"asunto": string,"bloques": NonNullable<Json>,"cliente_id": string,"cliente_razon_social": string,"contacto_id": string | null,"created_at": string,"created_by": string | null,"datos": NonNullable<Json>,"equipo_id": string | null,"estado": string,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"firmante_id": string | null,"formato": string,"id": string,"intro": string,"mostrar_total": boolean,"notas": string,"numero": number,"origen": string,"pdf_aprobado_path": string | null,"plantilla_id": string | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"reemplaza_a": string | null,"updated_at": string,"validez_dias": number,"vence_el": string | null,"vencida": boolean | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "cotizaciones_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_contacto_id_fkey"
+      columns: ["contacto_id"]
+isOneToOne: false
+      referencedRelation: "contactos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_equipo_id_fkey"
+      columns: ["equipo_id"]
+isOneToOne: false
+      referencedRelation: "equipos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_firmante_id_fkey"
+      columns: ["firmante_id"]
+isOneToOne: false
+      referencedRelation: "firmantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_plantilla_id_fkey"
+      columns: ["plantilla_id"]
+isOneToOne: false
+      referencedRelation: "plantillas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
+      columns: ["reemplaza_a"]
+isOneToOne: false
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
+      columns: ["reemplaza_a"]
+isOneToOne: false
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    }
+                  ]
+                }
           }
           Functions: {
             "buscar_clientes":
