@@ -315,7 +315,10 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "borrar_cotizacion":
+            "aprobar_cotizacion":
+{ Args: { "p_fecha"?: string,"p_id": string,"p_pdf_path": string }; Returns: undefined
+                           },
+"borrar_cotizacion":
 { Args: { "p_id": string }; Returns: undefined
                            },
 "buscar_clientes":
@@ -347,6 +350,18 @@ isOneToOne: false
                            },
 "guardar_cotizacion":
 { Args: { "p_datos": Json,"p_id"?: string,"p_items": Json }; Returns: string
+                           },
+"marcar_enviada":
+{ Args: { "p_id": string,"p_pdf_path": string }; Returns: undefined
+                           },
+"reabrir_cotizacion":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"rechazar_cotizacion":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"revertir_aprobacion":
+{ Args: { "p_id": string }; Returns: undefined
                            }
           }
           Enums: {
