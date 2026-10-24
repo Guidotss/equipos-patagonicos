@@ -49,6 +49,7 @@ describe('armarDocumento', () => {
     })
     expect(doc.total).toBeNull()
     expect(doc.faltantes).toEqual([])
+    expect(doc.desconocidas).toEqual([])
   })
 
   it('resuelve variables dentro de los bloques y parsea el formato', () => {
@@ -83,6 +84,50 @@ describe('armarDocumento', () => {
     const doc = armarDocumento(fuente)
     expect(doc.faltantes).toEqual(['ubicacion'])
     expect(doc.intro).toContain('{{ubicacion}}')
+  })
+
+  it('informa las variables mal escritas en cualquier texto y las deja visibles', () => {
+    const fuente = {
+      ...EJEMPLO_JORNADA,
+      cotizacion: {
+        ...EJEMPLO_JORNADA.cotizacion,
+        asunto: 'Cotización N° {{numero}} de {{ Capacidad }} TN',
+        intro: 'Servicios en {{ubicación}}.',
+        bloques: [
+          { titulo: 'Plazo {{plazo entrega}}', contenido: '- Pago: {{forma**_pago}}\n  - Lugar: {{ubicacion}}' },
+        ],
+      },
+      items: [{ ...EJEMPLO_JORNADA.items[0], descripcion: 'Jornada {{equipo}}' }],
+    }
+    const doc = armarDocumento(fuente)
+    expect([...doc.desconocidas].sort()).toEqual(['Capacidad', 'equipo', 'forma**_pago', 'plazo entrega', 'ubicación'])
+    expect(doc.faltantes).toEqual([])
+    expect(doc.asunto).toBe('Cotización N° 112711 de {{ Capacidad }} TN')
+    expect(doc.intro).toBe('Servicios en {{ubicación}}.')
+    expect(armarDocumento(EJEMPLO_JORNADA).desconocidas).toEqual([])
+  })
+
+  it('los valores cargados no cambian el formato del bloque', () => {
+    const fuente = {
+      ...EJEMPLO_MENSUAL,
+      cotizacion: {
+        ...EJEMPLO_MENSUAL.cotizacion,
+        datos: { ...(EJEMPLO_MENSUAL.cotizacion.datos as object), forma_pago: '30 **días' },
+      },
+      equipo: { capacidad_tn: 70, descripcion: 'Grúa XCMG 70 TN\nCertificada OAA\n- pluma 60 m' },
+    }
+    const nodos = armarDocumento(fuente).bloques[0].nodos
+    expect(nodos).toHaveLength(7)
+    expect(nodos[3]).toEqual({
+      tipo: 'vineta',
+      nivel: 2,
+      segmentos: [{ texto: 'Grúa XCMG 70 TN\nCertificada OAA\n- pluma 60 m', negrita: false }],
+    })
+    expect(nodos[6]).toEqual({
+      tipo: 'vineta',
+      nivel: 1,
+      segmentos: [{ texto: 'Condiciones de pago: 30 **días.', negrita: false }],
+    })
   })
 
   it('sin equipo, capacidad y descripción quedan como faltantes', () => {

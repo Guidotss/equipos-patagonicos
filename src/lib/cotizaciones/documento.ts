@@ -2,7 +2,7 @@ import { formatCuit } from '@/lib/cuit'
 import { encabezadoFecha } from '@/lib/format/fechas'
 import type { Formato, Unidad } from '@/lib/plantillas/contenido'
 import { parsearFormato, type NodoFormato } from '@/lib/plantillas/formato'
-import { resolverVariables, type NombreVariable } from '@/lib/plantillas/variables'
+import { resolverVariables, variablesDesconocidas, type NombreVariable } from '@/lib/plantillas/variables'
 import { leerDatos } from './datos'
 
 /** Filas de la base que hacen falta para dibujar una cotización. */
@@ -62,7 +62,10 @@ export type DocumentoCotizacion = {
   total: number | null
   firmante: { nombre: string; cargo: string; telefono: string } | null
   pie: { linea: string; web: string }
+  /** Variables conocidas sin valor: quedan como {{x}}. */
   faltantes: NombreVariable[]
+  /** Nombres entre llaves que no son variables (mal escritos): quedan como están. */
+  desconocidas: string[]
 }
 
 function formatCapacidad(capacidad: number | null | undefined): string {
@@ -94,10 +97,27 @@ const redondear = (valor: number) => Math.round(valor * 100) / 100
 export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
   const valores = valoresVariables(fuente)
   const faltantes = new Set<NombreVariable>()
-  const resolver = (texto: string) => {
+  const desconocidas = new Set<string>()
+  const registrarDesconocidas = (texto: string) => {
+    for (const nombre of variablesDesconocidas(texto)) desconocidas.add(nombre)
+  }
+  const reemplazar = (texto: string) => {
     const resultado = resolverVariables(texto, valores)
     for (const nombre of resultado.faltantes) faltantes.add(nombre)
     return resultado.texto
+  }
+  const resolver = (texto: string) => {
+    registrarDesconocidas(texto)
+    return reemplazar(texto)
+  }
+  // Primero el formato y después las variables: un valor cargado (con saltos de línea, "- " o "**")
+  // no cambia la estructura del bloque. Las desconocidas se buscan en el texto entero por si cruzan un "**" o un salto.
+  const resolverBloque = (contenido: string): NodoFormato[] => {
+    registrarDesconocidas(contenido)
+    return parsearFormato(contenido).map((nodo) => ({
+      ...nodo,
+      segmentos: nodo.segmentos.map((segmento) => ({ ...segmento, texto: reemplazar(segmento.texto) })),
+    }))
   }
 
   const items = [...fuente.items]
@@ -138,11 +158,12 @@ export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
     items,
     bloques: fuente.cotizacion.bloques.map((bloque) => ({
       titulo: resolver(bloque.titulo),
-      nodos: parsearFormato(resolver(bloque.contenido)),
+      nodos: resolverBloque(bloque.contenido),
     })),
     total,
     firmante: fuente.firmante,
     pie: { linea, web: empresa.web },
     faltantes: [...faltantes],
+    desconocidas: [...desconocidas],
   }
 }
