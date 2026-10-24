@@ -1,11 +1,11 @@
 -- supabase/migrations/20261025100200_cotizaciones_estados.sql
 -- Transiciones: borrador/enviada → enviada (con snapshot), → aprobada (congelada) o → rechazada;
--- rechazada → borrador; aprobada → enviada/borrador (revertir).
+-- rechazada → borrador (enviada si es cargada); aprobada → enviada/borrador (revertir).
 --
 -- Enviar y aprobar bloquean la fila (FOR UPDATE) antes de validar. Como guardar_cotizacion actualiza la
 -- cabecera antes de reemplazar los ítems, el bloqueo espera a que termine un guardado en curso y las
--- validaciones ven los ítems que quedaron. p_updated_at (obligatorio) es el updated_at de la fila con la
--- que se generó el PDF: si la cotización cambió desde entonces, el PDF ya no refleja lo guardado y no se
+-- validaciones ven los ítems que quedaron. p_updated_at (obligatorio) es el updated_at de la fila que se
+-- vio al decidir (con la que se generó el PDF, si hay): si la cotización cambió desde entonces, no se
 -- registra. Se compara al milisegundo para que pasarlo por un Date de JS (que pierde los microsegundos)
 -- no lo invalide.
 
@@ -51,14 +51,14 @@ begin
     raise exception 'Falta la versión de la cotización' using errcode = 'P0001';
   end if;
   if date_trunc('milliseconds', p_leida, 'UTC') <> date_trunc('milliseconds', p_actual, 'UTC') then
-    raise exception 'La cotización cambió mientras se generaba el PDF; volvé a intentarlo' using errcode = 'P0001';
+    raise exception 'La cotización cambió desde que la abriste; volvé a intentarlo' using errcode = 'P0001';
   end if;
 end;
 $$;
 
 -- Solo se envían las cotizaciones armadas en la app: lo que recibió el cliente de una cargada es su PDF
 -- original, y un envío con un PDF generado haría que se apruebe con un documento que no es el último enviado.
-create or replace function public.marcar_enviada(p_id uuid, p_pdf_path text, p_updated_at timestamptz)
+create or replace function public.marcar_enviada(p_id uuid, p_updated_at timestamptz, p_pdf_path text)
 returns void
 language plpgsql
 security definer
@@ -155,6 +155,8 @@ begin
 end;
 $$;
 
+-- Una de la app vuelve a borrador para corregirla; una cargada vuelve a enviada, que es lo que tiene el
+-- cliente (no se edita en la app).
 create or replace function public.reabrir_cotizacion(p_id uuid)
 returns void
 language plpgsql
@@ -163,7 +165,7 @@ set search_path = ''
 as $$
 begin
   perform private.exigir_usuario_activo();
-  update public.cotizaciones set estado = 'borrador'
+  update public.cotizaciones set estado = case when origen = 'importada' then 'enviada' else 'borrador' end
   where id = p_id and estado = 'rechazada';
   if not found then
     raise exception 'Solo se puede reabrir una cotización rechazada' using errcode = 'P0001';
@@ -171,6 +173,8 @@ begin
 end;
 $$;
 
+-- Vuelve a enviada si el cliente tiene un documento (una cargada, o una de la app con envíos), o a borrador.
+-- Un presupuesto directo no se revierte (no hubo cotización): se anula desde el presupuesto (plan 4).
 -- El plan 4 agrega la condición "sin documentos vinculados".
 create or replace function public.revertir_aprobacion(p_id uuid)
 returns void
@@ -181,20 +185,24 @@ as $$
 begin
   perform private.exigir_usuario_activo();
   update public.cotizaciones c set
-    estado = case when exists (select 1 from public.cotizacion_envios e where e.cotizacion_id = c.id)
+    estado = case when c.origen = 'importada'
+                    or exists (select 1 from public.cotizacion_envios e where e.cotizacion_id = c.id)
                   then 'enviada' else 'borrador' end,
     fecha_aprobacion = null,
     pdf_aprobado_path = null,
     presupuesto_estado = null,
     presupuesto_motivo = ''
-  where c.id = p_id and c.estado = 'aprobada' and c.origen = 'app';
+  where c.id = p_id and c.estado = 'aprobada' and c.origen in ('app', 'importada');
   if not found then
-    raise exception 'Solo se puede revertir la aprobación de una cotización aprobada desde la app' using errcode = 'P0001';
+    if exists (select 1 from public.cotizaciones where id = p_id and origen = 'directa') then
+      raise exception 'Un presupuesto directo no se revierte: anulalo desde el presupuesto' using errcode = 'P0001';
+    end if;
+    raise exception 'Solo se puede revertir la aprobación de una cotización aprobada' using errcode = 'P0001';
   end if;
 end;
 $$;
 
-grant execute on function public.marcar_enviada(uuid, text, timestamptz) to authenticated;
+grant execute on function public.marcar_enviada(uuid, timestamptz, text) to authenticated;
 grant execute on function public.aprobar_cotizacion(uuid, timestamptz, text, date) to authenticated;
 grant execute on function public.rechazar_cotizacion(uuid) to authenticated;
 grant execute on function public.reabrir_cotizacion(uuid) to authenticated;

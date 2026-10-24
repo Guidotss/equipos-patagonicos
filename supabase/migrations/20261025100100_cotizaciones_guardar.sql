@@ -67,6 +67,7 @@ end;
 $$;
 
 -- Crea (p_id null) o actualiza una cotización en borrador o enviada, con todos sus ítems, en una transacción.
+-- Solo se editan las armadas en la app: el documento de una cargada (importada) es su PDF original.
 create or replace function public.guardar_cotizacion(p_datos jsonb, p_items jsonb, p_id uuid default null)
 returns uuid
 language plpgsql
@@ -109,7 +110,7 @@ begin
       mostrar_total = coalesce(v.mostrar_total, false),
       fecha_proxima_actualizacion = v.fecha_proxima_actualizacion,
       notas = coalesce(v.notas, '')
-    where id = p_id and estado in ('borrador', 'enviada')
+    where id = p_id and estado in ('borrador', 'enviada') and origen = 'app'
     returning id into v_id;
 
     if v_id is null then

@@ -110,6 +110,20 @@ describe('enviar', () => {
     const id = await nueva()
     expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: 'cotizaciones/otra/a.pdf', p_updated_at: await version(id) })).error?.message).toMatch(/Ruta de PDF inválida/)
   })
+
+  it('no se envía una aprobada ni una rechazada', async () => {
+    const aprobada = await nueva()
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: aprobada, p_pdf_path: `cotizaciones/${aprobada}/a.pdf`, p_updated_at: await version(aprobada) })).error).toBeNull()
+    expect((await activo.client.rpc('marcar_enviada', { p_id: aprobada, p_pdf_path: `cotizaciones/${aprobada}/e.pdf`, p_updated_at: await version(aprobada) })).error?.message).toMatch(/Solo se puede enviar/)
+    expect((await estado(aprobada)).estado).toBe('aprobada')
+
+    const rechazada = await nueva()
+    expect((await activo.client.rpc('rechazar_cotizacion', { p_id: rechazada })).error).toBeNull()
+    expect((await activo.client.rpc('marcar_enviada', { p_id: rechazada, p_pdf_path: `cotizaciones/${rechazada}/e.pdf`, p_updated_at: await version(rechazada) })).error?.message).toMatch(/Solo se puede enviar/)
+    expect((await estado(rechazada)).estado).toBe('rechazada')
+
+    expect(await sql('select 1 from public.cotizacion_envios where cotizacion_id = any($1)', [[aprobada, rechazada]])).toHaveLength(0)
+  })
 })
 
 describe('aprobar', () => {
@@ -211,8 +225,8 @@ describe('versión y concurrencia', () => {
     expect(errorGuardar).toBeNull()
 
     const ruta = `cotizaciones/${id}/a.pdf`
-    expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: ruta, p_updated_at: leida })).error?.message).toMatch(/cambió/)
-    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: ruta, p_updated_at: leida })).error?.message).toMatch(/cambió/)
+    expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: ruta, p_updated_at: leida })).error?.message).toMatch(/cambió desde que la abriste/)
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: ruta, p_updated_at: leida })).error?.message).toMatch(/cambió desde que la abriste/)
     expect((await estado(id)).estado).toBe('borrador')
 
     expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: ruta, p_updated_at: await version(id) })).error).toBeNull()
@@ -235,7 +249,7 @@ describe('versión y concurrencia', () => {
     const { error } = await contraGuardadoEnCurso(id, () =>
       activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: `cotizaciones/${id}/a.pdf`, p_updated_at: leida }),
     )
-    expect(error?.message).toMatch(/cambió/)
+    expect(error?.message).toMatch(/cambió desde que la abriste/)
     expect((await estado(id)).estado).toBe('borrador')
   })
 
@@ -245,19 +259,37 @@ describe('versión y concurrencia', () => {
     const { error } = await contraGuardadoEnCurso(id, () =>
       activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: `cotizaciones/${id}/e.pdf`, p_updated_at: leida }),
     )
-    expect(error?.message).toMatch(/cambió/)
+    expect(error?.message).toMatch(/cambió desde que la abriste/)
     expect((await estado(id)).estado).toBe('borrador')
     expect(await sql('select 1 from public.cotizacion_envios where cotizacion_id = $1', [id])).toHaveLength(0)
   })
 })
 
 describe('rechazar, reabrir y revertir', () => {
-  it('rechazar y reabrir vuelve a borrador', async () => {
+  it('rechazar y reabrir una de la app vuelve a borrador', async () => {
     const id = await nueva()
     expect((await activo.client.rpc('rechazar_cotizacion', { p_id: id })).error).toBeNull()
     expect((await estado(id)).estado).toBe('rechazada')
     expect((await activo.client.rpc('reabrir_cotizacion', { p_id: id })).error).toBeNull()
     expect((await estado(id)).estado).toBe('borrador')
+  })
+
+  it('reabrir una cargada rechazada la devuelve a enviada (es lo que tiene el cliente)', async () => {
+    const id = await importada()
+    expect((await activo.client.rpc('rechazar_cotizacion', { p_id: id })).error).toBeNull()
+    expect((await estado(id)).estado).toBe('rechazada')
+    expect((await activo.client.rpc('reabrir_cotizacion', { p_id: id })).error).toBeNull()
+    expect((await estado(id)).estado).toBe('enviada')
+  })
+
+  it('solo se reabre una rechazada', async () => {
+    const borrador = await nueva()
+    expect((await activo.client.rpc('reabrir_cotizacion', { p_id: borrador })).error?.message).toMatch(/Solo se puede reabrir/)
+    expect((await estado(borrador)).estado).toBe('borrador')
+
+    const enviada = await importada()
+    expect((await activo.client.rpc('reabrir_cotizacion', { p_id: enviada })).error?.message).toMatch(/Solo se puede reabrir/)
+    expect((await estado(enviada)).estado).toBe('enviada')
   })
 
   it('una aprobada no se puede rechazar', async () => {
@@ -277,5 +309,25 @@ describe('rechazar, reabrir y revertir', () => {
     expect((await activo.client.rpc('aprobar_cotizacion', { p_id: directa, p_pdf_path: `cotizaciones/${directa}/a.pdf`, p_updated_at: await version(directa) })).error).toBeNull()
     expect((await activo.client.rpc('revertir_aprobacion', { p_id: directa })).error).toBeNull()
     expect((await estado(directa)).estado).toBe('borrador')
+  })
+
+  it('revertir una cargada aprobada la devuelve a enviada', async () => {
+    const id = await importada()
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_fecha: '2026-10-25', p_updated_at: await version(id) })).error).toBeNull()
+    expect((await activo.client.rpc('revertir_aprobacion', { p_id: id })).error).toBeNull()
+    expect(await estado(id)).toEqual({ estado: 'enviada', fecha_aprobacion: null, presupuesto_estado: null, pdf_aprobado_path: null })
+  })
+
+  it('un presupuesto directo no se revierte: se anula desde el presupuesto', async () => {
+    const [{ id }] = await sql<{ id: string }>(
+      `insert into public.cotizaciones (origen, estado, cliente_id, formato, fecha, fecha_aprobacion, presupuesto_estado, asunto, notas)
+       values ('directa', 'aprobada', $1, 'jornada', '2026-10-22', '2026-10-22', 'en_curso', 'Trabajo urgente', $2)
+       returning id`,
+      [ids.cliente_id, MARCA],
+    )
+    const { error } = await activo.client.rpc('revertir_aprobacion', { p_id: id })
+    expect(error?.message).toMatch(/presupuesto directo/)
+    expect(error?.message).toMatch(/anul/)
+    expect(await estado(id)).toEqual({ estado: 'aprobada', fecha_aprobacion: '2026-10-22', presupuesto_estado: 'en_curso', pdf_aprobado_path: null })
   })
 })

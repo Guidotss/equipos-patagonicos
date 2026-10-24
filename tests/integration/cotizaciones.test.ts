@@ -185,6 +185,27 @@ describe('guardar, duplicar y borrar', () => {
     expect(error?.message).toMatch(/ya no se puede editar/)
   })
 
+  it('una cargada (importada) no se edita: su documento es el PDF original', async () => {
+    const [{ id }] = await sql<{ id: string }>(
+      `insert into public.cotizaciones (cliente_id, formato, notas, origen, estado, asunto, archivo_original_path)
+       values ($1, 'jornada', $2, 'importada', 'enviada', 'Asunto original', 'importadas/prueba/original.pdf') returning id`,
+      [ids.cliente_id, MARCA],
+    )
+    const { error } = await activo.client.rpc('guardar_cotizacion', {
+      p_id: id,
+      p_datos: datosBase({ asunto: 'Otro asunto' }),
+      p_items: ITEMS_JORNADA,
+    })
+    expect(error?.message).toMatch(/ya no se puede editar/)
+
+    const [fila] = await sql<{ estado: string; asunto: string; equipo_id: string | null; items: string }>(
+      `select estado, asunto, equipo_id, (select count(*) from public.cotizacion_items where cotizacion_id = $1) as items
+       from public.cotizaciones where id = $1`,
+      [id],
+    )
+    expect(fila).toEqual({ estado: 'enviada', asunto: 'Asunto original', equipo_id: null, items: '0' })
+  })
+
   it('duplicar con el mismo cliente enlaza la renegociación y copia ítems con precios', async () => {
     const { data: original } = await activo.client.rpc('guardar_cotizacion', { p_datos: datosBase(), p_items: ITEMS_JORNADA })
     const { data: copia, error } = await activo.client.rpc('duplicar_cotizacion', { p_id: original! })
