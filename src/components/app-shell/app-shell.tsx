@@ -12,7 +12,7 @@ function Logo({ className }: { className?: string }) {
       alt="Equipos Patagónicos"
       width={437}
       height={95}
-      priority
+      preload
       className={className}
     />
   )

@@ -1,5 +1,6 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { destinoSeguro } from '@/lib/auth/destino'
@@ -34,6 +35,14 @@ export async function iniciarSesion(_previo: EstadoLogin, formData: FormData): P
 
 export async function cerrarSesion() {
   const supabase = await createClient()
-  await supabase.auth.signOut({ scope: 'local' })
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
+  if (error) {
+    // Auth no respondió: igual se borran las cookies de sesión de este navegador,
+    // para que en una PC compartida el próximo usuario no entre con esta cuenta.
+    const cookieStore = await cookies()
+    for (const cookie of cookieStore.getAll()) {
+      if (cookie.name.startsWith('sb-')) cookieStore.delete(cookie.name)
+    }
+  }
   redirect('/login')
 }

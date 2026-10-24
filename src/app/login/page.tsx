@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             alt="Equipos Patagónicos"
             width={437}
             height={95}
-            priority
+            preload
             className="h-12 w-auto"
           />
           <p className="text-sm text-muted-foreground">Administración y logística</p>

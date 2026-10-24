@@ -45,6 +45,11 @@ describe('esquemaEquipo', () => {
       expect(resultado.error?.issues[0]?.message).toBe('Ingresá una capacidad en toneladas mayor a 0')
     }
   })
+
+  it('rechaza capacidades que no entran en la base (numeric(6,1))', () => {
+    const resultado = esquemaEquipo.safeParse({ ...base, capacidad_tn: '100.000' })
+    expect(resultado.error?.issues[0]?.message).toBe('La capacidad tiene que ser menor a 100.000 TN')
+  })
 })
 
 describe('esquemaNombrePlantilla', () => {

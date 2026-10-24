@@ -147,3 +147,25 @@ describe('buscar_clientes', () => {
     expect(error).not.toBeNull()
   })
 })
+
+describe('permisos por columna', () => {
+  it('la app no puede escribir created_by (registrar un cliente a nombre de otro)', async () => {
+    const { error } = await activo.client
+      .from('clientes')
+      .insert({ razon_social: `Suplantado ${MARCA}`, created_by: inactivo.id })
+    expect(error?.code).toBe('42501')
+  })
+
+  it('un contacto no se puede pasar a otro cliente', async () => {
+    const { data: a } = await activo.client.from('clientes').insert({ razon_social: `Origen ${MARCA}` }).select('id').single()
+    const { data: b } = await activo.client.from('clientes').insert({ razon_social: `Destino ${MARCA}` }).select('id').single()
+    const { data: contacto } = await activo.client
+      .from('contactos')
+      .insert({ cliente_id: a!.id, nombre: 'Mover' })
+      .select('id')
+      .single()
+
+    const { error } = await activo.client.from('contactos').update({ cliente_id: b!.id }).eq('id', contacto!.id)
+    expect(error?.code).toBe('42501')
+  })
+})

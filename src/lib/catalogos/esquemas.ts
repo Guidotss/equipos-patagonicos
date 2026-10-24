@@ -43,7 +43,10 @@ export type CampoEquipo = (typeof CAMPOS_EQUIPO)[number]
 
 export const esquemaEquipo = z.object({
   nombre: textoRequerido('Ingresá el nombre del equipo', 150),
-  capacidad_tn: numeroPositivoOpcional('Ingresá una capacidad en toneladas mayor a 0'),
+  capacidad_tn: numeroPositivoOpcional('Ingresá una capacidad en toneladas mayor a 0').refine(
+    (capacidad) => capacidad === null || capacidad < 100_000,
+    'La capacidad tiene que ser menor a 100.000 TN',
+  ),
   marca: textoOpcional(100),
   modelo: textoOpcional(100),
   identificacion: textoOpcional(100),

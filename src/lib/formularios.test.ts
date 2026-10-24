@@ -39,6 +39,7 @@ describe('falloBase', () => {
     expect(falloBase({ code: 'XX000', message: 'raro' }, valores).mensaje).toBe(
       'No se pudo guardar. Probá de nuevo en un momento.',
     )
+    expect(falloBase({ code: '22003', message: 'overflow' }, valores).mensaje).toBe('Algún número es demasiado grande')
   })
 
   it('marca el campo cuando el duplicado tiene un campo asociado', () => {

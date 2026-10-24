@@ -42,6 +42,8 @@ export function mensajeErrorBase(error: ErrorBase): string {
       return 'No tenés permiso para hacer esta operación'
     case 'P0001':
       return error.message
+    case '22003':
+      return 'Algún número es demasiado grande'
     default:
       return 'No se pudo guardar. Probá de nuevo en un momento.'
   }
