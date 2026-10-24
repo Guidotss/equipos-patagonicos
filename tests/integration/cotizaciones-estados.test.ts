@@ -61,7 +61,7 @@ describe('enviar', () => {
 describe('aprobar', () => {
   it('desde enviada: queda congelada, con fecha y presupuesto en curso', async () => {
     const id = await nueva()
-    await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: `cotizaciones/${id}/enviada.pdf` })
+    expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: `cotizaciones/${id}/enviada.pdf` })).error).toBeNull()
     const { error } = await activo.client.rpc('aprobar_cotizacion', {
       p_id: id,
       p_pdf_path: `cotizaciones/${id}/aprobada.pdf`,
@@ -117,8 +117,8 @@ describe('rechazar, reabrir y revertir', () => {
     expect(await estado(enviada)).toEqual({ estado: 'enviada', fecha_aprobacion: null, presupuesto_estado: null, pdf_aprobado_path: null })
 
     const directa = await nueva()
-    await activo.client.rpc('aprobar_cotizacion', { p_id: directa, p_pdf_path: `cotizaciones/${directa}/a.pdf` })
-    await activo.client.rpc('revertir_aprobacion', { p_id: directa })
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: directa, p_pdf_path: `cotizaciones/${directa}/a.pdf` })).error).toBeNull()
+    expect((await activo.client.rpc('revertir_aprobacion', { p_id: directa })).error).toBeNull()
     expect((await estado(directa)).estado).toBe('borrador')
   })
 })
