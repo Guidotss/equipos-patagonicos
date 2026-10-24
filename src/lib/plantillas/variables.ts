@@ -16,7 +16,8 @@ export const VARIABLES = {
 
 export type NombreVariable = keyof typeof VARIABLES
 
-const PATRON_VARIABLE = /\{\{\s*([a-z_]+)\s*\}\}/g
+// Captura todo lo que haya entre llaves dobles, para que un nombre mal tipeado ({{ubicación}}) se informe como desconocido.
+const PATRON_VARIABLE = /\{\{\s*([^{}]*?)\s*\}\}/g
 
 export function esVariable(nombre: string): nombre is NombreVariable {
   return Object.hasOwn(VARIABLES, nombre)

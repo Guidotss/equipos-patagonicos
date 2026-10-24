@@ -14,6 +14,12 @@ describe('variablesDesconocidas', () => {
   it('detecta nombres que no están en el catálogo', () => {
     expect(variablesDesconocidas('{{capacidad}} y {{capasidad}} y {{otra_cosa}}')).toEqual(['capasidad', 'otra_cosa'])
   })
+
+  it('detecta nombres mal tipeados con acentos, mayúsculas, espacios o dígitos', () => {
+    expect(
+      variablesDesconocidas('En {{ubicación}} con {{Capacidad}} TN, {{plazo entrega}}, {{ validez_dias2 }} y {{ubicacion}}'),
+    ).toEqual(['ubicación', 'Capacidad', 'plazo entrega', 'validez_dias2'])
+  })
 })
 
 describe('resolverVariables', () => {
