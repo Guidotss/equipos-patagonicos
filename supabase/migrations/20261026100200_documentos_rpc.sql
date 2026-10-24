@@ -80,13 +80,20 @@ begin
 end;
 $$;
 
--- La factura indica qué remitos cubre (reemplaza los anteriores).
+-- La factura indica qué remitos cubre (reemplaza los anteriores). Un remito se factura una vez:
+-- no se le saca a otra factura vigente (sí a una anulada).
 create or replace function private.vincular_remitos(p_factura_id uuid, p_cliente_id uuid, p_remitos uuid[])
 returns void
 language plpgsql
 set search_path = ''
 as $$
 begin
+  -- Bloquea los remitos en juego (en orden, para no trabarse con otra factura) antes de mirar a quién apuntan.
+  perform 1 from public.documentos
+  where factura_id = p_factura_id or id = any (coalesce(p_remitos, '{}'))
+  order by id
+  for update;
+
   update public.documentos set factura_id = null
   where factura_id = p_factura_id and not (id = any (coalesce(p_remitos, '{}')));
 
@@ -102,6 +109,15 @@ begin
     )
   ) then
     raise exception 'Algún remito no es de este cliente o está anulado' using errcode = 'P0001';
+  end if;
+
+  if exists (
+    select 1
+    from public.documentos d
+    join public.documentos f on f.id = d.factura_id
+    where d.id = any (p_remitos) and f.id <> p_factura_id and f.deleted_at is null
+  ) then
+    raise exception 'Algún remito ya está cubierto por otra factura' using errcode = 'P0001';
   end if;
 
   update public.documentos set factura_id = p_factura_id where id = any (p_remitos);
@@ -126,6 +142,13 @@ begin
      (select count(distinct e ->> 'factura_id') from jsonb_array_elements(p_aplicaciones) e) then
     raise exception 'Una factura aparece dos veces en la orden de pago' using errcode = 'P0001';
   end if;
+
+  -- Bloquea las facturas (en orden, para no trabarse con otra OP) antes de leer su saldo: dos órdenes
+  -- de pago a la vez sobre la misma factura se esperan y la segunda ve lo que aplicó la primera.
+  perform 1 from public.documentos
+  where id in (select (e ->> 'factura_id')::uuid from jsonb_array_elements(p_aplicaciones) e)
+  order by id
+  for update;
 
   delete from public.op_facturas where op_id = p_op_id;
 
@@ -359,13 +382,21 @@ begin
     raise exception 'El documento no existe o no está anulado' using errcode = 'P0001';
   end if;
 
-  if o.tipo = 'orden_pago' and exists (
-    select 1
-    from public.op_facturas ofa
-    join public.v_facturas vf on vf.id = ofa.factura_id
-    where ofa.op_id = p_id and ofa.monto_aplicado > vf.saldo
-  ) then
-    raise exception 'No se puede restaurar: alguna factura ya no tiene saldo para esta orden de pago' using errcode = 'P0001';
+  if o.tipo = 'orden_pago' then
+    -- Igual que al aplicar una OP: las facturas quedan bloqueadas mientras se mira su saldo.
+    perform 1 from public.documentos
+    where id in (select ofa.factura_id from public.op_facturas ofa where ofa.op_id = p_id)
+    order by id
+    for update;
+
+    if exists (
+      select 1
+      from public.op_facturas ofa
+      join public.v_facturas vf on vf.id = ofa.factura_id
+      where ofa.op_id = p_id and ofa.monto_aplicado > vf.saldo
+    ) then
+      raise exception 'No se puede restaurar: alguna factura ya no tiene saldo para esta orden de pago' using errcode = 'P0001';
+    end if;
   end if;
 
   update public.documentos set deleted_at = null, deleted_by = null where id = p_id;

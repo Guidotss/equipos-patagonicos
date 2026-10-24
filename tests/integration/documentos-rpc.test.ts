@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Json } from '@/lib/supabase/database.types'
 import { idsDeEjemplo } from './cotizaciones-helpers'
 import { limpiarDocumentos, nuevoPresupuesto, subirArchivo } from './documentos-helpers'
-import { borrarUsuario, crearUsuario, sql } from './helpers'
+import { borrarUsuario, conConexion, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 let activo: Awaited<ReturnType<typeof crearUsuario>>
@@ -34,6 +34,49 @@ async function registrar(
     p_archivos: [archivo],
     p_remitos: extra.remitos ?? [],
     p_aplicaciones: extra.aplicaciones ?? [],
+  })
+}
+
+async function esperarBloqueadaPor(pid: number) {
+  for (let intento = 0; intento < 100; intento++) {
+    const [fila] = await sql<{ esperando: number }>(
+      'select count(*)::int as esperando from pg_stat_activity where $1 = any(pg_blocking_pids(pid))',
+      [pid],
+    )
+    if (fila.esperando > 0) return
+    await new Promise((resolver) => setTimeout(resolver, 50))
+  }
+  throw new Error('La llamada nunca quedó esperando a la otra transacción')
+}
+
+/**
+ * Corre `llamada` mientras otra transacción tiene a medio registrar un documento
+ * y confirma ese registro recién cuando la llamada ya está esperando.
+ */
+async function contraRegistroEnCurso<T>(
+  datos: Record<string, unknown>,
+  extra: { remitos?: string[]; aplicaciones?: Json[] },
+  llamada: () => PromiseLike<T>,
+): Promise<T> {
+  const archivo = await subirArchivo(activo.client, ids.cliente_id)
+  return conConexion(async (otra) => {
+    await otra.query('begin')
+    await otra.query(`select set_config('request.jwt.claims', $1, true)`, [
+      JSON.stringify({ sub: activo.id, role: 'authenticated' }),
+    ])
+    await otra.query('set local role authenticated')
+    await otra.query('select public.registrar_documento($1::jsonb, $2::uuid[], $3::jsonb, $4::uuid[], $5::jsonb)', [
+      JSON.stringify({ cliente_id: ids.cliente_id, notas: MARCA, ...datos }),
+      [presupuesto],
+      JSON.stringify([archivo]),
+      extra.remitos ?? [],
+      JSON.stringify(extra.aplicaciones ?? []),
+    ])
+    const [{ pid }] = (await otra.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
+    const resultado = Promise.resolve(llamada())
+    await esperarBloqueadaPor(pid)
+    await otra.query('commit')
+    return resultado
   })
 }
 
@@ -111,6 +154,29 @@ describe('registrar_documento', () => {
     expect(errorOp).toBeNull()
     const [vf] = await sql<{ saldo: string }>('select saldo from public.v_facturas where id = $1', [factura])
     expect(Number(vf.saldo)).toBe(0)
+  })
+
+  it('un remito cubierto por otra factura vigente no se le saca; el de una factura anulada, sí', async () => {
+    const datosFactura = { tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }
+    const { data: remito } = await registrar({ tipo: 'remito' })
+    const { data: facturaA } = await registrar(datosFactura, { remitos: [remito!] })
+    const facturaDelRemito = async () => (await sql('select factura_id from public.documentos where id = $1', [remito]))[0]
+
+    const reguardar = await activo.client.rpc('actualizar_documento', {
+      p_id: facturaA!,
+      p_datos: { ...datosFactura, notas: MARCA },
+      p_presupuestos: [presupuesto],
+      p_remitos: [remito!],
+    })
+    expect(reguardar.error).toBeNull()
+
+    expect((await registrar(datosFactura, { remitos: [remito!] })).error?.message).toMatch(/ya está cubierto por otra factura/)
+    expect(await facturaDelRemito()).toEqual({ factura_id: facturaA })
+
+    expect((await activo.client.rpc('anular_documento', { p_id: facturaA! })).error).toBeNull()
+    const { data: facturaB, error } = await registrar(datosFactura, { remitos: [remito!] })
+    expect(error).toBeNull()
+    expect(await facturaDelRemito()).toEqual({ factura_id: facturaB })
   })
 
   it('una OP no aplica más que el saldo de la factura ni más que su propio monto', async () => {
@@ -201,5 +267,42 @@ describe('actualizar, archivos, anular y restaurar', () => {
     const { data: oc } = await registrar({ tipo: 'orden_compra' })
     await activo.client.rpc('anular_documento', { p_id: oc! })
     expect((await activo.client.rpc('restaurar_documento', { p_id: oc! })).error).toBeNull()
+  })
+})
+
+describe('concurrencia', () => {
+  const saldo = async (factura: string) =>
+    Number((await sql<{ saldo: string }>('select saldo from public.v_facturas where id = $1', [factura]))[0].saldo)
+
+  it('dos órdenes de pago a la vez no aplican más que el saldo de la factura', async () => {
+    const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+    const op = { tipo: 'orden_pago', monto: 1000 }
+    const aplicaciones = [{ factura_id: factura, monto_aplicado: 1000 }]
+
+    const segunda = await contraRegistroEnCurso(op, { aplicaciones }, () => registrar(op, { aplicaciones }))
+    expect(segunda.error?.message).toMatch(/supera el saldo/)
+    expect(await saldo(factura!)).toBe(0)
+  })
+
+  it('una OP anulada no se restaura mientras otra le toma el saldo de la factura', async () => {
+    const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+    const op = { tipo: 'orden_pago', monto: 1000 }
+    const aplicaciones = [{ factura_id: factura, monto_aplicado: 1000 }]
+    const { data: anulada } = await registrar(op, { aplicaciones })
+    expect((await activo.client.rpc('anular_documento', { p_id: anulada! })).error).toBeNull()
+
+    const restaurar = await contraRegistroEnCurso(op, { aplicaciones }, () =>
+      activo.client.rpc('restaurar_documento', { p_id: anulada! }),
+    )
+    expect(restaurar.error?.message).toMatch(/ya no tiene saldo/)
+    expect(await saldo(factura!)).toBe(0)
+  })
+
+  it('dos facturas a la vez no cubren el mismo remito', async () => {
+    const { data: remito } = await registrar({ tipo: 'remito' })
+    const factura = { tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }
+
+    const segunda = await contraRegistroEnCurso(factura, { remitos: [remito!] }, () => registrar(factura, { remitos: [remito!] }))
+    expect(segunda.error?.message).toMatch(/ya está cubierto por otra factura/)
   })
 })
