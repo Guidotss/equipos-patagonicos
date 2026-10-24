@@ -29,8 +29,9 @@ begin
 end;
 $$;
 
--- La usa el CHECK de clientes, que se evalúa con los permisos de quien inserta.
-grant execute on function private.cuit_valido(text) to authenticated;
+-- La usa el CHECK de clientes, que se evalúa con los permisos de quien inserta o modifica
+-- (también con CUIT nulo): la app (authenticated) y los scripts con la secret key (service_role).
+grant execute on function private.cuit_valido(text) to authenticated, service_role;
 
 create table public.clientes (
   id uuid primary key default gen_random_uuid(),

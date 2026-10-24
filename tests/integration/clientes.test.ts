@@ -1,6 +1,6 @@
 // tests/integration/clientes.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { anonClient, borrarUsuario, crearUsuario, sql } from './helpers'
+import { adminClient, anonClient, borrarUsuario, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 const CUIT_DE_PRUEBA = '33693450239' // AFIP: válido y fuera de los datos de ejemplo
@@ -57,6 +57,18 @@ describe('clientes', () => {
     const b = await activo.client.from('clientes').insert({ razon_social: `Sin CUIT B ${MARCA}` })
     expect(a.error).toBeNull()
     expect(b.error).toBeNull()
+  })
+
+  it('la secret key (scripts de importación) crea y modifica clientes, y la base sigue validando el CUIT', async () => {
+    const admin = adminClient()
+    const { data, error } = await admin.from('clientes').insert({ razon_social: `Importado ${MARCA}` }).select('id').single()
+    expect(error).toBeNull()
+
+    const modificado = await admin.from('clientes').update({ notas: 'Importado por script' }).eq('id', data!.id)
+    expect(modificado.error).toBeNull()
+
+    const invalido = await admin.from('clientes').insert({ razon_social: `Importado malo ${MARCA}`, cuit: '30719529671' })
+    expect(invalido.error?.code).toBe('23514')
   })
 
   it('los clientes no se borran (se desactivan)', async () => {
