@@ -162,6 +162,8 @@ begin
 end;
 $$;
 
+-- Solo borra borradores que nunca salieron de la app: uno reabierto con envíos o una importada ya los
+-- tiene el cliente (y borrarlos se llevaría el historial de envíos y dejaría huérfanos sus PDF).
 create or replace function public.borrar_cotizacion(p_id uuid)
 returns void
 language plpgsql
@@ -170,8 +172,13 @@ set search_path = ''
 as $$
 begin
   perform private.exigir_usuario_activo();
-  delete from public.cotizaciones where id = p_id and estado = 'borrador';
+  delete from public.cotizaciones c
+  where c.id = p_id and c.estado = 'borrador' and c.origen = 'app'
+    and not exists (select 1 from public.cotizacion_envios e where e.cotizacion_id = c.id);
   if not found then
+    if exists (select 1 from public.cotizaciones where id = p_id and estado = 'borrador') then
+      raise exception 'Una cotización que ya se envió no se puede borrar; rechazala' using errcode = 'P0001';
+    end if;
     raise exception 'Solo se pueden borrar cotizaciones en borrador' using errcode = 'P0001';
   end if;
 end;

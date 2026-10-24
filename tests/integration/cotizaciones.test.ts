@@ -225,4 +225,27 @@ describe('guardar, duplicar y borrar', () => {
     const { error } = await activo.client.rpc('borrar_cotizacion', { p_id: enviada })
     expect(error?.message).toMatch(/Solo se pueden borrar/)
   })
+
+  it('un borrador que ya se envió (reabierto) o una importada no se borra y conserva su historial', async () => {
+    const { id: reabierta } = await insertarComoPostgres()
+    await sql('insert into public.cotizacion_envios (cotizacion_id, pdf_path) values ($1, $2)', [
+      reabierta,
+      `cotizaciones/${reabierta}/e.pdf`,
+    ])
+    const { error } = await activo.client.rpc('borrar_cotizacion', { p_id: reabierta })
+    expect(error?.message).toMatch(/ya se envió no se puede borrar/)
+    const [fila] = await sql<{ envios: string }>(
+      'select count(*) as envios from public.cotizacion_envios where cotizacion_id = $1',
+      [reabierta],
+    )
+    expect(fila.envios).toBe('1')
+
+    const [{ id: importada }] = await sql<{ id: string }>(
+      `insert into public.cotizaciones (cliente_id, formato, notas, origen, archivo_original_path)
+       values ($1, 'jornada', $2, 'importada', 'importadas/prueba/original.pdf') returning id`,
+      [ids.cliente_id, MARCA],
+    )
+    const borrarImportada = await activo.client.rpc('borrar_cotizacion', { p_id: importada })
+    expect(borrarImportada.error?.message).toMatch(/ya se envió no se puede borrar/)
+  })
 })
