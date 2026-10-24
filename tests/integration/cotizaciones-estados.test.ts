@@ -318,6 +318,15 @@ describe('rechazar, reabrir y revertir', () => {
     expect(await estado(id)).toEqual({ estado: 'enviada', fecha_aprobacion: null, presupuesto_estado: null, pdf_aprobado_path: null })
   })
 
+  it('una cargada aprobada por error se revierte y se borra para volver a cargarla', async () => {
+    const id = await importada()
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_fecha: '2026-10-25', p_updated_at: await version(id) })).error).toBeNull()
+    expect((await activo.client.rpc('borrar_cotizacion', { p_id: id })).error?.message).toMatch(/primero revertí la aprobación/)
+    expect((await activo.client.rpc('revertir_aprobacion', { p_id: id })).error).toBeNull()
+    expect((await activo.client.rpc('borrar_cotizacion', { p_id: id })).error).toBeNull()
+    expect(await sql('select 1 from public.cotizaciones where id = $1', [id])).toHaveLength(0)
+  })
+
   it('un presupuesto directo no se revierte: se anula desde el presupuesto', async () => {
     const [{ id }] = await sql<{ id: string }>(
       `insert into public.cotizaciones (origen, estado, cliente_id, formato, fecha, fecha_aprobacion, presupuesto_estado, asunto, notas)

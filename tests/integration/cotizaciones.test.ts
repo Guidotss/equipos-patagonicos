@@ -247,7 +247,7 @@ describe('guardar, duplicar y borrar', () => {
     expect(error?.message).toMatch(/Solo se pueden borrar/)
   })
 
-  it('un borrador que ya se envió (reabierto) o una importada no se borra y conserva su historial', async () => {
+  it('un borrador que ya se envió (reabierto) no se borra y conserva su historial', async () => {
     const { id: reabierta } = await insertarComoPostgres()
     await sql('insert into public.cotizacion_envios (cotizacion_id, pdf_path) values ($1, $2)', [
       reabierta,
@@ -260,13 +260,30 @@ describe('guardar, duplicar y borrar', () => {
       [reabierta],
     )
     expect(fila.envios).toBe('1')
+  })
 
-    const [{ id: importada }] = await sql<{ id: string }>(
-      `insert into public.cotizaciones (cliente_id, formato, notas, origen, archivo_original_path)
-       values ($1, 'jornada', $2, 'importada', 'importadas/prueba/original.pdf') returning id`,
-      [ids.cliente_id, MARCA],
-    )
-    const borrarImportada = await activo.client.rpc('borrar_cotizacion', { p_id: importada })
-    expect(borrarImportada.error?.message).toMatch(/ya se envió no se puede borrar/)
+  it('una cargada mal se borra (para volver a cargarla) mientras no esté aprobada', async () => {
+    async function cargada(estado: 'enviada' | 'rechazada' | 'aprobada') {
+      const aprobada = estado === 'aprobada'
+      const [{ id }] = await sql<{ id: string }>(
+        `insert into public.cotizaciones
+           (cliente_id, formato, notas, origen, estado, fecha_aprobacion, presupuesto_estado, archivo_original_path)
+         values ($1, 'jornada', $2, 'importada', $3, $4, $5, 'importadas/prueba/original.pdf') returning id`,
+        [ids.cliente_id, MARCA, estado, aprobada ? '2026-10-22' : null, aprobada ? 'en_curso' : null],
+      )
+      return id
+    }
+    const existe = async (id: string) => (await sql('select 1 from public.cotizaciones where id = $1', [id])).length === 1
+
+    for (const estado of ['enviada', 'rechazada'] as const) {
+      const id = await cargada(estado)
+      expect((await activo.client.rpc('borrar_cotizacion', { p_id: id })).error).toBeNull()
+      expect(await existe(id)).toBe(false)
+    }
+
+    const aprobada = await cargada('aprobada')
+    const { error } = await activo.client.rpc('borrar_cotizacion', { p_id: aprobada })
+    expect(error?.message).toMatch(/primero revertí la aprobación/)
+    expect(await existe(aprobada)).toBe(true)
   })
 })

@@ -67,7 +67,8 @@ end;
 $$;
 
 -- Crea (p_id null) o actualiza una cotización en borrador o enviada, con todos sus ítems, en una transacción.
--- Solo se editan las armadas en la app: el documento de una cargada (importada) es su PDF original.
+-- Solo se editan las armadas en la app: el documento de una cargada (importada) es su PDF original
+-- (si se cargó mal, se borra y se vuelve a cargar: ver borrar_cotizacion).
 create or replace function public.guardar_cotizacion(p_datos jsonb, p_items jsonb, p_id uuid default null)
 returns uuid
 language plpgsql
@@ -163,8 +164,11 @@ begin
 end;
 $$;
 
--- Solo borra borradores que nunca salieron de la app: uno reabierto con envíos o una importada ya los
--- tiene el cliente (y borrarlos se llevaría el historial de envíos y dejaría huérfanos sus PDF).
+-- De la app solo borra borradores que nunca se enviaron: uno reabierto con envíos ya lo tiene el cliente
+-- (y borrarlo se llevaría el historial de envíos y dejaría huérfanos sus PDF).
+-- Una cargada (importada) no se edita, así que si se cargó mal (cliente, fecha, número, PDF) se borra
+-- y se vuelve a cargar, mientras no esté aprobada (una aprobada primero se revierte). Su PDF original
+-- queda en Storage (desde la app no se borran archivos).
 create or replace function public.borrar_cotizacion(p_id uuid)
 returns void
 language plpgsql
@@ -174,9 +178,15 @@ as $$
 begin
   perform private.exigir_usuario_activo();
   delete from public.cotizaciones c
-  where c.id = p_id and c.estado = 'borrador' and c.origen = 'app'
-    and not exists (select 1 from public.cotizacion_envios e where e.cotizacion_id = c.id);
+  where c.id = p_id and (
+    (c.origen = 'app' and c.estado = 'borrador'
+      and not exists (select 1 from public.cotizacion_envios e where e.cotizacion_id = c.id))
+    or (c.origen = 'importada' and c.estado <> 'aprobada')
+  );
   if not found then
+    if exists (select 1 from public.cotizaciones where id = p_id and origen = 'importada') then
+      raise exception 'Una cotización cargada aprobada no se puede borrar; primero revertí la aprobación' using errcode = 'P0001';
+    end if;
     if exists (select 1 from public.cotizaciones where id = p_id and estado = 'borrador') then
       raise exception 'Una cotización que ya se envió no se puede borrar; rechazala' using errcode = 'P0001';
     end if;
