@@ -1,6 +1,12 @@
 -- supabase/migrations/20261025100200_cotizaciones_estados.sql
 -- Transiciones: borrador/enviada → enviada (con snapshot), → aprobada (congelada) o → rechazada;
 -- rechazada → borrador; aprobada → enviada/borrador (revertir).
+--
+-- Enviar y aprobar bloquean la fila (FOR UPDATE) antes de validar. Como guardar_cotizacion actualiza la
+-- cabecera antes de reemplazar los ítems, el bloqueo espera a que termine un guardado en curso y las
+-- validaciones ven los ítems que quedaron. p_updated_at (opcional) es el updated_at leído al generar el
+-- PDF, tal como lo devuelve la API (sin pasar por Date, que pierde los microsegundos): si la cotización
+-- cambió desde entonces, el PDF ya no refleja lo guardado y no se registra.
 
 create or replace function private.exigir_precios(p_id uuid)
 returns void
@@ -33,56 +39,93 @@ begin
 end;
 $$;
 
-create or replace function public.marcar_enviada(p_id uuid, p_pdf_path text)
+create or replace function private.exigir_version(p_actual timestamptz, p_leida timestamptz)
 returns void
 language plpgsql
-security definer
+immutable
 set search_path = ''
 as $$
 begin
-  perform private.exigir_usuario_activo();
-  perform private.exigir_ruta_pdf(p_id, p_pdf_path);
-  perform private.exigir_precios(p_id);
-
-  update public.cotizaciones set estado = 'enviada'
-  where id = p_id and estado in ('borrador', 'enviada');
-  if not found then
-    raise exception 'Solo se puede enviar una cotización en borrador o ya enviada' using errcode = 'P0001';
+  if p_leida is not null and p_leida <> p_actual then
+    raise exception 'La cotización cambió mientras se generaba el PDF; volvé a intentarlo' using errcode = 'P0001';
   end if;
-
-  insert into public.cotizacion_envios (cotizacion_id, pdf_path) values (p_id, p_pdf_path);
 end;
 $$;
 
-create or replace function public.aprobar_cotizacion(p_id uuid, p_pdf_path text, p_fecha date default null)
+create or replace function public.marcar_enviada(p_id uuid, p_pdf_path text, p_updated_at timestamptz default null)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_fecha_cotizacion date;
+  c public.cotizaciones%rowtype;
+begin
+  perform private.exigir_usuario_activo();
+
+  select * into c from public.cotizaciones where id = p_id for update;
+  if not found then
+    raise exception 'La cotización no existe' using errcode = 'P0001';
+  end if;
+  if c.estado not in ('borrador', 'enviada') then
+    raise exception 'Solo se puede enviar una cotización en borrador o ya enviada' using errcode = 'P0001';
+  end if;
+  perform private.exigir_version(c.updated_at, p_updated_at);
+  perform private.exigir_ruta_pdf(p_id, p_pdf_path);
+  perform private.exigir_precios(p_id);
+
+  update public.cotizaciones set estado = 'enviada' where id = p_id;
+  insert into public.cotizacion_envios (cotizacion_id, pdf_path) values (p_id, p_pdf_path);
+end;
+$$;
+
+-- Una cotización cargada (importada) no tiene ítems: su documento es el PDF original, así que se aprueba
+-- sin exigir precios y sin PDF generado (pdf_aprobado_path queda null).
+create or replace function public.aprobar_cotizacion(
+  p_id uuid,
+  p_pdf_path text default null,
+  p_fecha date default null,
+  p_updated_at timestamptz default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  c public.cotizaciones%rowtype;
   v_fecha date := coalesce(p_fecha, private.hoy_argentina());
 begin
   perform private.exigir_usuario_activo();
-  perform private.exigir_ruta_pdf(p_id, p_pdf_path);
 
-  select fecha into v_fecha_cotizacion from public.cotizaciones where id = p_id;
-  if v_fecha_cotizacion is not null and v_fecha < v_fecha_cotizacion then
+  select * into c from public.cotizaciones where id = p_id for update;
+  if not found then
+    raise exception 'La cotización no existe' using errcode = 'P0001';
+  end if;
+  if c.estado not in ('borrador', 'enviada') then
+    raise exception 'Solo se puede aprobar una cotización en borrador o enviada' using errcode = 'P0001';
+  end if;
+  perform private.exigir_version(c.updated_at, p_updated_at);
+
+  if v_fecha < c.fecha then
     raise exception 'La fecha de aprobación no puede ser anterior a la cotización' using errcode = 'P0001';
   end if;
 
-  perform private.exigir_precios(p_id);
+  if c.origen = 'importada' then
+    if p_pdf_path is not null then
+      raise exception 'Una cotización cargada se aprueba con su PDF original' using errcode = 'P0001';
+    end if;
+  else
+    perform private.exigir_ruta_pdf(p_id, p_pdf_path);
+    perform private.exigir_precios(p_id);
+  end if;
 
   update public.cotizaciones set
     estado = 'aprobada',
     fecha_aprobacion = v_fecha,
     pdf_aprobado_path = p_pdf_path,
     presupuesto_estado = 'en_curso'
-  where id = p_id and estado in ('borrador', 'enviada');
-  if not found then
-    raise exception 'Solo se puede aprobar una cotización en borrador o enviada' using errcode = 'P0001';
-  end if;
+  where id = p_id;
 end;
 $$;
 
@@ -141,8 +184,8 @@ begin
 end;
 $$;
 
-grant execute on function public.marcar_enviada(uuid, text) to authenticated;
-grant execute on function public.aprobar_cotizacion(uuid, text, date) to authenticated;
+grant execute on function public.marcar_enviada(uuid, text, timestamptz) to authenticated;
+grant execute on function public.aprobar_cotizacion(uuid, text, date, timestamptz) to authenticated;
 grant execute on function public.rechazar_cotizacion(uuid) to authenticated;
 grant execute on function public.reabrir_cotizacion(uuid) to authenticated;
 grant execute on function public.revertir_aprobacion(uuid) to authenticated;

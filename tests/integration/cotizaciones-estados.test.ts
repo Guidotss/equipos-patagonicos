@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Json } from '@/lib/supabase/database.types'
 import { ITEMS_JORNADA, idsDeEjemplo } from './cotizaciones-helpers'
-import { borrarUsuario, crearUsuario, sql } from './helpers'
+import { borrarUsuario, conConexion, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 let activo: Awaited<ReturnType<typeof crearUsuario>>
@@ -34,6 +34,60 @@ async function estado(id: string) {
     [id],
   )
   return fila
+}
+
+/** El updated_at tal como lo devuelve la API (con microsegundos), que es lo que lee quien genera el PDF. */
+async function version(id: string): Promise<string> {
+  const { data, error } = await activo.client.from('cotizaciones').select('updated_at').eq('id', id).single()
+  if (error) throw error
+  return data.updated_at
+}
+
+/** Una cotización existente cargada como enviada: sin ítems y con su PDF original. */
+async function importada(): Promise<string> {
+  const [fila] = await sql<{ id: string }>(
+    `insert into public.cotizaciones (origen, estado, cliente_id, formato, fecha, archivo_original_path, notas)
+     values ('importada', 'enviada', $1, 'jornada', '2026-10-22', $2, $3)
+     returning id`,
+    [ids.cliente_id, `importadas/${crypto.randomUUID()}.pdf`, MARCA],
+  )
+  return fila.id
+}
+
+async function esperarBloqueadaPor(pid: number) {
+  for (let intento = 0; intento < 100; intento++) {
+    const [fila] = await sql<{ esperando: number }>(
+      'select count(*)::int as esperando from pg_stat_activity where $1 = any(pg_blocking_pids(pid))',
+      [pid],
+    )
+    if (fila.esperando > 0) return
+    await new Promise((resolver) => setTimeout(resolver, 50))
+  }
+  throw new Error('La llamada nunca quedó esperando a la otra transacción')
+}
+
+/**
+ * Corre `llamada` mientras otra transacción tiene a medio guardar la cotización (con un ítem sin precio)
+ * y confirma ese guardado recién cuando la llamada ya está esperando.
+ */
+async function contraGuardadoEnCurso<T>(id: string, llamada: () => PromiseLike<T>): Promise<T> {
+  return conConexion(async (otra) => {
+    await otra.query('begin')
+    await otra.query(`select set_config('request.jwt.claims', $1, true)`, [
+      JSON.stringify({ sub: activo.id, role: 'authenticated' }),
+    ])
+    await otra.query('set local role authenticated')
+    await otra.query('select public.guardar_cotizacion($1::jsonb, $2::jsonb, $3)', [
+      JSON.stringify({ cliente_id: ids.cliente_id, formato: 'jornada', fecha: '2026-10-22', notas: MARCA }),
+      JSON.stringify([{ descripcion: 'Sin precio', unidad: 'JORNADA' }]),
+      id,
+    ])
+    const [{ pid }] = (await otra.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
+    const resultado = Promise.resolve(llamada())
+    await esperarBloqueadaPor(pid)
+    await otra.query('commit')
+    return resultado
+  })
 }
 
 describe('enviar', () => {
@@ -91,6 +145,73 @@ describe('aprobar', () => {
     await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: `cotizaciones/${id}/a.pdf` })
     const { error } = await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: `cotizaciones/${id}/b.pdf` })
     expect(error?.message).toMatch(/Solo se puede aprobar/)
+  })
+})
+
+describe('cotizaciones cargadas', () => {
+  it('una enviada se aprueba sin ítems y su documento sigue siendo el PDF original', async () => {
+    const id = await importada()
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_fecha: '2026-10-25' })).error).toBeNull()
+    expect(await estado(id)).toEqual({
+      estado: 'aprobada',
+      fecha_aprobacion: '2026-10-25',
+      presupuesto_estado: 'en_curso',
+      pdf_aprobado_path: null,
+    })
+  })
+
+  it('no se le asocia un PDF generado por la app', async () => {
+    const id = await importada()
+    const { error } = await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: `cotizaciones/${id}/a.pdf` })
+    expect(error?.message).toMatch(/PDF original/)
+    expect((await estado(id)).estado).toBe('enviada')
+  })
+})
+
+describe('concurrencia', () => {
+  it('una cotización inexistente da un error claro', async () => {
+    const id = crypto.randomUUID()
+    const ruta = `cotizaciones/${id}/a.pdf`
+    expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: ruta })).error?.message).toMatch(/no existe/)
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: ruta })).error?.message).toMatch(/no existe/)
+  })
+
+  it('aprobar espera a un guardado en curso y valida los ítems que quedaron', async () => {
+    const id = await nueva()
+    const { error } = await contraGuardadoEnCurso(id, () =>
+      activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: `cotizaciones/${id}/a.pdf` }),
+    )
+    expect(error?.message).toMatch(/sin precio/)
+    expect((await estado(id)).estado).toBe('borrador')
+  })
+
+  it('marcar enviada espera a un guardado en curso y valida los ítems que quedaron', async () => {
+    const id = await nueva()
+    const { error } = await contraGuardadoEnCurso(id, () =>
+      activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: `cotizaciones/${id}/e.pdf` }),
+    )
+    expect(error?.message).toMatch(/sin precio/)
+    expect((await estado(id)).estado).toBe('borrador')
+  })
+
+  it('con la versión leída al generar el PDF, no envía ni aprueba si la cotización cambió después', async () => {
+    const id = await nueva()
+    const leida = await version(id)
+    const { error: errorGuardar } = await activo.client.rpc('guardar_cotizacion', {
+      p_id: id,
+      p_datos: { cliente_id: ids.cliente_id, formato: 'jornada', asunto: 'Otro asunto', notas: MARCA },
+      p_items: ITEMS_JORNADA,
+    })
+    expect(errorGuardar).toBeNull()
+
+    const ruta = `cotizaciones/${id}/a.pdf`
+    expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: ruta, p_updated_at: leida })).error?.message).toMatch(/cambió/)
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: ruta, p_updated_at: leida })).error?.message).toMatch(/cambió/)
+    expect((await estado(id)).estado).toBe('borrador')
+
+    expect((await activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: ruta, p_updated_at: await version(id) })).error).toBeNull()
+    expect((await activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: ruta, p_updated_at: await version(id) })).error).toBeNull()
+    expect((await estado(id)).estado).toBe('aprobada')
   })
 })
 
