@@ -1,7 +1,7 @@
 import 'server-only'
-import { type AuthError, isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
+import { esSesionInvalida } from '@/lib/auth/errores'
 import { createClient } from '@/lib/supabase/server'
 
 export type Rol = 'admin' | 'operador'
@@ -17,20 +17,6 @@ type EstadoSesion =
   | { estado: 'anonimo' }
   | { estado: 'inactivo'; email: string }
   | { estado: 'activo'; usuario: UsuarioActual }
-
-/**
- * getClaims da error tanto si la sesión no sirve (token adulterado, o vencido con el refresh
- * revocado: 4xx de Auth) como si Auth no respondió (red caída, 5xx, 429). Lo primero equivale
- * a no tener sesión; lo segundo no dice nada de la sesión y tiene que llegar al error boundary
- * (si se tratara como anónimo, el proxy, que sí validó la sesión, rebotaría /login a /).
- */
-function esSesionInvalida(error: AuthError): boolean {
-  return (
-    isAuthSessionMissingError(error) ||
-    error.name === 'AuthInvalidJwtError' ||
-    (isAuthApiError(error) && error.status >= 400 && error.status < 500 && error.status !== 429)
-  )
-}
 
 /** Valida la sesión con getClaims (nunca getSession en el servidor) y lee el perfil. */
 export const getEstadoSesion = cache(async (): Promise<EstadoSesion> => {

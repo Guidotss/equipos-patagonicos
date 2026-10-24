@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { esSesionInvalida } from '@/lib/auth/errores'
 import { publicEnv } from '@/lib/env'
 
 const RUTAS_PUBLICAS = ['/login']
@@ -35,7 +36,10 @@ export async function updateSession(request: NextRequest) {
   )
 
   // No poner código entre createServerClient y getClaims: esta llamada refresca la sesión.
-  const { data } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
+  // Si Auth no respondió no sabemos si hay sesión: se deja pasar y la página muestra el error
+  // (mandar al login confundiría: el login diría "contraseña incorrecta").
+  if (error && !esSesionInvalida(error)) return response
   const autenticado = Boolean(data?.claims)
   const { pathname, search } = request.nextUrl
 

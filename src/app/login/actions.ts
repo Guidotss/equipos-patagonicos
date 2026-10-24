@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { destinoSeguro } from '@/lib/auth/destino'
+import { mensajeErrorLogin } from '@/lib/auth/errores'
 import { createClient } from '@/lib/supabase/server'
 
 const esquema = z.object({
@@ -26,13 +27,13 @@ export async function iniciarSesion(_previo: EstadoLogin, formData: FormData): P
     email: datos.data.email,
     password: datos.data.password,
   })
-  if (error) return { error: 'Email o contraseña incorrectos' }
+  if (error) return { error: mensajeErrorLogin(error) }
 
   redirect(destinoSeguro(datos.data.next))
 }
 
 export async function cerrarSesion() {
   const supabase = await createClient()
-  await supabase.auth.signOut()
+  await supabase.auth.signOut({ scope: 'local' })
   redirect('/login')
 }
