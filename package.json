@@ -2,7 +2,9 @@
   "name": "equipos-patagonicos",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -22,6 +24,7 @@
     "usuario:crear": "node --env-file=.env.local scripts/crear-usuario.mjs"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "class-variance-authority": "^0.7.1",
@@ -50,6 +53,7 @@
     "supabase": "^2.122.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "unpdf": "^1.9.1",
     "vitest": "^5.0.5"
   }
 }
