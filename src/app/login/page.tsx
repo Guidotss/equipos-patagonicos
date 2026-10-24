@@ -23,7 +23,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           />
         </div>
         <div className="relative max-w-xl space-y-3">
-          <p className="text-4xl leading-[1.1] font-bold tracking-tight lg:max-w-[31rem] lg:text-[4.25rem]">Administración y logística</p>
+          {/* min(): a 1200 px mide como la referencia; entre 1024 y 1073 px "Administración" no entraría a 68 px. */}
+          <p className="text-4xl leading-[1.1] font-bold tracking-tight wrap-break-word lg:max-w-[31rem] lg:text-[min(4.25rem,6vw)]">
+            Administración y logística
+          </p>
           <p className="text-lg text-white/80 lg:text-2xl">Cotizaciones, presupuestos y cobranzas de Equipos Patagónicos.</p>
         </div>
         <p className="relative hidden text-white/80 lg:block">Neuquén · Argentina</p>
