@@ -88,3 +88,61 @@ describe('documentos', () => {
     ).rejects.toThrow(/solo cancela facturas/)
   })
 })
+
+describe('cambios en un documento del que dependen otros', () => {
+  const cambiarCliente = (id: string) =>
+    sql('update public.documentos set cliente_id = $1 where id = $2', [ids.cliente_con_contacto_id, id])
+
+  it('una factura con órdenes de pago aplicadas no pasa a nota de crédito ni cambia de cliente; la OP tampoco', async () => {
+    const factura = await insertar({ cliente_id: ids.cliente_id, tipo: 'factura', monto: 100, tipo_comprobante: 'FA' })
+    const op = await insertar({ cliente_id: ids.cliente_id, tipo: 'orden_pago', monto: 100 })
+    await sql('insert into public.op_facturas (op_id, factura_id, monto_aplicado) values ($1, $2, 50)', [op.id, factura.id])
+
+    await expect(sql(`update public.documentos set tipo_comprobante = 'NC' where id = $1`, [factura.id])).rejects.toThrow(
+      /órdenes de pago aplicadas/,
+    )
+    await expect(cambiarCliente(factura.id)).rejects.toThrow(/órdenes de pago aplicadas/)
+    await expect(cambiarCliente(op.id)).rejects.toThrow(/cancela facturas/)
+    await expect(sql(`update public.documentos set tipo_comprobante = 'FCE_A' where id = $1`, [factura.id])).resolves.toEqual([])
+  })
+
+  it('una factura que cubre remitos sigue siendo factura del mismo cliente', async () => {
+    const factura = await insertar({ cliente_id: ids.cliente_id, tipo: 'factura', monto: 100, tipo_comprobante: 'FA' })
+    const remito = await insertar({ cliente_id: ids.cliente_id, tipo: 'remito' })
+    await sql('update public.documentos set factura_id = $1 where id = $2', [factura.id, remito.id])
+
+    await expect(
+      sql(`update public.documentos set tipo = 'orden_compra', monto = null, tipo_comprobante = null where id = $1`, [factura.id]),
+    ).rejects.toThrow(/cubre remitos/)
+    await expect(cambiarCliente(factura.id)).rejects.toThrow(/cubre remitos/)
+  })
+
+  it('un documento no pasa a otro cliente que el de sus presupuestos', async () => {
+    const presupuesto = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
+    const { id } = await insertar({ cliente_id: ids.cliente_id, tipo: 'orden_compra' })
+    await sql('insert into public.documento_presupuestos (documento_id, cotizacion_id) values ($1, $2)', [id, presupuesto])
+
+    await expect(cambiarCliente(id)).rejects.toThrow(/presupuestos de otro cliente/)
+  })
+
+  it('un anulado vuelve solo si sigue vinculado a presupuestos aprobados', async () => {
+    const presupuesto = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
+    const { id } = await insertar({ cliente_id: ids.cliente_id, tipo: 'orden_compra' })
+    await sql('insert into public.documento_presupuestos (documento_id, cotizacion_id) values ($1, $2)', [id, presupuesto])
+    const anular = () => sql('update public.documentos set deleted_at = now() where id = $1', [id])
+    const restaurar = () => sql('update public.documentos set deleted_at = null where id = $1', [id])
+
+    await anular()
+    await expect(restaurar()).resolves.toEqual([])
+
+    await anular()
+    await sql(
+      `update public.cotizaciones set estado = 'borrador', fecha_aprobacion = null, presupuesto_estado = null where id = $1`,
+      [presupuesto],
+    )
+    await expect(restaurar()).rejects.toThrow(/No se puede restaurar/)
+
+    await sql('delete from public.cotizaciones where id = $1', [presupuesto])
+    await expect(restaurar()).rejects.toThrow(/No se puede restaurar/)
+  })
+})
