@@ -42,6 +42,12 @@ Supabase Studio local: http://127.0.0.1:54323
 - El PDF replica los formatos reales (mensual y por jornada) con la fuente Carlito (`assets/fonts`, licencia OFL) y el logo de `assets/`. Al enviar y al aprobar se guarda una copia en Storage (`documentos/cotizaciones/<id>/`).
 - `GET /cotizaciones/<id>/pdf` muestra el PDF (`?descargar=1` para bajarlo, `?envio=<id>` para un envío anterior).
 
+## Presupuestos y documentos
+
+- Un presupuesto es una cotización aprobada. Se le cargan órdenes de compra, remitos, facturas y órdenes de pago, cada uno con uno o más archivos (PDF, JPG o PNG de hasta 10 MB). Un documento puede vincularse a varios presupuestos del mismo cliente (por ejemplo, una OC abierta o una OP que paga varias facturas).
+- La factura indica qué remitos cubre y la orden de pago qué facturas cancela y por cuánto. `v_facturas` calcula el saldo de cada factura y `v_presupuestos` los indicadores de cada presupuesto.
+- Los archivos se suben directo del navegador a Storage con una URL firmada; la base toma tamaño y tipo de Storage. Anular un documento es lógico: los archivos nunca se borran.
+
 ## Seguridad
 
 - El registro público está deshabilitado: los usuarios se crean con `usuario:crear` (o desde el panel de Supabase) y nacen inactivos hasta que se los activa.
