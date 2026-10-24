@@ -31,7 +31,15 @@ export function CamposCliente({ estado, inicial }: { estado: EstadoFormulario; i
         <Input id="cuit" name="cuit" inputMode="numeric" defaultValue={valor('cuit')} aria-invalid={Boolean(error('cuit'))} />
       </Campo>
       <Campo id="condicion_iva" etiqueta="Condición frente al IVA" error={error('condicion_iva')}>
-        <NativeSelect id="condicion_iva" name="condicion_iva" defaultValue={valor('condicion_iva')} className="w-full">
+        {/* React no actualiza el defaultValue de un <select> ya montado y el reset del form tras la acción
+            volvería al valor del montaje: la key lo remonta cuando cambia (lo enviado o lo guardado). */}
+        <NativeSelect
+          key={valor('condicion_iva')}
+          id="condicion_iva"
+          name="condicion_iva"
+          defaultValue={valor('condicion_iva')}
+          className="w-full"
+        >
           <NativeSelectOption value="">Sin especificar</NativeSelectOption>
           {Object.entries(CONDICIONES_IVA).map(([clave, etiqueta]) => (
             <NativeSelectOption key={clave} value={clave}>
