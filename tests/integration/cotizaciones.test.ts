@@ -1,6 +1,6 @@
 // tests/integration/cotizaciones.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { idsDeEjemplo } from './cotizaciones-helpers'
+import { ITEMS_JORNADA, idsDeEjemplo } from './cotizaciones-helpers'
 import { adminClient, borrarUsuario, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
@@ -114,5 +114,115 @@ describe('tablas de cotizaciones', () => {
 
     const pisada = await activo.client.storage.from('documentos').upload(ruta, pdf, { upsert: true })
     expect(pisada.error).not.toBeNull()
+  })
+})
+
+describe('guardar, duplicar y borrar', () => {
+  function datosBase(extra: Record<string, unknown> = {}) {
+    return {
+      cliente_id: ids.cliente_id,
+      formato: 'jornada',
+      equipo_id: ids.equipo_id,
+      firmante_id: ids.firmante_id,
+      plantilla_id: ids.plantilla_jornada_id,
+      asunto: 'Cotización N° {{numero}}',
+      datos: { ubicacion: 'Ruta 7 y Ruta 5, Neuquén' },
+      bloques: [{ titulo: 'Alcance', contenido: '- Equipo' }],
+      notas: MARCA,
+      ...extra,
+    }
+  }
+
+  it('crea una cotización con sus ítems y registra quién la creó', async () => {
+    const { data: id, error } = await activo.client.rpc('guardar_cotizacion', { p_datos: datosBase(), p_items: ITEMS_JORNADA })
+    expect(error).toBeNull()
+
+    const [cabecera] = await sql<{ estado: string; created_by: string; origen: string }>(
+      'select estado, created_by, origen from public.cotizaciones where id = $1',
+      [id],
+    )
+    expect(cabecera).toEqual({ estado: 'borrador', created_by: activo.id, origen: 'app' })
+
+    const items = await sql<{ orden: number }>(
+      'select orden from public.cotizacion_items where cotizacion_id = $1 order by orden',
+      [id],
+    )
+    expect(items.map((i) => i.orden)).toEqual([1, 2, 3])
+  })
+
+  it('al guardar de nuevo reemplaza los ítems', async () => {
+    const { data: id } = await activo.client.rpc('guardar_cotizacion', { p_datos: datosBase(), p_items: ITEMS_JORNADA })
+    const { error } = await activo.client.rpc('guardar_cotizacion', {
+      p_id: id!,
+      p_datos: datosBase({ asunto: 'Nuevo asunto' }),
+      p_items: [ITEMS_JORNADA[0]],
+    })
+    expect(error).toBeNull()
+    const [fila] = await sql<{ asunto: string; items: string }>(
+      `select asunto, (select count(*) from public.cotizacion_items where cotizacion_id = $1) as items
+       from public.cotizaciones where id = $1`,
+      [id],
+    )
+    expect(fila).toEqual({ asunto: 'Nuevo asunto', items: '1' })
+  })
+
+  it('rechaza un contacto de otro cliente', async () => {
+    const { error } = await activo.client.rpc('guardar_cotizacion', {
+      p_datos: datosBase({ contacto_id: ids.contacto_id }),
+      p_items: [],
+    })
+    expect(error?.message).toMatch(/no pertenece al cliente/)
+  })
+
+  it('un usuario inactivo no puede guardar', async () => {
+    const { error } = await inactivo.client.rpc('guardar_cotizacion', { p_datos: datosBase(), p_items: [] })
+    expect(error?.code).toBe('42501')
+  })
+
+  it('una aprobada no se puede editar por RPC', async () => {
+    const { id } = await insertarComoPostgres({ estado: 'aprobada', fecha_aprobacion: '2026-10-22', presupuesto_estado: 'en_curso' })
+    const { error } = await activo.client.rpc('guardar_cotizacion', { p_id: id, p_datos: datosBase(), p_items: [] })
+    expect(error?.message).toMatch(/ya no se puede editar/)
+  })
+
+  it('duplicar con el mismo cliente enlaza la renegociación y copia ítems con precios', async () => {
+    const { data: original } = await activo.client.rpc('guardar_cotizacion', { p_datos: datosBase(), p_items: ITEMS_JORNADA })
+    const { data: copia, error } = await activo.client.rpc('duplicar_cotizacion', { p_id: original! })
+    expect(error).toBeNull()
+    await sql('update public.cotizaciones set notas = $1 where id = $2', [MARCA, copia])
+
+    const [fila] = await sql<{ reemplaza_a: string; estado: string }>(
+      'select reemplaza_a, estado from public.cotizaciones where id = $1',
+      [copia],
+    )
+    expect(fila).toEqual({ reemplaza_a: original, estado: 'borrador' })
+    const precios = await sql<{ precio_unitario: string }>(
+      'select precio_unitario from public.cotizacion_items where cotizacion_id = $1 order by orden',
+      [copia],
+    )
+    expect(precios.map((p) => Number(p.precio_unitario))).toEqual([1950000, 2800000, 2530000])
+  })
+
+  it('duplicar para otro cliente no copia contacto ni enlaza', async () => {
+    const { data: original } = await activo.client.rpc('guardar_cotizacion', {
+      p_datos: datosBase({ cliente_id: ids.cliente_con_contacto_id, contacto_id: ids.contacto_id }),
+      p_items: ITEMS_JORNADA,
+    })
+    const { data: copia } = await activo.client.rpc('duplicar_cotizacion', { p_id: original!, p_cliente_id: ids.cliente_id })
+    await sql('update public.cotizaciones set notas = $1 where id = $2', [MARCA, copia])
+    const [fila] = await sql<{ contacto_id: string | null; reemplaza_a: string | null; cliente_id: string }>(
+      'select contacto_id, reemplaza_a, cliente_id from public.cotizaciones where id = $1',
+      [copia],
+    )
+    expect(fila).toEqual({ contacto_id: null, reemplaza_a: null, cliente_id: ids.cliente_id })
+  })
+
+  it('solo se borran borradores', async () => {
+    const { data: id } = await activo.client.rpc('guardar_cotizacion', { p_datos: datosBase(), p_items: [] })
+    expect((await activo.client.rpc('borrar_cotizacion', { p_id: id! })).error).toBeNull()
+
+    const { id: enviada } = await insertarComoPostgres({ estado: 'enviada' })
+    const { error } = await activo.client.rpc('borrar_cotizacion', { p_id: enviada })
+    expect(error?.message).toMatch(/Solo se pueden borrar/)
   })
 })

@@ -315,7 +315,10 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "buscar_clientes":
+            "borrar_cotizacion":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"buscar_clientes":
 { Args: { "limite"?: number,"texto"?: string }; Returns: {
               "activo": boolean,
 "condicion_iva": string | null,
@@ -338,7 +341,13 @@ isOneToOne: false
         to: "clientes"
         isOneToOne: false
         isSetofReturn: true
-      } }
+      } },
+"duplicar_cotizacion":
+{ Args: { "p_cliente_id"?: string,"p_id": string }; Returns: string
+                           },
+"guardar_cotizacion":
+{ Args: { "p_datos": Json,"p_id"?: string,"p_items": Json }; Returns: string
+                           }
           }
           Enums: {
             [_ in never]: never
