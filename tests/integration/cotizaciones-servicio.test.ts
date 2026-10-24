@@ -1,6 +1,7 @@
 // tests/integration/cotizaciones-servicio.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ErrorCotizacion, aprobarCotizacion, enviarCotizacion, pdfParaMostrar } from '@/lib/cotizaciones/servicio'
+import type { Json } from '@/lib/supabase/database.types'
 import { ITEMS_JORNADA, idsDeEjemplo } from './cotizaciones-helpers'
 import { adminClient, borrarUsuario, crearUsuario, sql } from './helpers'
 
@@ -27,7 +28,7 @@ afterAll(async () => {
   await borrarUsuario(activo.id)
 })
 
-async function nueva(datos: Record<string, unknown> = {}): Promise<string> {
+async function nueva(datos: Record<string, unknown> = {}, items: Json[] = ITEMS_JORNADA): Promise<string> {
   const { data, error } = await activo.client.rpc('guardar_cotizacion', {
     p_datos: {
       cliente_id: ids.cliente_id,
@@ -42,7 +43,7 @@ async function nueva(datos: Record<string, unknown> = {}): Promise<string> {
       notas: MARCA,
       ...datos,
     },
-    p_items: ITEMS_JORNADA,
+    p_items: items,
   })
   if (error) throw error
   return data
@@ -51,6 +52,20 @@ async function nueva(datos: Record<string, unknown> = {}): Promise<string> {
 async function numero(id: string) {
   const [fila] = await sql<{ numero: string }>('select numero from public.cotizaciones where id = $1', [id])
   return fila.numero
+}
+
+async function subidos(id: string) {
+  return sql<{ name: string }>(`select name from storage.objects where name like $1 order by name`, [`cotizaciones/${id}/%`])
+}
+
+/** Exige que la operación se rechace con un ErrorCotizacion (mensaje para el usuario) con ese texto. */
+async function rechazaCon(operacion: Promise<unknown>, mensaje: string) {
+  const error = await operacion.then(
+    () => undefined,
+    (e: unknown) => e,
+  )
+  expect(error).toBeInstanceOf(ErrorCotizacion)
+  expect((error as Error).message).toBe(mensaje)
 }
 
 describe('servicio de cotizaciones', () => {
@@ -88,6 +103,51 @@ describe('servicio de cotizaciones', () => {
     expect(fila.estado).toBe('borrador')
     const subidos = await sql(`select 1 from storage.objects where name like $1`, [`cotizaciones/${id}/%`])
     expect(subidos).toEqual([])
+  })
+
+  // Lo que la base rechazaría se frena antes de generar el PDF: un PDF subido no se puede borrar desde la app.
+  it('no envía ni aprueba sin ítems o con ítems sin precio, y no sube nada', async () => {
+    const sinItems = await nueva({}, [])
+    const sinPrecio = await nueva({}, [ITEMS_JORNADA[0], { ...ITEMS_JORNADA[1], precio_unitario: null }])
+
+    await rechazaCon(enviarCotizacion(activo.client, sinItems), 'La cotización no tiene ítems')
+    await rechazaCon(aprobarCotizacion(activo.client, sinItems, '2026-10-23'), 'La cotización no tiene ítems')
+    await rechazaCon(enviarCotizacion(activo.client, sinPrecio), 'Hay ítems sin precio')
+    await rechazaCon(aprobarCotizacion(activo.client, sinPrecio, '2026-10-23'), 'Hay ítems sin precio')
+
+    expect(await subidos(sinItems)).toEqual([])
+    expect(await subidos(sinPrecio)).toEqual([])
+  })
+
+  it('no aprueba con una fecha inválida o anterior a la de la cotización, y no sube nada', async () => {
+    const id = await nueva()
+
+    await rechazaCon(aprobarCotizacion(activo.client, id, '2026-10-21'), 'La fecha de aprobación no puede ser anterior a la cotización')
+    await rechazaCon(aprobarCotizacion(activo.client, id, ''), 'La fecha de aprobación no es válida')
+    await rechazaCon(aprobarCotizacion(activo.client, id, '2026-11-31'), 'La fecha de aprobación no es válida')
+
+    const [fila] = await sql<{ estado: string }>('select estado from public.cotizaciones where id = $1', [id])
+    expect(fila.estado).toBe('borrador')
+    expect(await subidos(id)).toEqual([])
+  })
+
+  it('no envía ni vuelve a aprobar una aprobada, no envía un presupuesto directo, y no sube nada más', async () => {
+    const id = await nueva()
+    await aprobarCotizacion(activo.client, id, '2026-10-23')
+    const antes = await subidos(id)
+    expect(antes).toHaveLength(1)
+
+    await rechazaCon(enviarCotizacion(activo.client, id), 'Solo se puede enviar una cotización en borrador o ya enviada')
+    await rechazaCon(aprobarCotizacion(activo.client, id, '2026-10-23'), 'Solo se puede aprobar una cotización en borrador o enviada')
+    expect(await subidos(id)).toEqual(antes)
+
+    const { data: directo, error } = await activo.client.rpc('presupuesto_directo', {
+      p_datos: { cliente_id: ids.cliente_id, asunto: 'Izaje urgente acordado por teléfono', notas: MARCA },
+      p_items: [ITEMS_JORNADA[0]],
+    })
+    expect(error).toBeNull()
+    await rechazaCon(enviarCotizacion(activo.client, directo!), 'Solo se puede enviar una cotización en borrador o ya enviada')
+    expect(await subidos(directo!)).toEqual([])
   })
 
   it('aprobar congela el PDF y después se sirve ese mismo archivo', async () => {

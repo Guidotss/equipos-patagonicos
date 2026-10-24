@@ -3,6 +3,8 @@
 // (el de la sesión del usuario), así respeta la RLS y se puede probar en integración.
 // No importar 'server-only' acá: Vitest lo carga.
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { hoyArgentina } from '@/lib/format/fechas'
 import { leerBloques, type Formato, type Unidad } from '@/lib/plantillas/contenido'
 import { VARIABLES } from '@/lib/plantillas/variables'
 import { nombreArchivoCotizacion } from '@/lib/pdf/nombre-archivo'
@@ -72,6 +74,37 @@ async function cargarOFallar(supabase: Cliente, id: string) {
   return cargada
 }
 
+type Fila = NonNullable<Awaited<ReturnType<typeof cargarFuente>>>['fila']
+
+const ABIERTAS = ['borrador', 'enviada']
+
+// Lo que la base va a rechazar y ya se ve en la fila cargada se revisa antes de generar y subir el PDF,
+// con los mismos mensajes: un PDF subido no se puede borrar desde la app y quedaría huérfano. La base
+// sigue siendo la que decide (bloquea la fila y vuelve a validar todo); solo un cambio entre la lectura
+// y la RPC puede dejar un archivo de más.
+
+function exigirPrecios(fila: Fila) {
+  if (!fila.items.length) throw new ErrorCotizacion('La cotización no tiene ítems')
+  if (fila.items.some((item) => item.precio_unitario === null)) throw new ErrorCotizacion('Hay ítems sin precio')
+}
+
+function exigirEnviable(fila: Fila) {
+  if (!ABIERTAS.includes(fila.estado)) {
+    throw new ErrorCotizacion('Solo se puede enviar una cotización en borrador o ya enviada')
+  }
+  if (fila.origen !== 'app') {
+    throw new ErrorCotizacion('Una cotización cargada no se envía desde la app: su documento es el PDF original')
+  }
+  exigirPrecios(fila)
+}
+
+function exigirAprobable(fila: Fila, fecha: string) {
+  if (!ABIERTAS.includes(fila.estado)) throw new ErrorCotizacion('Solo se puede aprobar una cotización en borrador o enviada')
+  if (!z.iso.date().safeParse(fecha).success) throw new ErrorCotizacion('La fecha de aprobación no es válida')
+  if (fecha < fila.fecha) throw new ErrorCotizacion('La fecha de aprobación no puede ser anterior a la cotización')
+  if (fila.origen !== 'importada') exigirPrecios(fila)
+}
+
 /** Arma el documento y exige que no queden variables sin completar ni mal escritas (informa todas juntas). */
 function documentoCompleto(fuente: FuenteDocumento): DocumentoCotizacion {
   const documento = armarDocumento(fuente)
@@ -98,7 +131,7 @@ function errorDeRpc(error: { code?: string; message: string }) {
 /** Genera el PDF, lo guarda como lo que recibió el cliente y marca la cotización como enviada. */
 export async function enviarCotizacion(supabase: Cliente, id: string): Promise<void> {
   const { fila, fuente } = await cargarOFallar(supabase, id)
-  if (fila.origen !== 'app') throw new ErrorCotizacion('Una cotización cargada no se envía desde la app: su documento es el PDF original')
+  exigirEnviable(fila)
 
   const pdf = await renderizarCotizacion(documentoCompleto(fuente))
   const ruta = `cotizaciones/${id}/enviada-${Date.now()}.pdf`
@@ -110,12 +143,19 @@ export async function enviarCotizacion(supabase: Cliente, id: string): Promise<v
 /**
  * Aprueba (la cotización queda congelada). Si se armó en la app, genera y guarda el PDF definitivo;
  * si es una cotización cargada, se aprueba con su PDF original y no se genera nada.
+ * Sin fecha, se aprueba con la de hoy en Argentina (como haría la base), ya validada.
  */
 export async function aprobarCotizacion(supabase: Cliente, id: string, fecha?: string): Promise<void> {
   const { fila, fuente } = await cargarOFallar(supabase, id)
+  const fechaAprobacion = fecha ?? hoyArgentina()
+  exigirAprobable(fila, fechaAprobacion)
 
   if (fila.origen === 'importada') {
-    const { error } = await supabase.rpc('aprobar_cotizacion', { p_id: id, p_updated_at: fila.updated_at, p_fecha: fecha })
+    const { error } = await supabase.rpc('aprobar_cotizacion', {
+      p_id: id,
+      p_updated_at: fila.updated_at,
+      p_fecha: fechaAprobacion,
+    })
     if (error) throw errorDeRpc(error)
     return
   }
@@ -127,7 +167,7 @@ export async function aprobarCotizacion(supabase: Cliente, id: string, fecha?: s
     p_id: id,
     p_updated_at: fila.updated_at,
     p_pdf_path: ruta,
-    p_fecha: fecha,
+    p_fecha: fechaAprobacion,
   })
   if (error) throw errorDeRpc(error)
 }
