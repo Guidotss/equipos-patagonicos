@@ -4,9 +4,10 @@
 --
 -- Enviar y aprobar bloquean la fila (FOR UPDATE) antes de validar. Como guardar_cotizacion actualiza la
 -- cabecera antes de reemplazar los ítems, el bloqueo espera a que termine un guardado en curso y las
--- validaciones ven los ítems que quedaron. p_updated_at (opcional) es el updated_at leído al generar el
--- PDF, tal como lo devuelve la API (sin pasar por Date, que pierde los microsegundos): si la cotización
--- cambió desde entonces, el PDF ya no refleja lo guardado y no se registra.
+-- validaciones ven los ítems que quedaron. p_updated_at (obligatorio) es el updated_at de la fila con la
+-- que se generó el PDF: si la cotización cambió desde entonces, el PDF ya no refleja lo guardado y no se
+-- registra. Se compara al milisegundo para que pasarlo por un Date de JS (que pierde los microsegundos)
+-- no lo invalide.
 
 create or replace function private.exigir_precios(p_id uuid)
 returns void
@@ -46,13 +47,18 @@ immutable
 set search_path = ''
 as $$
 begin
-  if p_leida is not null and p_leida <> p_actual then
+  if p_leida is null then
+    raise exception 'Falta la versión de la cotización' using errcode = 'P0001';
+  end if;
+  if date_trunc('milliseconds', p_leida, 'UTC') <> date_trunc('milliseconds', p_actual, 'UTC') then
     raise exception 'La cotización cambió mientras se generaba el PDF; volvé a intentarlo' using errcode = 'P0001';
   end if;
 end;
 $$;
 
-create or replace function public.marcar_enviada(p_id uuid, p_pdf_path text, p_updated_at timestamptz default null)
+-- Solo se envían las cotizaciones armadas en la app: lo que recibió el cliente de una cargada es su PDF
+-- original, y un envío con un PDF generado haría que se apruebe con un documento que no es el último enviado.
+create or replace function public.marcar_enviada(p_id uuid, p_pdf_path text, p_updated_at timestamptz)
 returns void
 language plpgsql
 security definer
@@ -70,6 +76,9 @@ begin
   if c.estado not in ('borrador', 'enviada') then
     raise exception 'Solo se puede enviar una cotización en borrador o ya enviada' using errcode = 'P0001';
   end if;
+  if c.origen <> 'app' then
+    raise exception 'Una cotización cargada no se envía desde la app: su documento es el PDF original' using errcode = 'P0001';
+  end if;
   perform private.exigir_version(c.updated_at, p_updated_at);
   perform private.exigir_ruta_pdf(p_id, p_pdf_path);
   perform private.exigir_precios(p_id);
@@ -79,13 +88,14 @@ begin
 end;
 $$;
 
--- Una cotización cargada (importada) no tiene ítems: su documento es el PDF original, así que se aprueba
--- sin exigir precios y sin PDF generado (pdf_aprobado_path queda null).
+-- Una cotización cargada (importada) se aprueba con su PDF original, que es lo que recibió el cliente
+-- (marcar_enviada no le registra envíos): sin exigir precios y sin PDF generado (pdf_aprobado_path queda
+-- null). p_updated_at es el updated_at de la fila que se vio al decidir aprobar.
 create or replace function public.aprobar_cotizacion(
   p_id uuid,
+  p_updated_at timestamptz,
   p_pdf_path text default null,
-  p_fecha date default null,
-  p_updated_at timestamptz default null
+  p_fecha date default null
 )
 returns void
 language plpgsql
@@ -185,7 +195,7 @@ end;
 $$;
 
 grant execute on function public.marcar_enviada(uuid, text, timestamptz) to authenticated;
-grant execute on function public.aprobar_cotizacion(uuid, text, date, timestamptz) to authenticated;
+grant execute on function public.aprobar_cotizacion(uuid, timestamptz, text, date) to authenticated;
 grant execute on function public.rechazar_cotizacion(uuid) to authenticated;
 grant execute on function public.reabrir_cotizacion(uuid) to authenticated;
 grant execute on function public.revertir_aprobacion(uuid) to authenticated;

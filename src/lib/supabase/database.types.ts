@@ -316,7 +316,7 @@ isOneToOne: false
           }
           Functions: {
             "aprobar_cotizacion":
-{ Args: { "p_fecha"?: string,"p_id": string,"p_pdf_path"?: string,"p_updated_at"?: string }; Returns: undefined
+{ Args: { "p_fecha"?: string,"p_id": string,"p_pdf_path"?: string,"p_updated_at": string }; Returns: undefined
                            },
 "borrar_cotizacion":
 { Args: { "p_id": string }; Returns: undefined
@@ -352,7 +352,7 @@ isOneToOne: false
 { Args: { "p_datos": Json,"p_id"?: string,"p_items": Json }; Returns: string
                            },
 "marcar_enviada":
-{ Args: { "p_id": string,"p_pdf_path": string,"p_updated_at"?: string }; Returns: undefined
+{ Args: { "p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: undefined
                            },
 "reabrir_cotizacion":
 { Args: { "p_id": string }; Returns: undefined
