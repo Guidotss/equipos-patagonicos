@@ -402,6 +402,7 @@ export function reducirEditor(estado: EstadoEditor, accion: AccionEditor): Estad
       return { ...estado, items: insertar(estado.items, indice >= 0 ? indice + 1 : estado.items.length, nuevo) }
     }
     case 'item':
+      if (!estado.items.some((item) => item.clave === accion.clave)) return estado
       return {
         ...estado,
         items: estado.items.map((item) =>
@@ -413,6 +414,7 @@ export function reducirEditor(estado: EstadoEditor, accion: AccionEditor): Estad
       return items === estado.items ? estado : { ...estado, items }
     }
     case 'quitarItem':
+      if (!estado.items.some((item) => item.clave === accion.clave)) return estado
       return { ...estado, items: estado.items.filter((item) => item.clave !== accion.clave) }
     case 'duplicarItem': {
       const indice = estado.items.findIndex((item) => item.clave === accion.clave)
@@ -429,6 +431,7 @@ export function reducirEditor(estado: EstadoEditor, accion: AccionEditor): Estad
       return { ...estado, items: [...estado.items, nuevo] }
     }
     case 'bloque':
+      if (!estado.bloques.some((bloque) => bloque.clave === accion.clave)) return estado
       return {
         ...estado,
         bloques: estado.bloques.map((bloque) =>

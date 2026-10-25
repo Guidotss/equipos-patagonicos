@@ -524,6 +524,13 @@ describe('reducirEditor', () => {
     expect(despues.items).toEqual(antes.items.slice(1))
   })
 
+  it('con una clave que ya no existe, item, quitarItem y bloque devuelven el mismo estado', () => {
+    const antes = completa()
+    expect(reducirEditor(antes, { tipo: 'item', clave: 'no-existe', cambios: { precio: '1' } })).toBe(antes)
+    expect(reducirEditor(antes, { tipo: 'quitarItem', clave: 'no-existe' })).toBe(antes)
+    expect(reducirEditor(antes, { tipo: 'bloque', clave: 'no-existe', cambios: { oculto: true } })).toBe(antes)
+  })
+
   it('duplicarItem: la copia va debajo con otra clave', () => {
     const antes = completa()
     const despues = reducirEditor(antes, { tipo: 'duplicarItem', clave: antes.items[0].clave })
