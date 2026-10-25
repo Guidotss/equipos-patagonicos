@@ -65,3 +65,36 @@ describe('PDF por jornada', () => {
     expect(texto.indexOf('Precios Jornada Adicional:')).toBeLessThan(texto.indexOf('Forma de pago'))
   }, 20_000)
 })
+
+describe('bloques ocultos', () => {
+  it('un bloque oculto no sale en el PDF (por jornada y mensual)', async () => {
+    const jornada = {
+      ...EJEMPLO_JORNADA,
+      cotizacion: {
+        ...EJEMPLO_JORNADA.cotizacion,
+        bloques: EJEMPLO_JORNADA.cotizacion.bloques.map((bloque) =>
+          bloque.titulo === 'Alcance' ? { ...bloque, oculto: true } : bloque,
+        ),
+      },
+    }
+    const textoJornada = await textoDelPdf(await renderizarCotizacion(armarDocumento(jornada)))
+    expect(textoJornada).toContain('Equipo ofrecido:')
+    expect(textoJornada).toContain('Forma de pago: a 30 - 45 días F.F.')
+    expect(textoJornada).not.toContain('Alcance')
+    expect(textoJornada).not.toContain('Prestación mínima 8 hs')
+
+    const mensual = {
+      ...EJEMPLO_MENSUAL,
+      cotizacion: {
+        ...EJEMPLO_MENSUAL.cotizacion,
+        bloques: EJEMPLO_MENSUAL.cotizacion.bloques.map((bloque) =>
+          bloque.titulo === 'RENEGOCIACIÓN DE TARIFAS' ? { ...bloque, oculto: true } : bloque,
+        ),
+      },
+    }
+    const textoMensual = await textoDelPdf(await renderizarCotizacion(armarDocumento(mensual)))
+    expect(textoMensual).toContain('CONDICIONES PARA LA CONTRATACIÓN DE SERVICIOS')
+    expect(textoMensual).not.toContain('RENEGOCIACIÓN DE TARIFAS')
+    expect(textoMensual).not.toContain('con base en junio 2026')
+  }, 20_000)
+})

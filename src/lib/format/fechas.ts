@@ -33,6 +33,32 @@ export function fechaEnLetras(iso: string): string {
   return `${dia} de ${MESES[mes - 1]} de ${anio}`
 }
 
+/** true si es una fecha 'YYYY-MM-DD' que existe (la misma regla que usan las funciones de este archivo). */
+export function esFecha(iso: string): boolean {
+  try {
+    partes(iso)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// 'YYYY-MM' como lo devuelve <input type="month">. El año arranca en 1000 por la misma razón que en `partes`.
+const PATRON_MES = /^([1-9]\d{3})-(0[1-9]|1[0-2])$/
+
+/** true si es un mes 'YYYY-MM' válido. */
+export function esMes(mes: string): boolean {
+  return PATRON_MES.test(mes)
+}
+
+/** "2026-11" → "noviembre de 2026" (como se escribe la próxima actualización en el PDF); "" → "". */
+export function mesEnLetras(mes: string): string {
+  if (mes === '') return ''
+  const m = PATRON_MES.exec(mes)
+  if (!m) throw new Error(`Mes inválido: ${mes}`)
+  return `${MESES[Number(m[2]) - 1]} de ${m[1]}`
+}
+
 /** "Neuquén, 22 de octubre de 2026." */
 export function encabezadoFecha(ciudad: string, iso: string): string {
   return `${ciudad}, ${fechaEnLetras(iso)}.`

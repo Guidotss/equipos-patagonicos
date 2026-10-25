@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { exito, falloBase, falloValidacion, leerCampos, valorCampo } from './formularios'
+import { erroresPorRuta, exito, falloBase, falloValidacion, leerCampos, valorCampo } from './formularios'
 
 describe('leerCampos', () => {
   it('lee los campos pedidos y usa "" para los que faltan o son archivos', () => {
@@ -24,6 +24,68 @@ describe('falloValidacion', () => {
       errores: { nombre: 'Ingresá el nombre', email: 'Email inválido' },
       valores,
     })
+  })
+})
+
+describe('erroresPorRuta', () => {
+  const esquema = z.object({
+    cliente: z.string().min(1, 'Elegí el cliente'),
+    items: z.array(
+      z.object({
+        descripcion: z.string().min(1, 'Falta la descripción'),
+        precio: z.number('Precio inválido').nonnegative('El precio no puede ser negativo'),
+      }),
+    ),
+    datos: z.object({ ubicacion: z.string().max(3, 'Máximo 3 caracteres') }),
+  })
+
+  function errores(valor: unknown) {
+    const resultado = esquema.safeParse(valor)
+    if (resultado.success) throw new Error('debería fallar')
+    return erroresPorRuta(resultado.error)
+  }
+
+  it('usa la ruta completa como clave, con los índices de las listas', () => {
+    expect(
+      errores({
+        cliente: '',
+        items: [
+          { descripcion: 'Jornada', precio: 1 },
+          { descripcion: '', precio: -1 },
+          { descripcion: 'Viaje', precio: 'abc' },
+        ],
+        datos: { ubicacion: 'Neuquén' },
+      }),
+    ).toEqual({
+      cliente: 'Elegí el cliente',
+      'items.1.descripcion': 'Falta la descripción',
+      'items.1.precio': 'El precio no puede ser negativo',
+      'items.2.precio': 'Precio inválido',
+      'datos.ubicacion': 'Máximo 3 caracteres',
+    })
+  })
+
+  it('se queda con el primer mensaje de cada ruta', () => {
+    const doble = z.object({ nombre: z.string().min(3, 'Muy corto').regex(/^[a-z]+$/, 'Solo minúsculas') })
+    const resultado = doble.safeParse({ nombre: 'A' })
+    if (resultado.success) throw new Error('debería fallar')
+    expect(erroresPorRuta(resultado.error)).toEqual({ nombre: 'Muy corto' })
+  })
+
+  it('un error del objeto entero queda con la clave vacía', () => {
+    const conRegla = z
+      .object({ desde: z.number(), hasta: z.number() })
+      .refine((rango) => rango.desde <= rango.hasta, 'Rango invertido')
+    const resultado = conRegla.safeParse({ desde: 2, hasta: 1 })
+    if (resultado.success) throw new Error('debería fallar')
+    expect(erroresPorRuta(resultado.error)).toEqual({ '': 'Rango invertido' })
+  })
+
+  it('una ruta con nombre de propiedad heredada no choca con el objeto', () => {
+    const raro = z.object({ constructor: z.string('Texto requerido') })
+    const resultado = raro.safeParse({ constructor: 1 })
+    if (resultado.success) throw new Error('debería fallar')
+    expect(erroresPorRuta(resultado.error)).toEqual({ constructor: 'Texto requerido' })
   })
 })
 

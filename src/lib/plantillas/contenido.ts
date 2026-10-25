@@ -6,7 +6,11 @@ export type Formato = keyof typeof FORMATOS
 export const UNIDADES = ['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'] as const
 export type Unidad = (typeof UNIDADES)[number]
 
-export const esquemaBloque = z.object({ titulo: z.string(), contenido: z.string() })
+/**
+ * Un bloque de texto de la plantilla o de la cotización. `oculto`: se guarda con la cotización pero no sale en el
+ * PDF, así "Mostrar" lo recupera tal cual estaba. Los bloques guardados antes de existir la marca se leen visibles.
+ */
+export const esquemaBloque = z.object({ titulo: z.string(), contenido: z.string(), oculto: z.boolean().default(false) })
 export type Bloque = z.infer<typeof esquemaBloque>
 
 export const esquemaItemPlantilla = z.object({

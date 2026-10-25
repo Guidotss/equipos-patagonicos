@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   diasEntre,
   encabezadoFecha,
+  esFecha,
+  esMes,
   fechaEnLetras,
   formatFechaCorta,
   hoyArgentina,
+  mesEnLetras,
   sumarDias,
 } from './fechas'
 
@@ -65,5 +68,42 @@ describe('sumarDias y diasEntre', () => {
   it('cuenta días entre dos fechas', () => {
     expect(diasEntre('2026-10-22', '2026-11-21')).toBe(30)
     expect(diasEntre('2026-11-21', '2026-10-22')).toBe(-30)
+  })
+})
+
+describe('mesEnLetras', () => {
+  it('escribe el mes como la próxima actualización del PDF', () => {
+    expect(mesEnLetras('2026-11')).toBe('noviembre de 2026')
+    expect(mesEnLetras('2027-01')).toBe('enero de 2027')
+    expect(mesEnLetras('2026-09')).toBe('septiembre de 2026')
+    expect(mesEnLetras('2026-12')).toBe('diciembre de 2026')
+  })
+
+  it('un mes vacío queda vacío', () => {
+    expect(mesEnLetras('')).toBe('')
+  })
+
+  it.each(['2026-13', '2026-00', '2026-1', '26-11', '2026/11', '2026-11-01', ' 2026-11', '0999-11', 'noviembre'])(
+    'rechaza %j',
+    (mes) => {
+      expect(() => mesEnLetras(mes)).toThrow('Mes inválido')
+    },
+  )
+})
+
+describe('esMes y esFecha', () => {
+  it('esMes acepta solo YYYY-MM con un mes que existe', () => {
+    expect(esMes('2026-11')).toBe(true)
+    expect(esMes('2026-13')).toBe(false)
+    expect(esMes('')).toBe(false)
+  })
+
+  it('esFecha acepta solo fechas que existen en el calendario', () => {
+    expect(esFecha('2026-10-22')).toBe(true)
+    expect(esFecha('2028-02-29')).toBe(true)
+    expect(esFecha('2026-02-30')).toBe(false)
+    expect(esFecha('0050-01-01')).toBe(false)
+    expect(esFecha('22/10/2026')).toBe(false)
+    expect(esFecha('')).toBe(false)
   })
 })

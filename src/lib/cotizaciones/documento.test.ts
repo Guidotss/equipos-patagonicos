@@ -157,6 +157,38 @@ describe('armarDocumento', () => {
     expect(armarDocumento(fuente).intro).toBe('Texto... sigue')
   })
 
+  it('no dibuja los bloques ocultos ni cuenta sus variables', () => {
+    const fuente = {
+      ...EJEMPLO_JORNADA,
+      cotizacion: {
+        ...EJEMPLO_JORNADA.cotizacion,
+        // Sin horario ni duración: las dos variables solo aparecen en "Alcance", que queda oculto.
+        datos: { ...(EJEMPLO_JORNADA.cotizacion.datos as object), horario: '', duracion_estimada: '' },
+        bloques: [
+          ...EJEMPLO_JORNADA.cotizacion.bloques.map((bloque) =>
+            bloque.titulo === 'Alcance' ? { ...bloque, oculto: true } : bloque,
+          ),
+          { titulo: 'Notas {{ubicación}}', contenido: '- {{plazo entrega}}', oculto: true },
+        ],
+      },
+    }
+    const doc = armarDocumento(fuente)
+    expect(doc.bloques.map((bloque) => bloque.titulo)).toEqual(['Equipo ofrecido', ''])
+    expect(doc.faltantes).toEqual([])
+    expect(doc.desconocidas).toEqual([])
+  })
+
+  it('un bloque con oculto en false se dibuja igual que uno sin la marca', () => {
+    const fuente = {
+      ...EJEMPLO_JORNADA,
+      cotizacion: {
+        ...EJEMPLO_JORNADA.cotizacion,
+        bloques: EJEMPLO_JORNADA.cotizacion.bloques.map((bloque) => ({ ...bloque, oculto: false })),
+      },
+    }
+    expect(armarDocumento(fuente).bloques).toEqual(armarDocumento(EJEMPLO_JORNADA).bloques)
+  })
+
   it('arma el pie con los datos de la empresa', () => {
     expect(armarDocumento(EJEMPLO_JORNADA).pie).toEqual({
       linea: 'T. Planas 5168 - Neuquén - Argentina - Tel. 0299 - 6019931 - equipos@equipospatagonicos.com.ar',

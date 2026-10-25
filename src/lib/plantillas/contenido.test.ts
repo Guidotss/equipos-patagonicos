@@ -2,13 +2,22 @@ import { describe, expect, it } from 'vitest'
 import { FORMATOS, UNIDADES, leerBloques, leerItemsPlantilla } from './contenido'
 
 describe('leerBloques', () => {
-  it('acepta una lista de {titulo, contenido}', () => {
-    expect(leerBloques([{ titulo: 'Alcance', contenido: '- Item' }])).toEqual([{ titulo: 'Alcance', contenido: '- Item' }])
+  it('acepta una lista de {titulo, contenido} y los deja visibles', () => {
+    expect(leerBloques([{ titulo: 'Alcance', contenido: '- Item' }])).toEqual([
+      { titulo: 'Alcance', contenido: '- Item', oculto: false },
+    ])
+  })
+
+  it('conserva la marca de oculto', () => {
+    expect(leerBloques([{ titulo: 'Alcance', contenido: '- Item', oculto: true }])).toEqual([
+      { titulo: 'Alcance', contenido: '- Item', oculto: true },
+    ])
   })
 
   it('rechaza datos con otra forma', () => {
     expect(() => leerBloques([{ titulo: 1 }])).toThrow()
     expect(() => leerBloques({})).toThrow()
+    expect(() => leerBloques([{ titulo: 'Alcance', contenido: '', oculto: 'si' }])).toThrow()
   })
 })
 

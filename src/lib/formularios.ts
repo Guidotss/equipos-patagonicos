@@ -30,6 +30,21 @@ export function falloValidacion(error: ZodError, valores: Record<string, string>
   return { ok: false, mensaje: 'Revisá los datos marcados', errores, valores }
 }
 
+/**
+ * Errores de Zod con la ruta completa como clave ('items.2.precio', 'datos.ubicacion'; '' si el error es del objeto
+ * entero), con el primer mensaje de cada ruta. Para los formularios con listas, donde `falloValidacion` no alcanza
+ * (se queda con el primer tramo de la ruta).
+ */
+export function erroresPorRuta(error: ZodError): Record<string, string> {
+  // Un Map y no un objeto: una ruta como 'constructor' o '__proto__' no choca con las propiedades heredadas.
+  const errores = new Map<string, string>()
+  for (const issue of error.issues) {
+    const ruta = issue.path.map(String).join('.')
+    if (!errores.has(ruta)) errores.set(ruta, issue.message)
+  }
+  return Object.fromEntries(errores)
+}
+
 type ErrorBase = { code?: string; message: string }
 
 export function mensajeErrorBase(error: ErrorBase): string {

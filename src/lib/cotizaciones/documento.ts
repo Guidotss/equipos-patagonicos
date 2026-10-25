@@ -17,7 +17,8 @@ export type FuenteDocumento = {
     validez_dias: number
     mostrar_total: boolean
     datos: unknown
-    bloques: { titulo: string; contenido: string }[]
+    /** Los ocultos no se dibujan ni cuentan para las variables sin completar. */
+    bloques: { titulo: string; contenido: string; oculto?: boolean }[]
   }
   items: {
     orden: number
@@ -160,10 +161,14 @@ export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
     asunto: resolver(fuente.cotizacion.asunto),
     intro: resolver(fuente.cotizacion.intro),
     items,
-    bloques: fuente.cotizacion.bloques.map((bloque) => ({
-      titulo: resolver(bloque.titulo),
-      nodos: resolverBloque(bloque.contenido),
-    })),
+    // Un bloque oculto sigue guardado en la cotización (para mostrarlo de nuevo tal cual), pero no sale en el PDF:
+    // se filtra antes de resolver, así sus variables no figuran como faltantes ni como mal escritas.
+    bloques: fuente.cotizacion.bloques
+      .filter((bloque) => !bloque.oculto)
+      .map((bloque) => ({
+        titulo: resolver(bloque.titulo),
+        nodos: resolverBloque(bloque.contenido),
+      })),
     total,
     firmante: fuente.firmante,
     pie: { linea: lineaPie(empresa), web: empresa.web },
