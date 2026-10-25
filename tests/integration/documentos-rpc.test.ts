@@ -252,6 +252,7 @@ describe('registrar_documento', () => {
       ['que redondeado da cero', 0.001, DECIMALES],
       ['con letras', 'abc', DECIMALES],
       ['negativo', -5, DECIMALES],
+      ['con más de 12 dígitos enteros', 1234567890123, DECIMALES],
       ['que falta', null, DECIMALES],
       ['cero', '0.00', 'El monto aplicado tiene que ser mayor a cero'],
     ])('rechaza un monto aplicado %s', async (_, monto, mensaje) => {
@@ -355,6 +356,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     ['monto con 3 decimales', { ...factura, monto: 10.005 }, MONTO],
     ['monto que redondeado da cero', { tipo: 'orden_pago', monto: 0.001 }, MONTO],
     ['monto que no es un número', { ...factura, monto: { valor: 10 } }, MONTO],
+    ['monto con más de 12 dígitos enteros', { ...factura, monto: 1234567890123 }, MONTO],
     ['factura sin monto', factura, 'Indicá el monto de la factura'],
     ['orden de pago sin monto', { tipo: 'orden_pago' }, 'Indicá el monto de la orden de pago'],
     ['factura sin comprobante', { tipo: 'factura', monto: 100 }, 'Elegí un comprobante válido'],

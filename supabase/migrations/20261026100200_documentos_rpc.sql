@@ -61,7 +61,7 @@ begin
   end if;
 
   if v_monto is not null then
-    if v_monto !~ '^[0-9]+(\.[0-9]{1,2})?$' then
+    if v_monto !~ '^[0-9]{1,12}(\.[0-9]{1,2})?$' then
       raise exception 'El monto tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
     end if;
     if v_monto::numeric(14, 2) <= 0 then
@@ -209,7 +209,7 @@ begin
        or coalesce(v_elemento ->> 'factura_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
       raise exception 'Falta la factura en una de las facturas canceladas' using errcode = 'P0001';
     end if;
-    if coalesce(v_elemento ->> 'monto_aplicado', '') !~ '^[0-9]+(\.[0-9]{1,2})?$' then
+    if coalesce(v_elemento ->> 'monto_aplicado', '') !~ '^[0-9]{1,12}(\.[0-9]{1,2})?$' then
       raise exception 'El monto aplicado tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
     end if;
     if (v_elemento ->> 'monto_aplicado')::numeric(14, 2) <= 0 then
