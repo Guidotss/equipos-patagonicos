@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { resolverVariables, variablesDesconocidas, variablesUsadas } from './variables'
+import { partirVariables, resolverVariables, variablesDesconocidas, variablesUsadas } from './variables'
+
+describe('partirVariables', () => {
+  it('deja los nombres recortados en las posiciones impares', () => {
+    expect(partirVariables('con base en {{ indice_base }}. Próxima: {{proxima_actualizacion}}')).toEqual([
+      'con base en ',
+      'indice_base',
+      '. Próxima: ',
+      'proxima_actualizacion',
+      '',
+    ])
+  })
+
+  it('devuelve el texto entero si no hay variables', () => {
+    expect(partirVariables('sin variables')).toEqual(['sin variables'])
+  })
+})
 
 describe('variablesUsadas', () => {
   it('lista cada variable una sola vez, admitiendo espacios dentro de las llaves', () => {
