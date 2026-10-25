@@ -253,6 +253,17 @@ describe('buscar_cotizaciones', () => {
     expect(await buscar({ texto: numero.slice(1), cliente })).toEqual([])
   })
 
+  it('los dígitos de un texto que no es solo un número no buscan por número', async () => {
+    // Todos los números empiezan con 1: si "Montaje … 1" buscara por número, traería todas las cotizaciones.
+    const montaje = await insertar({
+      estado: 'borrador',
+      fecha: '2025-03-01',
+      cliente: ids.cliente_id,
+      asunto: `Montaje ${CLAVE} 1`,
+    })
+    expect(await buscar({ texto: `Montaje ${CLAVE} 1` })).toEqual([montaje.numero])
+  })
+
   it('filtra por estado como la lista: "enviada" son las que están al día y "vencida" las otras', async () => {
     expect(await buscar({ cliente, estado: 'borrador' })).toEqual(numeros('borrador'))
     expect(await buscar({ cliente, estado: 'enviada' })).toEqual(numeros('enviada'))

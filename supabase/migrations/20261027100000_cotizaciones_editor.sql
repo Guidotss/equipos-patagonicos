@@ -79,7 +79,9 @@ $$;
 grant execute on function public.guardar_cotizacion(jsonb, jsonb, uuid, timestamptz) to authenticated;
 
 -- Búsqueda de la lista. SECURITY INVOKER: corre con la RLS de quien llama (un usuario inactivo no ve nada).
--- texto: sin acentos contra la razón social y el asunto, o el comienzo del número (con sus dígitos).
+-- texto: sin acentos contra la razón social y el asunto, o el comienzo del número si el texto es solo un número
+-- (con "N°", "nro" o "#" adelante o sin nada). Los dígitos de otro texto no buscan por número: todos los números
+-- empiezan con 1, así que "11 de julio" o "Loma Campana 1" traerían todas las cotizaciones.
 -- estado: '' = todos; 'enviada' = enviadas al día; 'vencida' = enviadas fuera de validez (como la pastilla);
 -- el resto, exacto. desde/hasta: sobre la fecha de la cotización, inclusive.
 -- La paginación y el conteo los hace PostgREST (range + count=exact). Los parámetros se nombran con el nombre
@@ -98,14 +100,15 @@ security invoker
 set search_path = ''
 as $$
   with consulta as (
-    select
-      extensions.unaccent(lower(btrim(coalesce(buscar_cotizaciones.texto, '')))) as normalizado,
-      regexp_replace(coalesce(buscar_cotizaciones.texto, ''), '\D', '', 'g') as digitos
+    select extensions.unaccent(lower(btrim(coalesce(buscar_cotizaciones.texto, '')))) as normalizado
   ),
   patron as (
     select
       normalizado,
-      digitos,
+      case
+        when normalizado ~ '^(n[°º.]?|nro\.?|#)?\s*\d+$' then regexp_replace(normalizado, '\D', '', 'g')
+        else ''
+      end as digitos,
       '%' || replace(replace(replace(normalizado, '\', '\\'), '%', '\%'), '_', '\_') || '%' as como
     from consulta
   )
