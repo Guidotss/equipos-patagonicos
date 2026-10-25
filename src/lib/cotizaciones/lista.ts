@@ -26,9 +26,16 @@ const primero = (valor: unknown) => (Array.isArray(valor) ? valor[0] : valor)
 // Solo dígitos: '1e3' o '2.5' no son páginas.
 const numeroDePagina = z.string().regex(/^\d{1,5}$/).transform(Number).pipe(z.number().min(1).max(10_000))
 
+// La búsqueda va a la RPC como JSON. Los caracteres de control pasan a espacios (Postgres rechaza \u0000 con 22P05)
+// y el límite se corta por puntos de código: `slice` cortaría un emoji a la mitad y PostgREST rechaza el JSON.
+const limpiarBusqueda = (texto: string) =>
+  Array.from(texto.replace(/\p{Cc}/gu, ' ').trim())
+    .slice(0, 100)
+    .join('')
+
 // Cada filtro inválido o ausente cae a su valor por defecto sin romper los demás (la URL la escribe cualquiera).
 const esquemaFiltros = z.object({
-  q: z.preprocess(primero, z.string().transform((texto) => texto.trim().slice(0, 100))).catch(''),
+  q: z.preprocess(primero, z.string().transform(limpiarBusqueda)).catch(''),
   estado: z.preprocess(primero, z.enum(['', ...ESTADOS_FILTRO])).catch(''),
   cliente: z.preprocess(primero, z.uuid()).catch(''),
   // `esFecha` y no `z.iso.date()`: esa acepta el año 0000, que Postgres rechaza y rompería la búsqueda.

@@ -40,6 +40,19 @@ describe('leerFiltros', () => {
     expect(leerFiltros({ q: 'x'.repeat(150) }).q).toHaveLength(100)
   })
 
+  // La búsqueda va a la RPC como JSON: la lista no puede romperse por la URL.
+  it('cambia los caracteres de control por espacios (Postgres rechaza \\u0000)', () => {
+    expect(leerFiltros({ q: 'a\u0000b' }).q).toBe('a b')
+    expect(leerFiltros({ q: '\u0000\u001f' }).q).toBe('')
+  })
+
+  it('el límite de 100 no corta un emoji a la mitad', () => {
+    const q = leerFiltros({ q: 'x'.repeat(99) + '🏗' }).q
+    expect(q.isWellFormed()).toBe(true)
+    expect(q).toBe('x'.repeat(99) + '🏗')
+    expect(leerFiltros({ q: '🏗'.repeat(150) }).q).toBe('🏗'.repeat(100))
+  })
+
   it('un estado desconocido o vacío queda en "todos"', () => {
     expect(leerFiltros({ estado: 'anulada' }).estado).toBe('')
     expect(leerFiltros({ estado: 'ENVIADA' }).estado).toBe('')
