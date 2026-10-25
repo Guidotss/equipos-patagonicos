@@ -3,6 +3,7 @@
 // No importar 'server-only' acá: Vitest lo carga.
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
+import { esUuid } from '@/lib/validacion'
 import { conNombreDeDescarga, rutaArchivo, validarArchivo, type MimePermitido } from './archivos'
 import type { DatosDocumento } from './esquemas'
 
@@ -22,6 +23,7 @@ export async function prepararSubida(
   supabase: Cliente,
   archivo: { clienteId: string; mime: string; tamano: number },
 ): Promise<{ path: string; token: string }> {
+  if (!esUuid(archivo.clienteId)) throw new ErrorDocumento('Cliente inválido')
   const problema = validarArchivo(archivo)
   if (problema) throw new ErrorDocumento(problema)
   const ruta = rutaArchivo(archivo.clienteId, archivo.mime as MimePermitido)

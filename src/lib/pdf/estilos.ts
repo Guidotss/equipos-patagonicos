@@ -14,7 +14,8 @@ export const estilos = StyleSheet.create({
   membrete: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 18 },
   logo: { width: 175, height: 38 },
   logoMensual: { width: 157, height: altoLogo(157) },
-  logoFirma: { width: 110, height: altoLogo(110), marginTop: 8 },
+  // Logo bajo la firma de la por jornada: en la 112711 mide 153,5 × 33,5 pt.
+  logoFirma: { width: 154, height: altoLogo(154), marginTop: 8 },
   fecha: { textAlign: 'right', marginBottom: 14 },
   negrita: { fontWeight: 'bold' },
   subrayado: { textDecoration: 'underline' },
@@ -28,5 +29,6 @@ export const estilos = StyleSheet.create({
   textoVineta: { flex: 1 },
   firma: { marginTop: 22 },
   pie: { position: 'absolute', bottom: 24, left: 56, right: 56, fontSize: 7.5, textAlign: 'center', color: '#333333' },
-  pieLinea: { borderTopWidth: 0.75, borderTopColor: AZUL_LINK, paddingTop: 4 },
+  // Pie de la por jornada: línea a 795 pt del borde superior y renglones cada ~9,4 pt, como en la 112711.
+  pieLinea: { bottom: 17.5, borderTopWidth: 0.75, borderTopColor: AZUL_LINK, paddingTop: 10, lineHeight: 1.25 },
 })

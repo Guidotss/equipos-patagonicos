@@ -25,6 +25,20 @@ const DATOS_VACIOS: DatosDocumento = {
   notas: '',
 }
 
+/** Cliente falso que anota cada `storage.from`: sirve para probar que se rechaza antes de pedir la URL. */
+function clienteEspia() {
+  const buckets: string[] = []
+  const cliente = {
+    storage: {
+      from(bucket: string) {
+        buckets.push(bucket)
+        throw new Error('no tenía que pedir la URL')
+      },
+    },
+  }
+  return { cliente: cliente as unknown as Parameters<typeof prepararSubida>[0], buckets }
+}
+
 beforeAll(async () => {
   activo = await crearUsuario({ activo: true, rol: 'operador' })
   ids = await idsDeEjemplo()
@@ -71,16 +85,34 @@ describe('servicio de documentos', () => {
     const url = await urlDescarga(activo.client, path, 'Parte diario Neuquén N° 456.pdf')
     const respuesta = await fetch(url)
     expect(respuesta.status).toBe(200)
-    expect(respuesta.headers.get('content-disposition')).toContain('attachment')
+    const disposicion = respuesta.headers.get('content-disposition')
+    expect(disposicion).toContain('attachment')
+    expect(disposicion).toContain("filename*=UTF-8''Parte%20diario%20Neuqu%C3%A9n%20N%C2%B0%20456.pdf")
+    expect(new Uint8Array(await respuesta.arrayBuffer())).toEqual(new Uint8Array(await contenido.arrayBuffer()))
   })
 
   it('rechaza tipos y tamaños no permitidos antes de pedir la URL', async () => {
-    await expect(prepararSubida(activo.client, { clienteId: ids.cliente_id, mime: 'image/heic', tamano: 100 })).rejects.toThrow(
+    const { cliente, buckets } = clienteEspia()
+    await expect(prepararSubida(cliente, { clienteId: ids.cliente_id, mime: 'image/heic', tamano: 100 })).rejects.toThrow(
       ErrorDocumento,
     )
     await expect(
-      prepararSubida(activo.client, { clienteId: ids.cliente_id, mime: 'application/pdf', tamano: 11 * 1024 * 1024 }),
+      prepararSubida(cliente, { clienteId: ids.cliente_id, mime: 'application/pdf', tamano: 11 * 1024 * 1024 }),
     ).rejects.toThrow(/10 MB/)
+    expect(buckets).toEqual([])
+  })
+
+  it('rechaza un cliente que no es un UUID antes que nada', async () => {
+    const { cliente, buckets } = clienteEspia()
+    for (const archivo of [
+      { clienteId: '../otro-cliente', mime: 'application/pdf', tamano: 100 },
+      { clienteId: 'x', mime: 'image/heic', tamano: 0 },
+    ]) {
+      const intento = prepararSubida(cliente, archivo)
+      await expect(intento).rejects.toThrow(ErrorDocumento)
+      await expect(intento).rejects.toThrow('Cliente inválido')
+    }
+    expect(buckets).toEqual([])
   })
 
   it('los errores de negocio de la base llegan como ErrorDocumento', async () => {

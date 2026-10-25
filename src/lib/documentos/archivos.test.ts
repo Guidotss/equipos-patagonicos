@@ -10,14 +10,22 @@ describe('validarArchivo', () => {
   it('rechaza otros tipos, vacíos y demasiado grandes', () => {
     expect(validarArchivo({ mime: 'image/heic', tamano: 1000 })).toBe('Solo se aceptan PDF, JPG o PNG')
     expect(validarArchivo({ mime: 'application/pdf', tamano: 0 })).toBe('El archivo está vacío')
+    expect(validarArchivo({ mime: 'application/pdf', tamano: Number.NaN })).toBe('El archivo está vacío')
     expect(validarArchivo({ mime: 'application/pdf', tamano: TAMANO_MAXIMO + 1 })).toBe('El archivo supera los 10 MB')
   })
 })
 
 describe('rutaArchivo', () => {
+  const CLIENTE = '5b0e3c1a-2f4d-4c8e-9a7b-1d2e3f4a5b6c'
+
   it('arma una ruta ASCII con la extensión según el tipo', () => {
-    expect(rutaArchivo('cliente-1', 'image/png', 'abc')).toBe('documentos/cliente-1/abc.png')
-    expect(rutaArchivo('cliente-1', 'application/pdf')).toMatch(/^documentos\/cliente-1\/[0-9a-f-]{36}\.pdf$/)
+    expect(rutaArchivo(CLIENTE, 'image/png', 'abc')).toBe(`documentos/${CLIENTE}/abc.png`)
+    expect(rutaArchivo(CLIENTE, 'application/pdf')).toMatch(new RegExp(`^documentos/${CLIENTE}/[0-9a-f-]{36}\\.pdf$`))
+  })
+
+  it('rechaza un cliente que no es un UUID (no se puede salir de su carpeta)', () => {
+    expect(() => rutaArchivo('cliente-1', 'image/png', 'abc')).toThrow('clienteId inválido')
+    expect(() => rutaArchivo('../otro', 'application/pdf')).toThrow('clienteId inválido')
   })
 })
 

@@ -1,3 +1,5 @@
+import { esUuid } from '@/lib/validacion'
+
 export const MIME_PERMITIDOS = {
   'application/pdf': 'pdf',
   'image/jpeg': 'jpg',
@@ -14,13 +16,17 @@ export function esMimePermitido(mime: string): mime is MimePermitido {
 /** Mensaje de error para mostrar, o null si el archivo se puede subir. */
 export function validarArchivo(archivo: { mime: string; tamano: number }): string | null {
   if (!esMimePermitido(archivo.mime)) return 'Solo se aceptan PDF, JPG o PNG'
-  if (archivo.tamano <= 0) return 'El archivo está vacío'
+  if (!(archivo.tamano > 0)) return 'El archivo está vacío'
   if (archivo.tamano > TAMANO_MAXIMO) return 'El archivo supera los 10 MB'
   return null
 }
 
-/** Ruta en Storage: solo ASCII (Storage rechaza tildes, ñ y °). El nombre original se guarda en la tabla. */
+/**
+ * Ruta en Storage: solo ASCII (Storage rechaza tildes, ñ y °). El nombre original se guarda en la tabla.
+ * El cliente tiene que ser un UUID: es la carpeta del archivo.
+ */
 export function rutaArchivo(clienteId: string, mime: MimePermitido, id: string = crypto.randomUUID()): string {
+  if (!esUuid(clienteId)) throw new Error('clienteId inválido')
   return `documentos/${clienteId}/${id}.${MIME_PERMITIDOS[mime]}`
 }
 
