@@ -46,7 +46,8 @@ export function FormularioAccion({
       <fieldset disabled={soloLectura || pendiente} className={cn('min-w-0', className)}>
         {children(estado, pendiente)}
       </fieldset>
-      <MensajeFormulario estado={estado} />
+      {/* Sin botón propio, el formulario muestra el mensaje donde ubica su botón. */}
+      {boton ? <MensajeFormulario estado={estado} /> : null}
       {soloLectura || !boton ? null : (
         <Button type="submit" disabled={pendiente}>
           {pendiente ? 'Guardando…' : textoBoton}
