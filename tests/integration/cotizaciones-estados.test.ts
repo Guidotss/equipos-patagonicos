@@ -55,17 +55,18 @@ async function importada(): Promise<string> {
 }
 
 /**
- * Corre `llamada` mientras otra transacción tiene a medio guardar la cotización (con un ítem sin precio)
- * y confirma ese guardado recién cuando la llamada ya está esperando.
+ * Corre `llamada` mientras otra transacción tiene a medio guardar la cotización (con un ítem sin precio, a partir
+ * de la versión `leida`) y confirma ese guardado recién cuando la llamada ya está esperando.
  */
-async function contraGuardadoEnCurso<T>(id: string, llamada: () => PromiseLike<T>): Promise<T> {
+async function contraGuardadoEnCurso<T>(id: string, leida: string, llamada: () => PromiseLike<T>): Promise<T> {
   return contraTransaccionEnCurso(
     activo.id,
-    'select public.guardar_cotizacion($1::jsonb, $2::jsonb, $3)',
+    'select public.guardar_cotizacion($1::jsonb, $2::jsonb, $3::uuid, $4::timestamptz)',
     [
       JSON.stringify({ cliente_id: ids.cliente_id, formato: 'jornada', fecha: '2026-10-22', notas: MARCA }),
       JSON.stringify([{ descripcion: 'Sin precio', unidad: 'JORNADA' }]),
       id,
+      leida,
     ],
     llamada,
   )
@@ -200,6 +201,7 @@ describe('versión y concurrencia', () => {
     const leida = await version(id)
     const { error: errorGuardar } = await activo.client.rpc('guardar_cotizacion', {
       p_id: id,
+      p_updated_at: leida,
       p_datos: { cliente_id: ids.cliente_id, formato: 'jornada', asunto: 'Otro asunto', notas: MARCA },
       p_items: ITEMS_JORNADA,
     })
@@ -227,7 +229,7 @@ describe('versión y concurrencia', () => {
   it('aprobar espera a un guardado en curso y no registra el PDF de la versión anterior', async () => {
     const id = await nueva()
     const leida = await version(id)
-    const { error } = await contraGuardadoEnCurso(id, () =>
+    const { error } = await contraGuardadoEnCurso(id, leida, () =>
       activo.client.rpc('aprobar_cotizacion', { p_id: id, p_pdf_path: `cotizaciones/${id}/a.pdf`, p_updated_at: leida }),
     )
     expect(error?.message).toMatch(/cambió desde que la abriste/)
@@ -237,7 +239,7 @@ describe('versión y concurrencia', () => {
   it('marcar enviada espera a un guardado en curso y no registra el PDF de la versión anterior', async () => {
     const id = await nueva()
     const leida = await version(id)
-    const { error } = await contraGuardadoEnCurso(id, () =>
+    const { error } = await contraGuardadoEnCurso(id, leida, () =>
       activo.client.rpc('marcar_enviada', { p_id: id, p_pdf_path: `cotizaciones/${id}/e.pdf`, p_updated_at: leida }),
     )
     expect(error?.message).toMatch(/cambió desde que la abriste/)

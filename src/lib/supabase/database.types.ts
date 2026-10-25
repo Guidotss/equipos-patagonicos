@@ -564,6 +564,46 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"buscar_cotizaciones":
+{ Args: { "cliente"?: string,"desde"?: string,"estado"?: string,"hasta"?: string,"texto"?: string }; Returns: {
+              "archivo_original_path": string | null,
+"asunto": string,
+"bloques": NonNullable<Json>,
+"cliente_id": string,
+"cliente_razon_social": string,
+"contacto_id": string | null,
+"created_at": string,
+"created_by": string | null,
+"datos": NonNullable<Json>,
+"equipo_id": string | null,
+"estado": string,
+"fecha": string,
+"fecha_aprobacion": string | null,
+"fecha_proxima_actualizacion": string | null,
+"firmante_id": string | null,
+"formato": string,
+"id": string,
+"intro": string,
+"mostrar_total": boolean,
+"notas": string,
+"numero": number,
+"origen": string,
+"pdf_aprobado_path": string | null,
+"plantilla_id": string | null,
+"presupuesto_estado": string | null,
+"presupuesto_motivo": string,
+"reemplaza_a": string | null,
+"updated_at": string,
+"validez_dias": number,
+"vence_el": string | null,
+"vencida": boolean | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "v_cotizaciones"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "cambiar_estado_presupuesto":
 { Args: { "p_estado": string,"p_id": string,"p_motivo"?: string }; Returns: undefined
                            },
@@ -571,7 +611,7 @@ isOneToOne: false
 { Args: { "p_cliente_id"?: string,"p_id": string }; Returns: string
                            },
 "guardar_cotizacion":
-{ Args: { "p_datos": Json,"p_id"?: string,"p_items": Json }; Returns: string
+{ Args: { "p_datos": Json,"p_id"?: string,"p_items": Json,"p_updated_at"?: string }; Returns: string
                            },
 "importar_cotizacion":
 { Args: { "p_datos": Json }; Returns: string

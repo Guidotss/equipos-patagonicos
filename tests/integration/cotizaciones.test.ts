@@ -1,6 +1,6 @@
 // tests/integration/cotizaciones.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ITEMS_JORNADA, idsDeEjemplo } from './cotizaciones-helpers'
+import { ITEMS_JORNADA, idsDeEjemplo, versionDe } from './cotizaciones-helpers'
 import { adminClient, borrarUsuario, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
@@ -154,6 +154,7 @@ describe('guardar, duplicar y borrar', () => {
     const { data: id } = await activo.client.rpc('guardar_cotizacion', { p_datos: datosBase(), p_items: ITEMS_JORNADA })
     const { error } = await activo.client.rpc('guardar_cotizacion', {
       p_id: id!,
+      p_updated_at: await versionDe(activo.client, id!),
       p_datos: datosBase({ asunto: 'Nuevo asunto' }),
       p_items: [ITEMS_JORNADA[0]],
     })
@@ -181,7 +182,12 @@ describe('guardar, duplicar y borrar', () => {
 
   it('una aprobada no se puede editar por RPC', async () => {
     const { id } = await insertarComoPostgres({ estado: 'aprobada', fecha_aprobacion: '2026-10-22', presupuesto_estado: 'en_curso' })
-    const { error } = await activo.client.rpc('guardar_cotizacion', { p_id: id, p_datos: datosBase(), p_items: [] })
+    const { error } = await activo.client.rpc('guardar_cotizacion', {
+      p_id: id,
+      p_updated_at: await versionDe(activo.client, id),
+      p_datos: datosBase(),
+      p_items: [],
+    })
     expect(error?.message).toMatch(/ya no se puede editar/)
   })
 
@@ -193,6 +199,7 @@ describe('guardar, duplicar y borrar', () => {
     )
     const { error } = await activo.client.rpc('guardar_cotizacion', {
       p_id: id,
+      p_updated_at: await versionDe(activo.client, id),
       p_datos: datosBase({ asunto: 'Otro asunto' }),
       p_items: ITEMS_JORNADA,
     })

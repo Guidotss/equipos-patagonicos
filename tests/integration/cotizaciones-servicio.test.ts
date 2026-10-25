@@ -3,7 +3,7 @@ import { extractText, getDocumentProxy } from 'unpdf'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ErrorCotizacion, aprobarCotizacion, enviarCotizacion, pdfParaMostrar } from '@/lib/cotizaciones/servicio'
 import type { Json } from '@/lib/supabase/database.types'
-import { ITEMS_JORNADA, idsDeEjemplo } from './cotizaciones-helpers'
+import { ITEMS_JORNADA, idsDeEjemplo, versionDe } from './cotizaciones-helpers'
 import { adminClient, borrarUsuario, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
@@ -55,6 +55,7 @@ async function editar(id: string, intro: string) {
   const [fila] = await sql<{ datos: Json }>('select datos from public.cotizaciones where id = $1', [id])
   const { error } = await activo.client.rpc('guardar_cotizacion', {
     p_id: id,
+    p_updated_at: await versionDe(activo.client, id),
     p_datos: {
       cliente_id: ids.cliente_id,
       formato: 'jornada',
