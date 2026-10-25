@@ -275,6 +275,21 @@ describe('registrar_documento', () => {
       expect(resultado(error)).toEqual({ code: 'P0001', message: 'Una factura aparece dos veces en la orden de pago' })
     })
 
+    it('rechaza lo aplicado que supera la orden de pago aunque la suma pase de 12 dígitos enteros', async () => {
+      const MAXIMO = 999999999999.99
+      const facturas: string[] = []
+      for (let i = 0; i < 2; i++) {
+        const { data, error } = await registrar({ tipo: 'factura', monto: MAXIMO, tipo_comprobante: 'FA' })
+        if (error) throw new Error('No se pudo registrar la factura: ' + error.message)
+        facturas.push(data!)
+      }
+      const { error } = await registrar(
+        { tipo: 'orden_pago', monto: MAXIMO },
+        { aplicaciones: facturas.map((factura_id) => ({ factura_id, monto_aplicado: 600000000000 })) },
+      )
+      expect(resultado(error)).toEqual({ code: 'P0001', message: 'Lo aplicado a facturas supera el monto de la orden de pago' })
+    })
+
     it('guarda el monto aplicado tal cual, con hasta 2 decimales', async () => {
       const { data: id, error } = await op([{ factura_id: factura, monto_aplicado: 33.33 }])
       expect(error).toBeNull()

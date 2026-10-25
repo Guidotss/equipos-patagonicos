@@ -196,7 +196,8 @@ declare
   v_elemento jsonb;
   v_aplicacion record;
   v_saldo numeric;
-  v_total numeric(14, 2) := 0;
+  -- Sin precisión: la suma puede pasar de 12 dígitos enteros y tiene que llegar al control del final (P0001).
+  v_total numeric := 0;
 begin
   if p_aplicaciones is null or jsonb_typeof(p_aplicaciones) <> 'array' then
     raise exception 'Las facturas canceladas tienen que ser una lista' using errcode = 'P0001';
