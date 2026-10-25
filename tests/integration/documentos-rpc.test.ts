@@ -2,8 +2,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Json } from '@/lib/supabase/database.types'
 import { idsDeEjemplo } from './cotizaciones-helpers'
-import { limpiarDocumentos, nuevoPresupuesto, subirArchivo, subirArchivoEn } from './documentos-helpers'
-import { borrarUsuario, conConexion, crearUsuario, sql } from './helpers'
+import { limpiarArchivosSubidos, limpiarDocumentos, nuevoPresupuesto, subirArchivo, subirArchivoEn } from './documentos-helpers'
+import { borrarUsuario, contraTransaccionEnCurso, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 let activo: Awaited<ReturnType<typeof crearUsuario>>
@@ -20,6 +20,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await limpiarDocumentos(MARCA)
+  await limpiarArchivosSubidos()
   for (const u of [activo, inactivo]) await borrarUsuario(u.id)
 })
 
@@ -37,40 +38,11 @@ async function registrar(
   })
 }
 
-async function esperarBloqueadaPor(pid: number) {
-  for (let intento = 0; intento < 100; intento++) {
-    const [fila] = await sql<{ esperando: number }>(
-      'select count(*)::int as esperando from pg_stat_activity where $1 = any(pg_blocking_pids(pid))',
-      [pid],
-    )
-    if (fila.esperando > 0) return
-    await new Promise((resolver) => setTimeout(resolver, 50))
-  }
-  throw new Error('La llamada nunca quedó esperando a la otra transacción')
-}
-
-/**
- * Corre `llamada` mientras otra transacción (del mismo usuario) ejecutó `consulta` sin confirmar
- * y la confirma recién cuando la llamada ya está esperando.
- */
-async function contraTransaccionEnCurso<T>(
-  consulta: string,
-  parametros: unknown[],
-  llamada: () => PromiseLike<T>,
-): Promise<T> {
-  return conConexion(async (otra) => {
-    await otra.query('begin')
-    await otra.query(`select set_config('request.jwt.claims', $1, true)`, [
-      JSON.stringify({ sub: activo.id, role: 'authenticated' }),
-    ])
-    await otra.query('set local role authenticated')
-    await otra.query(consulta, parametros)
-    const [{ pid }] = (await otra.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
-    const resultado = Promise.resolve(llamada())
-    await esperarBloqueadaPor(pid)
-    await otra.query('commit')
-    return resultado
-  })
+/** Como `registrar`, para preparar datos: si falla tira un error que dice qué pasó, y si no devuelve el id. */
+async function registrarOk(datos: Record<string, unknown>, extra: Parameters<typeof registrar>[1] = {}): Promise<string> {
+  const { data, error } = await registrar(datos, extra)
+  if (error) throw new Error(`No se pudo registrar el documento (${String(datos.tipo)}): ` + error.message)
+  return data
 }
 
 /** Corre `llamada` mientras otra transacción tiene a medio registrar un documento. */
@@ -81,6 +53,7 @@ async function contraRegistroEnCurso<T>(
 ): Promise<T> {
   const archivo = await subirArchivo(activo.client, ids.cliente_id)
   return contraTransaccionEnCurso(
+    activo.id,
     'select public.registrar_documento($1::jsonb, $2::uuid[], $3::jsonb, $4::uuid[], $5::jsonb)',
     [
       JSON.stringify({ cliente_id: ids.cliente_id, notas: MARCA, ...datos }),
@@ -95,14 +68,15 @@ async function contraRegistroEnCurso<T>(
 
 /** Registra un documento con dos archivos y devuelve los ids de los archivos en orden. */
 async function documentoConDosArchivos() {
-  const { data: id } = await registrar({ tipo: 'remito' })
+  const id = await registrarOk({ tipo: 'remito' })
   const pagina = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.jpg')
-  expect((await activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina] })).error).toBeNull()
+  const { error } = await activo.client.rpc('agregar_archivos', { p_documento_id: id, p_archivos: [pagina] })
+  if (error) throw new Error('No se pudo agregar la segunda página: ' + error.message)
   const archivos = await sql<{ id: string }>(
     'select id from public.documento_archivos where documento_id = $1 order by orden',
     [id],
   )
-  return { id: id!, archivos: archivos.map((a) => a.id) }
+  return { id, archivos: archivos.map((a) => a.id) }
 }
 
 describe('registrar_documento', () => {
@@ -240,9 +214,7 @@ describe('registrar_documento', () => {
     const DECIMALES = 'El monto aplicado tiene que ser un número positivo con hasta 2 decimales'
     let factura: string
     beforeAll(async () => {
-      const { data, error } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
-      if (error) throw new Error('No se pudo registrar la factura: ' + error.message)
-      factura = data!
+      factura = await registrarOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
     })
     const op = (aplicaciones: Json[]) => registrar({ tipo: 'orden_pago', monto: 100 }, { aplicaciones })
     const resultado = (error: { code?: string; message: string } | null) => ({ code: error?.code, message: error?.message })
@@ -278,11 +250,7 @@ describe('registrar_documento', () => {
     it('rechaza lo aplicado que supera la orden de pago aunque la suma pase de 12 dígitos enteros', async () => {
       const MAXIMO = 999999999999.99
       const facturas: string[] = []
-      for (let i = 0; i < 2; i++) {
-        const { data, error } = await registrar({ tipo: 'factura', monto: MAXIMO, tipo_comprobante: 'FA' })
-        if (error) throw new Error('No se pudo registrar la factura: ' + error.message)
-        facturas.push(data!)
-      }
+      for (let i = 0; i < 2; i++) facturas.push(await registrarOk({ tipo: 'factura', monto: MAXIMO, tipo_comprobante: 'FA' }))
       const { error } = await registrar(
         { tipo: 'orden_pago', monto: MAXIMO },
         { aplicaciones: facturas.map((factura_id) => ({ factura_id, monto_aplicado: 600000000000 })) },
@@ -582,10 +550,10 @@ describe('actualizar, archivos, anular y restaurar', () => {
     const datosOp = { tipo: 'orden_pago', monto: 600, notas: MARCA }
 
     async function facturaConRemitoYOp() {
-      const { data: remito } = await registrar({ tipo: 'remito' })
-      const { data: factura } = await registrar(datosFactura, { remitos: [remito!] })
-      const { data: op } = await registrar(datosOp, { aplicaciones: [{ factura_id: factura, monto_aplicado: 600 }] })
-      return { remito: remito!, factura: factura!, op: op! }
+      const remito = await registrarOk({ tipo: 'remito' })
+      const factura = await registrarOk(datosFactura, { remitos: [remito] })
+      const op = await registrarOk(datosOp, { aplicaciones: [{ factura_id: factura, monto_aplicado: 600 }] })
+      return { remito, factura, op }
     }
     const remitosDe = async (factura: string) =>
       (await sql<{ id: string }>('select id from public.documentos where factura_id = $1', [factura])).map((r) => r.id)
@@ -706,14 +674,14 @@ describe('actualizar, archivos, anular y restaurar', () => {
 
     /** Factura de 1000 cobrada por OP2, con OP1 (también de 1000) y la factura anuladas. */
     async function facturaAnuladaConOpAnulada() {
-      const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+      const factura = await registrarOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
       const op = { tipo: 'orden_pago', monto: 1000 }
       const aplicaciones = [{ factura_id: factura, monto_aplicado: 1000 }]
-      const { data: op1 } = await registrar(op, { aplicaciones })
-      expect((await anular(op1!)).error).toBeNull()
+      const op1 = await registrarOk(op, { aplicaciones })
+      expect((await anular(op1)).error).toBeNull()
       expect((await registrar(op, { aplicaciones })).error).toBeNull()
-      expect((await anular(factura!)).error).toBeNull()
-      return { factura: factura!, op1: op1! }
+      expect((await anular(factura)).error).toBeNull()
+      return { factura, op1 }
     }
 
     it('una OP no se restaura mientras alguna de sus facturas está anulada', async () => {
@@ -776,7 +744,7 @@ describe('concurrencia', () => {
   it('dos quitas de archivo a la vez dejan al documento con uno', async () => {
     const { id, archivos } = await documentoConDosArchivos()
 
-    const segunda = await contraTransaccionEnCurso('select public.quitar_archivo($1)', [archivos[0]], () =>
+    const segunda = await contraTransaccionEnCurso(activo.id, 'select public.quitar_archivo($1)', [archivos[0]], () =>
       activo.client.rpc('quitar_archivo', { p_archivo_id: archivos[1] }),
     )
     expect(segunda.error?.message).toMatch(/al menos un archivo/)
@@ -789,6 +757,7 @@ describe('concurrencia', () => {
     const pagina3 = await subirArchivo(activo.client, ids.cliente_id, 'Página 3.pdf')
 
     const segunda = await contraTransaccionEnCurso(
+      activo.id,
       'select public.agregar_archivos($1, $2::jsonb)',
       [id, JSON.stringify([pagina2])],
       () => activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina3] }),

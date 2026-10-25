@@ -11,9 +11,12 @@ export async function nuevoPresupuesto(cliente: Cliente, clienteId: string, marc
     p_datos: { cliente_id: clienteId, asunto: `Presupuesto de prueba ${marca}`, notas: marca },
     p_items: [],
   })
-  if (error) throw error
+  if (error) throw new Error('No se pudo crear el presupuesto: ' + error.message)
   return data
 }
+
+/** Cada path que subieron los helpers en este archivo de test, para borrarlo al final aunque no se haya registrado. */
+const subidos = new Set<string>()
 
 /** Sube un PDF chico a documentos/<clienteId>/ con la sesión del usuario y devuelve lo que espera registrar_documento. */
 export async function subirArchivo(cliente: Cliente, clienteId: string, nombre = 'Remito Neuquén N° 1.pdf') {
@@ -27,6 +30,7 @@ export async function subirArchivoEn(
   nombre = 'Remito Neuquén N° 1.pdf',
   contenido = '%PDF-1.4 prueba',
 ) {
+  subidos.add(path)
   const { error } = await cliente.storage
     .from('documentos')
     .upload(path, new Blob([contenido], { type: 'application/pdf' }), { contentType: 'application/pdf' })
@@ -49,4 +53,18 @@ export async function limpiarDocumentos(marca: string) {
   await sql(`update public.documentos set factura_id = null where notas = $1`, [marca])
   await sql('delete from public.documentos where notas = $1', [marca])
   await sql('delete from public.cotizaciones where notas = $1', [marca])
+}
+
+/**
+ * Borra de Storage todo lo que subieron los helpers en este archivo de test: lo registrado, lo que se subió
+ * para llamadas que fallan a propósito y lo desvinculado con quitar_archivo. Va en el afterAll, junto a limpiarDocumentos.
+ */
+export async function limpiarArchivosSubidos() {
+  const paths = [...subidos]
+  for (let desde = 0; desde < paths.length; desde += 100) {
+    const tanda = paths.slice(desde, desde + 100)
+    const { error } = await adminClient().storage.from('documentos').remove(tanda)
+    if (error) throw new Error('No se pudieron borrar los archivos subidos: ' + error.message)
+    for (const path of tanda) subidos.delete(path)
+  }
 }

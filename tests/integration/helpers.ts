@@ -72,3 +72,61 @@ export async function sql<T extends pg.QueryResultRow = pg.QueryResultRow>(
 ): Promise<T[]> {
   return conConexion(async (client) => (await client.query<T>(consulta, parametros)).rows)
 }
+
+/**
+ * Espera a que alguna conexión quede bloqueada por la transacción del backend `pid` y devuelve true.
+ * Devuelve false sin esperar más en cuanto `seguir()` da false (por ejemplo, porque la llamada ya terminó).
+ */
+export async function esperarBloqueadaPor(pid: number, seguir: () => boolean = () => true): Promise<boolean> {
+  for (let intento = 0; intento < 100; intento++) {
+    if (!seguir()) return false
+    const [fila] = await sql<{ esperando: number }>(
+      'select count(*)::int as esperando from pg_stat_activity where $1 = any(pg_blocking_pids(pid))',
+      [pid],
+    )
+    if (fila.esperando > 0) return true
+    await new Promise((resolver) => setTimeout(resolver, 50))
+  }
+  throw new Error('La llamada nunca quedó esperando a la otra transacción')
+}
+
+/**
+ * Corre `llamada` mientras otra transacción (con la sesión de `usuarioId`) ejecutó `consulta` sin confirmar
+ * y la confirma recién cuando la llamada ya está esperando.
+ *
+ * Si la llamada termina (bien o mal) antes de quedar esperando, falla en el acto con lo que pasó en la llamada.
+ * Su resultado siempre queda manejado, aunque termine después de que el helper falló.
+ */
+export async function contraTransaccionEnCurso<T>(
+  usuarioId: string,
+  consulta: string,
+  parametros: unknown[],
+  llamada: () => PromiseLike<T>,
+): Promise<T> {
+  return conConexion(async (otra) => {
+    await otra.query('begin')
+    await otra.query(`select set_config('request.jwt.claims', $1, true)`, [
+      JSON.stringify({ sub: usuarioId, role: 'authenticated' }),
+    ])
+    await otra.query('set local role authenticated')
+    await otra.query(consulta, parametros)
+    const [{ pid }] = (await otra.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
+
+    let fin: { ok: true; valor: T } | { ok: false; error: unknown } | undefined
+    const resultado = new Promise<T>((resolver) => resolver(llamada()))
+    resultado.then(
+      (valor) => (fin = { ok: true, valor }),
+      (error: unknown) => (fin = { ok: false, error }),
+    )
+
+    if (!(await esperarBloqueadaPor(pid, () => fin === undefined))) {
+      if (!fin!.ok) throw fin!.error
+      const error = (fin!.valor as { error?: { message?: string } | null } | null)?.error
+      throw new Error(
+        'La llamada terminó sin esperar a la otra transacción: ' + (error ? error.message : 'terminó sin error'),
+      )
+    }
+    await otra.query('commit')
+    return resultado
+  })
+}

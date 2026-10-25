@@ -4,12 +4,14 @@ import type { DatosDocumento } from '@/lib/documentos/esquemas'
 import { ErrorDocumento, prepararSubida, registrarDocumento, urlDescarga } from '@/lib/documentos/servicio'
 import { idsDeEjemplo } from './cotizaciones-helpers'
 import { limpiarDocumentos, nuevoPresupuesto } from './documentos-helpers'
-import { borrarUsuario, crearUsuario } from './helpers'
+import { adminClient, borrarUsuario, crearUsuario } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 let activo: Awaited<ReturnType<typeof crearUsuario>>
 let ids: Awaited<ReturnType<typeof idsDeEjemplo>>
 let presupuesto: string
+/** El archivo que sube el navegador con la URL firmada: se borra al final aunque el test falle antes de registrarlo. */
+let pathSubido: string | undefined
 
 const DATOS_VACIOS: DatosDocumento = {
   tipo: 'orden_compra',
@@ -47,6 +49,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await limpiarDocumentos(MARCA)
+  if (pathSubido) {
+    const { error } = await adminClient().storage.from('documentos').remove([pathSubido])
+    if (error) throw new Error('No se pudo borrar el archivo subido: ' + error.message)
+  }
   await borrarUsuario(activo.id)
 })
 
@@ -58,6 +64,7 @@ describe('servicio de documentos', () => {
       mime: 'application/pdf',
       tamano: contenido.size,
     })
+    pathSubido = path
     expect(path).toMatch(new RegExp(`^documentos/${ids.cliente_id}/[0-9a-f-]{36}\\.pdf$`))
 
     const subida = await activo.client.storage.from('documentos').uploadToSignedUrl(path, token, contenido, {

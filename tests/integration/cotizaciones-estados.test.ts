@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Json } from '@/lib/supabase/database.types'
 import { ITEMS_JORNADA, idsDeEjemplo } from './cotizaciones-helpers'
-import { borrarUsuario, conConexion, crearUsuario, sql } from './helpers'
+import { borrarUsuario, contraTransaccionEnCurso, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 let activo: Awaited<ReturnType<typeof crearUsuario>>
@@ -23,7 +23,7 @@ async function nueva(items: Json[] = ITEMS_JORNADA): Promise<string> {
     p_datos: { cliente_id: ids.cliente_id, formato: 'jornada', fecha: '2026-10-22', notas: MARCA },
     p_items: items,
   })
-  if (error) throw error
+  if (error) throw new Error('No se pudo guardar la cotización: ' + error.message)
   return data
 }
 
@@ -54,40 +54,21 @@ async function importada(): Promise<string> {
   return fila.id
 }
 
-async function esperarBloqueadaPor(pid: number) {
-  for (let intento = 0; intento < 100; intento++) {
-    const [fila] = await sql<{ esperando: number }>(
-      'select count(*)::int as esperando from pg_stat_activity where $1 = any(pg_blocking_pids(pid))',
-      [pid],
-    )
-    if (fila.esperando > 0) return
-    await new Promise((resolver) => setTimeout(resolver, 50))
-  }
-  throw new Error('La llamada nunca quedó esperando a la otra transacción')
-}
-
 /**
  * Corre `llamada` mientras otra transacción tiene a medio guardar la cotización (con un ítem sin precio)
  * y confirma ese guardado recién cuando la llamada ya está esperando.
  */
 async function contraGuardadoEnCurso<T>(id: string, llamada: () => PromiseLike<T>): Promise<T> {
-  return conConexion(async (otra) => {
-    await otra.query('begin')
-    await otra.query(`select set_config('request.jwt.claims', $1, true)`, [
-      JSON.stringify({ sub: activo.id, role: 'authenticated' }),
-    ])
-    await otra.query('set local role authenticated')
-    await otra.query('select public.guardar_cotizacion($1::jsonb, $2::jsonb, $3)', [
+  return contraTransaccionEnCurso(
+    activo.id,
+    'select public.guardar_cotizacion($1::jsonb, $2::jsonb, $3)',
+    [
       JSON.stringify({ cliente_id: ids.cliente_id, formato: 'jornada', fecha: '2026-10-22', notas: MARCA }),
       JSON.stringify([{ descripcion: 'Sin precio', unidad: 'JORNADA' }]),
       id,
-    ])
-    const [{ pid }] = (await otra.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
-    const resultado = Promise.resolve(llamada())
-    await esperarBloqueadaPor(pid)
-    await otra.query('commit')
-    return resultado
-  })
+    ],
+    llamada,
+  )
 }
 
 describe('enviar', () => {
