@@ -48,7 +48,8 @@ $$;
 -- de convertirlos: así 33,335 no se redondea a 33,34 ni "abc" o "2026-02-30" terminan en un error de tipo.
 -- Cliente, equipo y fechas se validan aunque el campo no sea del tipo (o se ignore, como el cliente al actualizar):
 -- leer_datos_documento los convierte igual. Una fecha o un equipo vacío cuenta como que no vino.
--- El resto de los campos que no son del tipo (comprobante en un remito) no se validan: registrar y actualizar los descartan.
+-- Los largos de texto también, como en esquemas.ts. El resto de los campos que no son del tipo (comprobante en un
+-- remito) no se validan: registrar y actualizar los descartan.
 create or replace function private.validar_datos_documento(p_tipo text, p_datos jsonb)
 returns void
 language plpgsql
@@ -60,12 +61,25 @@ declare
   v_equipo text := nullif(p_datos ->> 'equipo_id', '');
   v_fecha text;
 begin
-  if jsonb_typeof(p_datos) <> 'object' then
+  -- "is distinct from" para que un p_datos nulo también se rechace: al actualizar, vaciaría el documento.
+  if jsonb_typeof(p_datos) is distinct from 'object' then
     raise exception 'Los datos del documento tienen que ser un objeto' using errcode = 'P0001';
   end if;
 
   if p_tipo is null or p_tipo not in ('orden_compra', 'remito', 'factura', 'orden_pago') then
     raise exception 'Tipo de documento inválido' using errcode = 'P0001';
+  end if;
+
+  -- Los mismos máximos que esquemas.ts, sobre lo que se guarda (número y OC de referencia sin los espacios de los
+  -- extremos), sea o no del tipo. Un número muy largo, además, no entra en el índice documentos_numero_normalizado.
+  if char_length(btrim(p_datos ->> 'numero')) > 50 then
+    raise exception 'El número puede tener hasta 50 caracteres' using errcode = 'P0001';
+  end if;
+  if char_length(btrim(p_datos ->> 'numero_oc_ref')) > 50 then
+    raise exception 'La OC de referencia puede tener hasta 50 caracteres' using errcode = 'P0001';
+  end if;
+  if char_length(p_datos ->> 'notas') > 2000 then
+    raise exception 'Las notas pueden tener hasta 2000 caracteres' using errcode = 'P0001';
   end if;
 
   if p_datos ->> 'cliente_id' !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
@@ -354,8 +368,9 @@ declare
   v_id uuid;
 begin
   perform private.exigir_usuario_activo();
-  -- Antes de convertir p_datos: que sea un objeto, con cliente, equipo, fechas y monto bien escritos, el equipo
-  -- existente y lo que piden los CHECK. Si no, la conversión o el insert darían un error crudo en vez del mensaje.
+  -- Antes de convertir p_datos: que sea un objeto, con cliente, equipo, fechas y monto bien escritos, textos dentro
+  -- del máximo, el equipo existente y lo que piden los CHECK. Si no, la conversión o el insert darían un error crudo
+  -- en vez del mensaje.
   perform private.validar_datos_documento(p_datos ->> 'tipo', p_datos);
   v := private.leer_datos_documento(p_datos);
   if v.cliente_id is null then
@@ -424,8 +439,9 @@ begin
     raise exception 'El documento no existe o está anulado' using errcode = 'P0001';
   end if;
 
-  -- Antes de convertir p_datos: que sea un objeto, con cliente (aunque se ignore), equipo, fechas y monto bien
-  -- escritos, el equipo existente y lo que piden los CHECK. Si no, la conversión o el update darían un error crudo.
+  -- Antes de convertir p_datos: que sea un objeto (no nulo), con cliente (aunque se ignore), equipo, fechas y monto
+  -- bien escritos, textos dentro del máximo, el equipo existente y lo que piden los CHECK. Si no, la conversión o el
+  -- update darían un error crudo (o, con p_datos nulo, vaciarían el documento).
   perform private.validar_datos_documento(coalesce(p_datos ->> 'tipo', o.tipo), p_datos);
   v := private.leer_datos_documento(p_datos);
   v.tipo := coalesce(v.tipo, o.tipo);

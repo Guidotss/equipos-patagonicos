@@ -349,7 +349,11 @@ describe('ruta del archivo', () => {
 describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el error de un CHECK', () => {
   const MONTO = 'El monto tiene que ser un número positivo con hasta 2 decimales'
   const MAXIMO = 'El monto supera el máximo permitido'
+  const NUMERO_LARGO = 'El número puede tener hasta 50 caracteres'
   const factura = { tipo: 'factura', tipo_comprobante: 'FA' }
+  // Más de lo que entra en una fila del índice documentos_numero_normalizado (2704 bytes): sin el control del
+  // largo daba un error crudo (54000). Al azar, para que Postgres no lo comprima.
+  const numeroEnorme = Array.from({ length: 250 }, () => crypto.randomUUID()).join('')
   const casos: [string, Record<string, unknown>, string][] = [
     ['tipo desconocido', { tipo: 'presupuesto' }, 'Tipo de documento inválido'],
     ['monto con letras', { ...factura, monto: 'abc' }, MONTO],
@@ -377,6 +381,14 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     ['vencimiento con letras', { ...factura, monto: 100, fecha_vencimiento: 'abc' }, 'Fecha inválida'],
     ['período con letras en un remito', { tipo: 'remito', periodo_hasta: 'abc' }, 'Fecha inválida'],
     ['período con letras en una factura', { ...factura, monto: 100, periodo_desde: 'abc' }, 'Fecha inválida'],
+    ['número de más de 50 caracteres', { tipo: 'remito', numero: 'N'.repeat(51) }, NUMERO_LARGO],
+    ['número enorme', { tipo: 'remito', numero: numeroEnorme }, NUMERO_LARGO],
+    [
+      'OC de referencia de más de 50 caracteres',
+      { ...factura, monto: 100, numero_oc_ref: 'O'.repeat(51) },
+      'La OC de referencia puede tener hasta 50 caracteres',
+    ],
+    ['notas de más de 2000 caracteres', { tipo: 'remito', notas: 'x'.repeat(2001) }, 'Las notas pueden tener hasta 2000 caracteres'],
   ]
   const resultado = (error: { code?: string; message: string } | null) => ({ code: error?.code, message: error?.message })
 
@@ -389,7 +401,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
 
   it.each(casos)('actualizar_documento: %s', async (_, datos, mensaje) => {
     const remito = await registrarOk({ tipo: 'remito', numero: 'R-sin-vinculos' })
-    const { error } = await activo.client.rpc('actualizar_documento', { p_id: remito, p_datos: { ...datos, notas: MARCA } })
+    const { error } = await activo.client.rpc('actualizar_documento', { p_id: remito, p_datos: { notas: MARCA, ...datos } })
     expect(resultado(error)).toEqual({ code: 'P0001', message: mensaje })
     expect((await sql('select tipo, numero from public.documentos where id = $1', [remito]))[0]).toEqual({
       tipo: 'remito',
@@ -400,6 +412,8 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
   it.each<[string, Json]>([
     ['una lista', [{ tipo: 'remito' }]],
     ['un texto', 'remito'],
+    // Al actualizar, un p_datos nulo dejaba el documento vacío sin dar error.
+    ['nulo', null],
   ])('p_datos que no es un objeto (%s)', async (_, datos) => {
     const MENSAJE = { code: 'P0001', message: 'Los datos del documento tienen que ser un objeto' }
     const registrado = await activo.client.rpc('registrar_documento', {
@@ -412,6 +426,16 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     const remito = await registrarOk({ tipo: 'remito' })
     const actualizado = await activo.client.rpc('actualizar_documento', { p_id: remito, p_datos: datos })
     expect(resultado(actualizado.error)).toEqual(MENSAJE)
+  })
+
+  it('el número y la OC de referencia aceptan 50 caracteres sin contar los espacios de los extremos', async () => {
+    const numero = 'N'.repeat(50)
+    const ocRef = 'O'.repeat(50)
+    const id = await registrarOk({ ...factura, monto: 100, numero: ` ${numero} `, numero_oc_ref: ` ${ocRef} ` })
+    expect((await sql('select numero, numero_oc_ref from public.documentos where id = $1', [id]))[0]).toEqual({
+      numero,
+      numero_oc_ref: ocRef,
+    })
   })
 
   it('una fecha o un equipo vacío cuenta como que no vino', async () => {
