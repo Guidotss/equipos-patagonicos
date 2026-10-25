@@ -1,6 +1,7 @@
 // src/lib/cotizaciones/lista.ts
 // Lógica pura de la lista de cotizaciones: filtros en la URL, estado que se muestra, columna "Trabajo" y páginas.
 import { z } from 'zod'
+import { esFecha } from '@/lib/format/fechas'
 import { resolverVariables, type NombreVariable } from '@/lib/plantillas/variables'
 import { leerDatos } from './datos'
 import { colapsarPuntoDoble } from './documento'
@@ -30,8 +31,9 @@ const esquemaFiltros = z.object({
   q: z.preprocess(primero, z.string().transform((texto) => texto.trim().slice(0, 100))).catch(''),
   estado: z.preprocess(primero, z.enum(['', ...ESTADOS_FILTRO])).catch(''),
   cliente: z.preprocess(primero, z.uuid()).catch(''),
-  desde: z.preprocess(primero, z.iso.date()).catch(''),
-  hasta: z.preprocess(primero, z.iso.date()).catch(''),
+  // `esFecha` y no `z.iso.date()`: esa acepta el año 0000, que Postgres rechaza y rompería la búsqueda.
+  desde: z.preprocess(primero, z.string().refine(esFecha)).catch(''),
+  hasta: z.preprocess(primero, z.string().refine(esFecha)).catch(''),
   pagina: z.preprocess(primero, numeroDePagina).catch(1),
 })
 

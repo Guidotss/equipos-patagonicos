@@ -55,6 +55,8 @@ describe('leerFiltros', () => {
     expect(leerFiltros({ desde: '01/10/2026', hasta: '2026-10-31' })).toMatchObject({ desde: '', hasta: '2026-10-31' })
     expect(leerFiltros({ desde: '2026-02-30' }).desde).toBe('')
     expect(leerFiltros({ hasta: '2026-13-01' }).hasta).toBe('')
+    // Postgres no acepta el año 0000 (22008): la lista no puede romperse por la URL.
+    expect(leerFiltros({ desde: '0000-01-01', hasta: '0000-02-29' })).toMatchObject({ desde: '', hasta: '' })
   })
 
   it('da vuelta un rango invertido', () => {
