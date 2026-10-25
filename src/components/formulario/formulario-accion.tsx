@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useId } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ESTADO_INICIAL, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
@@ -18,6 +18,7 @@ export function FormularioAccion({
   soloLectura = false,
   boton = true,
   alGuardar,
+  encabezado,
   children,
 }: {
   accion: AccionFormulario
@@ -27,8 +28,14 @@ export function FormularioAccion({
   /** false cuando el formulario dibuja su propio botón de envío (p. ej. arriba, junto al título). */
   boton?: boolean
   alGuardar?: () => void
+  /**
+   * Se dibuja antes del <form>, no adentro: puede llevar otros forms (p. ej. Activar/Desactivar) sin anidarlos.
+   * Su botón de guardar apunta al formulario con form={formulario}.
+   */
+  encabezado?: (contexto: { pendiente: boolean; formulario: string }) => React.ReactNode
   children: (estado: EstadoFormulario, pendiente: boolean) => React.ReactNode
 }) {
+  const formulario = useId()
   const [estado, despachar, pendiente] = useActionState(
     async (previo: EstadoFormulario, formData: FormData) => {
       const resultado = await accion(previo, formData)
@@ -42,17 +49,20 @@ export function FormularioAccion({
   )
 
   return (
-    <form action={despachar} noValidate className="space-y-4">
-      <fieldset disabled={soloLectura || pendiente} className={cn('min-w-0', className)}>
-        {children(estado, pendiente)}
-      </fieldset>
-      {/* Sin botón propio, el formulario muestra el mensaje donde ubica su botón. */}
-      {boton ? <MensajeFormulario estado={estado} /> : null}
-      {soloLectura || !boton ? null : (
-        <Button type="submit" disabled={pendiente}>
-          {pendiente ? 'Guardando…' : textoBoton}
-        </Button>
-      )}
-    </form>
+    <>
+      {encabezado?.({ pendiente, formulario })}
+      <form id={formulario} action={despachar} noValidate className="space-y-4">
+        <fieldset disabled={soloLectura || pendiente} className={cn('min-w-0', className)}>
+          {children(estado, pendiente)}
+        </fieldset>
+        {/* Sin botón propio, el formulario muestra el mensaje donde ubica su botón. */}
+        {boton ? <MensajeFormulario estado={estado} /> : null}
+        {soloLectura || !boton ? null : (
+          <Button type="submit" disabled={pendiente}>
+            {pendiente ? 'Guardando…' : textoBoton}
+          </Button>
+        )}
+      </form>
+    </>
   )
 }

@@ -14,6 +14,7 @@ Imágenes de referencia para el skill `frontend-from-generated-image`. Son el ob
 | `07b-configuracion-equipos.png` | Configuración › Equipos (pantalla de ejemplo) | 2 (rediseño) |
 | `08-login.png` | Login: panel de marca a la izquierda, formulario a la derecha | 1 (rediseño) |
 | `09-empresa.png` | Configuración › Empresa como ficha (banda con el gancho del logo): campos agrupados por uso, con franjas "Así sale…" en vivo | 2 (rediseño) |
+| `10-edicion.png` | Patrón de alta/edición en pantalla propia (sin modales), ejemplo Editar equipo: ficha + tarjetas + franja "Así sale en la cotización" | 2 (rediseño) |
 
 ## Dirección visual: "SaaS premium"
 
