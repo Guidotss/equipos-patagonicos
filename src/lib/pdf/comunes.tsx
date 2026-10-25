@@ -67,11 +67,11 @@ export function Firma({ firmante, conLogo }: { firmante: DocumentoCotizacion['fi
   )
 }
 
-/** Con `linea`, arriba va una línea azul fina del ancho del cuerpo. */
+/** Con `linea` (la por jornada), arriba va una línea azul fina del ancho del cuerpo, en una posición fija. */
 export function Pie({ pie, linea }: { pie: DocumentoCotizacion['pie']; linea?: boolean }) {
   return (
-    <View style={linea ? [estilos.pie, estilos.pieLinea] : estilos.pie} fixed>
-      <Text>{pie.linea}</Text>
+    <View style={[estilos.pie, linea ? estilos.pieJornada : estilos.pieMensual]} fixed>
+      <Text style={estilos.pieDireccion}>{pie.linea}</Text>
       {pie.web ? <Text>{pie.web}</Text> : null}
     </View>
   )

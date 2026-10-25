@@ -28,7 +28,12 @@ export const estilos = StyleSheet.create({
   marcaVineta2: { width: 10, marginLeft: 22 },
   textoVineta: { flex: 1 },
   firma: { marginTop: 22 },
-  pie: { position: 'absolute', bottom: 24, left: 56, right: 56, fontSize: 7.5, textAlign: 'center', color: '#333333' },
-  // Pie de la por jornada: línea a 795 pt del borde superior y renglones cada ~9,4 pt, como en la 112711.
-  pieLinea: { bottom: 17.5, borderTopWidth: 0.75, borderTopColor: AZUL_LINK, paddingTop: 10, lineHeight: 1.25 },
+  pie: { position: 'absolute', left: 56, right: 56, fontSize: 7.5, textAlign: 'center', color: '#333333' },
+  pieMensual: { bottom: 24 },
+  // Pie de la por jornada, calibrado sobre la 112711 (A4 = 842 pt de alto): la línea azul a 795 pt del borde
+  // superior y los renglones a 807 y 817 pt. Va anclado desde arriba (top) para que la línea quede siempre en el
+  // mismo lugar, sin importar cuántos renglones tenga el pie (sin web o con una dirección larga).
+  pieJornada: { top: 795, borderTopWidth: 0.75, borderTopColor: AZUL_LINK, paddingTop: 10, lineHeight: 1.25 },
+  // Dirección y teléfono van en peso normal aunque el cuerpo de la por jornada sea negrita (la web, no).
+  pieDireccion: { fontWeight: 'normal' },
 })

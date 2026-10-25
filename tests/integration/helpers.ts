@@ -77,7 +77,7 @@ export async function sql<T extends pg.QueryResultRow = pg.QueryResultRow>(
  * Espera a que alguna conexión quede bloqueada por la transacción del backend `pid` y devuelve true.
  * Devuelve false sin esperar más en cuanto `seguir()` da false (por ejemplo, porque la llamada ya terminó).
  */
-export async function esperarBloqueadaPor(pid: number, seguir: () => boolean = () => true): Promise<boolean> {
+async function esperarBloqueadaPor(pid: number, seguir: () => boolean = () => true): Promise<boolean> {
   for (let intento = 0; intento < 100; intento++) {
     if (!seguir()) return false
     const [fila] = await sql<{ esperando: number }>(
@@ -121,9 +121,9 @@ export async function contraTransaccionEnCurso<T>(
 
     if (!(await esperarBloqueadaPor(pid, () => fin === undefined))) {
       if (!fin!.ok) throw fin!.error
-      const error = (fin!.valor as { error?: { message?: string } | null } | null)?.error
+      const error = (fin!.valor as { error?: { code?: string; message?: string } | null } | null)?.error
       throw new Error(
-        'La llamada terminó sin esperar a la otra transacción: ' + (error ? error.message : 'terminó sin error'),
+        'La llamada terminó sin esperar a la otra transacción: ' + (error ? `${error.code}: ${error.message}` : '(sin error)'),
       )
     }
     await otra.query('commit')

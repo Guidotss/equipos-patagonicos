@@ -63,6 +63,18 @@ describe('esquemaDocumento', () => {
     }
   })
 
+  it('acepta hasta el máximo que guarda la base (numeric(14, 2)) y nada más', () => {
+    expect(esquemaDocumento.parse(formulario({ tipo: 'orden_pago', monto: '999.999.999.999,99' })).monto).toBe(999_999_999_999.99)
+    expect(problemas({ tipo: 'orden_pago', monto: '1.000.000.000.000' })).toEqual([{ path: ['monto'], message: 'Monto inválido' }])
+  })
+
+  it('el comprobante tiene hasta 10 caracteres, como en los otros campos de texto', () => {
+    expect(problemas({ tipo: 'factura', monto: '100', tipo_comprobante: 'X'.repeat(11) })).toContainEqual({
+      path: ['tipo_comprobante'],
+      message: 'Máximo 10 caracteres',
+    })
+  })
+
   it('rechaza un equipo que no es un UUID', () => {
     expect(problemas({ tipo: 'remito', equipo_id: 'grua-40' })).toEqual([{ path: ['equipo_id'], message: 'Equipo inválido' }])
   })

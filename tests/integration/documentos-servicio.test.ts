@@ -48,12 +48,15 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await limpiarDocumentos(MARCA)
-  if (pathSubido) {
-    const { error } = await adminClient().storage.from('documentos').remove([pathSubido])
-    if (error) throw new Error('No se pudo borrar el archivo subido: ' + error.message)
+  try {
+    await limpiarDocumentos(MARCA)
+    if (pathSubido) {
+      const { error } = await adminClient().storage.from('documentos').remove([pathSubido])
+      if (error) throw new Error('No se pudo borrar el archivo subido: ' + error.message)
+    }
+  } finally {
+    await borrarUsuario(activo.id)
   }
-  await borrarUsuario(activo.id)
 })
 
 describe('servicio de documentos', () => {

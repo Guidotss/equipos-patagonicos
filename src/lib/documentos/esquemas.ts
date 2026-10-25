@@ -35,7 +35,8 @@ const montoOpcional = z
   .transform((valor, ctx) => {
     if (valor === '') return null
     const monto = parsePrecio(valor)
-    if (monto === null || monto <= 0 || monto > 999_999_999_999) {
+    // El máximo de numeric(14, 2), la columna donde se guarda.
+    if (monto === null || monto <= 0 || monto > 999_999_999_999.99) {
       ctx.addIssue({ code: 'custom', message: 'Monto inválido' })
       return z.NEVER
     }
@@ -51,7 +52,7 @@ export const esquemaDocumento = z
     fecha: fechaOpcional,
     monto: montoOpcional,
     // Se valida en el superRefine y solo para facturas: en los otros tipos se descarta.
-    tipo_comprobante: z.string().trim(),
+    tipo_comprobante: z.string().trim().max(10, 'Máximo 10 caracteres'),
     fecha_vencimiento: fechaOpcional,
     numero_oc_ref: z.string().trim().max(50, 'Máximo 50 caracteres'),
     periodo_desde: fechaOpcional,
@@ -67,10 +68,12 @@ export const esquemaDocumento = z
     if ((datos.tipo === 'factura' || datos.tipo === 'orden_pago') && datos.monto === null) {
       ctx.addIssue({ code: 'custom', path: ['monto'], message: 'Ingresá el monto' })
     }
-    if (datos.tipo === 'factura' && datos.tipo_comprobante === '') {
-      ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí el tipo de comprobante' })
-    } else if (datos.tipo === 'factura' && !esTipoComprobante(datos.tipo_comprobante)) {
-      ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí un comprobante válido' })
+    if (datos.tipo === 'factura') {
+      if (datos.tipo_comprobante === '') {
+        ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí el tipo de comprobante' })
+      } else if (!esTipoComprobante(datos.tipo_comprobante)) {
+        ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí un comprobante válido' })
+      }
     }
     if (datos.tipo === 'remito' && datos.periodo_desde && datos.periodo_hasta && datos.periodo_desde > datos.periodo_hasta) {
       ctx.addIssue({ code: 'custom', path: ['periodo_hasta'], message: 'El período termina antes de empezar' })

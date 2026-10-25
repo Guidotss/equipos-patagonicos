@@ -43,10 +43,12 @@ begin
 end;
 $$;
 
--- Valida los datos de un documento antes de escribirlo: cada CHECK de public.documentos que se puede violar
--- desde los parámetros tiene acá su mensaje. El monto se mira como texto, antes de convertirlo: así 33,335 no
--- se redondea a 33,34 ni "abc" termina en un error de tipo. Los campos que no son del tipo (comprobante en un
--- remito, período en una factura) no se validan: registrar y actualizar los descartan.
+-- Valida los datos de un documento antes de convertirlos y escribirlos: todo lo que daría un error crudo (de tipo,
+-- de clave foránea o de un CHECK de public.documentos) tiene acá su mensaje. Los valores se miran como texto, antes
+-- de convertirlos: así 33,335 no se redondea a 33,34 ni "abc" o "2026-02-30" terminan en un error de tipo.
+-- Cliente, equipo y fechas se validan aunque el campo no sea del tipo (o se ignore, como el cliente al actualizar):
+-- leer_datos_documento los convierte igual. Una fecha o un equipo vacío cuenta como que no vino.
+-- El resto de los campos que no son del tipo (comprobante en un remito) no se validan: registrar y actualizar los descartan.
 create or replace function private.validar_datos_documento(p_tipo text, p_datos jsonb)
 returns void
 language plpgsql
@@ -55,14 +57,39 @@ set search_path = ''
 as $$
 declare
   v_monto text := p_datos ->> 'monto';
+  v_equipo text := nullif(p_datos ->> 'equipo_id', '');
+  v_fecha text;
 begin
+  if jsonb_typeof(p_datos) <> 'object' then
+    raise exception 'Los datos del documento tienen que ser un objeto' using errcode = 'P0001';
+  end if;
+
   if p_tipo is null or p_tipo not in ('orden_compra', 'remito', 'factura', 'orden_pago') then
     raise exception 'Tipo de documento inválido' using errcode = 'P0001';
   end if;
 
+  if p_datos ->> 'cliente_id' !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    raise exception 'Cliente inválido' using errcode = 'P0001';
+  end if;
+  if v_equipo !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    raise exception 'Equipo inválido' using errcode = 'P0001';
+  end if;
+
+  foreach v_fecha in array array[
+    p_datos ->> 'fecha', p_datos ->> 'fecha_vencimiento', p_datos ->> 'periodo_desde', p_datos ->> 'periodo_hasta'
+  ] loop
+    if v_fecha <> '' and (v_fecha !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' or not pg_input_is_valid(v_fecha, 'date')) then
+      raise exception 'Fecha inválida' using errcode = 'P0001';
+    end if;
+  end loop;
+
   if v_monto is not null then
-    if v_monto !~ '^[0-9]{1,12}(\.[0-9]{1,2})?$' then
+    if v_monto !~ '^[0-9]+(\.[0-9]{1,2})?$' then
       raise exception 'El monto tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
+    end if;
+    -- numeric(14, 2): hasta 12 dígitos enteros (sin contar ceros a la izquierda).
+    if v_monto !~ '^0*[0-9]{1,12}(\.|$)' then
+      raise exception 'El monto supera el máximo permitido' using errcode = 'P0001';
     end if;
     if v_monto::numeric(14, 2) <= 0 then
       raise exception 'El monto tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
@@ -77,10 +104,31 @@ begin
     raise exception 'Elegí un comprobante válido' using errcode = 'P0001';
   end if;
 
-  if p_tipo = 'remito' and (p_datos ->> 'periodo_desde')::date > (p_datos ->> 'periodo_hasta')::date then
-    raise exception 'El período termina antes de empezar' using errcode = 'P0001';
+  if p_tipo = 'remito' then
+    if nullif(p_datos ->> 'periodo_desde', '')::date > nullif(p_datos ->> 'periodo_hasta', '')::date then
+      raise exception 'El período termina antes de empezar' using errcode = 'P0001';
+    end if;
+    if v_equipo is not null and not exists (select 1 from public.equipos e where e.id = v_equipo::uuid) then
+      raise exception 'El equipo no existe' using errcode = 'P0001';
+    end if;
   end if;
 end;
+$$;
+
+-- p_datos (ya validado) como fila de documentos. Toma solo los campos del formulario: las demás columnas (id,
+-- factura_id, deleted_at…) no se cargan desde p_datos, y así lo que venga en ellas no llega a convertirse.
+-- Una fecha o un equipo vacío ("") cuenta como que no vino, igual que en el formulario.
+create or replace function private.leer_datos_documento(p_datos jsonb)
+returns public.documentos
+language sql
+stable
+set search_path = ''
+as $$
+  select jsonb_populate_record(null::public.documentos, coalesce(jsonb_object_agg(e.key, e.value), '{}'))
+  from jsonb_each(p_datos) as e
+  where e.key in ('cliente_id', 'tipo', 'numero', 'fecha', 'monto', 'tipo_comprobante', 'fecha_vencimiento',
+                  'numero_oc_ref', 'periodo_desde', 'periodo_hasta', 'equipo_id', 'notas')
+    and not (e.key in ('fecha', 'fecha_vencimiento', 'periodo_desde', 'periodo_hasta', 'equipo_id') and e.value = '""');
 $$;
 
 -- Vincula archivos ya subidos a Storage. Tamaño y tipo se leen de Storage, no de lo que diga el navegador.
@@ -93,25 +141,34 @@ declare
   v_archivo jsonb;
   v_meta jsonb;
   v_orden integer;
-  v_carpeta text;
+  v_patron_ruta text;
 begin
   if p_archivos is null or jsonb_typeof(p_archivos) <> 'array' or jsonb_array_length(p_archivos) = 0 then
     raise exception 'Subí al menos un archivo' using errcode = 'P0001';
+  end if;
+
+  -- Un archivo se vincula una sola vez (path es único en documento_archivos): se controla antes de insertar para
+  -- dar el mensaje en vez del error de la restricción. Acá, repetido en la lista; en el loop, ya cargado.
+  if (select count(e ->> 'path') <> count(distinct e ->> 'path') from jsonb_array_elements(p_archivos) as e) then
+    raise exception 'Un archivo aparece dos veces' using errcode = 'P0001';
   end if;
 
   -- La ruta tiene que ser exactamente la que arma rutaArchivo (src/lib/documentos/archivos.ts) para el cliente
   -- del documento: ni la carpeta de otro cliente, ni "..", ni carpetas de más.
   select '^documentos/' || d.cliente_id
            || '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|png)$'
-  into v_carpeta
+  into v_patron_ruta
   from public.documentos d
   where d.id = p_documento_id;
 
   select coalesce(max(orden), 0) into v_orden from public.documento_archivos where documento_id = p_documento_id;
 
   for v_archivo in select * from jsonb_array_elements(p_archivos) loop
-    if (coalesce(v_archivo ->> 'path', '') ~ v_carpeta) is not true then
+    if (coalesce(v_archivo ->> 'path', '') ~ v_patron_ruta) is not true then
       raise exception 'El archivo no corresponde a la carpeta del cliente' using errcode = 'P0001';
+    end if;
+    if exists (select 1 from public.documento_archivos a where a.path = v_archivo ->> 'path') then
+      raise exception 'Ese archivo ya está cargado en un documento' using errcode = 'P0001';
     end if;
     if coalesce(btrim(v_archivo ->> 'nombre_original'), '') = '' then
       raise exception 'Falta el nombre del archivo' using errcode = 'P0001';
@@ -210,8 +267,12 @@ begin
        or coalesce(v_elemento ->> 'factura_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
       raise exception 'Falta la factura en una de las facturas canceladas' using errcode = 'P0001';
     end if;
-    if coalesce(v_elemento ->> 'monto_aplicado', '') !~ '^[0-9]{1,12}(\.[0-9]{1,2})?$' then
+    if coalesce(v_elemento ->> 'monto_aplicado', '') !~ '^[0-9]+(\.[0-9]{1,2})?$' then
       raise exception 'El monto aplicado tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
+    end if;
+    -- numeric(14, 2): hasta 12 dígitos enteros (sin contar ceros a la izquierda).
+    if (v_elemento ->> 'monto_aplicado') !~ '^0*[0-9]{1,12}(\.|$)' then
+      raise exception 'El monto supera el máximo permitido' using errcode = 'P0001';
     end if;
     if (v_elemento ->> 'monto_aplicado')::numeric(14, 2) <= 0 then
       raise exception 'El monto aplicado tiene que ser mayor a cero' using errcode = 'P0001';
@@ -293,9 +354,10 @@ declare
   v_id uuid;
 begin
   perform private.exigir_usuario_activo();
-  -- Antes de convertir p_datos: un monto como "abc" daría un error de tipo en vez del mensaje.
+  -- Antes de convertir p_datos: que sea un objeto, con cliente, equipo, fechas y monto bien escritos, el equipo
+  -- existente y lo que piden los CHECK. Si no, la conversión o el insert darían un error crudo en vez del mensaje.
   perform private.validar_datos_documento(p_datos ->> 'tipo', p_datos);
-  v := jsonb_populate_record(null::public.documentos, p_datos);
+  v := private.leer_datos_documento(p_datos);
   if v.cliente_id is null then
     raise exception 'Falta el cliente' using errcode = 'P0001';
   end if;
@@ -362,9 +424,10 @@ begin
     raise exception 'El documento no existe o está anulado' using errcode = 'P0001';
   end if;
 
-  -- Antes de convertir p_datos: un monto como "abc" daría un error de tipo en vez del mensaje.
+  -- Antes de convertir p_datos: que sea un objeto, con cliente (aunque se ignore), equipo, fechas y monto bien
+  -- escritos, el equipo existente y lo que piden los CHECK. Si no, la conversión o el update darían un error crudo.
   perform private.validar_datos_documento(coalesce(p_datos ->> 'tipo', o.tipo), p_datos);
-  v := jsonb_populate_record(null::public.documentos, p_datos);
+  v := private.leer_datos_documento(p_datos);
   v.tipo := coalesce(v.tipo, o.tipo);
 
   -- Un remito cubierto por una factura anulada cuenta como libre (igual que en vincular_remitos).

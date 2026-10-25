@@ -19,9 +19,12 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await limpiarDocumentos(MARCA)
-  await limpiarArchivosSubidos()
-  for (const u of [activo, inactivo]) await borrarUsuario(u.id)
+  try {
+    await limpiarDocumentos(MARCA)
+    await limpiarArchivosSubidos()
+  } finally {
+    for (const u of [activo, inactivo]) await borrarUsuario(u.id)
+  }
 })
 
 async function registrar(
@@ -147,7 +150,21 @@ describe('registrar_documento', () => {
         p_archivos: [archivo],
       })
     expect((await llamada()).error).toBeNull()
-    expect((await llamada()).error).not.toBeNull()
+    const { error } = await llamada()
+    expect({ code: error?.code, message: error?.message }).toEqual({
+      code: 'P0001',
+      message: 'Ese archivo ya está cargado en un documento',
+    })
+  })
+
+  it('el mismo archivo dos veces en la lista se rechaza', async () => {
+    const archivo = await subirArchivo(activo.client, ids.cliente_id)
+    const { error } = await activo.client.rpc('registrar_documento', {
+      p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
+      p_presupuestos: [presupuesto],
+      p_archivos: [archivo, archivo],
+    })
+    expect({ code: error?.code, message: error?.message }).toEqual({ code: 'P0001', message: 'Un archivo aparece dos veces' })
   })
 
   it('no carga documentos en presupuestos de otro cliente ni en anulados', async () => {
@@ -160,10 +177,10 @@ describe('registrar_documento', () => {
   })
 
   it('una factura cubre remitos y una OP cancela facturas con monto aplicado', async () => {
-    const { data: remito } = await registrar({ tipo: 'remito', numero: 'R-1' })
+    const remito = await registrarOk({ tipo: 'remito', numero: 'R-1' })
     const { data: factura, error } = await registrar(
       { tipo: 'factura', numero: '0001-00000123', monto: 1000, tipo_comprobante: 'FA' },
-      { remitos: [remito!] },
+      { remitos: [remito] },
     )
     expect(error).toBeNull()
     expect((await sql('select factura_id from public.documentos where id = $1', [remito]))[0]).toEqual({ factura_id: factura })
@@ -179,29 +196,29 @@ describe('registrar_documento', () => {
 
   it('un remito cubierto por otra factura vigente no se le saca; el de una factura anulada, sí', async () => {
     const datosFactura = { tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }
-    const { data: remito } = await registrar({ tipo: 'remito' })
-    const { data: facturaA } = await registrar(datosFactura, { remitos: [remito!] })
+    const remito = await registrarOk({ tipo: 'remito' })
+    const facturaA = await registrarOk(datosFactura, { remitos: [remito] })
     const facturaDelRemito = async () => (await sql('select factura_id from public.documentos where id = $1', [remito]))[0]
 
     const reguardar = await activo.client.rpc('actualizar_documento', {
-      p_id: facturaA!,
+      p_id: facturaA,
       p_datos: { ...datosFactura, notas: MARCA },
       p_presupuestos: [presupuesto],
-      p_remitos: [remito!],
+      p_remitos: [remito],
     })
     expect(reguardar.error).toBeNull()
 
-    expect((await registrar(datosFactura, { remitos: [remito!] })).error?.message).toMatch(/ya está cubierto por otra factura/)
+    expect((await registrar(datosFactura, { remitos: [remito] })).error?.message).toMatch(/ya está cubierto por otra factura/)
     expect(await facturaDelRemito()).toEqual({ factura_id: facturaA })
 
-    expect((await activo.client.rpc('anular_documento', { p_id: facturaA! })).error).toBeNull()
-    const { data: facturaB, error } = await registrar(datosFactura, { remitos: [remito!] })
+    expect((await activo.client.rpc('anular_documento', { p_id: facturaA })).error).toBeNull()
+    const { data: facturaB, error } = await registrar(datosFactura, { remitos: [remito] })
     expect(error).toBeNull()
     expect(await facturaDelRemito()).toEqual({ factura_id: facturaB })
   })
 
   it('una OP no aplica más que el saldo de la factura ni más que su propio monto', async () => {
-    const { data: factura } = await registrar({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' })
+    const factura = await registrarOk({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' })
     expect(
       (await registrar({ tipo: 'orden_pago', monto: 1000 }, { aplicaciones: [{ factura_id: factura, monto_aplicado: 600 }] })).error?.message,
     ).toMatch(/supera el saldo/)
@@ -212,6 +229,7 @@ describe('registrar_documento', () => {
 
   describe('facturas canceladas por una orden de pago', () => {
     const DECIMALES = 'El monto aplicado tiene que ser un número positivo con hasta 2 decimales'
+    const MAXIMO = 'El monto supera el máximo permitido'
     let factura: string
     beforeAll(async () => {
       factura = await registrarOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
@@ -224,7 +242,7 @@ describe('registrar_documento', () => {
       ['que redondeado da cero', 0.001, DECIMALES],
       ['con letras', 'abc', DECIMALES],
       ['negativo', -5, DECIMALES],
-      ['con más de 12 dígitos enteros', 1234567890123, DECIMALES],
+      ['con más de 12 dígitos enteros', 1234567890123, MAXIMO],
       ['que falta', null, DECIMALES],
       ['cero', '0.00', 'El monto aplicado tiene que ser mayor a cero'],
     ])('rechaza un monto aplicado %s', async (_, monto, mensaje) => {
@@ -266,8 +284,8 @@ describe('registrar_documento', () => {
   })
 
   it('remitos solo en facturas', async () => {
-    const { data: remito } = await registrar({ tipo: 'remito' })
-    expect((await registrar({ tipo: 'orden_compra' }, { remitos: [remito!] })).error?.message).toMatch(/Solo una factura cubre remitos/)
+    const remito = await registrarOk({ tipo: 'remito' })
+    expect((await registrar({ tipo: 'orden_compra' }, { remitos: [remito] })).error?.message).toMatch(/Solo una factura cubre remitos/)
   })
 
   it('las facturas canceladas tienen que venir como lista', async () => {
@@ -307,8 +325,8 @@ describe('ruta del archivo', () => {
     const registro = await registrarCon(ajeno)
     expect({ code: registro.error?.code, message: registro.error?.message }).toEqual({ code: 'P0001', message: MENSAJE })
 
-    const { data: id } = await registrar({ tipo: 'remito' })
-    const agregado = await activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [ajeno] })
+    const id = await registrarOk({ tipo: 'remito' })
+    const agregado = await activo.client.rpc('agregar_archivos', { p_documento_id: id, p_archivos: [ajeno] })
     expect({ code: agregado.error?.code, message: agregado.error?.message }).toEqual({ code: 'P0001', message: MENSAJE })
     expect(await sql('select count(*)::int as archivos from public.documento_archivos where documento_id = $1', [id])).toEqual([
       { archivos: 1 },
@@ -330,6 +348,7 @@ describe('ruta del archivo', () => {
 
 describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el error de un CHECK', () => {
   const MONTO = 'El monto tiene que ser un número positivo con hasta 2 decimales'
+  const MAXIMO = 'El monto supera el máximo permitido'
   const factura = { tipo: 'factura', tipo_comprobante: 'FA' }
   const casos: [string, Record<string, unknown>, string][] = [
     ['tipo desconocido', { tipo: 'presupuesto' }, 'Tipo de documento inválido'],
@@ -339,12 +358,25 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     ['monto con 3 decimales', { ...factura, monto: 10.005 }, MONTO],
     ['monto que redondeado da cero', { tipo: 'orden_pago', monto: 0.001 }, MONTO],
     ['monto que no es un número', { ...factura, monto: { valor: 10 } }, MONTO],
-    ['monto con más de 12 dígitos enteros', { ...factura, monto: 1234567890123 }, MONTO],
+    ['monto con más de 12 dígitos enteros', { ...factura, monto: 1234567890123 }, MAXIMO],
+    ['monto enorme', { tipo: 'orden_pago', monto: 1e20 }, MAXIMO],
     ['factura sin monto', factura, 'Indicá el monto de la factura'],
     ['orden de pago sin monto', { tipo: 'orden_pago' }, 'Indicá el monto de la orden de pago'],
     ['factura sin comprobante', { tipo: 'factura', monto: 100 }, 'Elegí un comprobante válido'],
     ['factura con comprobante desconocido', { tipo: 'factura', monto: 100, tipo_comprobante: 'FC' }, 'Elegí un comprobante válido'],
     ['período al revés', { tipo: 'remito', periodo_desde: '2026-10-10', periodo_hasta: '2026-10-01' }, 'El período termina antes de empezar'],
+    ['cliente que no es un id', { tipo: 'remito', cliente_id: 'abc' }, 'Cliente inválido'],
+    ['cliente vacío', { tipo: 'remito', cliente_id: '' }, 'Cliente inválido'],
+    ['equipo que no es un id', { tipo: 'remito', equipo_id: 'grua-40' }, 'Equipo inválido'],
+    ['equipo que no es un id en un documento que no es remito', { tipo: 'orden_compra', equipo_id: 'abc' }, 'Equipo inválido'],
+    ['equipo que no existe', { tipo: 'remito', equipo_id: '00000000-0000-4000-8000-000000000000' }, 'El equipo no existe'],
+    ['fecha con letras', { tipo: 'remito', fecha: 'abc' }, 'Fecha inválida'],
+    ['fecha que no existe', { tipo: 'remito', fecha: '2026-02-30' }, 'Fecha inválida'],
+    ['fecha en otro formato', { tipo: 'remito', fecha: '30/10/2026' }, 'Fecha inválida'],
+    ['fecha que no es un texto', { tipo: 'remito', fecha: 20261030 }, 'Fecha inválida'],
+    ['vencimiento con letras', { ...factura, monto: 100, fecha_vencimiento: 'abc' }, 'Fecha inválida'],
+    ['período con letras en un remito', { tipo: 'remito', periodo_hasta: 'abc' }, 'Fecha inválida'],
+    ['período con letras en una factura', { ...factura, monto: 100, periodo_desde: 'abc' }, 'Fecha inválida'],
   ]
   const resultado = (error: { code?: string; message: string } | null) => ({ code: error?.code, message: error?.message })
 
@@ -356,12 +388,65 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
   )
 
   it.each(casos)('actualizar_documento: %s', async (_, datos, mensaje) => {
-    const { data: remito } = await registrar({ tipo: 'remito', numero: 'R-sin-vinculos' })
-    const { error } = await activo.client.rpc('actualizar_documento', { p_id: remito!, p_datos: { ...datos, notas: MARCA } })
+    const remito = await registrarOk({ tipo: 'remito', numero: 'R-sin-vinculos' })
+    const { error } = await activo.client.rpc('actualizar_documento', { p_id: remito, p_datos: { ...datos, notas: MARCA } })
     expect(resultado(error)).toEqual({ code: 'P0001', message: mensaje })
     expect((await sql('select tipo, numero from public.documentos where id = $1', [remito]))[0]).toEqual({
       tipo: 'remito',
       numero: 'R-sin-vinculos',
+    })
+  })
+
+  it.each<[string, Json]>([
+    ['una lista', [{ tipo: 'remito' }]],
+    ['un texto', 'remito'],
+  ])('p_datos que no es un objeto (%s)', async (_, datos) => {
+    const MENSAJE = { code: 'P0001', message: 'Los datos del documento tienen que ser un objeto' }
+    const registrado = await activo.client.rpc('registrar_documento', {
+      p_datos: datos,
+      p_presupuestos: [presupuesto],
+      p_archivos: [await subirArchivo(activo.client, ids.cliente_id)],
+    })
+    expect(resultado(registrado.error)).toEqual(MENSAJE)
+
+    const remito = await registrarOk({ tipo: 'remito' })
+    const actualizado = await activo.client.rpc('actualizar_documento', { p_id: remito, p_datos: datos })
+    expect(resultado(actualizado.error)).toEqual(MENSAJE)
+  })
+
+  it('una fecha o un equipo vacío cuenta como que no vino', async () => {
+    const id = await registrarOk({ tipo: 'remito', fecha: '', periodo_desde: '', periodo_hasta: '', equipo_id: '' })
+    const campos = async () =>
+      (
+        await sql(
+          `select fecha is not null as con_fecha, fecha_vencimiento, periodo_desde, periodo_hasta, equipo_id
+           from public.documentos where id = $1`,
+          [id],
+        )
+      )[0]
+    const vacios = { con_fecha: true, fecha_vencimiento: null, periodo_desde: null, periodo_hasta: null, equipo_id: null }
+    expect(await campos()).toEqual(vacios)
+
+    const { error } = await activo.client.rpc('actualizar_documento', {
+      p_id: id,
+      p_datos: { tipo: 'remito', fecha: '', fecha_vencimiento: '', periodo_desde: '', periodo_hasta: '', equipo_id: '', notas: MARCA },
+    })
+    expect(error).toBeNull()
+    expect(await campos()).toEqual(vacios)
+  })
+
+  it('las columnas que no son del formulario no se toman de p_datos', async () => {
+    const ajenas = { id: 'abc', factura_id: 'abc', deleted_at: 'abc', deleted_by: 'abc', created_by: 'abc', created_at: 'abc' }
+    const id = await registrarOk({ tipo: 'remito', ...ajenas })
+
+    const { error } = await activo.client.rpc('actualizar_documento', {
+      p_id: id,
+      p_datos: { tipo: 'remito', ...ajenas, notas: MARCA },
+    })
+    expect(error).toBeNull()
+    expect((await sql('select deleted_at, factura_id from public.documentos where id = $1', [id]))[0]).toEqual({
+      deleted_at: null,
+      factura_id: null,
     })
   })
 
@@ -404,9 +489,9 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
 
 describe('actualizar, archivos, anular y restaurar', () => {
   it('corrige el tipo de un documento sin vínculos (subí la factura como remito)', async () => {
-    const { data: id } = await registrar({ tipo: 'remito', numero: 'F-1', periodo_desde: '2026-10-01' })
+    const id = await registrarOk({ tipo: 'remito', numero: 'F-1', periodo_desde: '2026-10-01' })
     const { error } = await activo.client.rpc('actualizar_documento', {
-      p_id: id!,
+      p_id: id,
       p_datos: { tipo: 'factura', numero: 'F-1', monto: 300, tipo_comprobante: 'FA', notas: MARCA },
       p_presupuestos: [presupuesto],
     })
@@ -419,18 +504,18 @@ describe('actualizar, archivos, anular y restaurar', () => {
   })
 
   it('no cambia el tipo si tiene vínculos ni baja el monto por debajo de lo cobrado', async () => {
-    const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
-    await registrar({ tipo: 'orden_pago', monto: 600 }, { aplicaciones: [{ factura_id: factura, monto_aplicado: 600 }] })
+    const factura = await registrarOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+    await registrarOk({ tipo: 'orden_pago', monto: 600 }, { aplicaciones: [{ factura_id: factura, monto_aplicado: 600 }] })
 
     const cambioTipo = await activo.client.rpc('actualizar_documento', {
-      p_id: factura!,
+      p_id: factura,
       p_datos: { tipo: 'remito', notas: MARCA },
       p_presupuestos: [presupuesto],
     })
     expect(cambioTipo.error?.message).toMatch(/primero quitá/)
 
     const montoMenor = await activo.client.rpc('actualizar_documento', {
-      p_id: factura!,
+      p_id: factura,
       p_datos: { tipo: 'factura', monto: 500, tipo_comprobante: 'FA', notas: MARCA },
       p_presupuestos: [presupuesto],
     })
@@ -438,11 +523,11 @@ describe('actualizar, archivos, anular y restaurar', () => {
   })
 
   it('un remito cubierto por una factura no cambia de tipo sin desvincularse', async () => {
-    const { data: remito } = await registrar({ tipo: 'remito' })
-    const { data: factura } = await registrar({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [remito!] })
+    const remito = await registrarOk({ tipo: 'remito' })
+    const factura = await registrarOk({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [remito] })
 
     const { error } = await activo.client.rpc('actualizar_documento', {
-      p_id: remito!,
+      p_id: remito,
       p_datos: { tipo: 'orden_compra', notas: MARCA },
       p_presupuestos: [presupuesto],
     })
@@ -454,12 +539,12 @@ describe('actualizar, archivos, anular y restaurar', () => {
   })
 
   it('un remito cubierto por una factura anulada sí cambia de tipo (y deja de estar cubierto)', async () => {
-    const { data: remito } = await registrar({ tipo: 'remito' })
-    const { data: factura } = await registrar({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [remito!] })
-    expect((await activo.client.rpc('anular_documento', { p_id: factura! })).error).toBeNull()
+    const remito = await registrarOk({ tipo: 'remito' })
+    const factura = await registrarOk({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [remito] })
+    expect((await activo.client.rpc('anular_documento', { p_id: factura })).error).toBeNull()
 
     const { error } = await activo.client.rpc('actualizar_documento', {
-      p_id: remito!,
+      p_id: remito,
       p_datos: { tipo: 'orden_compra', notas: MARCA },
     })
     expect(error).toBeNull()
@@ -482,66 +567,66 @@ describe('actualizar, archivos, anular y restaurar', () => {
 
     it('sin p_presupuestos conserva los vínculos; una lista los reemplaza, pero no puede ser vacía', async () => {
       const otro = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
-      const { data: id } = await registrar({ tipo: 'orden_compra' }, { presupuestos: [presupuesto, otro] })
+      const id = await registrarOk({ tipo: 'orden_compra' }, { presupuestos: [presupuesto, otro] })
       const ambos = [presupuesto, otro].sort()
 
       const sinLista = await activo.client.rpc('actualizar_documento', {
-        p_id: id!,
+        p_id: id,
         p_datos: { tipo: 'orden_compra', numero: 'OC-2', notas: MARCA },
       })
       expect(sinLista.error).toBeNull()
-      expect(await presupuestosDe(id!)).toEqual(ambos)
+      expect(await presupuestosDe(id)).toEqual(ambos)
 
       const vacia = await activo.client.rpc('actualizar_documento', {
-        p_id: id!,
+        p_id: id,
         p_datos: { tipo: 'orden_compra', notas: MARCA },
         p_presupuestos: [],
       })
       expect(vacia.error?.message).toMatch(/al menos un presupuesto/)
-      expect(await presupuestosDe(id!)).toEqual(ambos)
+      expect(await presupuestosDe(id)).toEqual(ambos)
 
       const conLista = await activo.client.rpc('actualizar_documento', {
-        p_id: id!,
+        p_id: id,
         p_datos: { tipo: 'orden_compra', notas: MARCA },
         p_presupuestos: [otro],
       })
       expect(conLista.error).toBeNull()
-      expect(await presupuestosDe(id!)).toEqual([otro])
+      expect(await presupuestosDe(id)).toEqual([otro])
     })
 
     it('corrige el número de un documento cuyo presupuesto se anuló después', async () => {
       const anulado = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
-      const { data: id } = await registrar({ tipo: 'orden_compra', numero: 'OC-1' }, { presupuestos: [anulado] })
+      const id = await registrarOk({ tipo: 'orden_compra', numero: 'OC-1' }, { presupuestos: [anulado] })
       await anularPresupuesto(anulado)
 
       const sinLista = await activo.client.rpc('actualizar_documento', {
-        p_id: id!,
+        p_id: id,
         p_datos: { tipo: 'orden_compra', numero: 'OC-2', notas: MARCA },
       })
       expect(sinLista.error).toBeNull()
       const conLista = await activo.client.rpc('actualizar_documento', {
-        p_id: id!,
+        p_id: id,
         p_datos: { tipo: 'orden_compra', numero: 'OC-3', notas: MARCA },
         p_presupuestos: [anulado],
       })
       expect(conLista.error).toBeNull()
 
       expect((await sql('select numero from public.documentos where id = $1', [id]))[0]).toEqual({ numero: 'OC-3' })
-      expect(await presupuestosDe(id!)).toEqual([anulado])
+      expect(await presupuestosDe(id)).toEqual([anulado])
     })
 
     it('no agrega un presupuesto anulado que no tenía', async () => {
       const anulado = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
       await anularPresupuesto(anulado)
-      const { data: id } = await registrar({ tipo: 'orden_compra' })
+      const id = await registrarOk({ tipo: 'orden_compra' })
 
       const { error } = await activo.client.rpc('actualizar_documento', {
-        p_id: id!,
+        p_id: id,
         p_datos: { tipo: 'orden_compra', notas: MARCA },
         p_presupuestos: [presupuesto, anulado],
       })
       expect(error?.message).toMatch(/no anulados/)
-      expect(await presupuestosDe(id!)).toEqual([presupuesto])
+      expect(await presupuestosDe(id)).toEqual([presupuesto])
     })
   })
 
@@ -614,9 +699,9 @@ describe('actualizar, archivos, anular y restaurar', () => {
   })
 
   it('agrega páginas y quita archivos, pero siempre queda uno', async () => {
-    const { data: id } = await registrar({ tipo: 'remito' })
+    const id = await registrarOk({ tipo: 'remito' })
     const pagina = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.jpg')
-    expect((await activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina] })).error).toBeNull()
+    expect((await activo.client.rpc('agregar_archivos', { p_documento_id: id, p_archivos: [pagina] })).error).toBeNull()
 
     const archivos = await sql<{ id: string; orden: number }>(
       'select id, orden from public.documento_archivos where documento_id = $1 order by orden',
@@ -627,12 +712,27 @@ describe('actualizar, archivos, anular y restaurar', () => {
     expect((await activo.client.rpc('quitar_archivo', { p_archivo_id: archivos[1].id })).error?.message).toMatch(/al menos un archivo/)
   })
 
+  it('no agrega un archivo que el documento ya tiene', async () => {
+    const id = await registrarOk({ tipo: 'remito' })
+    const [{ path }] = await sql<{ path: string }>('select path from public.documento_archivos where documento_id = $1', [id])
+
+    const { error } = await activo.client.rpc('agregar_archivos', {
+      p_documento_id: id,
+      p_archivos: [{ path, nombre_original: 'Otra vez.pdf' }],
+    })
+    expect({ code: error?.code, message: error?.message }).toEqual({
+      code: 'P0001',
+      message: 'Ese archivo ya está cargado en un documento',
+    })
+    expect(await sql('select orden from public.documento_archivos where documento_id = $1', [id])).toEqual([{ orden: 1 }])
+  })
+
   it('no agrega archivos a un documento anulado', async () => {
-    const { data: id } = await registrar({ tipo: 'remito' })
-    expect((await activo.client.rpc('anular_documento', { p_id: id! })).error).toBeNull()
+    const id = await registrarOk({ tipo: 'remito' })
+    expect((await activo.client.rpc('anular_documento', { p_id: id })).error).toBeNull()
 
     const pagina = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.pdf')
-    const { error } = await activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina] })
+    const { error } = await activo.client.rpc('agregar_archivos', { p_documento_id: id, p_archivos: [pagina] })
     expect({ code: error?.code, message: error?.message }).toEqual({
       code: 'P0001',
       message: 'El documento no existe o está anulado',
@@ -651,19 +751,19 @@ describe('actualizar, archivos, anular y restaurar', () => {
   })
 
   it('anular y restaurar; una OP no se restaura si ya no hay saldo', async () => {
-    const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
-    const { data: op1 } = await registrar(
+    const factura = await registrarOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+    const op1 = await registrarOk(
       { tipo: 'orden_pago', monto: 1000 },
       { aplicaciones: [{ factura_id: factura, monto_aplicado: 1000 }] },
     )
 
-    expect((await activo.client.rpc('anular_documento', { p_id: op1! })).error).toBeNull()
-    await registrar({ tipo: 'orden_pago', monto: 1000 }, { aplicaciones: [{ factura_id: factura, monto_aplicado: 1000 }] })
-    expect((await activo.client.rpc('restaurar_documento', { p_id: op1! })).error?.message).toMatch(/ya no tiene saldo/)
+    expect((await activo.client.rpc('anular_documento', { p_id: op1 })).error).toBeNull()
+    await registrarOk({ tipo: 'orden_pago', monto: 1000 }, { aplicaciones: [{ factura_id: factura, monto_aplicado: 1000 }] })
+    expect((await activo.client.rpc('restaurar_documento', { p_id: op1 })).error?.message).toMatch(/ya no tiene saldo/)
 
-    const { data: oc } = await registrar({ tipo: 'orden_compra' })
-    await activo.client.rpc('anular_documento', { p_id: oc! })
-    expect((await activo.client.rpc('restaurar_documento', { p_id: oc! })).error).toBeNull()
+    const oc = await registrarOk({ tipo: 'orden_compra' })
+    expect((await activo.client.rpc('anular_documento', { p_id: oc })).error).toBeNull()
+    expect((await activo.client.rpc('restaurar_documento', { p_id: oc })).error).toBeNull()
   })
 
   describe('restaurar sin dejar saldo negativo', () => {
@@ -710,34 +810,34 @@ describe('concurrencia', () => {
     Number((await sql<{ saldo: string }>('select saldo from public.v_facturas where id = $1', [factura]))[0].saldo)
 
   it('dos órdenes de pago a la vez no aplican más que el saldo de la factura', async () => {
-    const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+    const factura = await registrarOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
     const op = { tipo: 'orden_pago', monto: 1000 }
     const aplicaciones = [{ factura_id: factura, monto_aplicado: 1000 }]
 
     const segunda = await contraRegistroEnCurso(op, { aplicaciones }, () => registrar(op, { aplicaciones }))
     expect(segunda.error?.message).toMatch(/supera el saldo/)
-    expect(await saldo(factura!)).toBe(0)
+    expect(await saldo(factura)).toBe(0)
   })
 
   it('una OP anulada no se restaura mientras otra le toma el saldo de la factura', async () => {
-    const { data: factura } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+    const factura = await registrarOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
     const op = { tipo: 'orden_pago', monto: 1000 }
     const aplicaciones = [{ factura_id: factura, monto_aplicado: 1000 }]
-    const { data: anulada } = await registrar(op, { aplicaciones })
-    expect((await activo.client.rpc('anular_documento', { p_id: anulada! })).error).toBeNull()
+    const anulada = await registrarOk(op, { aplicaciones })
+    expect((await activo.client.rpc('anular_documento', { p_id: anulada })).error).toBeNull()
 
     const restaurar = await contraRegistroEnCurso(op, { aplicaciones }, () =>
-      activo.client.rpc('restaurar_documento', { p_id: anulada! }),
+      activo.client.rpc('restaurar_documento', { p_id: anulada }),
     )
     expect(restaurar.error?.message).toMatch(/ya no tiene saldo/)
-    expect(await saldo(factura!)).toBe(0)
+    expect(await saldo(factura)).toBe(0)
   })
 
   it('dos facturas a la vez no cubren el mismo remito', async () => {
-    const { data: remito } = await registrar({ tipo: 'remito' })
+    const remito = await registrarOk({ tipo: 'remito' })
     const factura = { tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }
 
-    const segunda = await contraRegistroEnCurso(factura, { remitos: [remito!] }, () => registrar(factura, { remitos: [remito!] }))
+    const segunda = await contraRegistroEnCurso(factura, { remitos: [remito] }, () => registrar(factura, { remitos: [remito] }))
     expect(segunda.error?.message).toMatch(/ya está cubierto por otra factura/)
   })
 
@@ -752,7 +852,7 @@ describe('concurrencia', () => {
   })
 
   it('dos agregados de archivos a la vez numeran las páginas 1, 2 y 3', async () => {
-    const { data: id } = await registrar({ tipo: 'remito' })
+    const id = await registrarOk({ tipo: 'remito' })
     const pagina2 = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.pdf')
     const pagina3 = await subirArchivo(activo.client, ids.cliente_id, 'Página 3.pdf')
 
@@ -760,7 +860,7 @@ describe('concurrencia', () => {
       activo.id,
       'select public.agregar_archivos($1, $2::jsonb)',
       [id, JSON.stringify([pagina2])],
-      () => activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina3] }),
+      () => activo.client.rpc('agregar_archivos', { p_documento_id: id, p_archivos: [pagina3] }),
     )
     expect(segunda.error).toBeNull()
     const archivos = await sql<{ path: string; orden: number }>(

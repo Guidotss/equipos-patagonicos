@@ -16,9 +16,12 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await limpiarDocumentos(MARCA)
-  await limpiarArchivosSubidos()
-  for (const u of [activo, inactivo]) await borrarUsuario(u.id)
+  try {
+    await limpiarDocumentos(MARCA)
+    await limpiarArchivosSubidos()
+  } finally {
+    for (const u of [activo, inactivo]) await borrarUsuario(u.id)
+  }
 })
 
 async function estadoPresupuesto(id: string) {
@@ -121,7 +124,7 @@ describe('revertir_aprobacion con documentos', () => {
 
     expect((await activo.client.rpc('revertir_aprobacion', { p_id: id })).error?.message).toMatch(/tiene documentos/)
 
-    await activo.client.rpc('anular_documento', { p_id: oc })
+    expect((await activo.client.rpc('anular_documento', { p_id: oc })).error).toBeNull()
     expect((await activo.client.rpc('revertir_aprobacion', { p_id: id })).error).toBeNull()
   })
 
