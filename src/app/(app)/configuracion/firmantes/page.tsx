@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
-import { Firmantes } from '@/components/configuracion/firmantes'
+import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
+import { Firmantes, NuevoFirmante } from '@/components/configuracion/firmantes'
 import { BotonEstado } from '@/components/formulario/boton-estado'
 import { createClient } from '@/lib/supabase/server'
-import { actualizarFirmante, cambiarEstadoFirmante, crearFirmante } from '../actions'
+import { cambiarEstadoFirmante } from '../actions'
 
 export const metadata: Metadata = { title: 'Firmantes' }
 
@@ -17,7 +18,6 @@ export default async function FirmantesPage() {
 
   const firmantes = data.map((firmante) => ({
     ...firmante,
-    actualizar: actualizarFirmante.bind(null, firmante.id),
     boton: (
       <BotonEstado
         activo={firmante.activo}
@@ -28,12 +28,16 @@ export default async function FirmantesPage() {
   }))
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Firmantes</h1>
-        <p className="text-sm text-muted-foreground">Nombre, cargo y teléfono que aparecen al pie de cada cotización.</p>
-      </div>
-      <Firmantes firmantes={firmantes} crear={crearFirmante} />
-    </section>
+    <>
+      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Firmantes' }]} />
+      <Contenido>
+        <EncabezadoPagina
+          titulo="Firmantes"
+          descripcion="Nombre, cargo y teléfono que aparecen al pie de cada cotización."
+          acciones={<NuevoFirmante />}
+        />
+        <Firmantes firmantes={firmantes} />
+      </Contenido>
+    </>
   )
 }

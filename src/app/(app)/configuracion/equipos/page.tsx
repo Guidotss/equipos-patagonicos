@@ -1,15 +1,12 @@
 import type { Metadata } from 'next'
-import { Equipos } from '@/components/configuracion/equipos'
+import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
+import { Equipos, NuevoEquipo } from '@/components/configuracion/equipos'
 import { BotonEstado } from '@/components/formulario/boton-estado'
+import { capacidadTexto } from '@/lib/catalogos/equipos'
 import { createClient } from '@/lib/supabase/server'
-import { actualizarEquipo, cambiarEstadoEquipo, crearEquipo } from '../actions'
+import { cambiarEstadoEquipo } from '../actions'
 
 export const metadata: Metadata = { title: 'Equipos' }
-
-/** "60.5" (numeric de Postgres) → "60,5" para mostrar y editar. */
-function capacidadTexto(valor: number | null): string {
-  return valor === null ? '' : String(valor).replace('.', ',')
-}
 
 export default async function EquiposPage() {
   const supabase = await createClient()
@@ -23,7 +20,6 @@ export default async function EquiposPage() {
   const equipos = data.map((equipo) => ({
     ...equipo,
     capacidad_tn: capacidadTexto(equipo.capacidad_tn),
-    actualizar: actualizarEquipo.bind(null, equipo.id),
     boton: (
       <BotonEstado
         activo={equipo.activo}
@@ -34,12 +30,16 @@ export default async function EquiposPage() {
   }))
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Equipos</h1>
-        <p className="text-sm text-muted-foreground">La descripción de cada equipo se usa como &quot;Equipo ofrecido&quot; en las cotizaciones.</p>
-      </div>
-      <Equipos equipos={equipos} crear={crearEquipo} />
-    </section>
+    <>
+      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Equipos' }]} />
+      <Contenido>
+        <EncabezadoPagina
+          titulo="Equipos"
+          descripcion="La descripción de cada equipo se usa como “Equipo ofrecido” en las cotizaciones."
+          acciones={<NuevoEquipo />}
+        />
+        <Equipos equipos={equipos} />
+      </Contenido>
+    </>
   )
 }

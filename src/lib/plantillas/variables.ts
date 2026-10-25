@@ -29,6 +29,11 @@ export function variablesUsadas(texto: string): string[] {
   return [...new Set(Array.from(texto.matchAll(PATRON_VARIABLE), (m) => m[1].trim()))]
 }
 
+/** "con base en {{ indice_base }}." → ['con base en ', 'indice_base', '.']: los nombres quedan en las posiciones impares. */
+export function partirVariables(texto: string): string[] {
+  return texto.split(PATRON_VARIABLE).map((parte, indice) => (indice % 2 === 1 ? parte.trim() : parte))
+}
+
 export function variablesDesconocidas(texto: string): string[] {
   return variablesUsadas(texto).filter((nombre) => !esVariable(nombre))
 }

@@ -4,6 +4,7 @@ import type { Formato, Unidad } from '@/lib/plantillas/contenido'
 import { parsearFormato, type NodoFormato } from '@/lib/plantillas/formato'
 import { resolverVariables, variablesDesconocidas, type NombreVariable } from '@/lib/plantillas/variables'
 import { leerDatos } from './datos'
+import { lineaPie } from './pie'
 
 /** Filas de la base que hacen falta para dibujar una cotización. */
 export type FuenteDocumento = {
@@ -145,9 +146,6 @@ export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
       : null
 
   const { empresa } = fuente
-  const linea = [empresa.direccion, empresa.ciudad, 'Argentina', empresa.telefono && `Tel. ${empresa.telefono}`, empresa.email]
-    .filter(Boolean)
-    .join(' - ')
 
   return {
     numero: fuente.cotizacion.numero,
@@ -168,7 +166,7 @@ export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
     })),
     total,
     firmante: fuente.firmante,
-    pie: { linea, web: empresa.web },
+    pie: { linea: lineaPie(empresa), web: empresa.web },
     faltantes: [...faltantes],
     desconocidas: [...desconocidas],
   }

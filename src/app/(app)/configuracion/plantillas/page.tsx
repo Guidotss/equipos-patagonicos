@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
+import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
 import { Plantillas } from '@/components/configuracion/plantillas'
 import { BotonEstado } from '@/components/formulario/boton-estado'
 import { FORMATOS, type Formato } from '@/lib/plantillas/contenido'
 import { createClient } from '@/lib/supabase/server'
-import { cambiarEstadoPlantilla, renombrarPlantilla } from '../actions'
+import { cambiarEstadoPlantilla } from '../actions'
 
 export const metadata: Metadata = { title: 'Plantillas' }
 
@@ -19,7 +20,6 @@ export default async function PlantillasPage() {
   const plantillas = data.map((plantilla) => ({
     ...plantilla,
     formato: FORMATOS[plantilla.formato as Formato] ?? plantilla.formato,
-    renombrar: renombrarPlantilla.bind(null, plantilla.id),
     boton: (
       <BotonEstado
         activo={plantilla.activa}
@@ -30,14 +30,15 @@ export default async function PlantillasPage() {
   }))
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Plantillas</h1>
-        <p className="text-sm text-muted-foreground">
-          Los textos se editan desde una cotización con &quot;Guardar como plantilla&quot; (próxima etapa).
-        </p>
-      </div>
-      <Plantillas plantillas={plantillas} />
-    </section>
+    <>
+      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Plantillas' }]} />
+      <Contenido>
+        <EncabezadoPagina
+          titulo="Plantillas"
+          descripcion="Los textos se editan desde una cotización con “Guardar como plantilla” (próxima etapa)."
+        />
+        <Plantillas plantillas={plantillas} />
+      </Contenido>
+    </>
   )
 }
