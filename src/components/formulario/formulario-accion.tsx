@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useId } from 'react'
+import { useActionState, useEffect, useId } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ESTADO_INICIAL, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
@@ -47,6 +47,12 @@ export function FormularioAccion({
     },
     ESTADO_INICIAL,
   )
+
+  // Con errores, el foco va al primer campo marcado: en celular el botón de guardar puede quedar lejos del error.
+  useEffect(() => {
+    if (estado.ok || Object.keys(estado.errores).length === 0) return
+    document.getElementById(formulario)?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [estado, formulario])
 
   return (
     <>

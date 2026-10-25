@@ -18,13 +18,17 @@ test('alta de cliente: valida el CUIT sin perder lo escrito, agrega un contacto 
   await page.getByLabel('CUIT').fill('')
   await page.getByRole('button', { name: 'Crear cliente' }).click()
   await expect(page.getByRole('heading', { name: razonSocial })).toBeVisible()
+  await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)
+  const ficha = page.url()
 
-  await page.getByRole('button', { name: 'Agregar contacto' }).click()
-  const dialogo = page.getByRole('dialog')
-  await dialogo.getByLabel('Nombre').fill('Yanina Colman')
-  await dialogo.getByLabel('Email').fill('yanina@ejemplo.com')
-  await dialogo.getByRole('button', { name: 'Guardar contacto' }).click()
-  await expect(dialogo).toBeHidden()
+  await page.getByRole('link', { name: 'Agregar contacto' }).click()
+  await expect(page).toHaveURL(`${ficha}/contactos/nuevo`)
+  await page.getByLabel('Nombre').fill('Yanina Colman')
+  await page.getByLabel('Email').fill('yanina@ejemplo.com')
+  await page.getByRole('button', { name: 'Guardar contacto' }).click()
+  // Esperar la ficha: en el alta la vista previa de la cotización también muestra el nombre.
+  await expect(page).toHaveURL(ficha)
+  await expect(page.getByRole('heading', { name: razonSocial })).toBeVisible()
   await expect(page.getByText('Yanina Colman')).toBeVisible()
 
   await page.goto(`/clientes?q=${encodeURIComponent(`gruas nandu ${sufijo}`)}`)

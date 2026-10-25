@@ -4,7 +4,7 @@ import { Plantillas } from '@/components/configuracion/plantillas'
 import { BotonEstado } from '@/components/formulario/boton-estado'
 import { FORMATOS, type Formato } from '@/lib/plantillas/contenido'
 import { createClient } from '@/lib/supabase/server'
-import { cambiarEstadoPlantilla, renombrarPlantilla } from '../actions'
+import { cambiarEstadoPlantilla } from '../actions'
 
 export const metadata: Metadata = { title: 'Plantillas' }
 
@@ -20,7 +20,6 @@ export default async function PlantillasPage() {
   const plantillas = data.map((plantilla) => ({
     ...plantilla,
     formato: FORMATOS[plantilla.formato as Formato] ?? plantilla.formato,
-    renombrar: renombrarPlantilla.bind(null, plantilla.id),
     boton: (
       <BotonEstado
         activo={plantilla.activa}

@@ -10,7 +10,7 @@ import { formatCuit } from '@/lib/cuit'
 import { iniciales } from '@/lib/format/texto'
 import { createClient } from '@/lib/supabase/server'
 import { esUuid } from '@/lib/validacion'
-import { actualizarCliente, actualizarContacto, borrarContacto, cambiarEstadoCliente, crearContacto } from '../actions'
+import { actualizarCliente, cambiarEstadoCliente } from '../actions'
 
 export const metadata: Metadata = { title: 'Cliente' }
 
@@ -27,12 +27,6 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
     .maybeSingle()
   if (error) throw error
   if (!cliente) notFound()
-
-  const contactos = cliente.contactos.map((contacto) => ({
-    ...contacto,
-    actualizar: actualizarContacto.bind(null, id, contacto.id),
-    borrar: borrarContacto.bind(null, id, contacto.id),
-  }))
 
   const datosClave = [
     cliente.cuit ? `CUIT ${formatCuit(cliente.cuit)}` : null,
@@ -67,7 +61,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
           />
         </section>
 
-        <Contactos contactos={contactos} crear={crearContacto.bind(null, id)} />
+        <Contactos clienteId={id} contactos={cliente.contactos} />
       </Contenido>
     </>
   )

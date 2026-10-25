@@ -1,13 +1,7 @@
-'use client'
-
 import { FileText, Pencil } from 'lucide-react'
 import Link from 'next/link'
-import { Campo } from '@/components/formulario/campo'
-import { DialogoFormulario } from '@/components/formulario/dialogo-formulario'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Pastilla } from '@/components/ui/pastilla'
-import { valorCampo, type AccionFormulario } from '@/lib/formularios'
 import { cn } from '@/lib/utils'
 
 export type PlantillaConAcciones = {
@@ -15,7 +9,6 @@ export type PlantillaConAcciones = {
   nombre: string
   formato: string
   activa: boolean
-  renombrar: AccionFormulario
   boton: React.ReactNode
 }
 
@@ -54,27 +47,18 @@ export function Plantillas({ plantillas }: { plantillas: PlantillaConAcciones[] 
             </div>
             <div className="ml-auto flex items-center gap-2">
               {plantilla.activa ? <Pastilla tono="exito">Activa</Pastilla> : <Pastilla>Inactiva</Pastilla>}
-              <DialogoFormulario
-                titulo="Renombrar plantilla"
-                accion={plantilla.renombrar}
-                textoBoton="Guardar nombre"
-                disparador={
-                  <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Renombrar ${plantilla.nombre}`}>
-                    <Pencil />
-                  </Button>
-                }
-              >
-                {(estado) => (
-                  <Campo id="plantilla-nombre" etiqueta="Nombre" error={estado.errores.nombre}>
-                    <Input
-                      id="plantilla-nombre"
-                      name="nombre"
-                      defaultValue={valorCampo(estado, { nombre: plantilla.nombre }, 'nombre')}
-                      aria-invalid={Boolean(estado.errores.nombre)}
-                    />
-                  </Campo>
-                )}
-              </DialogoFormulario>
+              {/* Va al mismo lugar que el nombre, que ya es el link accesible: el lápiz es solo un atajo visual
+                  (con aria-label sería otro link con el nombre adentro y una parada de tab repetida). */}
+              <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
+                <Link
+                  href={`/configuracion/plantillas/${plantilla.id}`}
+                  aria-hidden
+                  tabIndex={-1}
+                  title={`Renombrar ${plantilla.nombre}`}
+                >
+                  <Pencil />
+                </Link>
+              </Button>
               {plantilla.boton}
             </div>
           </div>

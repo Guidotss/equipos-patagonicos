@@ -60,43 +60,49 @@ export function CamposGrilla({
   estado,
   inicial,
   campos,
+  prefijo,
 }: {
   estado: EstadoFormulario
   inicial?: Partial<Record<string, string | null>>
   campos: DefinicionCampo[]
+  /** Antepone "<prefijo>-" al id de cada campo (el name no cambia). */
+  prefijo?: string
 }) {
   return (
     <div className="grid gap-x-4 gap-y-3 @md:grid-cols-2">
-      {campos.map(({ campo, etiqueta, placeholder, ayuda, ancho, filas, props }) => (
-        <Campo
-          key={campo}
-          id={campo}
-          etiqueta={etiqueta}
-          ayuda={ayuda}
-          error={estado.errores[campo]}
-          className={ancho || filas ? '@md:col-span-2' : undefined}
-        >
-          {filas ? (
-            <Textarea
-              id={campo}
-              name={campo}
-              rows={filas}
-              placeholder={placeholder}
-              defaultValue={valorCampo(estado, inicial, campo)}
-              aria-invalid={Boolean(estado.errores[campo])}
-            />
-          ) : (
-            <Input
-              id={campo}
-              name={campo}
-              placeholder={placeholder}
-              defaultValue={valorCampo(estado, inicial, campo)}
-              aria-invalid={Boolean(estado.errores[campo])}
-              {...props}
-            />
-          )}
-        </Campo>
-      ))}
+      {campos.map(({ campo, etiqueta, placeholder, ayuda, ancho, filas, props }) => {
+        const id = prefijo ? `${prefijo}-${campo}` : campo
+        return (
+          <Campo
+            key={campo}
+            id={id}
+            etiqueta={etiqueta}
+            ayuda={ayuda}
+            error={estado.errores[campo]}
+            className={ancho || filas ? '@md:col-span-2' : undefined}
+          >
+            {filas ? (
+              <Textarea
+                id={id}
+                name={campo}
+                rows={filas}
+                placeholder={placeholder}
+                defaultValue={valorCampo(estado, inicial, campo)}
+                aria-invalid={Boolean(estado.errores[campo])}
+              />
+            ) : (
+              <Input
+                id={id}
+                name={campo}
+                placeholder={placeholder}
+                defaultValue={valorCampo(estado, inicial, campo)}
+                aria-invalid={Boolean(estado.errores[campo])}
+                {...props}
+              />
+            )}
+          </Campo>
+        )
+      })}
     </div>
   )
 }
