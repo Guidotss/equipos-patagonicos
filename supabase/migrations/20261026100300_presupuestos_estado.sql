@@ -16,8 +16,10 @@ begin
     raise exception 'Indicá el motivo de la anulación' using errcode = 'P0001';
   end if;
 
+  -- El motivo es de la anulación: al finalizar o volver a en curso queda vacío.
   update public.cotizaciones
-  set presupuesto_estado = p_estado, presupuesto_motivo = coalesce(btrim(p_motivo), '')
+  set presupuesto_estado = p_estado,
+      presupuesto_motivo = case when p_estado = 'anulado' then btrim(p_motivo) else '' end
   where id = p_id and estado = 'aprobada';
   if not found then
     raise exception 'El presupuesto no existe' using errcode = 'P0001';
@@ -36,12 +38,22 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_cotizacion public.cotizaciones%rowtype;
 begin
   perform private.exigir_usuario_activo();
-  -- Bloquea la cotización antes de buscar documentos: un documento que se está vinculando o restaurando a la
-  -- vez (que la tiene bloqueada para compartir) termina primero y acá se lo ve; uno que llega después espera
-  -- y ve la cotización ya revertida.
-  perform 1 from public.cotizaciones where id = p_id for update;
+  -- Bloquea la cotización antes de validarla y de buscar documentos: un documento que se está vinculando o
+  -- restaurando a la vez (que la tiene bloqueada para compartir) termina primero y acá se lo ve; uno que llega
+  -- después espera y ve la cotización ya revertida.
+  select * into v_cotizacion from public.cotizaciones where id = p_id for update;
+  -- Primero lo que no se arregla anulando documentos (así un presupuesto directo recibe su mensaje).
+  if v_cotizacion.origen = 'directa' then
+    raise exception 'Un presupuesto directo no se revierte: anulalo desde el presupuesto' using errcode = 'P0001';
+  end if;
+  if v_cotizacion.id is null or v_cotizacion.estado <> 'aprobada' then
+    raise exception 'Solo se puede revertir la aprobación de una cotización aprobada' using errcode = 'P0001';
+  end if;
+
   if exists (
     select 1
     from public.documento_presupuestos dp
@@ -58,12 +70,6 @@ begin
     pdf_aprobado_path = null,
     presupuesto_estado = null,
     presupuesto_motivo = ''
-  where c.id = p_id and c.estado = 'aprobada' and c.origen in ('app', 'importada');
-  if not found then
-    if exists (select 1 from public.cotizaciones where id = p_id and origen = 'directa') then
-      raise exception 'Un presupuesto directo no se revierte: anulalo desde el presupuesto' using errcode = 'P0001';
-    end if;
-    raise exception 'Solo se puede revertir la aprobación de una cotización aprobada' using errcode = 'P0001';
-  end if;
+  where c.id = p_id;
 end;
 $$;

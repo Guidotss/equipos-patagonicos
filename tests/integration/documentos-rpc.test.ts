@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Json } from '@/lib/supabase/database.types'
 import { idsDeEjemplo } from './cotizaciones-helpers'
-import { limpiarDocumentos, nuevoPresupuesto, subirArchivo } from './documentos-helpers'
+import { limpiarDocumentos, nuevoPresupuesto, subirArchivo, subirArchivoEn } from './documentos-helpers'
 import { borrarUsuario, conConexion, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
@@ -137,9 +137,31 @@ describe('registrar_documento', () => {
     const inexistente = await activo.client.rpc('registrar_documento', {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
       p_presupuestos: [presupuesto],
-      p_archivos: [{ path: `documentos/${ids.cliente_id}/no-existe.pdf`, nombre_original: 'x.pdf' }],
+      p_archivos: [{ path: `documentos/${ids.cliente_id}/${crypto.randomUUID()}.pdf`, nombre_original: 'x.pdf' }],
     })
     expect(inexistente.error?.message).toMatch(/No se encontró el archivo/)
+  })
+
+  it('el archivo tiene que tener nombre y no estar vacío', async () => {
+    const registrarCon = (archivo: { path: string; nombre_original: string }) =>
+      activo.client.rpc('registrar_documento', {
+        p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
+        p_presupuestos: [presupuesto],
+        p_archivos: [archivo],
+      })
+
+    const sinNombre = await registrarCon({ ...(await subirArchivo(activo.client, ids.cliente_id)), nombre_original: '  ' })
+    expect({ code: sinNombre.error?.code, message: sinNombre.error?.message }).toEqual({
+      code: 'P0001',
+      message: 'Falta el nombre del archivo',
+    })
+
+    const vacio = await subirArchivoEn(activo.client, `documentos/${ids.cliente_id}/${crypto.randomUUID()}.pdf`, 'Vacío.pdf', '')
+    const conArchivoVacio = await registrarCon(vacio)
+    expect({ code: conArchivoVacio.error?.code, message: conArchivoVacio.error?.message }).toEqual({
+      code: 'P0001',
+      message: 'El archivo está vacío',
+    })
   })
 
   it('un mismo archivo no se vincula a dos documentos', async () => {
@@ -214,6 +236,51 @@ describe('registrar_documento', () => {
     ).toMatch(/supera el monto de la orden de pago/)
   })
 
+  describe('facturas canceladas por una orden de pago', () => {
+    const DECIMALES = 'El monto aplicado tiene que ser un número positivo con hasta 2 decimales'
+    let factura: string
+    beforeAll(async () => {
+      const { data, error } = await registrar({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
+      if (error) throw new Error('No se pudo registrar la factura: ' + error.message)
+      factura = data!
+    })
+    const op = (aplicaciones: Json[]) => registrar({ tipo: 'orden_pago', monto: 100 }, { aplicaciones })
+    const resultado = (error: { code?: string; message: string } | null) => ({ code: error?.code, message: error?.message })
+
+    it.each<[string, Json, string]>([
+      ['con más de 2 decimales (no se redondea)', 33.335, DECIMALES],
+      ['que redondeado da cero', 0.001, DECIMALES],
+      ['con letras', 'abc', DECIMALES],
+      ['negativo', -5, DECIMALES],
+      ['que falta', null, DECIMALES],
+      ['cero', '0.00', 'El monto aplicado tiene que ser mayor a cero'],
+    ])('rechaza un monto aplicado %s', async (_, monto, mensaje) => {
+      const { error } = await op([{ factura_id: factura, monto_aplicado: monto }])
+      expect(resultado(error)).toEqual({ code: 'P0001', message: mensaje })
+    })
+
+    it('rechaza una aplicación sin factura o con una factura que no es un id', async () => {
+      for (const aplicacion of [{ monto_aplicado: 10 }, { factura_id: 'abc', monto_aplicado: 10 }, 5]) {
+        const { error } = await op([aplicacion])
+        expect(resultado(error)).toEqual({ code: 'P0001', message: 'Falta la factura en una de las facturas canceladas' })
+      }
+    })
+
+    it('la misma factura en minúsculas y en mayúsculas cuenta como repetida', async () => {
+      const { error } = await op([
+        { factura_id: factura, monto_aplicado: 10 },
+        { factura_id: factura.toUpperCase(), monto_aplicado: 10 },
+      ])
+      expect(resultado(error)).toEqual({ code: 'P0001', message: 'Una factura aparece dos veces en la orden de pago' })
+    })
+
+    it('guarda el monto aplicado tal cual, con hasta 2 decimales', async () => {
+      const { data: id, error } = await op([{ factura_id: factura, monto_aplicado: 33.33 }])
+      expect(error).toBeNull()
+      expect(await sql('select monto_aplicado from public.op_facturas where op_id = $1', [id])).toEqual([{ monto_aplicado: '33.33' }])
+    })
+  })
+
   it('remitos solo en facturas', async () => {
     const { data: remito } = await registrar({ tipo: 'remito' })
     expect((await registrar({ tipo: 'orden_compra' }, { remitos: [remito!] })).error?.message).toMatch(/Solo una factura cubre remitos/)
@@ -238,6 +305,115 @@ describe('registrar_documento', () => {
       p_archivos: [],
     })
     expect(error?.code).toBe('42501')
+  })
+})
+
+describe('ruta del archivo', () => {
+  const MENSAJE = 'El archivo no corresponde a la carpeta del cliente'
+  const registrarCon = (archivo: { path: string; nombre_original: string }) =>
+    activo.client.rpc('registrar_documento', {
+      p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
+      p_presupuestos: [presupuesto],
+      p_archivos: [archivo],
+    })
+
+  it('un archivo subido en la carpeta de otro cliente no se registra ni se agrega', async () => {
+    const ajeno = await subirArchivoEn(activo.client, `documentos/${ids.cliente_con_contacto_id}/${crypto.randomUUID()}.pdf`)
+
+    const registro = await registrarCon(ajeno)
+    expect({ code: registro.error?.code, message: registro.error?.message }).toEqual({ code: 'P0001', message: MENSAJE })
+
+    const { data: id } = await registrar({ tipo: 'remito' })
+    const agregado = await activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [ajeno] })
+    expect({ code: agregado.error?.code, message: agregado.error?.message }).toEqual({ code: 'P0001', message: MENSAJE })
+    expect(await sql('select count(*)::int as archivos from public.documento_archivos where documento_id = $1', [id])).toEqual([
+      { archivos: 1 },
+    ])
+  })
+
+  it('una ruta con .. o con una carpeta de más se rechaza', async () => {
+    const conCarpetaDeMas = await subirArchivoEn(activo.client, `documentos/${ids.cliente_id}/extra/${crypto.randomUUID()}.pdf`)
+    const conPuntos = {
+      path: `documentos/${ids.cliente_id}/../${ids.cliente_con_contacto_id}/${crypto.randomUUID()}.pdf`,
+      nombre_original: 'x.pdf',
+    }
+    for (const archivo of [conCarpetaDeMas, conPuntos]) {
+      const { error } = await registrarCon(archivo)
+      expect({ code: error?.code, message: error?.message }).toEqual({ code: 'P0001', message: MENSAJE })
+    }
+  })
+})
+
+describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el error de un CHECK', () => {
+  const MONTO = 'El monto tiene que ser un número positivo con hasta 2 decimales'
+  const factura = { tipo: 'factura', tipo_comprobante: 'FA' }
+  const casos: [string, Record<string, unknown>, string][] = [
+    ['tipo desconocido', { tipo: 'presupuesto' }, 'Tipo de documento inválido'],
+    ['monto con letras', { ...factura, monto: 'abc' }, MONTO],
+    ['monto negativo', { ...factura, monto: -5 }, MONTO],
+    ['monto cero', { tipo: 'orden_pago', monto: 0 }, MONTO],
+    ['monto con 3 decimales', { ...factura, monto: 10.005 }, MONTO],
+    ['monto que redondeado da cero', { tipo: 'orden_pago', monto: 0.001 }, MONTO],
+    ['monto que no es un número', { ...factura, monto: { valor: 10 } }, MONTO],
+    ['factura sin monto', factura, 'Indicá el monto de la factura'],
+    ['orden de pago sin monto', { tipo: 'orden_pago' }, 'Indicá el monto de la orden de pago'],
+    ['factura sin comprobante', { tipo: 'factura', monto: 100 }, 'Elegí un comprobante válido'],
+    ['factura con comprobante desconocido', { tipo: 'factura', monto: 100, tipo_comprobante: 'FC' }, 'Elegí un comprobante válido'],
+    ['período al revés', { tipo: 'remito', periodo_desde: '2026-10-10', periodo_hasta: '2026-10-01' }, 'El período termina antes de empezar'],
+  ]
+  const resultado = (error: { code?: string; message: string } | null) => ({ code: error?.code, message: error?.message })
+
+  it.each([...casos, ['sin tipo', {}, 'Tipo de documento inválido'] as (typeof casos)[number]])(
+    'registrar_documento: %s',
+    async (_, datos, mensaje) => {
+      expect(resultado((await registrar(datos)).error)).toEqual({ code: 'P0001', message: mensaje })
+    },
+  )
+
+  it.each(casos)('actualizar_documento: %s', async (_, datos, mensaje) => {
+    const { data: remito } = await registrar({ tipo: 'remito', numero: 'R-sin-vinculos' })
+    const { error } = await activo.client.rpc('actualizar_documento', { p_id: remito!, p_datos: { ...datos, notas: MARCA } })
+    expect(resultado(error)).toEqual({ code: 'P0001', message: mensaje })
+    expect((await sql('select tipo, numero from public.documentos where id = $1', [remito]))[0]).toEqual({
+      tipo: 'remito',
+      numero: 'R-sin-vinculos',
+    })
+  })
+
+  it('los campos que no son del tipo se descartan en vez de chocar con los CHECK', async () => {
+    const camposDe = async (id: string) =>
+      (
+        await sql(
+          `select tipo_comprobante, fecha_vencimiento, numero_oc_ref, periodo_desde, periodo_hasta, equipo_id
+           from public.documentos where id = $1`,
+          [id],
+        )
+      )[0]
+    const vacios = {
+      tipo_comprobante: null,
+      fecha_vencimiento: null,
+      numero_oc_ref: '',
+      periodo_desde: null,
+      periodo_hasta: null,
+      equipo_id: null,
+    }
+    const deFactura = { tipo_comprobante: 'FA', fecha_vencimiento: '2026-11-30', numero_oc_ref: 'OC-1' }
+    const deRemito = { periodo_desde: '2026-10-01', periodo_hasta: '2026-10-05', equipo_id: ids.equipo_id }
+
+    const remito = await registrar({ tipo: 'remito', ...deFactura })
+    expect(remito.error).toBeNull()
+    expect(await camposDe(remito.data!)).toEqual(vacios)
+
+    const factura = await registrar({ tipo: 'factura', monto: 100, ...deFactura, ...deRemito })
+    expect(factura.error).toBeNull()
+    expect(await camposDe(factura.data!)).toMatchObject({ tipo_comprobante: 'FA', numero_oc_ref: 'OC-1', periodo_desde: null, equipo_id: null })
+
+    const { error } = await activo.client.rpc('actualizar_documento', {
+      p_id: remito.data!,
+      p_datos: { tipo: 'orden_compra', ...deFactura, ...deRemito, notas: MARCA },
+    })
+    expect(error).toBeNull()
+    expect(await camposDe(remito.data!)).toEqual(vacios)
   })
 })
 
@@ -289,6 +465,22 @@ describe('actualizar, archivos, anular y restaurar', () => {
     expect((await sql('select tipo, factura_id from public.documentos where id = $1', [remito]))[0]).toEqual({
       tipo: 'remito',
       factura_id: factura,
+    })
+  })
+
+  it('un remito cubierto por una factura anulada sí cambia de tipo (y deja de estar cubierto)', async () => {
+    const { data: remito } = await registrar({ tipo: 'remito' })
+    const { data: factura } = await registrar({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [remito!] })
+    expect((await activo.client.rpc('anular_documento', { p_id: factura! })).error).toBeNull()
+
+    const { error } = await activo.client.rpc('actualizar_documento', {
+      p_id: remito!,
+      p_datos: { tipo: 'orden_compra', notas: MARCA },
+    })
+    expect(error).toBeNull()
+    expect((await sql('select tipo, factura_id from public.documentos where id = $1', [remito]))[0]).toEqual({
+      tipo: 'orden_compra',
+      factura_id: null,
     })
   })
 
@@ -450,6 +642,19 @@ describe('actualizar, archivos, anular y restaurar', () => {
     expect((await activo.client.rpc('quitar_archivo', { p_archivo_id: archivos[1].id })).error?.message).toMatch(/al menos un archivo/)
   })
 
+  it('no agrega archivos a un documento anulado', async () => {
+    const { data: id } = await registrar({ tipo: 'remito' })
+    expect((await activo.client.rpc('anular_documento', { p_id: id! })).error).toBeNull()
+
+    const pagina = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.pdf')
+    const { error } = await activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina] })
+    expect({ code: error?.code, message: error?.message }).toEqual({
+      code: 'P0001',
+      message: 'El documento no existe o está anulado',
+    })
+    expect(await sql('select orden from public.documento_archivos where documento_id = $1', [id])).toEqual([{ orden: 1 }])
+  })
+
   it('no quita archivos de un documento anulado', async () => {
     const { id, archivos } = await documentoConDosArchivos()
     expect((await activo.client.rpc('anular_documento', { p_id: id })).error).toBeNull()
@@ -559,5 +764,24 @@ describe('concurrencia', () => {
     )
     expect(segunda.error?.message).toMatch(/al menos un archivo/)
     expect(await sql('select id from public.documento_archivos where documento_id = $1', [id])).toEqual([{ id: archivos[1] }])
+  })
+
+  it('dos agregados de archivos a la vez numeran las páginas 1, 2 y 3', async () => {
+    const { data: id } = await registrar({ tipo: 'remito' })
+    const pagina2 = await subirArchivo(activo.client, ids.cliente_id, 'Página 2.pdf')
+    const pagina3 = await subirArchivo(activo.client, ids.cliente_id, 'Página 3.pdf')
+
+    const segunda = await contraTransaccionEnCurso(
+      'select public.agregar_archivos($1, $2::jsonb)',
+      [id, JSON.stringify([pagina2])],
+      () => activo.client.rpc('agregar_archivos', { p_documento_id: id!, p_archivos: [pagina3] }),
+    )
+    expect(segunda.error).toBeNull()
+    const archivos = await sql<{ path: string; orden: number }>(
+      'select path, orden from public.documento_archivos where documento_id = $1 order by orden',
+      [id],
+    )
+    expect(archivos.map((a) => a.orden)).toEqual([1, 2, 3])
+    expect(archivos.slice(1).map((a) => a.path)).toEqual([pagina2.path, pagina3.path])
   })
 })

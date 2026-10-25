@@ -96,6 +96,13 @@ describe('cambiar_estado_presupuesto', () => {
     expect((await estadoPresupuesto(id)).presupuesto_estado).toBe('en_curso')
   })
 
+  it('el motivo se guarda solo al anular', async () => {
+    const id = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
+    const { error } = await activo.client.rpc('cambiar_estado_presupuesto', { p_id: id, p_estado: 'finalizado', p_motivo: 'x' })
+    expect(error).toBeNull()
+    expect(await estadoPresupuesto(id)).toEqual({ presupuesto_estado: 'finalizado', presupuesto_motivo: '' })
+  })
+
   it('anular exige motivo', async () => {
     const id = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
     expect((await activo.client.rpc('cambiar_estado_presupuesto', { p_id: id, p_estado: 'anulado' })).error?.message).toMatch(/motivo/)
@@ -124,6 +131,18 @@ describe('revertir_aprobacion con documentos', () => {
 
     await activo.client.rpc('anular_documento', { p_id: oc! })
     expect((await activo.client.rpc('revertir_aprobacion', { p_id: id })).error).toBeNull()
+  })
+
+  it('a un presupuesto directo con documentos le dice que se anula, no que anule los documentos', async () => {
+    const id = await nuevoPresupuesto(activo.client, ids.cliente_id, MARCA)
+    const oc = await registrarOrdenDeCompra(id)
+    expect(oc.error).toBeNull()
+
+    const { error } = await activo.client.rpc('revertir_aprobacion', { p_id: id })
+    expect({ code: error?.code, message: error?.message }).toEqual({
+      code: 'P0001',
+      message: 'Un presupuesto directo no se revierte: anulalo desde el presupuesto',
+    })
   })
 })
 

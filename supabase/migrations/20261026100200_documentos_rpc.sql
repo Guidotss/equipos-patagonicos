@@ -43,6 +43,46 @@ begin
 end;
 $$;
 
+-- Valida los datos de un documento antes de escribirlo: cada CHECK de public.documentos que se puede violar
+-- desde los parámetros tiene acá su mensaje. El monto se mira como texto, antes de convertirlo: así 33,335 no
+-- se redondea a 33,34 ni "abc" termina en un error de tipo. Los campos que no son del tipo (comprobante en un
+-- remito, período en una factura) no se validan: registrar y actualizar los descartan.
+create or replace function private.validar_datos_documento(p_tipo text, p_datos jsonb)
+returns void
+language plpgsql
+stable
+set search_path = ''
+as $$
+declare
+  v_monto text := p_datos ->> 'monto';
+begin
+  if p_tipo is null or p_tipo not in ('orden_compra', 'remito', 'factura', 'orden_pago') then
+    raise exception 'Tipo de documento inválido' using errcode = 'P0001';
+  end if;
+
+  if v_monto is not null then
+    if v_monto !~ '^[0-9]+(\.[0-9]{1,2})?$' then
+      raise exception 'El monto tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
+    end if;
+    if v_monto::numeric(14, 2) <= 0 then
+      raise exception 'El monto tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
+    end if;
+  elsif p_tipo = 'factura' then
+    raise exception 'Indicá el monto de la factura' using errcode = 'P0001';
+  elsif p_tipo = 'orden_pago' then
+    raise exception 'Indicá el monto de la orden de pago' using errcode = 'P0001';
+  end if;
+
+  if p_tipo = 'factura' and coalesce(p_datos ->> 'tipo_comprobante', '') not in ('FA', 'FCE_A', 'FB', 'ND', 'NC') then
+    raise exception 'Elegí un comprobante válido' using errcode = 'P0001';
+  end if;
+
+  if p_tipo = 'remito' and (p_datos ->> 'periodo_desde')::date > (p_datos ->> 'periodo_hasta')::date then
+    raise exception 'El período termina antes de empezar' using errcode = 'P0001';
+  end if;
+end;
+$$;
+
 -- Vincula archivos ya subidos a Storage. Tamaño y tipo se leen de Storage, no de lo que diga el navegador.
 create or replace function private.adjuntar_archivos(p_documento_id uuid, p_archivos jsonb)
 returns void
@@ -53,24 +93,39 @@ declare
   v_archivo jsonb;
   v_meta jsonb;
   v_orden integer;
+  v_carpeta text;
 begin
   if p_archivos is null or jsonb_typeof(p_archivos) <> 'array' or jsonb_array_length(p_archivos) = 0 then
     raise exception 'Subí al menos un archivo' using errcode = 'P0001';
   end if;
 
+  -- La ruta tiene que ser exactamente la que arma rutaArchivo (src/lib/documentos/archivos.ts) para el cliente
+  -- del documento: ni la carpeta de otro cliente, ni "..", ni carpetas de más.
+  select '^documentos/' || d.cliente_id
+           || '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|png)$'
+  into v_carpeta
+  from public.documentos d
+  where d.id = p_documento_id;
+
   select coalesce(max(orden), 0) into v_orden from public.documento_archivos where documento_id = p_documento_id;
 
   for v_archivo in select * from jsonb_array_elements(p_archivos) loop
-    if coalesce(left(v_archivo ->> 'path', 11), '') <> 'documentos/' then
-      raise exception 'Ruta de archivo inválida' using errcode = 'P0001';
+    if (coalesce(v_archivo ->> 'path', '') ~ v_carpeta) is not true then
+      raise exception 'El archivo no corresponde a la carpeta del cliente' using errcode = 'P0001';
+    end if;
+    if coalesce(btrim(v_archivo ->> 'nombre_original'), '') = '' then
+      raise exception 'Falta el nombre del archivo' using errcode = 'P0001';
     end if;
 
     select o.metadata into v_meta
     from storage.objects o
     where o.bucket_id = 'documentos' and o.name = v_archivo ->> 'path';
     if not found then
-      raise exception 'No se encontró el archivo subido (%)', coalesce(v_archivo ->> 'nombre_original', v_archivo ->> 'path')
-        using errcode = 'P0001';
+      raise exception 'No se encontró el archivo subido (%)', v_archivo ->> 'nombre_original' using errcode = 'P0001';
+    end if;
+    -- El bucket ya limita el tipo y el tamaño máximo, pero acepta archivos vacíos.
+    if coalesce((v_meta ->> 'size')::bigint, 0) <= 0 then
+      raise exception 'El archivo está vacío' using errcode = 'P0001';
     end if;
 
     v_orden := v_orden + 1;
@@ -78,7 +133,7 @@ begin
     values (
       p_documento_id,
       v_archivo ->> 'path',
-      coalesce(nullif(btrim(v_archivo ->> 'nombre_original'), ''), 'archivo'),
+      btrim(v_archivo ->> 'nombre_original'),
       v_meta ->> 'mimetype',
       (v_meta ->> 'size')::bigint,
       v_orden
@@ -138,15 +193,32 @@ language plpgsql
 set search_path = ''
 as $$
 declare
+  v_elemento jsonb;
   v_aplicacion record;
   v_saldo numeric;
-  v_total numeric := 0;
+  v_total numeric(14, 2) := 0;
 begin
   if p_aplicaciones is null or jsonb_typeof(p_aplicaciones) <> 'array' then
     raise exception 'Las facturas canceladas tienen que ser una lista' using errcode = 'P0001';
   end if;
+
+  -- Cada aplicación se valida antes que nada: los controles de abajo comparan un uuid y un numeric(14, 2)
+  -- ya válidos. El monto se mira como texto para no redondear (33,335 no pasa como 33,34).
+  for v_elemento in select * from jsonb_array_elements(p_aplicaciones) loop
+    if jsonb_typeof(v_elemento) <> 'object'
+       or coalesce(v_elemento ->> 'factura_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+      raise exception 'Falta la factura en una de las facturas canceladas' using errcode = 'P0001';
+    end if;
+    if coalesce(v_elemento ->> 'monto_aplicado', '') !~ '^[0-9]+(\.[0-9]{1,2})?$' then
+      raise exception 'El monto aplicado tiene que ser un número positivo con hasta 2 decimales' using errcode = 'P0001';
+    end if;
+    if (v_elemento ->> 'monto_aplicado')::numeric(14, 2) <= 0 then
+      raise exception 'El monto aplicado tiene que ser mayor a cero' using errcode = 'P0001';
+    end if;
+  end loop;
+
   if (select count(*) from jsonb_array_elements(p_aplicaciones)) <>
-     (select count(distinct e ->> 'factura_id') from jsonb_array_elements(p_aplicaciones) e) then
+     (select count(distinct (e ->> 'factura_id')::uuid) from jsonb_array_elements(p_aplicaciones) e) then
     raise exception 'Una factura aparece dos veces en la orden de pago' using errcode = 'P0001';
   end if;
 
@@ -160,13 +232,9 @@ begin
   delete from public.op_facturas where op_id = p_op_id;
 
   for v_aplicacion in
-    select (e ->> 'factura_id')::uuid as factura_id, (e ->> 'monto_aplicado')::numeric as monto
+    select (e ->> 'factura_id')::uuid as factura_id, (e ->> 'monto_aplicado')::numeric(14, 2) as monto
     from jsonb_array_elements(p_aplicaciones) e
   loop
-    if v_aplicacion.monto is null or v_aplicacion.monto <= 0 then
-      raise exception 'El monto aplicado a cada factura tiene que ser mayor a 0' using errcode = 'P0001';
-    end if;
-
     select vf.saldo into v_saldo
     from public.v_facturas vf
     where vf.id = v_aplicacion.factura_id and vf.cliente_id = p_cliente_id and vf.tipo_comprobante <> 'NC';
@@ -224,6 +292,8 @@ declare
   v_id uuid;
 begin
   perform private.exigir_usuario_activo();
+  -- Antes de convertir p_datos: un monto como "abc" daría un error de tipo en vez del mensaje.
+  perform private.validar_datos_documento(p_datos ->> 'tipo', p_datos);
   v := jsonb_populate_record(null::public.documentos, p_datos);
   if v.cliente_id is null then
     raise exception 'Falta el cliente' using errcode = 'P0001';
@@ -231,13 +301,19 @@ begin
   perform private.validar_presupuestos(v.cliente_id, p_presupuestos);
   perform private.exigir_vinculos_del_tipo(v.tipo, p_remitos, p_aplicaciones);
 
+  -- Los campos que no son del tipo se descartan (los CHECK documentos_campos_de_* no los aceptan).
   insert into public.documentos (
     cliente_id, tipo, numero, fecha, monto, tipo_comprobante, fecha_vencimiento, numero_oc_ref,
     periodo_desde, periodo_hasta, equipo_id, notas
   ) values (
     v.cliente_id, v.tipo, coalesce(btrim(v.numero), ''), coalesce(v.fecha, private.hoy_argentina()), v.monto,
-    v.tipo_comprobante, v.fecha_vencimiento, coalesce(btrim(v.numero_oc_ref), ''),
-    v.periodo_desde, v.periodo_hasta, v.equipo_id, coalesce(v.notas, '')
+    case when v.tipo = 'factura' then v.tipo_comprobante end,
+    case when v.tipo = 'factura' then v.fecha_vencimiento end,
+    case when v.tipo = 'factura' then coalesce(btrim(v.numero_oc_ref), '') else '' end,
+    case when v.tipo = 'remito' then v.periodo_desde end,
+    case when v.tipo = 'remito' then v.periodo_hasta end,
+    case when v.tipo = 'remito' then v.equipo_id end,
+    coalesce(v.notas, '')
   )
   returning id into v_id;
 
@@ -285,11 +361,14 @@ begin
     raise exception 'El documento no existe o está anulado' using errcode = 'P0001';
   end if;
 
+  -- Antes de convertir p_datos: un monto como "abc" daría un error de tipo en vez del mensaje.
+  perform private.validar_datos_documento(coalesce(p_datos ->> 'tipo', o.tipo), p_datos);
   v := jsonb_populate_record(null::public.documentos, p_datos);
   v.tipo := coalesce(v.tipo, o.tipo);
 
+  -- Un remito cubierto por una factura anulada cuenta como libre (igual que en vincular_remitos).
   if v.tipo <> o.tipo and (
-    o.factura_id is not null
+    exists (select 1 from public.documentos f where f.id = o.factura_id and f.deleted_at is null)
     or exists (select 1 from public.documentos r where r.factura_id = p_id)
     or exists (select 1 from public.op_facturas where op_id = p_id or factura_id = p_id)
   ) then
@@ -328,17 +407,18 @@ begin
   end if;
   perform private.exigir_vinculos_del_tipo(v.tipo, p_remitos, p_aplicaciones);
 
+  -- Los campos que no son del tipo se descartan (los CHECK documentos_campos_de_* no los aceptan).
   update public.documentos set
     tipo = v.tipo,
     numero = coalesce(btrim(v.numero), ''),
     fecha = coalesce(v.fecha, o.fecha),
     monto = v.monto,
-    tipo_comprobante = v.tipo_comprobante,
-    fecha_vencimiento = v.fecha_vencimiento,
-    numero_oc_ref = coalesce(btrim(v.numero_oc_ref), ''),
-    periodo_desde = v.periodo_desde,
-    periodo_hasta = v.periodo_hasta,
-    equipo_id = v.equipo_id,
+    tipo_comprobante = case when v.tipo = 'factura' then v.tipo_comprobante end,
+    fecha_vencimiento = case when v.tipo = 'factura' then v.fecha_vencimiento end,
+    numero_oc_ref = case when v.tipo = 'factura' then coalesce(btrim(v.numero_oc_ref), '') else '' end,
+    periodo_desde = case when v.tipo = 'remito' then v.periodo_desde end,
+    periodo_hasta = case when v.tipo = 'remito' then v.periodo_hasta end,
+    equipo_id = case when v.tipo = 'remito' then v.equipo_id end,
     factura_id = case when v.tipo = 'remito' then o.factura_id end,
     notas = coalesce(v.notas, '')
   where id = p_id;
@@ -443,8 +523,9 @@ begin
     order by id
     for update;
 
-    -- v_facturas no tiene las anuladas: si la OP volviera con una factura anulada, al restaurar esa factura
-    -- se sumarían lo de esta OP y lo de la que la cobró mientras tanto.
+    -- v_facturas no tiene las anuladas: con una factura anulada no hay saldo contra el cual controlar esta OP.
+    -- Si volviera igual y otra OP cobró esa factura mientras tanto, después la factura no se podría restaurar:
+    -- esa restauración se rechaza porque las OP vigentes superarían su monto.
     if exists (
       select 1
       from public.op_facturas ofa

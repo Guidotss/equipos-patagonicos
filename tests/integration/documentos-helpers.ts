@@ -17,10 +17,19 @@ export async function nuevoPresupuesto(cliente: Cliente, clienteId: string, marc
 
 /** Sube un PDF chico a documentos/<clienteId>/ con la sesión del usuario y devuelve lo que espera registrar_documento. */
 export async function subirArchivo(cliente: Cliente, clienteId: string, nombre = 'Remito Neuquén N° 1.pdf') {
-  const path = `documentos/${clienteId}/${crypto.randomUUID()}.pdf`
+  return subirArchivoEn(cliente, `documentos/${clienteId}/${crypto.randomUUID()}.pdf`, nombre)
+}
+
+/** Sube un PDF a una ruta cualquiera del bucket (para probar rutas que no arma rutaArchivo). */
+export async function subirArchivoEn(
+  cliente: Cliente,
+  path: string,
+  nombre = 'Remito Neuquén N° 1.pdf',
+  contenido = '%PDF-1.4 prueba',
+) {
   const { error } = await cliente.storage
     .from('documentos')
-    .upload(path, new Blob(['%PDF-1.4 prueba'], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+    .upload(path, new Blob([contenido], { type: 'application/pdf' }), { contentType: 'application/pdf' })
   if (error) throw error
   return { path, nombre_original: nombre }
 }
