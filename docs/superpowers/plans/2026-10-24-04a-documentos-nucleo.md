@@ -2208,3 +2208,68 @@ git commit -m "test: helpers de concurrencia compartidos, limpieza de Storage y 
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
+
+---
+
+### Task 12: Cerrar los errores crudos que quedan y prolijidad final
+
+Origen: la verificación final de las Tasks 9 a 11 (fuzz de 169 entradas inválidas con `pg`: 23 dieron un código distinto de P0001) y menores de sus revisiones. Son decisiones del orquestador: aplicalas tal cual. Las migraciones del plan se siguen editando en el lugar (`npm run db:reset`).
+
+**Criterio de aceptación central:** ninguna entrada a `registrar_documento`, `actualizar_documento`, `agregar_archivos` (ni una OP con aplicaciones) puede devolver un código distinto de P0001 (nada de 23505, 23503, 22023, 22P02, 22003, 22007, 22008, 23514), salvo los CHECK de `documento_archivos` sobre mime/tamaño, que Storage ya hace inalcanzables.
+
+**Files:**
+- Modify: `supabase/migrations/20261026100200_documentos_rpc.sql`
+- Modify: `src/lib/documentos/esquemas.ts`, `src/lib/documentos/esquemas.test.ts`
+- Modify: `src/lib/pdf/estilos.ts`, `src/lib/pdf/comunes.tsx` (y `cotizacion-jornada.tsx` si hace falta)
+- Test: `tests/integration/documentos-rpc.test.ts`, `tests/integration/presupuestos-estado.test.ts`, `tests/integration/documentos-servicio.test.ts`, `tests/integration/helpers.ts`
+
+- [ ] **Step 1: Archivo repetido (`private.adjuntar_archivos`)**
+
+Antes de insertar, con P0001:
+- el mismo `path` dos veces dentro de `p_archivos` → `'Un archivo aparece dos veces'`;
+- un `path` que ya está en `documento_archivos` (de este u otro documento) → `'Ese archivo ya está cargado en un documento'`.
+
+Vale para `registrar_documento` y `agregar_archivos`. El test existente "un mismo archivo no se vincula a dos documentos" pasa a exigir `code === 'P0001'` y el mensaje; agregar tests para el repetido en la lista y para `agregar_archivos` con un path ya vinculado al mismo documento. Renombrar `v_carpeta` a `v_patron_ruta` (guarda la regex de la ruta completa).
+
+- [ ] **Step 2: `p_datos` mal formado (`private.validar_datos_documento`)**
+
+Extender la validación, todo con P0001 y **antes** de cualquier `jsonb_populate_record` o cast:
+- `jsonb_typeof(p_datos) <> 'object'` → `'Los datos del documento tienen que ser un objeto'` (en registrar y actualizar);
+- `cliente_id` presente y sin forma de UUID → `'Cliente inválido'`; `equipo_id` presente, no vacío y sin forma de UUID → `'Equipo inválido'`. Se valida el formato **aunque el campo no sea del tipo** (`jsonb_populate_record` lo convierte igual);
+- toda fecha presente y no vacía (`fecha`, `fecha_vencimiento`, `periodo_desde`, `periodo_hasta`) tiene que ser una fecha válida `YYYY-MM-DD`, también si el campo no es del tipo: si no, `'Fecha inválida'`. Usá `pg_input_is_valid(valor, 'date')` si la versión de Postgres local lo tiene (PG ≥ 16; fijate con `select version()`), o regex + un bloque `begin … exception when others` sobre el cast;
+- `equipo_id` de un remito que no existe en `public.equipos` → `'El equipo no existe'` (hoy da 23503);
+- monto o monto aplicado con más de 12 dígitos enteros → `'El monto supera el máximo permitido'` (hoy dice "hasta 2 decimales", que confunde). El de los decimales queda solo para el formato.
+
+Actualizar los comentarios que dicen "Antes de convertir p_datos: un monto como 'abc' daría un error de tipo" para que describan lo que ahora se valida. Sumar cada caso a la tabla parametrizada de `documentos-rpc.test.ts` (code P0001 + mensaje), incluido `p_datos` array y escalar en `actualizar_documento`, una fecha `'2026-02-30'` y un `periodo_desde: 'abc'` en una factura.
+
+- [ ] **Step 3: El esquema y la base aceptan el mismo máximo (`esquemas.ts`)**
+
+`montoOpcional` acepta hasta `999_999_999_999.99` (el máximo de `numeric(14,2)`), no `999_999_999_999`. Test del borde (`'999.999.999.999,99'` válido, `'1.000.000.000.000'` inválido). Además, en el `superRefine`, anidar los dos controles de la factura en un solo `if (datos.tipo === 'factura') { … }`, y `tipo_comprobante` lleva `.max(10)` como los otros campos de texto.
+
+- [ ] **Step 4: Pie del PDF por jornada**
+
+- El primer renglón del pie (dirección y teléfono) va en **peso normal**, como en el original 112711; solo la web va en negrita. Hoy hereda `fontWeight: 'bold'` del cuerpo.
+- La línea azul queda en una posición fija (y = 795 pt) **sin importar cuántos renglones tenga el pie** (web vacía o dirección larga): anclala desde arriba (`top`) o con un alto fijo, en vez de `bottom`. Renombrar `pieLinea` a `pieJornada` y que el comentario diga qué está calibrado.
+- Verificá con `pdftoppm` a 72 dpi contra el original que la línea y los dos renglones siguen en 795 / 807 / 817 pt (±3), y que el mensual no cambió (0 píxeles distintos).
+
+- [ ] **Step 5: Tests más claros**
+
+- `documentos-rpc.test.ts`: las ~20 preparaciones inline `const { data: x } = await registrar(...)` + `x!` que no miran el error pasan a `registrarOk`.
+- `presupuestos-estado.test.ts`: el `anular_documento` de la preparación (cerca de la línea 124) comprueba su error.
+- `helpers.ts`: el error de `contraTransaccionEnCurso` cuando la llamada termina antes de bloquearse incluye `error.code` (`'<code>: <message>'`, o `'(sin error)'`); `esperarBloqueadaPor` deja de exportarse.
+- En los `afterAll`, borrar los usuarios de prueba en un `finally` para que una limpieza que falla no deje usuarios colgados.
+
+- [ ] **Step 6: Verificar y commit**
+
+```bash
+npm run db:reset && npm run db:types && npm run check && npm run test:int
+```
+
+Expected: todo en verde y el bucket `documentos` con la misma cantidad de objetos antes y después de `test:int`.
+
+```bash
+git add supabase/migrations src tests
+git commit -m "fix: mensajes en castellano para archivos repetidos y datos mal formados, y pie del PDF por jornada fijo
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
