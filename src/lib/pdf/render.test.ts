@@ -98,3 +98,13 @@ describe('bloques ocultos', () => {
     expect(textoMensual).not.toContain('con base en junio 2026')
   }, 20_000)
 })
+
+describe('cotización sin guardar', () => {
+  it('sin número, el PDF muestra {{numero}} en su lugar', async () => {
+    const mensual = { ...EJEMPLO_MENSUAL, cotizacion: { ...EJEMPLO_MENSUAL.cotizacion, numero: null } }
+    expect(await textoDelPdf(await renderizarCotizacion(armarDocumento(mensual)))).toContain('Cotización N° {{numero}}')
+
+    const jornada = { ...EJEMPLO_JORNADA, cotizacion: { ...EJEMPLO_JORNADA.cotizacion, numero: null } }
+    expect(await textoDelPdf(await renderizarCotizacion(armarDocumento(jornada)))).toContain('Cotización N° {{numero}}')
+  }, 20_000)
+})

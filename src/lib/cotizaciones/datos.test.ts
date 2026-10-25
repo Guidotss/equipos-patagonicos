@@ -30,4 +30,21 @@ describe('esquemaItem', () => {
     expect(esquemaItem.safeParse({ descripcion: 'x', cantidad: 1, precio_unitario: -1, unidad: 'HORA' }).success).toBe(false)
     expect(esquemaItem.safeParse({ descripcion: 'x', cantidad: 1, precio_unitario: 1, unidad: 'LITRO' }).success).toBe(false)
   })
+
+  it('explica cada error en castellano', () => {
+    const resultado = esquemaItem.safeParse({
+      seccion: 'x'.repeat(101),
+      descripcion: 'x'.repeat(501),
+      cantidad: 1_000_000,
+      precio_unitario: 1_000_000_000_000,
+      unidad: 'LITRO',
+    })
+    expect(resultado.error?.issues.map((issue) => [issue.path.join('.'), issue.message])).toEqual([
+      ['seccion', 'Máximo 100 caracteres'],
+      ['descripcion', 'Máximo 500 caracteres'],
+      ['cantidad', 'La cantidad es demasiado grande'],
+      ['precio_unitario', 'El precio es demasiado grande'],
+      ['unidad', 'Elegí la unidad'],
+    ])
+  })
 })

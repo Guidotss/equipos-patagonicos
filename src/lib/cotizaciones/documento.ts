@@ -9,7 +9,8 @@ import { lineaPie } from './pie'
 /** Filas de la base que hacen falta para dibujar una cotización. */
 export type FuenteDocumento = {
   cotizacion: {
-    numero: number
+    /** null: todavía no se guardó (vista previa del editor). {{numero}} queda sin completar. */
+    numero: number | null
     fecha: string
     formato: Formato
     asunto: string
@@ -45,7 +46,7 @@ export type FuenteDocumento = {
 }
 
 export type DocumentoCotizacion = {
-  numero: number
+  numero: number | null
   formato: Formato
   encabezadoFecha: string
   destinatario: { razonSocial: string; cuit: string | null; atencion: string | null; email: string | null }
@@ -79,7 +80,7 @@ function formatCapacidad(capacidad: number | null | undefined): string {
 export function valoresVariables(fuente: FuenteDocumento): Partial<Record<NombreVariable, string>> {
   const datos = leerDatos(fuente.cotizacion.datos)
   return {
-    numero: String(fuente.cotizacion.numero),
+    numero: fuente.cotizacion.numero === null ? '' : String(fuente.cotizacion.numero),
     capacidad: formatCapacidad(fuente.equipo?.capacidad_tn),
     equipo_descripcion: fuente.equipo?.descripcion ?? '',
     validez_dias: String(fuente.cotizacion.validez_dias),

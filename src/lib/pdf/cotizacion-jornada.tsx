@@ -29,7 +29,7 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
   const sinTitulo = doc.bloques.filter((bloque) => !bloque.titulo)
 
   return (
-    <Document title={`Cotización N° ${doc.numero}`} language="es-AR">
+    <Document title={`Cotización N° ${doc.numero ?? '{{numero}}'}`} language="es-AR">
       <Page size="A4" style={[estilos.pagina, estilos.paginaJornada, cuerpo]}>
         <Membrete />
         <Text style={estilos.fecha}>{doc.encabezadoFecha}</Text>

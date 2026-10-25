@@ -60,7 +60,7 @@ function TablaItems({ doc }: { doc: DocumentoCotizacion }) {
 export function CotizacionMensual({ doc }: { doc: DocumentoCotizacion }) {
   const { destinatario } = doc
   return (
-    <Document title={`Cotización N° ${doc.numero}`} language="es-AR">
+    <Document title={`Cotización N° ${doc.numero ?? '{{numero}}'}`} language="es-AR">
       <Page size="A4" style={[estilos.pagina, estilos.paginaMensual]}>
         <Membrete logo={estilos.logoMensual} />
         <Text style={estilos.fecha}>{doc.encabezadoFecha}</Text>
@@ -72,7 +72,7 @@ export function CotizacionMensual({ doc }: { doc: DocumentoCotizacion }) {
               {destinatario.email}
             </Link>
           ) : null}
-          <Text style={estilos.subrayado}>Cotización N° {doc.numero}</Text>
+          <Text style={estilos.subrayado}>Cotización N° {doc.numero ?? '{{numero}}'}</Text>
         </View>
 
         <TablaItems doc={doc} />

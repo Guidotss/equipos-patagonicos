@@ -36,11 +36,16 @@ export function leerDatos(valor: unknown): DatosCotizacion {
   ) as DatosCotizacion
 }
 
+// Todos los mensajes en castellano: el editor los muestra junto a cada celda de la grilla.
 export const esquemaItem = z.object({
-  seccion: z.string().trim().max(100).default(''),
-  descripcion: z.string().trim().min(1, 'Falta la descripción').max(500),
-  cantidad: z.number().positive('La cantidad tiene que ser mayor a 0').max(999_999),
-  precio_unitario: z.number().nonnegative('El precio no puede ser negativo').max(999_999_999_999).nullable(),
-  unidad: z.enum(UNIDADES),
+  seccion: z.string().trim().max(100, 'Máximo 100 caracteres').default(''),
+  descripcion: z.string().trim().min(1, 'Falta la descripción').max(500, 'Máximo 500 caracteres'),
+  cantidad: z.number().positive('La cantidad tiene que ser mayor a 0').max(999_999, 'La cantidad es demasiado grande'),
+  precio_unitario: z
+    .number()
+    .nonnegative('El precio no puede ser negativo')
+    .max(999_999_999_999, 'El precio es demasiado grande')
+    .nullable(),
+  unidad: z.enum(UNIDADES, { error: 'Elegí la unidad' }),
 })
 export type ItemCotizacion = z.infer<typeof esquemaItem>

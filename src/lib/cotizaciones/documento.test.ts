@@ -130,6 +130,13 @@ describe('armarDocumento', () => {
     })
   })
 
+  it('sin número (cotización sin guardar), {{numero}} queda como faltante', () => {
+    const doc = armarDocumento({ ...EJEMPLO_JORNADA, cotizacion: { ...EJEMPLO_JORNADA.cotizacion, numero: null } })
+    expect(doc.numero).toBeNull()
+    expect(doc.faltantes).toEqual(['numero'])
+    expect(doc.asunto).toBe('Cotización N° {{numero}} alquiler de 1 (una) Grúa Telescópica capacidad 40 TN con operador.')
+  })
+
   it('sin equipo, capacidad y descripción quedan como faltantes', () => {
     expect(armarDocumento({ ...EJEMPLO_JORNADA, equipo: null }).faltantes).toEqual(
       expect.arrayContaining(['capacidad', 'equipo_descripcion']),
