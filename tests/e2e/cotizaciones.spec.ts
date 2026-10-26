@@ -151,9 +151,13 @@ test.describe('lista de cotizaciones', () => {
     await abrirLista(page)
     const filas = page.getByRole('table').getByRole('row')
 
-    await page.getByRole('combobox', { name: 'Estado' }).selectOption('vencida')
+    const estado = page.getByRole('combobox', { name: 'Estado' })
+    await estado.focus()
+    await estado.selectOption('vencida')
     await expect(page).toHaveURL(/estado=vencida/)
     await expect(filas).toHaveCount(2)
+    // Aplicar el filtro no vuelve a montar el select: el foco sigue ahí para seguir con el teclado.
+    await expect(estado).toBeFocused()
     const filaVencida = filas.filter({ hasText: 'Izaje de tanques en Neuquén' })
     await expect(filaVencida.getByText('Vencida')).toBeVisible()
     // "Vence el" en ámbar cuando ya venció.
@@ -198,8 +202,16 @@ test.describe('lista de cotizaciones', () => {
     await buscador.fill(`sin resultados ${clave}`)
     await buscador.press('Enter')
     await expect(page.getByText(`No hay cotizaciones que coincidan con "sin resultados ${clave}".`)).toBeVisible()
+    await expect(buscador).toBeFocused()
     await page.getByRole('link', { name: 'Limpiar filtros' }).click()
     await expect(page).toHaveURL(/\/cotizaciones$/)
+    // Los campos vuelven a leer la URL cuando cambia desde afuera: "Limpiar filtros" y atrás del navegador.
+    const cliente = page.getByRole('combobox', { name: 'Cliente' })
+    await expect(buscador).toHaveValue('')
+    await expect(cliente).toHaveValue('')
+    await page.goBack()
+    await expect(buscador).toHaveValue(`sin resultados ${clave}`)
+    await expect(cliente).not.toHaveValue('')
   })
 
   test('acciones de fila: PDF salvo en una directa, menú y duplicar', async ({ page }) => {

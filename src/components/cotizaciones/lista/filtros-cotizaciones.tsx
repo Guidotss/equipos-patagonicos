@@ -2,7 +2,7 @@
 
 import { CalendarDays, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useId, useState, useTransition } from 'react'
+import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from 'react'
 import { ESTADOS_COTIZACION } from '@/components/cotizaciones/estado-cotizacion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -277,13 +277,33 @@ function FiltrosMovil({
 /**
  * Buscador y filtros de la lista. Todo vive en la URL (hrefConFiltros): los selects y las fechas navegan solos y el
  * buscador con Enter. Mientras navega marca data-pendiente, que la tarjeta de resultados usa para atenuarse.
+ *
+ * Ningún control se vuelve a montar al cambiar la URL (un key le sacaba el foco al que se estaba usando): los selects
+ * son controlados y el buscador se actualiza a mano.
  */
 export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLista; clientes: ClienteFiltro[] }) {
   const router = useRouter()
   const [pendiente, iniciarNavegacion] = useTransition()
+  // Los de la URL, o los recién elegidos mientras se navega hacia ellos. Sin navegación pendiente son `filtros`, así
+  // que los selects siguen a la URL cuando cambia desde afuera (chips, "Limpiar filtros", atrás del navegador).
+  const [vigentes, adelantar] = useOptimistic(
+    filtros,
+    (actuales: FiltrosLista, cambios: Partial<FiltrosLista>): FiltrosLista => ({ ...actuales, ...cambios }),
+  )
+  const buscador = useRef<HTMLInputElement>(null)
+
+  // Si la búsqueda cambia desde afuera, el buscador vuelve a leer la URL, salvo que se esté escribiendo en él.
+  useEffect(() => {
+    const campo = buscador.current
+    if (campo && campo !== document.activeElement) campo.value = filtros.q
+  }, [filtros.q])
 
   function aplicar(cambios: Partial<FiltrosLista>) {
-    iniciarNavegacion(() => router.push(hrefConFiltros(filtros, cambios), { scroll: false }))
+    iniciarNavegacion(() => {
+      adelantar(cambios)
+      // Sobre `vigentes`: dos cambios seguidos no se pisan aunque el primero todavía no haya llegado a la URL.
+      router.push(hrefConFiltros(vigentes, cambios), { scroll: false })
+    })
   }
 
   // Los filtros aplicados (menos el texto) como chips para quitarlos de a uno en el celular.
@@ -316,9 +336,8 @@ export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLis
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
-          {/* key: si la búsqueda cambia desde afuera ("Limpiar filtros"), el campo vuelve a leer la URL. */}
           <Input
-            key={filtros.q}
+            ref={buscador}
             name="q"
             type="search"
             defaultValue={filtros.q}
@@ -335,18 +354,16 @@ export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLis
 
         {/* pr-7 y no el pr-8 del select: con 160 px, "Todos los estados" se cortaba antes de la flecha. */}
         <NativeSelect
-          key={`estado-${filtros.estado}`}
           aria-label="Estado"
-          defaultValue={filtros.estado}
+          value={vigentes.estado}
           onChange={(evento) => aplicar({ estado: aEstado(evento.target.value) })}
           className="hidden w-full @min-[40rem]:block [&>select]:h-9 [&>select]:bg-background [&>select]:pr-7"
         >
           <OpcionesEstado />
         </NativeSelect>
         <NativeSelect
-          key={`cliente-${filtros.cliente}`}
           aria-label="Cliente"
-          defaultValue={filtros.cliente}
+          value={vigentes.cliente}
           onChange={(evento) => aplicar({ cliente: evento.target.value })}
           className="hidden w-full @min-[40rem]:block [&>select]:h-9 [&>select]:bg-background [&>select]:pr-7"
         >
