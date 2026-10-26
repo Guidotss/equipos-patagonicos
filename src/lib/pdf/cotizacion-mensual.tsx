@@ -23,7 +23,7 @@ function Celda({ indice, children, negrita }: { indice: number; children: React.
   )
 }
 
-function TablaItems({ doc }: { doc: DocumentoCotizacion }) {
+function TablaItems({ doc, resaltar }: { doc: DocumentoCotizacion; resaltar?: boolean }) {
   return (
     <View style={{ fontSize: 8, marginTop: 28, marginBottom: 18 }}>
       <View style={{ flexDirection: 'row', borderBottomWidth: 0.75, paddingBottom: 3, marginBottom: 4 }} fixed>
@@ -38,7 +38,7 @@ function TablaItems({ doc }: { doc: DocumentoCotizacion }) {
         <View key={item.orden} style={{ flexDirection: 'row', paddingVertical: 0.25 }} wrap={false}>
           <Celda indice={0}>{item.orden}</Celda>
           <Celda indice={1}>
-            <TextoVariables texto={item.descripcion} />
+            <TextoVariables texto={item.descripcion} resaltar={resaltar} />
           </Celda>
           <Celda indice={2}>{item.cantidad.toLocaleString('es-AR')}</Celda>
           <Celda indice={3}>{item.precioUnitario === null ? '' : formatMontoTabla(item.precioUnitario)}</Celda>
@@ -59,7 +59,7 @@ function TablaItems({ doc }: { doc: DocumentoCotizacion }) {
   )
 }
 
-export function CotizacionMensual({ doc }: { doc: DocumentoCotizacion }) {
+export function CotizacionMensual({ doc, resaltar }: { doc: DocumentoCotizacion; resaltar?: boolean }) {
   const { destinatario } = doc
   return (
     <Document title={`Cotización N° ${doc.numero ?? '{{numero}}'}`} language="es-AR">
@@ -75,20 +75,20 @@ export function CotizacionMensual({ doc }: { doc: DocumentoCotizacion }) {
             </Link>
           ) : null}
           <Text style={estilos.subrayado}>
-            Cotización N° <TextoVariables texto={textoNumero(doc.numero)} />
+            Cotización N° <TextoVariables texto={textoNumero(doc.numero)} resaltar={resaltar} />
           </Text>
         </View>
 
-        <TablaItems doc={doc} />
+        <TablaItems doc={doc} resaltar={resaltar} />
 
         {doc.bloques.map((bloque, indice) => (
           <View key={indice} style={estilos.bloque}>
             {bloque.titulo ? (
               <Text style={estilos.tituloBloque} minPresenceAhead={40}>
-                <TextoVariables texto={bloque.titulo} />
+                <TextoVariables texto={bloque.titulo} resaltar={resaltar} />
               </Text>
             ) : null}
-            <TextoFormateado nodos={bloque.nodos} />
+            <TextoFormateado nodos={bloque.nodos} resaltar={resaltar} />
           </View>
         ))}
 

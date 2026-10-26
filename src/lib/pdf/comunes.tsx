@@ -1,5 +1,4 @@
 import { Image, Text, View } from '@react-pdf/renderer'
-import { createContext, useContext } from 'react'
 import type { DocumentoCotizacion } from '@/lib/cotizaciones/documento'
 import type { NodoFormato, Segmento } from '@/lib/plantillas/formato'
 import { partirVariables } from '@/lib/plantillas/variables'
@@ -10,14 +9,13 @@ type EstiloPdf = React.ComponentProps<typeof View>['style']
 type EstiloImagen = React.ComponentProps<typeof Image>['style']
 
 /**
- * En la vista previa (renderizarCotizacion con resaltarVariables) las {{variables}} que quedaron sin completar
- * se pintan con fondo amarillo, como en el editor. En el PDF que se envía o se aprueba nunca quedan.
+ * Texto que puede tener {{variables}} sin completar. Va siempre adentro de un <Text>.
+ * Con `resaltar` (la vista previa: renderizarCotizacion con resaltarVariables) las variables se pintan con fondo
+ * amarillo, como en el editor. En el PDF que se envía o se aprueba nunca quedan.
+ * Va por prop y no por un contexto de React: las rutas de Next empaquetan estos componentes con el React de
+ * servidor (sin createContext ni useContext) y react-pdf, que se carga sin empaquetar, los dibuja con otro React.
  */
-export const ResaltarVariables = createContext(false)
-
-/** Texto que puede tener {{variables}} sin completar. Va siempre adentro de un <Text>. */
-export function TextoVariables({ texto }: { texto: string }) {
-  const resaltar = useContext(ResaltarVariables)
+export function TextoVariables({ texto, resaltar = false }: { texto: string; resaltar?: boolean }) {
   if (!resaltar || !texto.includes('{{')) return <>{texto}</>
   // partirVariables deja los nombres en las posiciones impares.
   return (
@@ -48,12 +46,12 @@ export function Membrete({ logo = estilos.logo }: { logo?: EstiloImagen }) {
   )
 }
 
-export function Segmentos({ segmentos }: { segmentos: Segmento[] }) {
+export function Segmentos({ segmentos, resaltar }: { segmentos: Segmento[]; resaltar?: boolean }) {
   return (
     <>
       {segmentos.map((segmento, indice) => (
         <Text key={indice} style={segmento.negrita ? estilos.negrita : undefined}>
-          <TextoVariables texto={segmento.texto} />
+          <TextoVariables texto={segmento.texto} resaltar={resaltar} />
         </Text>
       ))}
     </>
@@ -61,19 +59,27 @@ export function Segmentos({ segmentos }: { segmentos: Segmento[] }) {
 }
 
 /** Texto con formato mínimo. Nivel 1 con el guion de los originales; nivel 2 con viñeta. */
-export function TextoFormateado({ nodos, estilo }: { nodos: NodoFormato[]; estilo?: EstiloPdf }) {
+export function TextoFormateado({
+  nodos,
+  estilo,
+  resaltar,
+}: {
+  nodos: NodoFormato[]
+  estilo?: EstiloPdf
+  resaltar?: boolean
+}) {
   return (
     <View style={estilo}>
       {nodos.map((nodo, indice) =>
         nodo.tipo === 'parrafo' ? (
           <Text key={indice} style={estilos.parrafo}>
-            <Segmentos segmentos={nodo.segmentos} />
+            <Segmentos segmentos={nodo.segmentos} resaltar={resaltar} />
           </Text>
         ) : (
           <View key={indice} style={estilos.vineta} wrap={false}>
             <Text style={nodo.nivel === 1 ? estilos.marcaVineta1 : estilos.marcaVineta2}>{nodo.nivel === 1 ? '-' : '•'}</Text>
             <Text style={estilos.textoVineta}>
-              <Segmentos segmentos={nodo.segmentos} />
+              <Segmentos segmentos={nodo.segmentos} resaltar={resaltar} />
             </Text>
           </View>
         ),

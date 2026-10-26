@@ -23,7 +23,7 @@ function conDosPuntos(titulo: string) {
 
 const cuerpo = { fontWeight: 'bold' as const, fontSize: 10.5 }
 
-export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
+export function CotizacionJornada({ doc, resaltar }: { doc: DocumentoCotizacion; resaltar?: boolean }) {
   const { destinatario } = doc
   const conTitulo = doc.bloques.filter((bloque) => bloque.titulo)
   const sinTitulo = doc.bloques.filter((bloque) => !bloque.titulo)
@@ -43,21 +43,21 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
 
         {doc.asunto ? (
           <Text style={{ marginBottom: 10 }}>
-            <TextoVariables texto={doc.asunto} />
+            <TextoVariables texto={doc.asunto} resaltar={resaltar} />
           </Text>
         ) : null}
         {doc.intro ? (
           <Text style={{ marginBottom: 10 }}>
-            <TextoVariables texto={doc.intro} />
+            <TextoVariables texto={doc.intro} resaltar={resaltar} />
           </Text>
         ) : null}
 
         {conTitulo.map((bloque, indice) => (
           <View key={indice} style={estilos.bloque}>
             <Text style={[estilos.subrayado, { marginBottom: 4 }]} minPresenceAhead={40}>
-              <TextoVariables texto={conDosPuntos(bloque.titulo)} />
+              <TextoVariables texto={conDosPuntos(bloque.titulo)} resaltar={resaltar} />
             </Text>
-            <TextoFormateado nodos={bloque.nodos} />
+            <TextoFormateado nodos={bloque.nodos} resaltar={resaltar} />
           </View>
         ))}
 
@@ -67,7 +67,7 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
             {grupo.items.map((item) => (
               <View key={item.orden} style={{ flexDirection: 'row', marginBottom: 4 }}>
                 <Text style={{ flex: 1, paddingRight: 12 }}>
-                  <TextoVariables texto={item.descripcion} />
+                  <TextoVariables texto={item.descripcion} resaltar={resaltar} />
                   {item.cantidad === 1 ? '' : ` (x${item.cantidad.toLocaleString('es-AR')})`}
                 </Text>
                 <Text style={{ width: 150, textAlign: 'right' }}>
@@ -86,7 +86,7 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
         )}
 
         {sinTitulo.map((bloque, indice) => (
-          <TextoFormateado key={indice} nodos={bloque.nodos} estilo={{ marginTop: 16 }} />
+          <TextoFormateado key={indice} nodos={bloque.nodos} resaltar={resaltar} estilo={{ marginTop: 16 }} />
         ))}
 
         <Firma firmante={doc.firmante} conLogo />
