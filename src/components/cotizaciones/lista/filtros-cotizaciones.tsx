@@ -347,7 +347,7 @@ export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLis
             name="q"
             type="search"
             defaultValue={filtros.q}
-            placeholder="Buscar por N°, cliente o asunto"
+            placeholder="Buscar por N°, cliente, equipo o lugar"
             aria-label="Buscar cotizaciones"
             className="h-10 bg-background pl-9 @min-[40rem]:h-9"
           />

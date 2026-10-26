@@ -16,7 +16,7 @@ const ENCABEZADO = 'h-11 text-muted-foreground'
  * en el title.
  * Formato es la primera que se va: aparece desde 60rem, cuando a Trabajo le quedan ~200 px y "{equipo} · {ubicación}"
  * entra en dos líneas. A 1200 px (tarjeta de ~56rem) no se muestra: con ella, Trabajo quedaba en ~140 px y el equipo
- * llenaba las dos líneas sin dejar ver la ubicación.
+ * llenaba las dos líneas sin dejar ver la ubicación. Mientras no se ve, el formato va como segunda línea bajo el N°.
  */
 export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
   return (
@@ -46,6 +46,10 @@ export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
                 {fila.numero}
               </Link>
               {fila.origen ? <p className="text-xs text-muted-foreground">{fila.origen}</p> : null}
+              {/* Sin la columna Formato (tarjeta angosta), el dato no se pierde: va bajo el número. */}
+              {!fila.origen && fila.formato !== '—' ? (
+                <p className="text-xs text-muted-foreground @min-[60rem]:hidden">{fila.formato}</p>
+              ) : null}
             </TableCell>
             <TableCell className="hidden py-2 tabular-nums @min-[50rem]:table-cell">{fila.fecha}</TableCell>
             <TableCell className="min-w-44 py-2 whitespace-normal">
