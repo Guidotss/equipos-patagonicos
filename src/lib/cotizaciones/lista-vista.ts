@@ -18,7 +18,7 @@ export type FilaVistaLista = {
   vence_el: string | null
   asunto: string
   datos: unknown
-  equipo: { nombre: string; capacidad_tn: number | null; descripcion: string } | null
+  equipo: { nombre: string } | null
 }
 
 /** Lo que dibujan la tabla y la lista del celular: textos ya armados y ningún monto (diseño §5). */
@@ -30,7 +30,7 @@ export type FilaCotizacion = {
   /** "20/10/2026" */
   fecha: string
   cliente: string
-  /** El asunto con las variables resueltas (decisión 4). */
+  /** Equipo y ubicación, o el asunto resumido (resumenCotizacion). */
   trabajo: string
   /** "Mensual" o "Por jornada"; "—" en una cargada o una directa (su formato no significa nada). */
   formato: string

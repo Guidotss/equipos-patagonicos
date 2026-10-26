@@ -2,7 +2,8 @@
 // src/components/cotizaciones/editor/editor-cotizacion.tsx
 
 import { unstable_rethrow, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
 import { guardarCotizacion } from '@/app/(app)/cotizaciones/actions'
 import { Contenido } from '@/components/app-shell/encabezado'
@@ -64,6 +65,8 @@ export function EditorCotizacion({
   const [aviso, setAviso] = useState<string | null>(null)
   /** Secciones de la grilla con el nombre escrito y todavía no aplicado (borrador local de TarjetaItems). */
   const [borradoresSeccion, setBorradoresSeccion] = useState<ReadonlySet<string>>(() => new Set())
+  /** El `aplicar` de cada uno de esos borradores, por clave de sección: guardar los aplica antes de leer el estado. */
+  const aplicarBorrador = useRef(new Map<string, () => void>())
   /** Qué acción corre ('guardar'; la Task 12 suma las suyas). Con una en curso se deshabilitan todas (decisión 12). */
   const [accion, setAccion] = useState<string | null>(null)
   const enCurso = useRef(false)
@@ -71,7 +74,7 @@ export function EditorCotizacion({
 
   const cambios = useMemo(() => hayCambios(guardado, estado), [guardado, estado])
   // Un nombre de sección a medio escribir también es un cambio sin guardar: habilita Guardar y el aviso al cerrar
-  // la pestaña. Guardar lo aplica antes de leer el estado (el blur del clic, o el atajo con flushSync).
+  // la pestaña. Guardar lo aplica antes de leer el estado (aplicarBorradoresSeccion).
   const hayBorradorSeccion = borradoresSeccion.size > 0
   const sinGuardar = cambios || hayBorradorSeccion
   const pendientes = useMemo(() => pendientesEditor(estado, catalogos), [estado, catalogos])
@@ -104,7 +107,10 @@ export function EditorCotizacion({
     fechaAprobacion: contexto.fechaAprobacion,
   })
 
-  const alCambiarBorradorSeccion = useCallback((clave: string, hay: boolean) => {
+  const alCambiarBorradorSeccion = useCallback((clave: string, aplicar: (() => void) | null) => {
+    if (aplicar) aplicarBorrador.current.set(clave, aplicar)
+    else aplicarBorrador.current.delete(clave)
+    const hay = aplicar !== null
     setBorradoresSeccion((actuales) => {
       if (actuales.has(clave) === hay) return actuales
       const nuevos = new Set(actuales)
@@ -126,14 +132,32 @@ export function EditorCotizacion({
   }
 
   /**
-   * Guarda y devuelve la versión nueva; null si no se pudo (el motivo queda a la vista). En una ya guardada y sin
+   * Aplica ya los nombres de sección a medio escribir (renderizados con flushSync), de forma explícita: no depende de
+   * que el blur del campo llegue antes que el click de Guardar (no está verificado en Safari ni en iOS) ni del orden
+   * de los keydown en Ctrl/⌘+S.
+   */
+  function aplicarBorradoresSeccion() {
+    const porAplicar = [...aplicarBorrador.current.values()]
+    if (porAplicar.length === 0) return
+    flushSync(() => {
+      for (const aplicar of porAplicar) aplicar()
+    })
+  }
+
+  /**
+   * Guarda y devuelve la versión nueva; null si no se pudo (el motivo queda a la vista). Antes aplica los nombres de
+   * sección a medio escribir y guarda con el estado del render que eso deja (guardarActual). En una ya guardada y sin
    * cambios no llama al servidor y devuelve la versión actual (las transiciones de la Task 12 guardan primero).
    * Al crear navega a /cotizaciones/{id}; con `navegar: false` no: enviar y aprobar una nueva (Task 12) guardan,
    * hacen la transición con el id que vuelve y navegan después (decisión 12). Con `avisar: false` no muestra el
-   * toast de guardado: cuando guarda antes de una transición, el aviso es el de la transición (dos toasts apilados
-   * arriba a la derecha tapan los botones del encabezado y, con el puntero encima, no se van).
+   * toast de guardado: cuando guarda antes de una transición, el aviso es el de la transición (no dos apilados).
    */
-  async function guardar({
+  function guardar(opciones: { navegar?: boolean; avisar?: boolean } = {}): Promise<VersionGuardada | null> {
+    aplicarBorradoresSeccion()
+    return guardarActual.current(opciones)
+  }
+
+  async function guardarEstado({
     navegar = true,
     avisar = true,
   }: { navegar?: boolean; avisar?: boolean } = {}): Promise<VersionGuardada | null> {
@@ -183,6 +207,12 @@ export function EditorCotizacion({
     }
   }
 
+  // guardar llama al guardarEstado del último render: después de aplicar los borradores, el que ve los nombres nuevos.
+  const guardarActual = useRef(guardarEstado)
+  useLayoutEffect(() => {
+    guardarActual.current = guardarEstado
+  })
+
   /** Para el celular: guarda si hace falta y devuelve el id de lo guardado (null si no se pudo). */
   async function guardarParaVer(): Promise<string | null> {
     const guardada = await guardar()
@@ -194,7 +224,7 @@ export function EditorCotizacion({
     estado,
     contexto,
     pendientes,
-    hayCambiosSinGuardar: cambios,
+    hayCambiosSinGuardar: sinGuardar,
     guardar,
     accion,
     setAccion,
@@ -304,7 +334,7 @@ export function EditorCotizacion({
           {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). */}
           <fieldset
             disabled={!editable}
-            className="min-w-0 space-y-4 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
+            className="min-w-0 space-y-3 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
           >
             <legend className="sr-only">Contenido de la cotización</legend>
             <TarjetaCliente

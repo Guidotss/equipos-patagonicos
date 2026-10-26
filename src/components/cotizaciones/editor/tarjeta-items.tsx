@@ -16,8 +16,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Tarjeta } from '@/components/formulario/tarjeta'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,7 +32,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import type { ItemEditor } from '@/lib/cotizaciones/editor'
-import { esAtajoGuardar, type Despachar } from '@/lib/cotizaciones/editor-pantalla'
+import type { Despachar } from '@/lib/cotizaciones/editor-pantalla'
 import {
   destinoFoco,
   filasGrilla,
@@ -52,13 +51,13 @@ import { UNIDADES, type Formato, type Unidad } from '@/lib/plantillas/contenido'
 import { cn } from '@/lib/utils'
 
 /**
- * Una línea por ítem cuando la tarjeta mide 33rem o más: agarre, descripción, cantidad, precio, unidad, total.
+ * Una línea por ítem cuando la tarjeta mide 44rem o más: agarre, descripción, cantidad, precio, unidad, total.
  * Precio y Total entran "39.000.000,00" (el precio de la mensual) en la cifra de 13 px de esa línea.
  */
-const COLUMNAS = '@min-[33rem]:grid-cols-[1.25rem_minmax(0,1fr)_3rem_7rem_6rem_6rem]'
+const COLUMNAS = '@min-[44rem]:grid-cols-[1.25rem_minmax(0,1fr)_3rem_7rem_6rem_6rem]'
 
-/** Cifras de la línea de un ítem desde 33rem: un punto más chicas que la descripción para que entren los montos. */
-const CIFRA = '@min-[33rem]:text-[13px]'
+/** Cifras de la línea de un ítem desde 44rem: un punto más chicas que la descripción para que entren los montos. */
+const CIFRA = '@min-[44rem]:text-[13px]'
 
 /** Campo "fantasma": se ve como texto y muestra el borde al pasar o al enfocar (referencia 03). */
 const FANTASMA =
@@ -73,15 +72,19 @@ const INSTRUCCIONES: ScreenReaderInstructions = {
     'Enter abre las opciones.',
 }
 
-/** Avisa que el nombre de una sección (por la clave de su primer ítem) tiene o deja de tener un borrador sin aplicar. */
-export type AlCambiarBorradorSeccion = (clave: string, hay: boolean) => void
+/**
+ * Avisa que el nombre de una sección (por la clave de su primer ítem) tiene un borrador sin aplicar, con la función que
+ * lo aplica, o que dejó de tenerlo (null).
+ */
+export type AlCambiarBorradorSeccion = (clave: string, aplicar: (() => void) | null) => void
 
 /**
  * Encabezado editable de una sección. El nombre se aplica al salir del campo o con Enter, no en cada tecla:
  * renombrarSeccion junta el grupo con el vecino si quedan con el mismo nombre, y a mitad de escribir
  * ("Precios Jornada Adicional" → "Precios Jornada") el encabezado desaparecería con el foco adentro.
- * Mientras tanto el borrador cuenta como cambio sin guardar: se avisa hacia arriba para habilitar Guardar. Un clic en
- * Guardar lo aplica con el blur del mousedown, que se renderiza antes del click (otro evento): guardar ya ve el nombre.
+ * Mientras tanto el borrador cuenta como cambio sin guardar: se registra arriba con su `aplicar`, que habilita Guardar
+ * y que guardar (el botón o Ctrl/⌘+S) llama antes de leer el estado. Así no depende de que el blur del clic llegue antes
+ * que el click (no está verificado en Safari ni en iOS).
  */
 function EncabezadoSeccion({
   fila,
@@ -98,19 +101,25 @@ function EncabezadoSeccion({
   const [borrador, setBorrador] = useState<string | null>(null)
   const pendiente = borrador !== null && borrador !== fila.seccion
 
-  // También al desmontarse con el borrador a medio escribir (la limpieza lo retira).
-  useEffect(() => {
-    if (!pendiente) return
-    alCambiarBorrador(fila.clave, true)
-    return () => alCambiarBorrador(fila.clave, false)
-  }, [pendiente, fila.clave, alCambiarBorrador])
-
   function aplicar() {
     if (borrador !== null && borrador !== fila.seccion) {
       despachar({ tipo: 'renombrarSeccion', clave: fila.clave, seccion: borrador })
     }
     setBorrador(null)
   }
+
+  // El registro del editor llama al aplicar del último render: el que tiene el borrador que se ve.
+  const aplicarActual = useRef(aplicar)
+  useLayoutEffect(() => {
+    aplicarActual.current = aplicar
+  })
+
+  // También al desmontarse con el borrador a medio escribir (la limpieza lo retira).
+  useEffect(() => {
+    if (!pendiente) return
+    alCambiarBorrador(fila.clave, () => aplicarActual.current())
+    return () => alCambiarBorrador(fila.clave, null)
+  }, [pendiente, fila.clave, alCambiarBorrador])
 
   return (
     <div className="border-b bg-muted/60 py-1.5 pr-3 pl-9">
@@ -124,14 +133,8 @@ function EncabezadoSeccion({
         onChange={(evento) => setBorrador(evento.target.value)}
         onBlur={aplicar}
         onKeyDown={(evento) => {
-          if (evento.nativeEvent.isComposing) return
-          if (esAtajoGuardar(evento)) {
-            // El editor guarda en el keydown de window, que llega después de este: flushSync aplica el nombre y
-            // renderiza antes, así se guarda el nombre que se ve (y no queda como "sin cambios" sin estar guardado).
-            flushSync(aplicar)
-            return
-          }
-          if (evento.key !== 'Enter') return
+          // Ctrl/⌘+S lo maneja el editor: guardar aplica antes los borradores registrados.
+          if (evento.nativeEvent.isComposing || evento.key !== 'Enter') return
           evento.preventDefault()
           aplicar()
         }}
@@ -186,6 +189,8 @@ function FilaItem({
   // el teclado (Espacio) no termina en un clic: no marca nada, y el próximo clic (el de un lector de pantalla) abre.
   const huboArrastre = useRef(false)
   const conPuntero = useRef(false)
+  // El menú estaba abierto al apoyar en el agarre: Radix lo cierra (es un clic afuera del menú) y el clic no lo reabre.
+  const menuAbiertoAlApoyar = useRef(false)
   // Duplicar y Eliminar llevan el foco a otra fila: el menú no lo devuelve al agarre al cerrarse.
   const mantenerFoco = useRef(false)
   useEffect(() => {
@@ -232,6 +237,11 @@ function FilaItem({
             onPointerDown={(evento) => {
               huboArrastre.current = false
               conPuntero.current = true
+              menuAbiertoAlApoyar.current = menuAbierto
+              // El preventDefault de abajo no deja que el foco se mueva solo: se pasa acá al agarre para que un nombre
+              // de sección a medio escribir se aplique (con su blur) antes de que el arrastre cambie el primer ítem
+              // del grupo y el encabezado, con su borrador, se vuelva a montar.
+              evento.currentTarget.focus()
               listeners?.onPointerDown?.(evento)
               // Sin esto Radix abriría el menú al apoyar, antes de saber si es un arrastre.
               evento.preventDefault()
@@ -243,11 +253,13 @@ function FilaItem({
               if (isDragging) evento.preventDefault()
             }}
             onClick={() => {
-              // Solo se ignora el clic que sigue a un arrastre. Los de detail 0 abren: así activa un lector de
-              // pantalla en modo exploración. El teclado no duplica: Enter abre en el keydown (Radix) y lo previene,
-              // así que no genera clic, y el keydown de Espacio lo previene el arrastre.
-              const ignorar = huboArrastre.current
+              // Solo se ignoran el clic que sigue a un arrastre y el que cerró el menú abierto (si no, se cerraría y
+              // se volvería a abrir). Los de detail 0 abren: así activa un lector de pantalla en modo exploración. El
+              // teclado no duplica: Enter abre en el keydown (Radix) y lo previene, así que no genera clic, y el
+              // keydown de Espacio lo previene el arrastre.
+              const ignorar = huboArrastre.current || menuAbiertoAlApoyar.current
               huboArrastre.current = false
+              menuAbiertoAlApoyar.current = false
               if (!ignorar) setMenuAbierto(true)
             }}
           >
@@ -307,8 +319,8 @@ function FilaItem({
         className={cn(FANTASMA, 'min-h-8 resize-none px-2.5 py-1.5')}
       />
 
-      {/* Angosta: cantidad, precio y unidad en una segunda línea. Desde 33rem, cada uno en su columna. */}
-      <div className="col-start-2 flex flex-wrap gap-2 @min-[33rem]:contents">
+      {/* Angosta: cantidad, precio, unidad y total en una segunda línea. Desde 44rem, cada uno en su columna. */}
+      <div className="col-start-2 flex flex-wrap gap-2 @min-[44rem]:contents">
         <Input
           id={`${id}-cantidad`}
           aria-label={`Cantidad del ítem ${numero}`}
@@ -318,7 +330,7 @@ function FilaItem({
           onKeyDown={alTeclear}
           aria-invalid={Boolean(error('cantidad'))}
           aria-describedby={describir('cantidad')}
-          className={cn('h-8 w-16 px-2 text-sm tabular-nums md:text-sm @min-[33rem]:w-full', CIFRA)}
+          className={cn('h-8 w-16 px-2 text-sm tabular-nums md:text-sm @min-[44rem]:w-full', CIFRA)}
         />
         <Input
           id={`${id}-precio`}
@@ -339,7 +351,7 @@ function FilaItem({
           aria-invalid={Boolean(error('precio')) || precioMalEscrito}
           aria-describedby={describir('precio')}
           className={cn(
-            'h-8 min-w-28 flex-1 px-2.5 text-right text-sm tabular-nums md:text-sm @min-[33rem]:min-w-0 @min-[33rem]:px-1.5',
+            'h-8 min-w-28 flex-1 px-2.5 text-right text-sm tabular-nums md:text-sm @min-[44rem]:min-w-0 @min-[44rem]:px-1.5',
             // Sin precio: borde visible y el amarillo de "falta completar" (decisión 17).
             item.precio.trim() === '' ? 'border-brand-yellow/70 bg-brand-yellow/10' : FANTASMA,
             CIFRA,
@@ -353,7 +365,7 @@ function FilaItem({
           aria-invalid={Boolean(error('unidad'))}
           aria-describedby={describir('unidad')}
           // Padding y flecha más ajustados para que "JORNADA" entre entero en la columna de 6rem.
-          className="w-28 @min-[33rem]:w-full [&_[data-slot=native-select-icon]]:right-1.5 [&_select]:pr-6 [&_select]:pl-2 [&_select]:text-xs"
+          className="w-28 @min-[44rem]:w-full [&_[data-slot=native-select-icon]]:right-1.5 [&_select]:pr-6 [&_select]:pl-2 [&_select]:text-xs"
         >
           {UNIDADES.map((unidad) => (
             <NativeSelectOption key={unidad} value={unidad}>
@@ -361,15 +373,15 @@ function FilaItem({
             </NativeSelectOption>
           ))}
         </NativeSelect>
+        {/* Angosta, en la misma línea si entra (si no, baja a la derecha); desde 44rem, la última columna. */}
+        <p className="ml-auto self-center text-right text-[13px] text-muted-foreground tabular-nums @min-[44rem]:ml-0 @min-[44rem]:self-auto @min-[44rem]:pt-1.5 @min-[44rem]:text-foreground">
+          <span className="@min-[44rem]:sr-only">Total </span>
+          {total === null ? '—' : formatMontoTabla(total)}
+        </p>
       </div>
 
-      <p className="col-start-2 text-right text-[13px] text-muted-foreground tabular-nums @min-[33rem]:col-start-auto @min-[33rem]:pt-1.5 @min-[33rem]:text-foreground">
-        <span className="@min-[33rem]:sr-only">Total </span>
-        {total === null ? '—' : formatMontoTabla(total)}
-      </p>
-
       {mensajes.length ? (
-        <p id={`${id}-error`} className="col-start-2 text-sm text-destructive @min-[33rem]:col-span-5">
+        <p id={`${id}-error`} className="col-start-2 text-sm text-destructive @min-[44rem]:col-span-5">
           {mensajes.join(' · ')}
         </p>
       ) : null}
@@ -480,17 +492,17 @@ export function TarjetaItems({
   }
 
   return (
-    <Tarjeta titulo="Ítems">
+    <Tarjeta compacta titulo="Ítems">
       {/* A sangre dentro de la tarjeta, como la tabla de ítems de la plantilla. */}
-      <div className="-mx-5 -mb-5 border-t sm:-mx-6 sm:-mb-6">
+      <div className="-mx-4 -mb-4 border-t">
         {items.length === 0 ? (
-          <p className="px-5 py-6 text-[15px] text-muted-foreground sm:px-6">Todavía no hay ítems.</p>
+          <p className="px-4 py-6 text-[15px] text-muted-foreground">Todavía no hay ítems.</p>
         ) : (
           <>
             <div
               aria-hidden
               className={cn(
-                'hidden h-10 items-center gap-x-1 border-b px-3 text-sm font-medium text-muted-foreground @min-[33rem]:grid',
+                'hidden h-10 items-center gap-x-1 border-b px-3 text-sm font-medium text-muted-foreground @min-[44rem]:grid',
                 COLUMNAS,
               )}
             >

@@ -138,7 +138,9 @@ export function SelectorCliente({
           aria-expanded={abierto}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
-          className="h-8 w-full justify-between px-2.5 font-normal"
+          // Una razón social que no entra se corta con "…": el title la deja leer entera.
+          title={cliente?.razon_social}
+          className="h-8 w-full justify-between px-2 font-normal"
         >
           <span className={cn('truncate', !cliente && 'text-muted-foreground')}>
             {cliente?.razon_social ?? 'Buscá o creá un cliente'}

@@ -85,31 +85,52 @@ export function estadoVisible(estado: string, vencida: boolean | null): EstadoVi
 const LLAVES = /\{\{[^{}]*\}\}/g
 
 /**
- * Lo que dice la columna "Trabajo": el asunto con las variables que se pueden resolver con lo que trae la fila
- * (número, equipo y `datos`); las demás se quitan. Si no queda texto (la plantilla mensual no tiene asunto, una
- * cargada tampoco), "{equipo} · {ubicación}" con lo que haya, o "—".
+ * "Cotización N° 112989" al comienzo del asunto (lo trae la plantilla por jornada): en la lista repite el N°.
+ * Sin importar tildes ni mayúsculas, con "N°", "Nº", "N.º" o "Nro." antes del número (sin esa marca no se quita:
+ * "Cotización 2 grúas…" dice algo), y el signo que lo separe del resto ("-", ":"…).
+ */
+const PREFIJO_NUMERO =
+  /^cotizaci[oó]n\s*(?:n\s*\.?\s*[°º]|nro\.?|n[uú]mero|n\.)\s*\d+(?:[.,]\d+)*\s*(?:[-–—:,.]\s*)?/iu
+
+/** Espacios y saltos de línea juntos, sin los de los extremos. */
+const juntarEspacios = (texto: string) => texto.replace(/\s+/g, ' ').trim()
+
+/** Un texto que tiene alguna letra o número (no solo signos, como el "." que deja "{{ubicacion}}."). */
+const diceAlgo = (texto: string) => /[\p{L}\p{N}]/u.test(texto)
+
+/**
+ * Lo que dice la columna "Trabajo".
+ * - Armada en la app: "{equipo} · {ubicación}" con lo que haya. Sin ninguno de los dos, el asunto con las variables
+ *   que se pueden resolver con lo que trae la fila (las demás se quitan), sin el "Cotización N° …" del comienzo y con
+ *   mayúscula.
+ * - Cargada o directa: el asunto, que lo escribió el usuario.
+ * Si no queda nada, "—".
  */
 export function resumenCotizacion(fila: {
   numero: number
+  origen: string
   asunto: string
   datos: unknown
-  equipo: { nombre: string; capacidad_tn: number | null; descripcion: string } | null
+  equipo: { nombre: string } | null
 }): string {
-  const datos = leerDatos(fila.datos)
-  const capacidad = fila.equipo?.capacidad_tn
-  const valores: Partial<Record<NombreVariable, string>> = {
-    ...datos,
-    numero: String(fila.numero),
-    capacidad: capacidad === null || capacidad === undefined ? '' : String(capacidad).replace('.', ','),
-    equipo_descripcion: fila.equipo?.descripcion ?? '',
+  if (fila.origen !== 'app') {
+    const asunto = juntarEspacios(fila.asunto)
+    return diceAlgo(asunto) ? asunto : '—'
   }
-  const asunto = colapsarPuntoDoble(resolverVariables(fila.asunto, valores).texto.replace(LLAVES, ''))
-    .replace(/\s+/g, ' ')
+
+  const datos = leerDatos(fila.datos)
+  const equipoYLugar = [fila.equipo?.nombre ?? '', datos.ubicacion].map(juntarEspacios).filter(Boolean).join(' · ')
+  if (equipoYLugar) return equipoYLugar
+
+  // Acá no hay equipo: {{capacidad}} y {{equipo_descripcion}} se quitan como las demás que no se resuelven.
+  const valores: Partial<Record<NombreVariable, string>> = { ...datos, numero: String(fila.numero) }
+  const resuelto = colapsarPuntoDoble(resolverVariables(fila.asunto, valores).texto.replace(LLAVES, ''))
+  const asunto = juntarEspacios(resuelto)
     .replace(/ ([.,;:])/g, '$1')
-    .trim()
-  // Un asunto que quedó solo con signos ("." de "{{ubicacion}}.") no dice nada.
-  if (/[\p{L}\p{N}]/u.test(asunto)) return asunto
-  return [fila.equipo?.nombre.trim(), datos.ubicacion].filter(Boolean).join(' · ') || '—'
+    .normalize('NFC')
+    .replace(PREFIJO_NUMERO, '')
+    .replace(/^\p{Ll}/u, (letra) => letra.toLocaleUpperCase('es'))
+  return diceAlgo(asunto) ? asunto : '—'
 }
 
 /**

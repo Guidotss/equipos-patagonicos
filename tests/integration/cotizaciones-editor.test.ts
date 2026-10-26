@@ -199,24 +199,34 @@ describe('buscar_cotizaciones', () => {
   let cliente: string
   let filas: Record<'borrador' | 'aprobada' | 'rechazada' | 'vencida' | 'enviada' | 'otroCliente', Insertada>
 
-  type Campos = { estado: string; fecha: string; asunto?: string; cliente?: string }
+  type Campos = {
+    estado: string
+    fecha: string
+    asunto?: string
+    cliente?: string
+    /** null: sin equipo (si no viene, la grúa de 40 TN de la semilla). */
+    equipo?: string | null
+    datos?: Record<string, string>
+  }
 
   async function insertar(campos: Campos): Promise<Insertada> {
     const aprobada = campos.estado === 'aprobada'
     const [insertada] = await sql<{ id: string; numero: string }>(
       `insert into public.cotizaciones
-         (cliente_id, formato, equipo_id, notas, estado, fecha, validez_dias, asunto, fecha_aprobacion, presupuesto_estado)
-       values ($1, 'jornada', $2, $3, $4, $5, 30, $6, $7, $8)
+         (cliente_id, formato, equipo_id, notas, estado, fecha, validez_dias, asunto, fecha_aprobacion,
+          presupuesto_estado, datos)
+       values ($1, 'jornada', $2, $3, $4, $5, 30, $6, $7, $8, $9)
        returning id, numero`,
       [
         campos.cliente ?? cliente,
-        ids.equipo_id,
+        campos.equipo === undefined ? ids.equipo_id : campos.equipo,
         MARCA,
         campos.estado,
         campos.fecha,
         campos.asunto ?? '',
         aprobada ? campos.fecha : null,
         aprobada ? 'en_curso' : null,
+        campos.datos ?? {},
       ],
     )
     return { id: insertada.id, numero: Number(insertada.numero) }
@@ -261,6 +271,25 @@ describe('buscar_cotizaciones', () => {
     expect(await buscar({ texto: `NANDU ${CLAVE.toUpperCase()}` })).toEqual(todas)
     expect(await buscar({ texto: `ñandú ${CLAVE}` })).toEqual(todas)
     expect(await buscar({ texto: `${CLAVE} en ANELO` })).toEqual(numeros('otroCliente'))
+  })
+
+  it('busca sin acentos en la ubicación y en el nombre del equipo (lo que muestra la columna Trabajo)', async () => {
+    const enAnelo = await insertar({
+      estado: 'borrador',
+      fecha: '2025-03-01',
+      cliente: ids.cliente_id,
+      equipo: null,
+      datos: { ubicacion: `Locación ${CLAVE}, Añelo` },
+    })
+    expect(await buscar({ texto: `${CLAVE.toUpperCase()}, anelo` })).toEqual([enAnelo.numero])
+
+    // Todas las del cliente tienen la grúa de 40 TN, y ni su razón social ni su asunto dicen "grúa telescópica".
+    const todas = numeros('enviada', 'vencida', 'rechazada', 'aprobada', 'borrador')
+    expect(await buscar({ texto: 'GRUA TELESCOPICA xcmg qy70k', cliente })).toEqual(todas)
+    // Una sin equipo no aparece buscando el equipo.
+    const conEquipo = await buscar({ texto: 'qy70k', cliente: ids.cliente_id })
+    expect(conEquipo).toContain(filas.otroCliente.numero)
+    expect(conEquipo).not.toContain(enAnelo.numero)
   })
 
   it('busca por el comienzo del número, no por cualquier parte', async () => {

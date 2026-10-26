@@ -16,11 +16,11 @@ import { createClient } from '@/lib/supabase/server'
 export const metadata: Metadata = { title: 'Cotizaciones' }
 
 /**
- * Solo lo que muestra la lista: sin intro, bloques ni ítems (nunca montos, diseño §5). El equipo embebido completa
- * {{capacidad}} y {{equipo_descripcion}} del asunto para la columna Trabajo.
+ * Solo lo que muestra la lista: sin intro, bloques ni ítems (nunca montos, diseño §5). Del equipo embebido, el nombre
+ * para la columna Trabajo ("{equipo} · {ubicación}", resumenCotizacion).
  */
 const COLUMNAS =
-  'id, numero, origen, fecha, cliente_razon_social, formato, estado, vencida, vence_el, asunto, datos, equipo:equipos(nombre, capacidad_tn, descripcion)'
+  'id, numero, origen, fecha, cliente_razon_social, formato, estado, vencida, vence_el, asunto, datos, equipo:equipos(nombre)'
 
 function Vacio({ children }: { children: React.ReactNode }) {
   return (

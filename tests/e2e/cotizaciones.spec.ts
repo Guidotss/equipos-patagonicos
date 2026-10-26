@@ -40,7 +40,7 @@ test.describe('lista de cotizaciones', () => {
         `insert into public.clientes (razon_social, notas) values ($1, $2) returning id`,
         [razonSocial, MARCA],
       )
-      // 25 borradores con variables en el asunto: la lista los muestra resueltos con el equipo y los datos.
+      // 25 borradores con equipo, ubicación y variables en el asunto: la lista muestra el equipo y la ubicación.
       await db.query(
         `insert into public.cotizaciones (cliente_id, formato, equipo_id, asunto, datos, notas, fecha)
          select $1, 'jornada', e.id, 'Cotización N° {{numero}} - Grúa de {{capacidad}} TN en {{ubicacion}}',
@@ -119,9 +119,10 @@ test.describe('lista de cotizaciones', () => {
     const filas = tabla.getByRole('row')
     await expect(page.getByText('Mostrando 1–25 de 29')).toBeVisible()
     await expect(filas).toHaveCount(26) // encabezado + 25
-    // El asunto con variables sale resuelto con el equipo (capacidad) y los datos (ubicación).
-    await expect(filas.filter({ hasText: 'Grúa de 40 TN en Añelo' }).first()).toBeVisible()
+    // Trabajo: "{equipo} · {ubicación}" (no el asunto, que repite el N°), sin variables a la vista.
+    await expect(filas.filter({ hasText: 'Grúa telescópica XCMG QY70K-1 40 TN · Añelo' }).first()).toBeVisible()
     await expect(tabla).not.toContainText('{{')
+    await expect(tabla).not.toContainText('Cotización N°')
 
     await page.getByRole('link', { name: 'Siguiente' }).click()
     await expect(page).toHaveURL(/pagina=2/)
@@ -297,6 +298,11 @@ async function conBaseEditor<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
   }
 }
 
+/** La opción del Atte. de un cliente sin contactos (ya leídos): reemplaza la línea "Este cliente no tiene contactos". */
+function opcionSinContactos(page: Page) {
+  return page.getByLabel('Atte.', { exact: true }).getByRole('option', { name: 'Sin Atte. (no tiene contactos)' })
+}
+
 /** El id de la cotización abierta en el editor (`/cotizaciones/{id}`). */
 function idDeLaUrl(url: string): string {
   return new URL(url).pathname.split('/').at(-1)!
@@ -331,7 +337,8 @@ test.describe('editor de cotizaciones', () => {
     await page.getByRole('combobox', { name: 'Buscar cliente' }).fill(razonSocial)
     await page.getByRole('option', { name: `Crear cliente «${razonSocial}»` }).click()
     await expect(cliente).toContainText(razonSocial)
-    await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+    await expect(opcionSinContactos(page)).toBeAttached()
+    await expect(page.getByLabel('Atte.', { exact: true })).toHaveValue('')
 
     // Cambiar de plantilla con algo escrito a mano pide confirmación en el lugar (Escape cancela).
     const mensual = page.getByRole('radio', { name: 'Mensual' })
@@ -566,6 +573,44 @@ test('los errores de guardado siguen en su ítem cuando se agregan o mueven otro
   await expect(descripcion(4)).toHaveAttribute('aria-invalid', 'false')
 })
 
+test('arrastrar el primer ítem de una sección con el mouse no pierde el nombre a medio escribir', async ({ page }) => {
+  await iniciarSesion(page)
+  await page.goto('/cotizaciones/nueva')
+  await page.getByRole('radio', { name: 'Por jornada' }).click()
+  await expect(page.getByRole('radio', { name: 'Por jornada' })).toBeChecked()
+  const descripcion = (numero: number) => page.getByLabel(`Descripción del ítem ${numero}`, { exact: true })
+  const seccion = page.getByLabel('Nombre de la sección 1', { exact: true })
+  await expect(descripcion(1)).toHaveValue(/^Alquiler jornada de Grúa Telescópica/)
+  await expect(descripcion(2)).toHaveValue('Movilización y desmovilización de Grúa Telescópica')
+
+  // Un clic en el agarre abre su menú y otro clic lo cierra (no lo vuelve a abrir).
+  const agarre = page.getByRole('button', { name: 'Opciones del ítem 1' })
+  await agarre.click()
+  await expect(page.getByRole('menu')).toBeVisible()
+  await agarre.click()
+  await expect(page.getByRole('menu')).toHaveCount(0)
+
+  // El nombre sin aplicar (el foco sigue en el campo) y el primer ítem de la sección arrastrado debajo del segundo:
+  // el encabezado pasa a ser el del otro ítem, pero el nombre nuevo queda.
+  await seccion.fill('Jornada de grúa (70 TN)')
+  // Los dos ítems a la vista para el mouse (sin mover el foco).
+  await descripcion(2).scrollIntoViewIfNeeded()
+  await expect(seccion).toBeFocused()
+  const desde = (await agarre.boundingBox())!
+  const hasta = (await descripcion(2).boundingBox())!
+  const x = desde.x + desde.width / 2
+  await page.mouse.move(x, desde.y + desde.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(x, desde.y + desde.height / 2 + 12, { steps: 4 })
+  await page.mouse.move(x, hasta.y + hasta.height + 24, { steps: 12 })
+  await page.mouse.up()
+
+  await expect(descripcion(1)).toHaveValue('Movilización y desmovilización de Grúa Telescópica')
+  await expect(descripcion(2)).toHaveValue(/^Alquiler jornada de Grúa Telescópica/)
+  await expect(seccion).toHaveValue('Jornada de grúa (70 TN)')
+  await expect(page.getByLabel('Nombre de la sección 2', { exact: true })).toHaveValue('Precios Jornada Adicional')
+})
+
 test.describe('grilla de ítems de una cotización guardada', () => {
   const creadas: string[] = []
 
@@ -653,6 +698,23 @@ test.describe('grilla de ítems de una cotización guardada', () => {
 
     await page.reload()
     await expect(seccion).toHaveValue('Horas adicionales de grúa')
+  })
+
+  test('Guardar aplica el nombre de sección aunque el campo no pierda el foco antes del clic', async ({ page }) => {
+    const id = await cotizacionGuardada()
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const seccion = page.getByLabel('Nombre de la sección 1', { exact: true })
+    await expect(seccion).toHaveValue('Precios Jornada')
+
+    // Un click sin mousedown: no hay blur antes (lo que no está asegurado en Safari ni en iOS).
+    await seccion.fill('Jornadas de grúa')
+    await page.getByRole('button', { name: 'Guardar' }).dispatchEvent('click')
+    await expect(page.getByText('Cotización guardada')).toBeVisible()
+    await expect(seccion).toHaveValue('Jornadas de grúa')
+
+    await page.reload()
+    await expect(seccion).toHaveValue('Jornadas de grúa')
   })
 })
 
@@ -895,7 +957,7 @@ async function altaRapidaQueRevalida(page: Page, razonSocial: string) {
   ])
   await page.getByRole('option', { name: `Crear cliente «${razonSocial}»` }).click()
   await revalidacion
-  await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+  await expect(opcionSinContactos(page)).toBeAttached()
 }
 
 /** Hoy en Argentina, 'YYYY-MM-DD' y 'dd/mm/aaaa' (la fecha por defecto de una cotización y de su aprobación). */
@@ -1086,7 +1148,7 @@ test.describe('acciones de estado del editor', () => {
     // El alta rápida revalida /clientes y la página se vuelve a dibujar: `inicial` ya trae la versión del otro.
     await altaRapidaQueRevalida(page, razonSocial)
     const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
-    const sinContactos = page.getByText('Este cliente no tiene contactos.')
+    const sinContactos = opcionSinContactos(page)
 
     const guardar = page.getByRole('button', { name: 'Guardar', exact: true })
     await guardar.click()
@@ -1096,7 +1158,7 @@ test.describe('acciones de estado del editor', () => {
     await expect(cliente).toContainText(conContacto)
     // Atte. vuelve a ofrecer los contactos del cliente guardado, con el suyo elegido.
     await expect(atte).toHaveValue(contactoId)
-    await expect(sinContactos).toBeHidden()
+    await expect(sinContactos).toHaveCount(0)
 
     // Con la versión del otro, guardar ya no choca.
     await asunto.fill('Asunto corregido')
@@ -1190,7 +1252,7 @@ test.describe('acciones de estado del editor', () => {
     clientesCreados.push(conContacto)
     await iniciarSesion(page)
     await page.goto(`/cotizaciones/${id}`)
-    await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+    await expect(opcionSinContactos(page)).toBeAttached()
 
     // Otro usuario le cambia el cliente (con un contacto) mientras se rechaza.
     const { contactoId } = await conBase(async (db) => {
@@ -1211,7 +1273,7 @@ test.describe('acciones de estado del editor', () => {
     await expect(page.getByText('Rechazada. Para volver a editarla, reabrila.')).toBeVisible()
     await expect(page.getByRole('combobox', { name: 'Cliente', exact: true })).toContainText(conContacto)
     await expect(page.getByLabel('Atte.')).toHaveValue(contactoId)
-    await expect(page.getByText('Este cliente no tiene contactos.')).toBeHidden()
+    await expect(opcionSinContactos(page)).toHaveCount(0)
   })
 })
 

@@ -22,11 +22,7 @@ function fila(cambios: Partial<FilaVistaLista> = {}): FilaVistaLista {
     vence_el: '2026-11-19',
     asunto: 'Grúa de {{capacidad}} TN en {{ubicacion}}',
     datos: { ubicacion: 'Añelo' },
-    equipo: {
-      nombre: 'Grúa telescópica XCMG QY70K-1 40 TN',
-      capacidad_tn: 40,
-      descripcion: 'Grúa Telescópica XCMG',
-    },
+    equipo: { nombre: 'Grúa telescópica XCMG QY70K-1 40 TN' },
     ...cambios,
   }
 }

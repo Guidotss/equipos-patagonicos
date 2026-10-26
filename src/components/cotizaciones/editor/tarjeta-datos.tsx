@@ -280,7 +280,7 @@ export function TarjetaDatos({
   const errorProxima = errores.proximaActualizacion ?? errores['datos.proxima_actualizacion']
 
   return (
-    <Tarjeta titulo="Datos de esta cotización">
+    <Tarjeta compacta titulo="Datos de esta cotización">
       {estado.id === null ? (
         <SelectorPlantilla
           estado={estado}
@@ -300,7 +300,11 @@ export function TarjetaDatos({
             onChange={(evento) => despachar({ tipo: 'campo', campo: 'equipoId', valor: evento.target.value })}
             aria-invalid={Boolean(errores.equipoId)}
             aria-describedby={errores.equipoId ? `${ID_CAMPO.equipo}-error` : undefined}
-            className={cn('w-full', faltaEquipo && FALTA)}
+            // Menos lugar para la flecha: "Grúa telescópica XCMG 70 TN" no se corta contra ella a 1200 px.
+            className={cn(
+              'w-full [&_[data-slot=native-select-icon]]:right-2 [&_select]:pr-7',
+              faltaEquipo && FALTA,
+            )}
           >
             <NativeSelectOption value="">Elegí un equipo</NativeSelectOption>
             {catalogos.equipos.map((equipo) => (

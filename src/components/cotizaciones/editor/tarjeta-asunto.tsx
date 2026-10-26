@@ -31,10 +31,12 @@ export function TarjetaAsunto({
 }) {
   return (
     <Tarjeta
+      compacta
       titulo="Asunto e introducción"
       descripcion={
         estado.formato === 'mensual'
-          ? 'El PDF mensual no imprime el asunto ni la introducción; el asunto se ve en la lista (Trabajo).'
+          ? // La lista (Trabajo) muestra el asunto solo si no hay equipo ni ubicación: no se promete acá.
+            'El PDF mensual no imprime el asunto ni la introducción.'
           : undefined
       }
     >

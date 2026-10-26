@@ -330,6 +330,7 @@ export function TarjetaTextos({
 
   return (
     <Tarjeta
+      compacta
       titulo="Textos"
       acciones={
         hayQueRestaurar ? (

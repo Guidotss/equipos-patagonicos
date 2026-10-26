@@ -2,7 +2,8 @@
 -- Editor de cotizaciones (plan 3B):
 -- 1. guardar_cotizacion con control de versión: con p_id exige el updated_at que vio la pantalla, igual que
 --    marcar_enviada y aprobar_cotizacion. Sin esto, el último que guarda pisa lo que guardó otro (u otra pestaña).
--- 2. buscar_cotizaciones para la lista: sin acentos, por número parcial, razón social y asunto, con filtros.
+-- 2. buscar_cotizaciones para la lista: sin acentos, por número parcial, razón social, asunto, ubicación y equipo,
+--    con filtros.
 
 -- Se borra la firma de 3 parámetros: si quedaran las dos, una llamada con p_datos, p_items y p_id sería ambigua.
 drop function public.guardar_cotizacion(jsonb, jsonb, uuid);
@@ -79,7 +80,8 @@ $$;
 grant execute on function public.guardar_cotizacion(jsonb, jsonb, uuid, timestamptz) to authenticated;
 
 -- Búsqueda de la lista. SECURITY INVOKER: corre con la RLS de quien llama (un usuario inactivo no ve nada).
--- texto: sin acentos contra la razón social y el asunto, o el comienzo del número si el texto es solo un número
+-- texto: sin acentos contra la razón social, el asunto, la ubicación (datos.ubicacion) y el nombre del equipo (lo que
+-- muestra la columna Trabajo), o el comienzo del número si el texto es solo un número
 -- (con "N°", "nro" o "#" adelante o sin nada). Los dígitos de otro texto no buscan por número: todos los números
 -- empiezan con 1, así que "11 de julio" o "Loma Campana 1" traerían todas las cotizaciones.
 -- estado: '' = todos; 'enviada' = enviadas al día; 'vencida' = enviadas fuera de validez (como la pastilla);
@@ -118,6 +120,11 @@ as $$
       p.normalizado = ''
       or extensions.unaccent(lower(v.cliente_razon_social)) like p.como
       or extensions.unaccent(lower(v.asunto)) like p.como
+      or extensions.unaccent(lower(coalesce(v.datos ->> 'ubicacion', ''))) like p.como
+      or exists (
+        select 1 from public.equipos e
+        where e.id = v.equipo_id and extensions.unaccent(lower(e.nombre)) like p.como
+      )
       or (p.digitos <> '' and v.numero::text like p.digitos || '%')
     )
     and case coalesce(buscar_cotizaciones.estado, '')

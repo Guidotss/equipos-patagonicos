@@ -160,66 +160,96 @@ describe('estadoVisible', () => {
 })
 
 describe('resumenCotizacion', () => {
-  const equipo40 = {
-    nombre: 'Grúa telescópica XCMG QY70K-1 40 TN',
-    capacidad_tn: 40,
-    descripcion: 'Grúa Telescópica marca XCMG modelo QY70K-1 de 40 TN',
-  }
+  const equipo40 = { nombre: 'Grúa telescópica XCMG QY70K-1 40 TN' }
   const asuntoJornada =
     'Cotización N° {{numero}} alquiler de 1 (una) Grúa Telescópica capacidad {{capacidad}} TN con operador.'
+  /** Una armada en la app, sin equipo ni ubicación salvo que se pidan. */
+  const app = (cambios: Partial<Parameters<typeof resumenCotizacion>[0]> = {}) =>
+    resumenCotizacion({ numero: 112711, origen: 'app', asunto: '', datos: {}, equipo: null, ...cambios })
 
-  it('resuelve número y capacidad en el asunto de la plantilla por jornada', () => {
-    expect(resumenCotizacion({ numero: 112711, asunto: asuntoJornada, datos: {}, equipo: equipo40 })).toBe(
-      'Cotización N° 112711 alquiler de 1 (una) Grúa Telescópica capacidad 40 TN con operador.',
-    )
+  describe('armada en la app', () => {
+    it('muestra primero el equipo y la ubicación, aunque tenga asunto', () => {
+      const datos = { ubicacion: 'Sargento Vidal Ruta Nacional 151 km 41' }
+      expect(app({ asunto: asuntoJornada, datos, equipo: equipo40 })).toBe(
+        'Grúa telescópica XCMG QY70K-1 40 TN · Sargento Vidal Ruta Nacional 151 km 41',
+      )
+    })
+
+    it('con solo el equipo o solo la ubicación, muestra lo que haya', () => {
+      expect(app({ asunto: asuntoJornada, equipo: equipo40 })).toBe('Grúa telescópica XCMG QY70K-1 40 TN')
+      expect(app({ asunto: asuntoJornada, datos: { ubicacion: 'Añelo' } })).toBe('Añelo')
+    })
+
+    it('junta los espacios y los saltos de línea del equipo y la ubicación', () => {
+      const equipo = { ...equipo40, nombre: '  Grúa   XCMG 70 TN ' }
+      expect(app({ datos: { ubicacion: 'Loma Campana\nYPF' }, equipo })).toBe('Grúa XCMG 70 TN · Loma Campana YPF')
+    })
+
+    it('sin equipo ni ubicación, el asunto resuelto sin el prefijo "Cotización N° …" y con mayúscula', () => {
+      expect(app({ asunto: asuntoJornada })).toBe('Alquiler de 1 (una) Grúa Telescópica capacidad TN con operador.')
+    })
+
+    it.each([
+      ['con tilde', 'Cotización N° {{numero}} alquiler de grúa'],
+      ['sin tilde', 'Cotizacion N° {{numero}} alquiler de grúa'],
+      ['en mayúsculas', 'COTIZACIÓN N° {{numero}} alquiler de grúa'],
+      ['con Nº (ordinal)', 'Cotización Nº {{numero}} alquiler de grúa'],
+      ['con Nro.', 'cotizacion Nro. {{numero}} alquiler de grúa'],
+      ['con N.º', 'Cotización N.º {{numero}} alquiler de grúa'],
+      ['con el número escrito', 'Cotización N° 112500 alquiler de grúa'],
+      ['con un guion después', 'Cotización N° {{numero}} - alquiler de grúa'],
+      ['con dos puntos después', 'Cotización N°{{numero}}: alquiler de grúa'],
+    ])('quita el prefijo %s', (_caso, asunto) => {
+      expect(app({ asunto })).toBe('Alquiler de grúa')
+    })
+
+    it('solo quita el prefijo al comienzo', () => {
+      expect(app({ asunto: 'Alquiler de grúa (Cotización N° {{numero}})' })).toBe(
+        'Alquiler de grúa (Cotización N° 112711)',
+      )
+      expect(app({ asunto: 'Cotizaciones varias' })).toBe('Cotizaciones varias')
+      // Sin "N°" el número es parte del trabajo.
+      expect(app({ asunto: 'Cotización 2 grúas para Añelo' })).toBe('Cotización 2 grúas para Añelo')
+    })
+
+    it('quita las variables que no se pueden resolver y los espacios que quedan', () => {
+      expect(app({ asunto: 'Izaje en {{ubicacion}} , {{ubicación}} norte' })).toBe('Izaje en, norte')
+    })
+
+    it('resuelve las variables con los datos de la cotización; la capacidad, sin equipo, queda vacía', () => {
+      const asunto = 'Grúa de {{capacidad}} TN, pago {{forma_pago}}.'
+      expect(app({ asunto, datos: { forma_pago: 'a 30 días F.F.' } })).toBe('Grúa de TN, pago a 30 días F.F.')
+    })
+
+    it('un asunto que solo era el prefijo, o que queda solo con signos, es una raya', () => {
+      expect(app({ asunto: 'Cotización N° {{numero}}' })).toBe('—')
+      expect(app({ asunto: 'Cotización N° {{numero}}.' })).toBe('—')
+      expect(app({ asunto: '{{ubicacion}}.' })).toBe('—')
+    })
+
+    it('sin nada que mostrar, una raya', () => {
+      expect(app({ datos: null })).toBe('—')
+      expect(app({ asunto: '   ', datos: { ubicacion: '  ' }, equipo: { ...equipo40, nombre: ' ' } })).toBe('—')
+    })
   })
 
-  it('quita las variables que no se pueden resolver y los espacios que quedan', () => {
-    expect(resumenCotizacion({ numero: 112712, asunto: asuntoJornada, datos: {}, equipo: null })).toBe(
-      'Cotización N° 112712 alquiler de 1 (una) Grúa Telescópica capacidad TN con operador.',
-    )
-    const conFaltantes = { numero: 1, asunto: 'Izaje en {{ubicacion}} , {{ubicación}} norte', datos: {}, equipo: null }
-    expect(resumenCotizacion(conFaltantes)).toBe('Izaje en, norte')
-  })
+  describe('cargada o directa', () => {
+    it('muestra el asunto que escribió el usuario, aunque tenga equipo y ubicación', () => {
+      const asunto = '  Montaje de tanque\nen Añelo '
+      const fila = { numero: 5, asunto, datos: { ubicacion: 'Añelo' }, equipo: equipo40 }
+      expect(resumenCotizacion({ ...fila, origen: 'directa' })).toBe('Montaje de tanque en Añelo')
+      expect(resumenCotizacion({ ...fila, origen: 'importada' })).toBe('Montaje de tanque en Añelo')
+    })
 
-  it('usa los datos de la cotización y la capacidad con coma decimal', () => {
-    const fila = {
-      numero: 1,
-      asunto: 'Grúa de {{capacidad}} TN en {{ubicacion}}, pago {{forma_pago}}.',
-      datos: { ubicacion: 'Añelo', forma_pago: 'a 30 días F.F.' },
-      equipo: { ...equipo40, capacidad_tn: 60.5 },
-    }
-    expect(resumenCotizacion(fila)).toBe('Grúa de 60,5 TN en Añelo, pago a 30 días F.F.')
-  })
+    it('no le quita el prefijo "Cotización N°" (lo escribió así)', () => {
+      const fila = { numero: 5, origen: 'importada', asunto: 'Cotización N° 5 montaje', datos: {}, equipo: null }
+      expect(resumenCotizacion(fila)).toBe('Cotización N° 5 montaje')
+    })
 
-  it('un asunto sin variables (presupuesto directo) se muestra tal cual', () => {
-    expect(
-      resumenCotizacion({ numero: 5, asunto: '  Montaje de tanque\nen Añelo ', datos: {}, equipo: null }),
-    ).toBe('Montaje de tanque en Añelo')
-  })
-
-  it('sin asunto, muestra equipo y ubicación con lo que haya', () => {
-    const datos = { ubicacion: 'Sargento Vidal Ruta Nacional 151 km 41' }
-    expect(resumenCotizacion({ numero: 1, asunto: '', datos, equipo: equipo40 })).toBe(
-      'Grúa telescópica XCMG QY70K-1 40 TN · Sargento Vidal Ruta Nacional 151 km 41',
-    )
-    expect(resumenCotizacion({ numero: 1, asunto: '', datos, equipo: null })).toBe(
-      'Sargento Vidal Ruta Nacional 151 km 41',
-    )
-    expect(resumenCotizacion({ numero: 1, asunto: '', datos: {}, equipo: equipo40 })).toBe(
-      'Grúa telescópica XCMG QY70K-1 40 TN',
-    )
-  })
-
-  it('un asunto que queda solo con signos cuenta como vacío', () => {
-    expect(resumenCotizacion({ numero: 1, asunto: '{{ubicacion}}.', datos: {}, equipo: equipo40 })).toBe(
-      'Grúa telescópica XCMG QY70K-1 40 TN',
-    )
-  })
-
-  it('sin nada que mostrar, una raya', () => {
-    expect(resumenCotizacion({ numero: 1, asunto: '', datos: null, equipo: null })).toBe('—')
-    expect(resumenCotizacion({ numero: 1, asunto: '   ', datos: { ubicacion: '  ' }, equipo: null })).toBe('—')
+    it('sin asunto, una raya (no cae al equipo ni a la ubicación)', () => {
+      const fila = { numero: 5, origen: 'directa', asunto: '  ', datos: { ubicacion: 'Añelo' }, equipo: equipo40 }
+      expect(resumenCotizacion(fila)).toBe('—')
+    })
   })
 })
 

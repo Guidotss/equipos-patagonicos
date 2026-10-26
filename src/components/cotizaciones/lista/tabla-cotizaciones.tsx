@@ -11,6 +11,9 @@ const ENCABEZADO = 'h-11 text-muted-foreground'
 /**
  * Tabla de escritorio (docs/diseno/referencias/02-cotizaciones.png, sin la columna Importe). Va dentro de una tarjeta
  * con @container: Fecha, Formato y Vence el se esconden según el ancho de la tarjeta, no de la ventana.
+ * Cliente tiene un mínimo de 11rem (una razón social como "VERTICE SERVICIOS INTEGRALES S.R.L." entra entera en dos
+ * líneas a 1200 px) y Trabajo se queda con el resto (w-full); las dos cortan en la segunda línea, con el texto completo
+ * en el title.
  */
 export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
   return (
@@ -42,11 +45,15 @@ export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
               {fila.origen ? <p className="text-xs text-muted-foreground">{fila.origen}</p> : null}
             </TableCell>
             <TableCell className="hidden py-2 tabular-nums @min-[50rem]:table-cell">{fila.fecha}</TableCell>
-            <TableCell className="min-w-36 py-2 whitespace-normal">
-              <span className="line-clamp-2 leading-snug">{fila.cliente}</span>
+            <TableCell className="min-w-44 py-2 whitespace-normal">
+              <span title={fila.cliente} className="line-clamp-2 leading-snug">
+                {fila.cliente}
+              </span>
             </TableCell>
-            <TableCell className="min-w-36 py-2 whitespace-normal">
-              <span className="line-clamp-2 leading-snug text-foreground/80">{fila.trabajo}</span>
+            <TableCell className="w-full min-w-36 py-2 whitespace-normal">
+              <span title={fila.trabajo} className="line-clamp-2 leading-snug text-foreground/80">
+                {fila.trabajo}
+              </span>
             </TableCell>
             {/* "Por jornada" en dos líneas, como en la referencia: deja el ancho para Cliente y Trabajo. */}
             <TableCell className="hidden py-2 leading-snug whitespace-normal text-foreground/80 @min-[54rem]:table-cell">

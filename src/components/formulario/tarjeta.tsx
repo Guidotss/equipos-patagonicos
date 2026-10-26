@@ -25,7 +25,8 @@ export type DefinicionCampo = {
 
 /**
  * Tarjeta de un grupo de campos: título y, opcionales, ícono, bajada, acciones a la derecha del título y una franja
- * abajo ("Así sale…"). Sin ícono ni bajada es la tarjeta compacta del editor de cotización.
+ * abajo ("Así sale…"). `compacta` (el editor de cotización, referencia 03) achica el relleno, la separación y el título
+ * para que entren más tarjetas en la primera pantalla.
  */
 export function Tarjeta({
   icono: Icono,
@@ -33,6 +34,7 @@ export function Tarjeta({
   descripcion,
   acciones,
   franja,
+  compacta = false,
   children,
 }: {
   icono?: LucideIcon | ((props: { className?: string }) => React.ReactNode)
@@ -41,11 +43,13 @@ export function Tarjeta({
   /** Botones chicos a la derecha del título (por ejemplo "Restaurar desde la plantilla"). */
   acciones?: React.ReactNode
   franja?: React.ReactNode
+  /** Cuerpo con p-4 y space-y-3, y título text-base. */
+  compacta?: boolean
   children: React.ReactNode
 }) {
   return (
     <section className="@container overflow-hidden rounded-xl border bg-card shadow-tarjeta">
-      <div className="space-y-4 p-5 sm:p-6">
+      <div className={compacta ? 'space-y-3 p-4' : 'space-y-4 p-5 sm:p-6'}>
         <div className={cn('flex gap-3', descripcion ? 'items-start' : 'items-center')}>
           {Icono ? (
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-primary">
@@ -53,7 +57,7 @@ export function Tarjeta({
             </span>
           ) : null}
           <div className="min-w-0 flex-1 space-y-0.5">
-            <h2 className="text-lg leading-tight font-medium">{titulo}</h2>
+            <h2 className={cn('leading-tight font-medium', compacta ? 'text-base' : 'text-lg')}>{titulo}</h2>
             {descripcion ? <p className="text-sm text-muted-foreground">{descripcion}</p> : null}
           </div>
           {acciones ? <div className="-my-1 flex shrink-0 items-center gap-1">{acciones}</div> : null}

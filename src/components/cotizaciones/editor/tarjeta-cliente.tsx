@@ -63,10 +63,19 @@ export function TarjetaCliente({
 
   const errorCliente = errores.cliente
   const errorContacto = errores.contactoId
+  // Sin contactos lo dice la misma opción: no suma una línea debajo (densidad de la referencia 03).
+  const textoSinAtte = contactos.length === 0 ? 'Sin Atte. (no tiene contactos)' : 'Sin Atte.'
+  // A 1200 px el select no muestra entero un texto largo: el title lo deja leer sin abrirlo.
+  const textoAtte =
+    estado.cliente && !cargando
+      ? (contactos.find((contacto) => contacto.id === estado.contactoId)?.nombre ?? textoSinAtte)
+      : undefined
 
   return (
-    <Tarjeta titulo="Cliente">
-      <div className="grid gap-2.5 @md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+    <Tarjeta compacta titulo="Cliente">
+      {/* 5fr | 3fr: a 1200 px "VERTICE SERVICIOS INTEGRALES S.R.L." entra entera en el combobox. En una columna,
+          grid-cols-1 (minmax(0,1fr)): una razón social más larga se corta con "…" en vez de desbordar la tarjeta. */}
+      <div className="grid grid-cols-1 gap-2.5 @md:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]">
         <div className="space-y-1">
           <Label htmlFor={ID_CAMPO.cliente} className="sr-only">
             Cliente
@@ -96,6 +105,7 @@ export function TarjetaCliente({
               onChange={(evento) => despachar({ tipo: 'campo', campo: 'contactoId', valor: evento.target.value })}
               aria-invalid={Boolean(errorContacto)}
               aria-describedby={errorContacto ? `${ID_CAMPO.contacto}-error` : undefined}
+              title={textoAtte}
               className="min-w-0 flex-1 has-[select:disabled]:opacity-100 [&_select]:border-0 [&_select]:pl-1.5 [&_select]:focus-visible:ring-0"
             >
               {!estado.cliente ? (
@@ -104,7 +114,7 @@ export function TarjetaCliente({
                 <NativeSelectOption value="">Cargando…</NativeSelectOption>
               ) : (
                 <>
-                  <NativeSelectOption value="">Sin Atte.</NativeSelectOption>
+                  <NativeSelectOption value="">{textoSinAtte}</NativeSelectOption>
                   {contactos.map((contacto) => (
                     <NativeSelectOption key={contacto.id} value={contacto.id}>
                       {contacto.nombre}
@@ -118,8 +128,6 @@ export function TarjetaCliente({
             <p id={`${ID_CAMPO.contacto}-error`} className="text-sm text-destructive">
               {errorContacto}
             </p>
-          ) : estado.cliente && !cargando && contactos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Este cliente no tiene contactos.</p>
           ) : null}
         </div>
       </div>
