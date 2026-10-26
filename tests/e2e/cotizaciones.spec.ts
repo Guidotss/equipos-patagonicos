@@ -528,3 +528,33 @@ test('la grilla de ítems se maneja con el teclado y entiende precios pegados', 
   await page.getByRole('switch', { name: 'Total en el PDF' }).click()
   await expect(page.getByText('Falta el precio de 2 ítems')).toBeVisible()
 })
+
+test('los errores de guardado siguen en su ítem cuando se agregan o mueven otros', async ({ page }) => {
+  await iniciarSesion(page)
+  await page.goto('/cotizaciones/nueva')
+  await page.getByRole('radio', { name: 'Por jornada' }).click()
+  await expect(page.getByRole('radio', { name: 'Por jornada' })).toBeChecked()
+  const descripcion = (numero: number) => page.getByLabel(`Descripción del ítem ${numero}`, { exact: true })
+
+  // El ítem 3 sin descripción no se guarda: queda marcado con el motivo.
+  await descripcion(3).fill('')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect(descripcion(3)).toHaveAttribute('aria-invalid', 'true')
+  await expect(descripcion(3)).toHaveAccessibleDescription('Falta la descripción')
+
+  // Una fila nueva arriba corre el ítem vacío al 4: la marca va con él y no queda en el que ahora es el 3.
+  await descripcion(1).press('Enter')
+  await expect(descripcion(4)).toHaveValue('')
+  await expect(descripcion(4)).toHaveAttribute('aria-invalid', 'true')
+  await expect(descripcion(4)).toHaveAccessibleDescription('Falta la descripción')
+  await expect(descripcion(3)).toHaveValue(/^Movilización y desmovilización/)
+  await expect(descripcion(3)).toHaveAttribute('aria-invalid', 'false')
+  await expect(descripcion(2)).toHaveAttribute('aria-invalid', 'false')
+
+  // Al subirlo, también.
+  await page.getByRole('button', { name: 'Opciones del ítem 4' }).click()
+  await page.getByRole('menuitem', { name: 'Subir' }).click()
+  await expect(descripcion(3)).toHaveValue('')
+  await expect(descripcion(3)).toHaveAttribute('aria-invalid', 'true')
+  await expect(descripcion(4)).toHaveAttribute('aria-invalid', 'false')
+})

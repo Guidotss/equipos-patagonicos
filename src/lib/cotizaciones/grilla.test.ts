@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   destinoFoco,
+  erroresPorClave,
   filasGrilla,
   leerCantidad,
   nombreSeccionNueva,
@@ -127,5 +128,27 @@ describe('vecinoAlQuitar', () => {
     expect(vecinoAlQuitar(items, 'a')).toBe('b')
     expect(vecinoAlQuitar([item('a')], 'a')).toBeNull()
     expect(vecinoAlQuitar(items, 'z')).toBeNull()
+  })
+})
+
+describe('erroresPorClave', () => {
+  it('pasa las rutas por posición a la clave que tenía cada ítem al guardar', () => {
+    const errores = {
+      cliente: 'Elegí el cliente',
+      'items.0.precio': 'Precio inválido',
+      'items.2.descripcion': 'Falta la descripción',
+      'items.2.cantidad': 'La cantidad tiene que ser mayor a 0',
+      'items.1.seccion': 'Máximo 100 caracteres',
+    }
+    expect(erroresPorClave(errores, ['a', 'b', 'c'])).toEqual({
+      a: { precio: 'Precio inválido' },
+      b: { seccion: 'Máximo 100 caracteres' },
+      c: { descripcion: 'Falta la descripción', cantidad: 'La cantidad tiene que ser mayor a 0' },
+    })
+  })
+
+  it('ignora las rutas que no son de una celda y las posiciones que no existen', () => {
+    expect(erroresPorClave({ 'items.3.precio': 'x', 'bloques.0.titulo': 'y', 'items.0.otro': 'z' }, ['a'])).toEqual({})
+    expect(erroresPorClave({}, ['a'])).toEqual({})
   })
 })

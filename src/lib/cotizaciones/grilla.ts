@@ -1,7 +1,7 @@
 // src/lib/cotizaciones/grilla.ts
 // Lógica de la grilla de ítems del editor: filas de sección, cantidades y precios escritos o pegados, totales y
-// adónde va el foco después de agregar o borrar. Pura (UI y Vitest). Las reglas de las secciones al mover o
-// renombrar están en el reducer (editor.ts).
+// adónde va el foco después de agregar o borrar, y los errores de guardado de cada fila. Pura (UI y Vitest). Las
+// reglas de las secciones al mover o renombrar están en el reducer (editor.ts).
 import { formatMontoTabla, parsePrecio } from '@/lib/format/montos'
 import type { ItemEditor } from './editor'
 
@@ -113,4 +113,26 @@ export function vecinoAlQuitar(items: ItemGrilla[], clave: string): string | nul
   const indice = items.findIndex((item) => item.clave === clave)
   if (indice === -1) return null
   return (items[indice - 1] ?? items[indice + 1])?.clave ?? null
+}
+
+/** Celdas de un ítem que pueden traer un error de guardado. */
+export type CampoGrilla = 'seccion' | 'descripcion' | 'cantidad' | 'precio' | 'unidad'
+export type ErroresItem = Partial<Record<CampoGrilla, string>>
+
+const RUTA_CELDA = /^items\.(\d+)\.(seccion|descripcion|cantidad|precio|unidad)$/
+
+/**
+ * Errores de guardado de los ítems por clave de fila. Las rutas ('items.2.precio') usan la posición que tenía cada
+ * ítem al guardar: pasadas a claves con las filas de ese momento, la marca sigue en su fila aunque después se
+ * agregue, duplique, mueva o borre otra.
+ */
+export function erroresPorClave(errores: Record<string, string>, claves: string[]): Record<string, ErroresItem> {
+  const porClave: Record<string, ErroresItem> = {}
+  for (const [ruta, mensaje] of Object.entries(errores)) {
+    const partes = RUTA_CELDA.exec(ruta)
+    const clave = partes ? claves[Number(partes[1])] : undefined
+    if (!partes || clave === undefined) continue
+    porClave[clave] = { ...porClave[clave], [partes[2] as CampoGrilla]: mensaje }
+  }
+  return porClave
 }

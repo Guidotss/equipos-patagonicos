@@ -35,12 +35,15 @@ import type { ItemEditor } from '@/lib/cotizaciones/editor'
 import type { Despachar } from '@/lib/cotizaciones/editor-pantalla'
 import {
   destinoFoco,
+  erroresPorClave,
   filasGrilla,
   nombreSeccionNueva,
   normalizarPrecio,
   totalGeneral,
   totalLinea,
   vecinoAlQuitar,
+  type CampoGrilla,
+  type ErroresItem,
   type FilaSeccion,
   type PedidoFoco,
 } from '@/lib/cotizaciones/grilla'
@@ -115,7 +118,7 @@ function EncabezadoSeccion({ fila, error, despachar }: { fila: FilaSeccion; erro
   )
 }
 
-type CampoItem = 'descripcion' | 'cantidad' | 'precio' | 'unidad'
+type CampoItem = Exclude<CampoGrilla, 'seccion'>
 
 function FilaItem({
   item,
@@ -131,7 +134,8 @@ function FilaItem({
   item: ItemEditor
   indice: number
   cantidadItems: number
-  errores: Record<string, string>
+  /** Los errores de guardado de esta fila (por clave, no por posición: ver TarjetaItems). */
+  errores: ErroresItem
   despachar: Despachar
   alEnter: () => void
   alMover: (paso: -1 | 1) => void
@@ -156,7 +160,7 @@ function FilaItem({
 
   const numero = indice + 1
   const id = `item-${item.clave}`
-  const error = (campo: CampoItem) => errores[`items.${indice}.${campo}`]
+  const error = (campo: CampoItem) => errores[campo]
   const mensajes = (['descripcion', 'cantidad', 'precio', 'unidad'] as const).map(error).filter(Boolean)
   const describir = (campo: CampoItem) => (error(campo) ? `${id}-error` : undefined)
   const precioMalEscrito = item.precio.trim() !== '' && parsePrecio(item.precio) === null
@@ -356,6 +360,16 @@ export function TarjetaItems({
   )
   const filas = filasGrilla(items)
   const { total, sinPrecio } = totalGeneral(items)
+  // Los errores de guardado llegan con la posición que tenía cada ítem ('items.2.precio') y no cambian hasta el
+  // próximo guardado. Se pasan a claves en el render en que llegan, con las filas de ese momento: si después se
+  // agrega, duplica, mueve o borra una fila, cada marca sigue en la suya en vez de saltar a la que quedó en ese lugar.
+  const [marcas, setMarcas] = useState(() => ({
+    errores,
+    porClave: erroresPorClave(errores, items.map((item) => item.clave)),
+  }))
+  if (marcas.errores !== errores) {
+    setMarcas({ errores, porClave: erroresPorClave(errores, items.map((item) => item.clave)) })
+  }
 
   // Después de agregar, duplicar o borrar, el foco va a la fila que corresponde (las claves las pone el reducer).
   useEffect(() => {
@@ -462,7 +476,7 @@ export function TarjetaItems({
                     <EncabezadoSeccion
                       key={`seccion-${fila.clave}`}
                       fila={fila}
-                      error={errores[`items.${fila.indice}.seccion`]}
+                      error={marcas.porClave[fila.clave]?.seccion}
                       despachar={despachar}
                     />
                   ) : (
@@ -471,7 +485,7 @@ export function TarjetaItems({
                       item={items[fila.indice]}
                       indice={fila.indice}
                       cantidadItems={items.length}
-                      errores={errores}
+                      errores={marcas.porClave[items[fila.indice].clave] ?? {}}
                       despachar={despachar}
                       alEnter={() => agregarDespuesDe(items[fila.indice])}
                       alMover={(paso) => mover(fila.indice, fila.indice + paso)}
