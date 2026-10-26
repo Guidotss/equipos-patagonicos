@@ -2,7 +2,7 @@
 // src/components/cotizaciones/editor/editor-cotizacion.tsx
 
 import { unstable_rethrow, useRouter } from 'next/navigation'
-import { useEffect, useEffectEvent, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { guardarCotizacion } from '@/app/(app)/cotizaciones/actions'
 import { Contenido } from '@/components/app-shell/encabezado'
@@ -17,6 +17,7 @@ import {
   type EstadoEditor,
 } from '@/lib/cotizaciones/editor'
 import { erroresSinCampo, esAtajoGuardar, type ContactoEditor } from '@/lib/cotizaciones/editor-pantalla'
+import { erroresPorClave, type ErroresItem } from '@/lib/cotizaciones/grilla'
 import { BarraInferior } from './barra-inferior'
 import { EncabezadoEditor } from './encabezado-editor'
 import { TarjetaAsunto } from './tarjeta-asunto'
@@ -45,21 +46,45 @@ export function EditorCotizacion({
   const [guardado, setGuardado] = useState(inicial)
   const [contactos, setContactos] = useState(contactosIniciales)
   const [errores, setErrores] = useState<Record<string, string>>({})
+  /** Los errores de los ítems ('items.N.campo') por clave de ítem (ver mostrarErrores). */
+  const [erroresItems, setErroresItems] = useState<Record<string, ErroresItem>>({})
   const [aviso, setAviso] = useState<string | null>(null)
+  /** Secciones de la grilla con el nombre escrito y todavía no aplicado (borrador local de TarjetaItems). */
+  const [borradoresSeccion, setBorradoresSeccion] = useState<ReadonlySet<string>>(() => new Set())
   /** Qué acción corre ('guardar'; la Task 12 suma las suyas). Con una en curso se deshabilitan todas (decisión 12). */
   const [accion, setAccion] = useState<string | null>(null)
   const enCurso = useRef(false)
   const raiz = useRef<HTMLDivElement>(null)
 
   const cambios = useMemo(() => hayCambios(guardado, estado), [guardado, estado])
+  // Un nombre de sección a medio escribir también es un cambio sin guardar: habilita Guardar y el aviso al cerrar
+  // la pestaña. Guardar lo aplica antes de leer el estado (el blur del clic, o el atajo con flushSync).
+  const hayBorradorSeccion = borradoresSeccion.size > 0
+  const sinGuardar = cambios || hayBorradorSeccion
   const pendientes = useMemo(() => pendientesEditor(estado, catalogos), [estado, catalogos])
   const editable = estado.origen === 'app' && (estado.estado === 'borrador' || estado.estado === 'enviada')
   const ocupado = accion !== null
   const sueltos = erroresSinCampo(errores)
 
-  function mostrarErrores(mensaje: string, nuevos: Record<string, string>) {
+  const alCambiarBorradorSeccion = useCallback((clave: string, hay: boolean) => {
+    setBorradoresSeccion((actuales) => {
+      if (actuales.has(clave) === hay) return actuales
+      const nuevos = new Set(actuales)
+      if (hay) nuevos.add(clave)
+      else nuevos.delete(clave)
+      return nuevos
+    })
+  }, [])
+
+  /**
+   * Muestra los errores de un guardado. Los de los ítems llegan por posición ('items.2.precio') en lo que se mandó:
+   * se pasan acá a la clave de cada ítem enviado (no a la de la lista que haya cuando vuelve la respuesta), así la
+   * marca queda en el ítem que la tuvo aunque mientras se guardaba o después se agreguen, muevan o borren otros.
+   */
+  function mostrarErrores(mensaje: string, nuevos: Record<string, string>, enviado: EstadoEditor) {
     setAviso(mensaje)
     setErrores(nuevos)
+    setErroresItems(erroresPorClave(nuevos, enviado.items.map((item) => item.clave)))
   }
 
   /**
@@ -76,7 +101,7 @@ export function EditorCotizacion({
     const enviado = estado
     const validacion = payloadGuardar(enviado)
     if (!validacion.ok) {
-      mostrarErrores('Revisá los datos marcados', validacion.errores)
+      mostrarErrores('Revisá los datos marcados', validacion.errores, enviado)
       return null
     }
     enCurso.current = true
@@ -84,7 +109,7 @@ export function EditorCotizacion({
     try {
       const resultado = await guardarCotizacion(enviado)
       if (!resultado.ok) {
-        mostrarErrores(resultado.mensaje, resultado.errores ?? {})
+        mostrarErrores(resultado.mensaje, resultado.errores ?? {}, enviado)
         return null
       }
       const { id, version, numero } = resultado.datos
@@ -93,6 +118,7 @@ export function EditorCotizacion({
       setGuardado(reducirEditor(enviado, guardadoAhora))
       despachar(guardadoAhora)
       setErrores({})
+      setErroresItems({})
       setAviso(null)
       if (enviado.id === null) {
         toast.success(`Cotización N° ${numero} creada`)
@@ -104,7 +130,7 @@ export function EditorCotizacion({
       return resultado.datos
     } catch (error) {
       unstable_rethrow(error)
-      mostrarErrores('No se pudo guardar. Probá de nuevo en un momento.', {})
+      mostrarErrores('No se pudo guardar. Probá de nuevo en un momento.', {}, enviado)
       return null
     } finally {
       enCurso.current = false
@@ -134,14 +160,14 @@ export function EditorCotizacion({
 
   // Cerrar o recargar la pestaña con cambios sin guardar pide confirmación al navegador.
   useEffect(() => {
-    if (!cambios) return
+    if (!sinGuardar) return
     const avisar = (evento: BeforeUnloadEvent) => {
       evento.preventDefault()
       evento.returnValue = ''
     }
     window.addEventListener('beforeunload', avisar)
     return () => window.removeEventListener('beforeunload', avisar)
-  }, [cambios])
+  }, [sinGuardar])
 
   return (
     <div ref={raiz}>
@@ -150,7 +176,7 @@ export function EditorCotizacion({
           estado={estado}
           hoy={hoy}
           editable={editable}
-          cambios={cambios}
+          cambios={sinGuardar}
           guardando={accion === 'guardar'}
           ocupado={ocupado}
           alGuardar={() => void guardar()}
@@ -196,8 +222,9 @@ export function EditorCotizacion({
               items={estado.items}
               formato={estado.formato}
               mostrarTotal={estado.mostrarTotal}
-              errores={errores}
+              errores={erroresItems}
               despachar={despachar}
+              alCambiarBorradorSeccion={alCambiarBorradorSeccion}
             />
             {/* Textos (Task 10) */}
           </fieldset>
@@ -212,7 +239,7 @@ export function EditorCotizacion({
       <BarraInferior
         editable={editable}
         esNueva={estado.id === null}
-        cambios={cambios}
+        cambios={sinGuardar}
         guardando={accion === 'guardar'}
         ocupado={ocupado}
         alGuardar={() => void guardar()}

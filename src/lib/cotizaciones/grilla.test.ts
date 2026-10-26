@@ -132,7 +132,7 @@ describe('vecinoAlQuitar', () => {
 })
 
 describe('erroresPorClave', () => {
-  it('pasa las rutas por posición a la clave que tenía cada ítem al guardar', () => {
+  it('pasa las rutas por posición a la clave del ítem enviado en esa posición', () => {
     const errores = {
       cliente: 'Elegí el cliente',
       'items.0.precio': 'Precio inválido',

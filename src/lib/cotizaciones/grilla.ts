@@ -122,9 +122,10 @@ export type ErroresItem = Partial<Record<CampoGrilla, string>>
 const RUTA_CELDA = /^items\.(\d+)\.(seccion|descripcion|cantidad|precio|unidad)$/
 
 /**
- * Errores de guardado de los ítems por clave de fila. Las rutas ('items.2.precio') usan la posición que tenía cada
- * ítem al guardar: pasadas a claves con las filas de ese momento, la marca sigue en su fila aunque después se
- * agregue, duplique, mueva o borre otra.
+ * Errores de guardado de los ítems por clave de fila. Las rutas ('items.2.precio') usan la posición de cada ítem en
+ * lo que se mandó a guardar, así que `claves` son las de esos ítems (en ese orden), no las de la lista que haya cuando
+ * vuelve la respuesta: así la marca queda en el ítem que la tuvo aunque mientras tanto o después se agregue,
+ * duplique, mueva o borre otro.
  */
 export function erroresPorClave(errores: Record<string, string>, claves: string[]): Record<string, ErroresItem> {
   const porClave: Record<string, ErroresItem> = {}

@@ -514,15 +514,32 @@ test('la grilla de ítems se maneja con el teclado y entiende precios pegados', 
   await expect(descripcion(1)).toHaveValue(/^Alquiler jornada de Grúa Telescópica/)
   await expect(descripcion(1)).toBeFocused()
 
-  // Reordenar con el teclado: Espacio toma el ítem, la flecha lo mueve y Espacio lo suelta.
+  // Enter en el agarre abre el menú una sola vez (queda abierto) y Escape lo cierra.
   const agarre = page.getByRole('button', { name: 'Opciones del ítem 2' })
   await agarre.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('menu')).toHaveCount(1)
+  await expect(page.getByRole('menu')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(agarre).toBeFocused()
+
+  // Reordenar con el teclado: Espacio toma el ítem (sin abrir el menú), la flecha lo mueve y Espacio lo suelta.
   await page.keyboard.press('Space')
   await expect(agarre).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('menu')).toHaveCount(0)
   await page.keyboard.press('ArrowUp')
   await expect(page.getByText('El ítem 2 pasa a la posición 1.')).toBeAttached()
   await page.keyboard.press('Space')
   await expect(descripcion(1)).toHaveValue('Movilización y desmovilización de Grúa Telescópica')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+
+  // El clic de un lector de pantalla en modo exploración (sintético, detail 0) abre el menú, también en el agarre
+  // que se acaba de arrastrar con el teclado.
+  await page.getByRole('button', { name: 'Opciones del ítem 1' }).dispatchEvent('click')
+  await expect(page.getByRole('menu')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
 
   // Total en el PDF: mientras falten precios, lo avisa.
   await page.getByRole('switch', { name: 'Total en el PDF' }).click()
@@ -568,23 +585,25 @@ test.describe('grilla de ítems de una cotización guardada', () => {
 
   /** Un borrador por jornada con dos ítems con precio, cada uno en su sección (los precios llegan como "195.000"). */
   async function cotizacionGuardada(): Promise<string> {
-    const id = await conBaseEditor(async (db) => {
-      const { rows } = await db.query<{ id: string }>(
+    return conBaseEditor(async (db) => {
+      const {
+        rows: [{ id }],
+      } = await db.query<{ id: string }>(
         `insert into public.cotizaciones (cliente_id, formato, notas)
          select id, 'jornada', $1 from public.clientes where razon_social = 'VERTICE SERVICIOS INTEGRALES S.R.L.'
          returning id`,
         [MARCA_EDITOR],
       )
+      // Se anota ya: si falla el insert de los ítems, el afterAll igual la borra.
+      creadas.push(id)
       await db.query(
         `insert into public.cotizacion_items (cotizacion_id, orden, seccion, descripcion, cantidad, precio_unitario, unidad)
          values ($1, 1, 'Precios Jornada', 'Alquiler jornada de grúa', 1, 1950000, 'JORNADA'),
                 ($1, 2, 'Precios Jornada Adicional', 'Hora adicional de grúa', 1, 195000, 'HORA')`,
-        [rows[0].id],
+        [id],
       )
-      return rows[0].id
+      return id
     })
-    creadas.push(id)
-    return id
   }
 
   test('entrar con Tab a un precio cargado y tipear lo reemplaza', async ({ page }) => {
@@ -622,5 +641,27 @@ test.describe('grilla de ítems de una cotización guardada', () => {
 
     await page.reload()
     await expect(seccion).toHaveValue('Precios Jornada (equipo de 70 TN)')
+  })
+
+  test('un solo clic en Guardar guarda el nombre de sección que se está escribiendo', async ({ page }) => {
+    const id = await cotizacionGuardada()
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const seccion = page.getByLabel('Nombre de la sección 2', { exact: true })
+    const guardar = page.getByRole('button', { name: 'Guardar' })
+    await expect(seccion).toHaveValue('Precios Jornada Adicional')
+    await expect(guardar).toBeDisabled()
+
+    // El nombre a medio escribir (todavía en el campo) ya cuenta como cambio sin guardar.
+    await seccion.fill('Horas adicionales de grúa')
+    await expect(seccion).toBeFocused()
+    await expect(guardar).toBeEnabled()
+    await guardar.click()
+    await expect(page.getByText('Cotización guardada')).toBeVisible()
+    await expect(guardar).toBeDisabled()
+    await expect(seccion).toHaveValue('Horas adicionales de grúa')
+
+    await page.reload()
+    await expect(seccion).toHaveValue('Horas adicionales de grúa')
   })
 })

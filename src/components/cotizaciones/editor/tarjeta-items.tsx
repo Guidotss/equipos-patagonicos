@@ -36,7 +36,6 @@ import type { ItemEditor } from '@/lib/cotizaciones/editor'
 import { esAtajoGuardar, type Despachar } from '@/lib/cotizaciones/editor-pantalla'
 import {
   destinoFoco,
-  erroresPorClave,
   filasGrilla,
   nombreSeccionNueva,
   normalizarPrecio,
@@ -74,14 +73,37 @@ const INSTRUCCIONES: ScreenReaderInstructions = {
     'Enter abre las opciones.',
 }
 
+/** Avisa que el nombre de una sección (por la clave de su primer ítem) tiene o deja de tener un borrador sin aplicar. */
+export type AlCambiarBorradorSeccion = (clave: string, hay: boolean) => void
+
 /**
  * Encabezado editable de una sección. El nombre se aplica al salir del campo o con Enter, no en cada tecla:
  * renombrarSeccion junta el grupo con el vecino si quedan con el mismo nombre, y a mitad de escribir
  * ("Precios Jornada Adicional" → "Precios Jornada") el encabezado desaparecería con el foco adentro.
+ * Mientras tanto el borrador cuenta como cambio sin guardar: se avisa hacia arriba para habilitar Guardar. Un clic en
+ * Guardar lo aplica con el blur del mousedown, que se renderiza antes del click (otro evento): guardar ya ve el nombre.
  */
-function EncabezadoSeccion({ fila, error, despachar }: { fila: FilaSeccion; error?: string; despachar: Despachar }) {
+function EncabezadoSeccion({
+  fila,
+  error,
+  despachar,
+  alCambiarBorrador,
+}: {
+  fila: FilaSeccion
+  error?: string
+  despachar: Despachar
+  alCambiarBorrador: AlCambiarBorradorSeccion
+}) {
   const id = `seccion-${fila.clave}`
   const [borrador, setBorrador] = useState<string | null>(null)
+  const pendiente = borrador !== null && borrador !== fila.seccion
+
+  // También al desmontarse con el borrador a medio escribir (la limpieza lo retira).
+  useEffect(() => {
+    if (!pendiente) return
+    alCambiarBorrador(fila.clave, true)
+    return () => alCambiarBorrador(fila.clave, false)
+  }, [pendiente, fila.clave, alCambiarBorrador])
 
   function aplicar() {
     if (borrador !== null && borrador !== fila.seccion) {
@@ -160,12 +182,14 @@ function FilaItem({
   // tecla y no al enfocar: si el texto cambiara al entrar con Tab, React reasignaría el valor, se perdería la
   // selección del navegador y lo tipeado se agregaría al precio en vez de reemplazarlo.
   const [editandoPrecio, setEditandoPrecio] = useState(false)
-  // Un clic sin mover abre el menú; el clic que llega al soltar después de arrastrar, no.
+  // Un clic sin mover abre el menú; el clic que llega al soltar después de arrastrar con el puntero, no. Arrastrar con
+  // el teclado (Espacio) no termina en un clic: no marca nada, y el próximo clic (el de un lector de pantalla) abre.
   const huboArrastre = useRef(false)
+  const conPuntero = useRef(false)
   // Duplicar y Eliminar llevan el foco a otra fila: el menú no lo devuelve al agarre al cerrarse.
   const mantenerFoco = useRef(false)
   useEffect(() => {
-    if (isDragging) huboArrastre.current = true
+    if (isDragging && conPuntero.current) huboArrastre.current = true
   }, [isDragging])
 
   const numero = indice + 1
@@ -207,18 +231,22 @@ function FilaItem({
             {...attributes}
             onPointerDown={(evento) => {
               huboArrastre.current = false
+              conPuntero.current = true
               listeners?.onPointerDown?.(evento)
               // Sin esto Radix abriría el menú al apoyar, antes de saber si es un arrastre.
               evento.preventDefault()
             }}
             onKeyDown={(evento) => {
+              if (!isDragging) conPuntero.current = false
               listeners?.onKeyDown?.(evento)
               // Mientras se arrastra con el teclado, las flechas y Espacio son del arrastre, no del menú.
               if (isDragging) evento.preventDefault()
             }}
-            onClick={(evento) => {
-              // detail 0 = clic generado por el teclado: Enter ya abrió el menú y Espacio es para arrastrar.
-              const ignorar = evento.detail === 0 || huboArrastre.current
+            onClick={() => {
+              // Solo se ignora el clic que sigue a un arrastre. Los de detail 0 abren: así activa un lector de
+              // pantalla en modo exploración. El teclado no duplica: Enter abre en el keydown (Radix) y lo previene,
+              // así que no genera clic, y el keydown de Espacio lo previene el arrastre.
+              const ignorar = huboArrastre.current
               huboArrastre.current = false
               if (!ignorar) setMenuAbierto(true)
             }}
@@ -355,12 +383,20 @@ export function TarjetaItems({
   mostrarTotal,
   errores,
   despachar,
+  alCambiarBorradorSeccion,
 }: {
   items: ItemEditor[]
   formato: Formato
   mostrarTotal: boolean
-  errores: Record<string, string>
+  /**
+   * Errores de guardado por clave de ítem. EditorCotizacion los pasa de 'items.N.campo' a claves al guardar, con las
+   * claves de los ítems que mandó: la marca queda en el ítem que la tuvo aunque mientras se guardaba o después se
+   * agreguen, dupliquen, muevan o borren otros.
+   */
+  errores: Record<string, ErroresItem>
   despachar: Despachar
+  /** Un nombre de sección escrito y todavía no aplicado: el editor lo cuenta como cambio sin guardar. */
+  alCambiarBorradorSeccion: AlCambiarBorradorSeccion
 }) {
   const idDnd = useId()
   const foco = useRef<PedidoFoco | 'agregar' | null>(null)
@@ -372,16 +408,6 @@ export function TarjetaItems({
   )
   const filas = filasGrilla(items)
   const { total, sinPrecio } = totalGeneral(items)
-  // Los errores de guardado llegan con la posición que tenía cada ítem ('items.2.precio') y no cambian hasta el
-  // próximo guardado. Se pasan a claves en el render en que llegan, con las filas de ese momento: si después se
-  // agrega, duplica, mueve o borra una fila, cada marca sigue en la suya en vez de saltar a la que quedó en ese lugar.
-  const [marcas, setMarcas] = useState(() => ({
-    errores,
-    porClave: erroresPorClave(errores, items.map((item) => item.clave)),
-  }))
-  if (marcas.errores !== errores) {
-    setMarcas({ errores, porClave: erroresPorClave(errores, items.map((item) => item.clave)) })
-  }
 
   // Después de agregar, duplicar o borrar, el foco va a la fila que corresponde (las claves las pone el reducer).
   useEffect(() => {
@@ -488,8 +514,9 @@ export function TarjetaItems({
                     <EncabezadoSeccion
                       key={`seccion-${fila.clave}`}
                       fila={fila}
-                      error={marcas.porClave[fila.clave]?.seccion}
+                      error={errores[fila.clave]?.seccion}
                       despachar={despachar}
+                      alCambiarBorrador={alCambiarBorradorSeccion}
                     />
                   ) : (
                     <FilaItem
@@ -497,7 +524,7 @@ export function TarjetaItems({
                       item={items[fila.indice]}
                       indice={fila.indice}
                       cantidadItems={items.length}
-                      errores={marcas.porClave[items[fila.indice].clave] ?? {}}
+                      errores={errores[items[fila.indice].clave] ?? {}}
                       despachar={despachar}
                       alEnter={() => agregarDespuesDe(items[fila.indice])}
                       alMover={(paso) => mover(fila.indice, fila.indice + paso)}
