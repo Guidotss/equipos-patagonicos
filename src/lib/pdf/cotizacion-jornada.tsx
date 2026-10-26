@@ -1,7 +1,7 @@
 import { Document, Page, Text, View } from '@react-pdf/renderer'
 import type { DocumentoCotizacion } from '@/lib/cotizaciones/documento'
 import { formatMontoJornada } from '@/lib/format/montos'
-import { Firma, Membrete, Pie, TextoFormateado } from './comunes'
+import { Firma, Membrete, Pie, TextoFormateado, TextoVariables } from './comunes'
 import { estilos } from './estilos'
 
 type Item = DocumentoCotizacion['items'][number]
@@ -41,13 +41,21 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
           {destinatario.atencion ? <Text>Atte. {destinatario.atencion}</Text> : null}
         </View>
 
-        {doc.asunto ? <Text style={{ marginBottom: 10 }}>{doc.asunto}</Text> : null}
-        {doc.intro ? <Text style={{ marginBottom: 10 }}>{doc.intro}</Text> : null}
+        {doc.asunto ? (
+          <Text style={{ marginBottom: 10 }}>
+            <TextoVariables texto={doc.asunto} />
+          </Text>
+        ) : null}
+        {doc.intro ? (
+          <Text style={{ marginBottom: 10 }}>
+            <TextoVariables texto={doc.intro} />
+          </Text>
+        ) : null}
 
         {conTitulo.map((bloque, indice) => (
           <View key={indice} style={estilos.bloque}>
             <Text style={[estilos.subrayado, { marginBottom: 4 }]} minPresenceAhead={40}>
-              {conDosPuntos(bloque.titulo)}
+              <TextoVariables texto={conDosPuntos(bloque.titulo)} />
             </Text>
             <TextoFormateado nodos={bloque.nodos} />
           </View>
@@ -59,7 +67,7 @@ export function CotizacionJornada({ doc }: { doc: DocumentoCotizacion }) {
             {grupo.items.map((item) => (
               <View key={item.orden} style={{ flexDirection: 'row', marginBottom: 4 }}>
                 <Text style={{ flex: 1, paddingRight: 12 }}>
-                  {item.descripcion}
+                  <TextoVariables texto={item.descripcion} />
                   {item.cantidad === 1 ? '' : ` (x${item.cantidad.toLocaleString('es-AR')})`}
                 </Text>
                 <Text style={{ width: 150, textAlign: 'right' }}>

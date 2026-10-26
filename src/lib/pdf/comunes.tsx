@@ -1,11 +1,42 @@
 import { Image, Text, View } from '@react-pdf/renderer'
+import { createContext, useContext } from 'react'
 import type { DocumentoCotizacion } from '@/lib/cotizaciones/documento'
 import type { NodoFormato, Segmento } from '@/lib/plantillas/formato'
+import { partirVariables } from '@/lib/plantillas/variables'
 import { estilos } from './estilos'
 import { RUTA_LOGO } from './fuentes'
 
 type EstiloPdf = React.ComponentProps<typeof View>['style']
 type EstiloImagen = React.ComponentProps<typeof Image>['style']
+
+/**
+ * En la vista previa (renderizarCotizacion con resaltarVariables) las {{variables}} que quedaron sin completar
+ * se pintan con fondo amarillo, como en el editor. En el PDF que se envía o se aprueba nunca quedan.
+ */
+export const ResaltarVariables = createContext(false)
+
+/** Texto que puede tener {{variables}} sin completar. Va siempre adentro de un <Text>. */
+export function TextoVariables({ texto }: { texto: string }) {
+  const resaltar = useContext(ResaltarVariables)
+  if (!resaltar || !texto.includes('{{')) return <>{texto}</>
+  // partirVariables deja los nombres en las posiciones impares.
+  return (
+    <>
+      {partirVariables(texto).map((parte, indice) =>
+        indice % 2 === 1 ? (
+          <Text key={indice} style={estilos.variable}>{`{{${parte}}}`}</Text>
+        ) : (
+          parte
+        ),
+      )}
+    </>
+  )
+}
+
+/** El número de la cotización; sin guardar todavía no tiene (la vista previa muestra la variable). */
+export function textoNumero(numero: number | null): string {
+  return numero === null ? '{{numero}}' : String(numero)
+}
 
 /** Logo arriba a la derecha. Cada formato puede pasar su tamaño de logo. */
 export function Membrete({ logo = estilos.logo }: { logo?: EstiloImagen }) {
@@ -22,7 +53,7 @@ export function Segmentos({ segmentos }: { segmentos: Segmento[] }) {
     <>
       {segmentos.map((segmento, indice) => (
         <Text key={indice} style={segmento.negrita ? estilos.negrita : undefined}>
-          {segmento.texto}
+          <TextoVariables texto={segmento.texto} />
         </Text>
       ))}
     </>

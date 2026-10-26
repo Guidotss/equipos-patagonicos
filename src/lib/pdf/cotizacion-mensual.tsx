@@ -1,7 +1,7 @@
 import { Document, Link, Page, Text, View } from '@react-pdf/renderer'
 import type { DocumentoCotizacion } from '@/lib/cotizaciones/documento'
 import { formatMontoTabla } from '@/lib/format/montos'
-import { Firma, Membrete, Pie, TextoFormateado } from './comunes'
+import { Firma, Membrete, Pie, TextoFormateado, TextoVariables, textoNumero } from './comunes'
 import { estilos } from './estilos'
 
 const COLUMNAS = [
@@ -37,7 +37,9 @@ function TablaItems({ doc }: { doc: DocumentoCotizacion }) {
       {doc.items.map((item) => (
         <View key={item.orden} style={{ flexDirection: 'row', paddingVertical: 0.25 }} wrap={false}>
           <Celda indice={0}>{item.orden}</Celda>
-          <Celda indice={1}>{item.descripcion}</Celda>
+          <Celda indice={1}>
+            <TextoVariables texto={item.descripcion} />
+          </Celda>
           <Celda indice={2}>{item.cantidad.toLocaleString('es-AR')}</Celda>
           <Celda indice={3}>{item.precioUnitario === null ? '' : formatMontoTabla(item.precioUnitario)}</Celda>
           <Celda indice={4}>ARS</Celda>
@@ -72,7 +74,9 @@ export function CotizacionMensual({ doc }: { doc: DocumentoCotizacion }) {
               {destinatario.email}
             </Link>
           ) : null}
-          <Text style={estilos.subrayado}>Cotización N° {doc.numero ?? '{{numero}}'}</Text>
+          <Text style={estilos.subrayado}>
+            Cotización N° <TextoVariables texto={textoNumero(doc.numero)} />
+          </Text>
         </View>
 
         <TablaItems doc={doc} />
@@ -81,7 +85,7 @@ export function CotizacionMensual({ doc }: { doc: DocumentoCotizacion }) {
           <View key={indice} style={estilos.bloque}>
             {bloque.titulo ? (
               <Text style={estilos.tituloBloque} minPresenceAhead={40}>
-                {bloque.titulo}
+                <TextoVariables texto={bloque.titulo} />
               </Text>
             ) : null}
             <TextoFormateado nodos={bloque.nodos} />

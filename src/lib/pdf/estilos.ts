@@ -2,6 +2,8 @@ import { StyleSheet } from '@react-pdf/renderer'
 import { FAMILIA } from './fuentes'
 
 export const AZUL_LINK = '#1F4E9E'
+/** El amarillo de la marca (#E6DC1F) al 40 % sobre blanco, como `bg-brand-yellow/40` en el editor. */
+export const AMARILLO_VARIABLE = '#F5F1A5'
 
 // Logo de 437 × 95 px: el alto se calcula proporcional al ancho.
 const altoLogo = (ancho: number) => Math.round((ancho * 95) / 437)
@@ -18,6 +20,8 @@ export const estilos = StyleSheet.create({
   logoFirma: { width: 154, height: altoLogo(154), marginTop: 8 },
   fecha: { textAlign: 'right', marginBottom: 14 },
   negrita: { fontWeight: 'bold' },
+  // Variable sin completar en la vista previa (ver TextoVariables).
+  variable: { backgroundColor: AMARILLO_VARIABLE },
   subrayado: { textDecoration: 'underline' },
   link: { color: AZUL_LINK, textDecoration: 'underline' },
   bloque: { marginTop: 10 },
