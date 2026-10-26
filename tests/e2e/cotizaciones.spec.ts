@@ -291,3 +291,125 @@ test.describe('lista de cotizaciones', () => {
     })
   })
 })
+
+// ── Editor: estructura, cliente, datos y guardado (Task 8) ──
+
+const MARCA_EDITOR = 'e2e-editor'
+
+async function conBaseEditor<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
+  process.loadEnvFile('.env.local')
+  const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
+  await db.connect()
+  try {
+    return await fn(db)
+  } finally {
+    await db.end()
+  }
+}
+
+/** El id de la cotización abierta en el editor (`/cotizaciones/{id}`). */
+function idDeLaUrl(url: string): string {
+  return new URL(url).pathname.split('/').at(-1)!
+}
+
+test.describe('editor de cotizaciones', () => {
+  const creadas: string[] = []
+  const clientesCreados: string[] = []
+
+  test.afterAll(async () => {
+    await conBaseEditor(async (db) => {
+      await db.query('delete from public.cotizaciones where id = any($1::uuid[]) or notas = $2', [creadas, MARCA_EDITOR])
+      await db.query('delete from public.clientes where razon_social = any($1::text[])', [clientesCreados])
+    })
+  })
+
+  test('crea una cotización con alta rápida de cliente y la guarda', async ({ page }) => {
+    const razonSocial = `Montajes Ñire ${sufijoUnico()} S.R.L.`
+    clientesCreados.push(razonSocial)
+    await iniciarSesion(page)
+    await page.goto('/cotizaciones/nueva')
+    await expect(page.getByRole('heading', { name: 'Nueva cotización' })).toBeVisible()
+
+    // Sin cliente no se guarda: el error queda en el combo y el foco va ahí.
+    const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
+    await page.getByRole('button', { name: 'Guardar' }).click()
+    await expect(cliente).toHaveAttribute('aria-invalid', 'true')
+    await expect(cliente).toBeFocused()
+
+    // Alta rápida: crea el cliente solo con la razón social y lo deja elegido.
+    await cliente.click()
+    await page.getByRole('combobox', { name: 'Buscar cliente' }).fill(razonSocial)
+    await page.getByRole('option', { name: `Crear cliente «${razonSocial}»` }).click()
+    await expect(cliente).toContainText(razonSocial)
+    await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+
+    // Cambiar de plantilla con algo escrito a mano pide confirmación en el lugar (Escape cancela).
+    const mensual = page.getByRole('radio', { name: 'Mensual' })
+    const jornada = page.getByRole('radio', { name: 'Por jornada' })
+    await mensual.click()
+    await expect(mensual).toBeChecked()
+    const asunto = page.getByLabel('Asunto', { exact: true })
+    await asunto.fill('Asunto escrito a mano')
+    await jornada.click()
+    const confirmacion = page.getByRole('group', { name: '¿Cambiar a la plantilla «Por jornada - Grúa con operador»?' })
+    await expect(confirmacion.getByRole('button', { name: 'Cancelar' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(confirmacion).toBeHidden()
+    await expect(asunto).toHaveValue('Asunto escrito a mano')
+    await jornada.click()
+    await confirmacion.getByRole('button', { name: 'Cambiar plantilla' }).click()
+    await expect(jornada).toBeChecked()
+    await expect(asunto).toHaveValue(/^Cotización N° \{\{numero\}\}/)
+
+    // Un dato vacío que usa el texto muestra la marca de la variable (no es su valor).
+    await page.getByLabel('Equipo', { exact: true }).selectOption({ label: 'Grúa telescópica XCMG 70 TN' })
+    const lugar = page.getByLabel('Lugar del servicio', { exact: true })
+    const marca = lugar.locator('..').getByText('{{ubicacion}}')
+    await expect(lugar).toHaveValue('')
+    await expect(marca).toBeVisible()
+    await lugar.fill('Añelo, Neuquén')
+    await expect(marca).toBeHidden()
+
+    await page.getByRole('button', { name: 'Guardar' }).click()
+    await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/)
+    creadas.push(idDeLaUrl(page.url()))
+    await expect(page.getByRole('heading', { name: /^Cotización N° \d+$/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+
+    // Lo guardado vuelve igual al recargar; el formato ya no se elige.
+    await page.reload()
+    await expect(cliente).toContainText(razonSocial)
+    await expect(jornada).toHaveCount(0)
+    await expect(lugar).toHaveValue('Añelo, Neuquén')
+    await expect(page.getByLabel('Equipo', { exact: true }).locator('option:checked')).toHaveText(
+      'Grúa telescópica XCMG 70 TN',
+    )
+
+    // Ctrl/⌘+S guarda.
+    await lugar.fill('Añelo, Neuquén (yacimiento)')
+    await expect(page.getByRole('button', { name: 'Guardar' })).toBeEnabled()
+    await page.keyboard.press('ControlOrMeta+s')
+    await expect(page.getByText('Cotización guardada')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+  })
+
+  test('una cotización cargada se muestra en solo lectura', async ({ page }) => {
+    const { id, numero } = await conBaseEditor(async (db) => {
+      const { rows } = await db.query<{ id: string; numero: string }>(
+        `insert into public.cotizaciones (cliente_id, formato, origen, estado, archivo_original_path, asunto, notas)
+         select id, 'jornada', 'importada', 'enviada', 'importadas/e2e-editor.pdf', 'Montaje de tanque', $1
+         from public.clientes where razon_social = 'VERTICE SERVICIOS INTEGRALES S.R.L.'
+         returning id, numero`,
+        [MARCA_EDITOR],
+      )
+      return rows[0]
+    })
+
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    await expect(page.getByRole('heading', { name: `Cotización N° ${numero}` })).toBeVisible()
+    await expect(page.getByText('Cargada desde un PDF.')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Ver el PDF original' })).toHaveAttribute('href', `/cotizaciones/${id}/pdf`)
+    await expect(page.getByRole('button', { name: 'Guardar' })).toHaveCount(0)
+  })
+})
