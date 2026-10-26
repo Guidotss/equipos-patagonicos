@@ -2,7 +2,16 @@
 // src/components/cotizaciones/editor/panel-vista-previa.tsx
 
 import { CircleAlert, ExternalLink, FileText, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -114,6 +123,22 @@ export function useVistaPrevia(estado: EstadoEditor): VistaPrevia {
     intentada.current = true
     actualizar()
   })
+
+  // Si la ventana pasa al ancho de escritorio (se agranda o se gira la tableta), la columna aparece: con la hoja vacía
+  // se genera como al entrar. Sin esto esperaría al próximo render del editor.
+  const alPasarAEscritorio = useEffectEvent(() => {
+    if (modo.tipo !== 'generada' || generada || cargando || error) return
+    intentada.current = true
+    actualizar()
+  })
+  useEffect(() => {
+    const consulta = window.matchMedia(ESCRITORIO)
+    const escuchar = (evento: MediaQueryListEvent) => {
+      if (evento.matches) alPasarAEscritorio()
+    }
+    consulta.addEventListener('change', escuchar)
+    return () => consulta.removeEventListener('change', escuchar)
+  }, [])
 
   useEffect(
     () => () => {
@@ -317,11 +342,14 @@ export function VistaPreviaLateral({ vista, linea }: { vista: VistaPrevia; linea
 export function BotonVistaPreviaCelular({
   modo,
   ocupado,
+  validar,
   guardarParaVer,
 }: {
   modo: ModoVistaPrevia
   /** Hay una acción en curso. Este botón guarda, así que espera como los demás (decisión 12). */
   ocupado: boolean
+  /** La validación local de lo que se guardaría: si no pasa, marca los campos, avisa y devuelve false. */
+  validar: () => boolean
   guardarParaVer: () => Promise<string | null>
 }) {
   const [abriendo, setAbriendo] = useState(false)
@@ -340,11 +368,9 @@ export function BotonVistaPreviaCelular({
   }
 
   async function abrir() {
-    // Sin cliente no se puede guardar: el intento marca el campo y explica por qué, sin abrir una pestaña en blanco.
-    if (modo.tipo === 'sin-cliente') {
-      await guardarParaVer()
-      return
-    }
+    // Lo que no se puede guardar (sin cliente, una validez fuera de rango…) no abre una pestaña en blanco que habría
+    // que cerrar enseguida: se marcan los campos y se avisa.
+    if (!validar()) return
     // La pestaña se abre en el clic: abierta después de guardar, el navegador la bloquearía por no venir del usuario.
     const pestana = window.open('', '_blank')
     setAbriendo(true)

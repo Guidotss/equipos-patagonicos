@@ -19,7 +19,13 @@ import {
   type CatalogosEditor,
   type EstadoEditor,
 } from '@/lib/cotizaciones/editor'
-import { erroresSinCampo, esAtajoGuardar, type ContactoEditor } from '@/lib/cotizaciones/editor-pantalla'
+import {
+  erroresDeBloques,
+  erroresSinCampo,
+  esAtajoGuardar,
+  type ContactoEditor,
+  type ErroresBloque,
+} from '@/lib/cotizaciones/editor-pantalla'
 import { erroresPorClave, type ErroresItem } from '@/lib/cotizaciones/grilla'
 import { lineaVistaPrevia } from '@/lib/cotizaciones/vista-previa'
 import { AccionesEncabezado, useAccionesEstado, type EsperaServidor } from './acciones-editor'
@@ -62,6 +68,8 @@ export function EditorCotizacion({
   const [errores, setErrores] = useState<Record<string, string>>({})
   /** Los errores de los ítems ('items.N.campo') por clave de ítem (ver mostrarErrores). */
   const [erroresItems, setErroresItems] = useState<Record<string, ErroresItem>>({})
+  /** Los errores de los bloques de texto ('bloques.N.campo') por clave de bloque, como los de los ítems. */
+  const [erroresBloques, setErroresBloques] = useState<Record<string, ErroresBloque>>({})
   const [aviso, setAviso] = useState<string | null>(null)
   /** Secciones de la grilla con el nombre escrito y todavía no aplicado (borrador local de TarjetaItems). */
   const [borradoresSeccion, setBorradoresSeccion] = useState<ReadonlySet<string>>(() => new Set())
@@ -121,14 +129,16 @@ export function EditorCotizacion({
   }, [])
 
   /**
-   * Muestra los errores de un guardado. Los de los ítems llegan por posición ('items.2.precio') en lo que se mandó:
-   * se pasan acá a la clave de cada ítem enviado (no a la de la lista que haya cuando vuelve la respuesta), así la
-   * marca queda en el ítem que la tuvo aunque mientras se guardaba o después se agreguen, muevan o borren otros.
+   * Muestra los errores de un guardado. Los de los ítems y los bloques llegan por posición ('items.2.precio',
+   * 'bloques.1.contenido') en lo que se mandó: se pasan acá a la clave de cada ítem o bloque enviado (no a la de la
+   * lista que haya cuando vuelve la respuesta), así la marca queda en el que la tuvo aunque mientras se guardaba o
+   * después se agreguen, muevan o borren otros.
    */
   function mostrarErrores(mensaje: string, nuevos: Record<string, string>, enviado: EstadoEditor) {
     setAviso(mensaje)
     setErrores(nuevos)
     setErroresItems(erroresPorClave(nuevos, enviado.items.map((item) => item.clave)))
+    setErroresBloques(erroresDeBloques(nuevos, enviado.bloques.map((bloque) => bloque.clave)))
   }
 
   /**
@@ -192,6 +202,7 @@ export function EditorCotizacion({
       despachar(guardadoAhora)
       setErrores({})
       setErroresItems({})
+      setErroresBloques({})
       setAviso(null)
       if (avisar) toast.success(enviado.id === null ? `Cotización N° ${numero} creada` : 'Cotización guardada')
       // replace: "Atrás" no vuelve a una cotización nueva vacía (decisión 8).
@@ -212,6 +223,18 @@ export function EditorCotizacion({
   useLayoutEffect(() => {
     guardarActual.current = guardarEstado
   })
+
+  /**
+   * Para el celular, antes de abrir la pestaña de la vista previa: si lo que hay no pasa la validación local, marca
+   * los campos y avisa con un toast (la barra de abajo tapa el aviso de arriba). true si se puede seguir.
+   */
+  function validarParaVer(): boolean {
+    const validacion = payloadGuardar(estado)
+    if (validacion.ok) return true
+    mostrarErrores('Revisá los datos marcados', validacion.errores, estado)
+    toast.error('Revisá los datos marcados')
+    return false
+  }
 
   /** Para el celular: guarda si hace falta y devuelve el id de lo guardado (null si no se pudo). */
   async function guardarParaVer(): Promise<string | null> {
@@ -253,21 +276,28 @@ export function EditorCotizacion({
     setEspera(null)
     setGuardado(inicial)
     despachar({ tipo: 'reemplazar', estado: tomado })
-    // Los contactos son los del cliente de `inicial` (la página los vuelve a leer en cada render), salvo que lo
-    // tipeado durante la transición haya cambiado de cliente: ahí siguen los de ese.
+    // Los contactos son los del cliente del estado tomado: los de `inicial` (la página los vuelve a leer en cada
+    // render), salvo que lo local que queda encima tenga otro cliente: ahí siguen los de ese, que son los que hay.
     if (tomado.cliente?.id === inicial.cliente?.id) setContactos(contactosIniciales)
-    if (espera.modo === 'descartar') {
-      setErrores({})
-      setErroresItems({})
-      setAviso(null)
-    }
+    // Lo que marcaba la versión anterior (errores, aviso, conflicto) no corresponde a la que se toma.
+    setErrores({})
+    setErroresItems({})
+    setErroresBloques({})
+    setAviso(null)
+    setConflicto(false)
   }
 
-  // Con errores, el foco va al primer campo marcado (como FormularioAccion).
+  // Con errores, el foco va al primer campo marcado (como FormularioAccion). Si los dejó el guardado previo a una
+  // transición, el contenido sigue deshabilitado hasta que la transición termina: el foco espera a ese momento.
+  const errorPorEnfocar = useRef(false)
   useEffect(() => {
-    if (Object.keys(errores).length === 0) return
-    raiz.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+    if (Object.keys(errores).length > 0) errorPorEnfocar.current = true
   }, [errores])
+  useEffect(() => {
+    if (!errorPorEnfocar.current || acciones.enTransicion) return
+    errorPorEnfocar.current = false
+    raiz.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [errores, acciones.enTransicion])
 
   // Ctrl/⌘+S guarda (y nunca abre el "Guardar como…" del navegador). Con una acción en curso (guardar, una de estado
   // o la recarga) no hace nada, igual que el botón deshabilitado (decisión 12): guardar cambiaría la versión que esa
@@ -331,9 +361,10 @@ export function EditorCotizacion({
           </Alert>
         ) : null}
         <div className="grid items-start gap-5 min-[72rem]:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
-          {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). */}
+          {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). Mientras corre
+              una transición, también: no se tipea sobre algo que se está enviando, aprobando o rechazando. */}
           <fieldset
-            disabled={!editable}
+            disabled={!editable || acciones.enTransicion}
             className="min-w-0 space-y-3 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
           >
             <legend className="sr-only">Contenido de la cotización</legend>
@@ -363,7 +394,7 @@ export function EditorCotizacion({
             <TarjetaTextos
               bloques={estado.bloques}
               plantilla={catalogos.plantillas.find((plantilla) => plantilla.id === estado.plantillaId) ?? null}
-              errores={errores}
+              errores={erroresBloques}
               despachar={despachar}
             />
           </fieldset>
@@ -380,7 +411,12 @@ export function EditorCotizacion({
         vistaPrevia={
           <>
             <VistaPreviaLateral vista={vista} linea={lineaVista} />
-            <BotonVistaPreviaCelular modo={vista.modo} ocupado={ocupado} guardarParaVer={guardarParaVer} />
+            <BotonVistaPreviaCelular
+              modo={vista.modo}
+              ocupado={ocupado}
+              validar={validarParaVer}
+              guardarParaVer={guardarParaVer}
+            />
           </>
         }
       />

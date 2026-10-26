@@ -36,6 +36,8 @@ export type Confirmacion =
   | { tipo: AccionConfirmable }
   | { tipo: 'recargar' }
   | { tipo: 'finalizar'; anterior: { id: string; numero: number } }
+  /** Duplicar con cambios sin guardar: guardarlos antes o copiar lo guardado. */
+  | { tipo: 'duplicar' }
 
 /** Qué hace el editor cuando llega la versión nueva del servidor: tomarla (después de una transición) o descartar lo local (Recargar). */
 export type EsperaServidor = 'adoptar' | 'descartar'
@@ -48,6 +50,11 @@ export type AccionesEstado = {
   enCurso: string | null
   /** Corre una acción (o una recarga): todos los botones de acción quedan deshabilitados (decisión 12). */
   ocupado: boolean
+  /**
+   * Corre una transición (también su guardado previo): el contenido del editor queda deshabilitado, así no se tipea
+   * sobre algo que se está enviando, aprobando o rechazando.
+   */
+  enTransicion: boolean
   /** Corre el refresco de "Recargar": al terminar, el editor toma lo que haya en `inicial`. */
   recargando: boolean
   confirmacion: Confirmacion | null
@@ -57,6 +64,8 @@ export type AccionesEstado = {
   aprobar: (fecha: string) => Promise<void>
   /** Confirma rechazar, reabrir, revertir o eliminar. */
   confirmar: () => Promise<void>
+  /** Duplica; con `guardarAntes`, guarda primero lo que hay en pantalla. */
+  duplicar: (guardarAntes: boolean) => Promise<void>
   finalizar: () => Promise<void>
   recargar: () => void
   confirmarRecarga: () => void
@@ -139,7 +148,17 @@ export function useAccionesEstado({
     confirmacionInicial(accionInicial, estado, contexto, pendientes),
   )
   const [recargando, iniciarRecarga] = useTransition()
+  const [enTransicion, setEnTransicion] = useState(false)
   const disparador = useRef<HTMLElement | null>(null)
+
+  // Un cambio de estado de la cotización (enviada, aprobada…, también el que trae la versión de otro) cierra la
+  // confirmación abierta: preguntaba por el estado anterior. La oferta de finalizar el presupuesto anterior es la
+  // consecuencia de aprobar y se abre justo antes del cambio, así que queda. Se ajusta durante el render.
+  const [estadoVisto, setEstadoVisto] = useState(estado.estado)
+  if (estado.estado !== estadoVisto) {
+    setEstadoVisto(estado.estado)
+    if (confirmacion && confirmacion.tipo !== 'finalizar') setConfirmacion(null)
+  }
 
   // El ?accion= ya se usó: se saca de la URL para que recargar la página no vuelva a abrir la confirmación.
   useEffect(() => {
@@ -177,6 +196,7 @@ export function useAccionesEstado({
    */
   function sinRespuesta(error: unknown) {
     unstable_rethrow(error)
+    console.error(error)
     esperarServidor(null)
     toast.error(MENSAJE_SIN_RESPUESTA)
   }
@@ -207,6 +227,7 @@ export function useAccionesEstado({
     const eraNueva = estado.id === null
     let guardadaId: string | null = null
     setAccion(accion)
+    setEnTransicion(true)
     try {
       const guardada = await versionParaSeguir(accion)
       if (!guardada) return
@@ -227,31 +248,46 @@ export function useAccionesEstado({
       if (guardadaId) despuesDeLaTransicion(guardadaId, eraNueva, false)
     } finally {
       setAccion(null)
+      setEnTransicion(false)
     }
   }
 
-  async function duplicar() {
+  /**
+   * Se duplica lo guardado. Con `guardarAntes` ("Guardar y duplicar"), lo que hay en pantalla se guarda primero; sin
+   * él ("Duplicar lo guardado"), los cambios sin guardar se pierden al ir a la copia.
+   */
+  async function duplicar(guardarAntes: boolean) {
     const id = estado.id
     if (!id) return
     setAccion('duplicar')
+    setEnTransicion(true)
     try {
-      // Se duplica lo guardado: los cambios se guardan antes para no perderlos al salir del editor.
-      if (hayCambiosSinGuardar && esEditable(estado) && !(await versionParaSeguir('duplicar'))) return
+      if (guardarAntes && !(await versionParaSeguir('duplicar'))) return
       const resultado = await acciones.duplicarCotizacion(id)
       if (!resultado.ok) return fallo(resultado.mensaje)
+      setConfirmacion(null)
       toast.success('Se creó una copia en borrador')
       router.push(`/cotizaciones/${resultado.datos.id}`)
     } catch (error) {
       sinRespuesta(error)
     } finally {
       setAccion(null)
+      setEnTransicion(false)
     }
   }
 
   function iniciar(accion: AccionEstado) {
     if (esConfirmable(accion)) return abrir({ tipo: accion })
+    // Otra acción cierra la confirmación que haya abierta.
+    disparador.current = null
+    setConfirmacion(null)
     if (accion === 'enviar' || accion === 'reenviar') return void enviar(accion)
-    if (accion === 'duplicar') return void duplicar()
+    if (accion === 'duplicar') {
+      // Con cambios sin guardar se pregunta qué copiar: guardar la original en silencio pisaría, por ejemplo, una
+      // enviada con algo que el cliente no recibió.
+      if (hayCambiosSinGuardar && esEditable(estado)) return abrir({ tipo: 'duplicar' })
+      return void duplicar(false)
+    }
     if (accion === 'descargar' && estado.id) descargarArchivo(`/cotizaciones/${estado.id}/pdf?descargar=1`)
   }
 
@@ -259,6 +295,7 @@ export function useAccionesEstado({
     const eraNueva = estado.id === null
     let guardadaId: string | null = null
     setAccion('aprobar')
+    setEnTransicion(true)
     try {
       const guardada = await versionParaSeguir('aprobar')
       if (!guardada) return
@@ -282,6 +319,7 @@ export function useAccionesEstado({
       if (guardadaId) despuesDeLaTransicion(guardadaId, eraNueva, false)
     } finally {
       setAccion(null)
+      setEnTransicion(false)
     }
   }
 
@@ -290,6 +328,7 @@ export function useAccionesEstado({
     const tipo = confirmacion?.tipo
     if (!id || (tipo !== 'rechazar' && tipo !== 'reabrir' && tipo !== 'revertir' && tipo !== 'borrar')) return
     setAccion(tipo)
+    setEnTransicion(true)
     try {
       if (tipo === 'borrar') {
         const resultado = await acciones.borrarCotizacion(id)
@@ -319,6 +358,7 @@ export function useAccionesEstado({
       sinRespuesta(error)
     } finally {
       setAccion(null)
+      setEnTransicion(false)
     }
   }
 
@@ -355,6 +395,7 @@ export function useAccionesEstado({
   return {
     enCurso: accion,
     ocupado: accion !== null || recargando,
+    enTransicion,
     recargando,
     confirmacion,
     conflicto,
@@ -362,6 +403,7 @@ export function useAccionesEstado({
     cancelar,
     aprobar,
     confirmar,
+    duplicar,
     finalizar,
     recargar,
     confirmarRecarga,
@@ -467,7 +509,8 @@ export function AccionesEncabezado({
           className={boton.primaria ? undefined : 'hidden md:inline-flex'}
         />
       ))}
-      {id && enMenu.length + contexto.envios.length > 0 ? (
+      {/* También en una nueva (sin id): en el celular, Aprobar va en el menú. */}
+      {enMenu.length + contexto.envios.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -511,8 +554,9 @@ export function AccionesEncabezado({
                   variant={accion === 'borrar' ? 'destructive' : 'default'}
                   disabled={motivoBloqueo(accion, pendientes) !== null}
                   onSelect={() => {
-                    // Una confirmación se abre cuando el menú se cerró del todo (ver onCloseAutoFocus).
-                    if (esConfirmable(accion)) pendiente.current = accion
+                    // Una confirmación se abre cuando el menú se cerró del todo (ver onCloseAutoFocus). Duplicar
+                    // también espera: con cambios sin guardar pregunta qué copiar.
+                    if (esConfirmable(accion) || accion === 'duplicar') pendiente.current = accion
                     else accionesEstado.iniciar(accion)
                   }}
                 >

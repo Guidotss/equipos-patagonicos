@@ -4,6 +4,7 @@ import {
   cambiosDeContenido,
   camposDatosVisibles,
   contactoInicial,
+  erroresDeBloques,
   erroresSinCampo,
   esAtajoGuardar,
   esFechaIso,
@@ -184,6 +185,26 @@ describe('erroresSinCampo', () => {
         notas: 'Algo raro',
       }),
     ).toEqual(['Algo raro'])
+  })
+})
+
+describe('erroresDeBloques', () => {
+  it('pasa las rutas por posición a la clave de cada bloque que se mandó a guardar', () => {
+    const errores = {
+      'bloques.0.titulo': 'Máximo 200 caracteres',
+      'bloques.2.contenido': 'Máximo 10.000 caracteres',
+      'bloques.2.titulo': 'Máximo 200 caracteres',
+      'items.0.precio': 'Precio inválido',
+      cliente: 'Elegí el cliente',
+    }
+    expect(erroresDeBloques(errores, ['a', 'b', 'c'])).toEqual({
+      a: { titulo: 'Máximo 200 caracteres' },
+      c: { contenido: 'Máximo 10.000 caracteres', titulo: 'Máximo 200 caracteres' },
+    })
+  })
+
+  it('ignora una posición que no estaba en lo que se mandó', () => {
+    expect(erroresDeBloques({ 'bloques.3.contenido': 'Muy largo' }, ['a'])).toEqual({})
   })
 })
 

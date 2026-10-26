@@ -5,11 +5,13 @@ import {
   alternarNegrita,
   alternarVineta,
   bloqueDePlantilla,
+  extenderAVariables,
   limpiarPegado,
   mismosBloques,
   nivelDeLinea,
   pegar,
   quitarSangria,
+  tramoCambiado,
 } from './edicion'
 
 describe('nivelDeLinea', () => {
@@ -106,6 +108,49 @@ describe('alternarNegrita', () => {
   it('una selección de solo espacios no cambia nada', () => {
     expect(alternarNegrita('a  b', { inicio: 1, fin: 3 })).toEqual({ texto: 'a  b', seleccion: { inicio: 1, fin: 3 } })
   })
+
+  it('varias líneas con los dos bordes dentro de negritas: extiende las dos, sin ** sueltos', () => {
+    const edicion = alternarNegrita('**uno** x\ny **dos**', { inicio: 3, fin: 16 })
+    expect(edicion).toEqual({ texto: '**uno x**\n**y dos**', seleccion: { inicio: 0, fin: 19 } })
+    expect(parsearFormato(edicion.texto).map((nodo) => nodo.segmentos)).toEqual([
+      [{ texto: 'uno x', negrita: true }],
+      [{ texto: 'y dos', negrita: true }],
+    ])
+  })
+
+  it('un borde entre los dos * de una marca cuenta como dentro de la negrita', () => {
+    expect(alternarNegrita('**hola** mundo', { inicio: 1, fin: 5 })).toEqual({
+      texto: 'hola mundo',
+      seleccion: { inicio: 0, fin: 4 },
+    })
+  })
+
+  it('nunca corta una variable: la selección dentro de {{…}} toma la variable entera', () => {
+    expect(alternarNegrita('{{equipo_descripcion}}', { inicio: 4, fin: 10 })).toEqual({
+      texto: '**{{equipo_descripcion}}**',
+      seleccion: { inicio: 0, fin: 26 },
+    })
+    // Con el cursor adentro, también: insertar **** ahí rompería la variable.
+    expect(alternarNegrita('Equipo: {{capacidad}} TN', { inicio: 12, fin: 12 }).texto).toBe(
+      'Equipo: **{{capacidad}}** TN',
+    )
+  })
+})
+
+describe('extenderAVariables', () => {
+  it('lleva cada borde que cae dentro de {{…}} al borde de la variable', () => {
+    expect(extenderAVariables('{{equipo_descripcion}}', { inicio: 4, fin: 10 })).toEqual({ inicio: 0, fin: 22 })
+    expect(extenderAVariables('Grúa de {{capacidad}} TN', { inicio: 0, fin: 12 })).toEqual({ inicio: 0, fin: 21 })
+    expect(extenderAVariables('Grúa de {{capacidad}} TN', { inicio: 9, fin: 24 })).toEqual({ inicio: 8, fin: 24 })
+    // Entre las dos llaves también es adentro.
+    expect(extenderAVariables('a {{x}} b', { inicio: 3, fin: 3 })).toEqual({ inicio: 2, fin: 7 })
+  })
+
+  it('no toca una selección que ya está afuera o que abarca la variable entera', () => {
+    expect(extenderAVariables('a {{x}} b', { inicio: 2, fin: 7 })).toEqual({ inicio: 2, fin: 7 })
+    expect(extenderAVariables('a {{x}} b', { inicio: 0, fin: 1 })).toEqual({ inicio: 0, fin: 1 })
+    expect(extenderAVariables('a {{x}} b', { inicio: 7, fin: 7 })).toEqual({ inicio: 7, fin: 7 })
+  })
 })
 
 describe('alternarVineta', () => {
@@ -170,6 +215,19 @@ describe('limpiarPegado', () => {
     expect(limpiarPegado('- ya era viñeta\n  - y subviñeta')).toBe('- ya era viñeta\n  - y subviñeta')
     expect(limpiarPegado('-30 días de plazo')).toBe('-30 días de plazo')
   })
+
+  it('una sola línea sin viñeta conserva el espacio del final; varias líneas se recortan', () => {
+    expect(limpiarPegado('palabra ')).toBe('palabra ')
+    expect(limpiarPegado('palabra\u00a0')).toBe('palabra ')
+    expect(limpiarPegado('uno \r\ndos\t')).toBe('uno\ndos')
+    expect(limpiarPegado('•\tsola viñeta ')).toBe('- sola viñeta')
+  })
+
+  it('§ es viñeta solo en un pegado de varias líneas, y debajo de una subviñeta sigue en nivel 2', () => {
+    expect(limpiarPegado('§ 5 del contrato')).toBe('§ 5 del contrato')
+    expect(limpiarPegado('§\tUno\r\n§\tDos')).toBe('- Uno\n- Dos')
+    expect(limpiarPegado('•\tUno\r\no\tDos\r\n§\tTres\r\n§\tCuatro')).toBe('- Uno\n  - Dos\n  - Tres\n  - Cuatro')
+  })
 })
 
 describe('pegar', () => {
@@ -181,6 +239,21 @@ describe('pegar', () => {
   })
 })
 
+describe('tramoCambiado', () => {
+  it('lo que cambia entre el texto viejo y el nuevo, sin el principio y el final en común', () => {
+    expect(tramoCambiado('hola mundo', '**hola** mundo')).toEqual({ inicio: 0, fin: 4, reemplazo: '**hola**' })
+    expect(tramoCambiado('**hola** mundo', 'hola mundo')).toEqual({ inicio: 0, fin: 8, reemplazo: 'hola' })
+    expect(tramoCambiado('uno\ndos', '- uno\n- dos')).toEqual({ inicio: 0, fin: 4, reemplazo: '- uno\n- ' })
+  })
+
+  it('el principio y el final en común no se pisan cuando el texto se repite', () => {
+    // "aa" → "aaa": se agrega una "a"; el tramo no puede empezar después de donde termina.
+    expect(tramoCambiado('aa', 'aaa')).toEqual({ inicio: 2, fin: 2, reemplazo: 'a' })
+    expect(tramoCambiado('a****b', 'ab')).toEqual({ inicio: 1, fin: 5, reemplazo: '' })
+    expect(tramoCambiado('igual', 'igual')).toEqual({ inicio: 5, fin: 5, reemplazo: '' })
+  })
+})
+
 describe('bloques de la plantilla', () => {
   const plantilla = [
     { titulo: 'Equipo ofrecido', contenido: '{{equipo_descripcion}}', oculto: false },
@@ -189,9 +262,24 @@ describe('bloques de la plantilla', () => {
   ]
 
   it('bloqueDePlantilla busca por título (también el bloque sin título)', () => {
-    expect(bloqueDePlantilla(plantilla, ' Alcance ')).toEqual(plantilla[1])
-    expect(bloqueDePlantilla(plantilla, '')).toEqual(plantilla[2])
-    expect(bloqueDePlantilla(plantilla, 'Otro')).toBeNull()
+    const bloques = [{ titulo: 'Otro' }, { titulo: ' Alcance ' }, { titulo: '' }]
+    expect(bloqueDePlantilla(plantilla, bloques, 1)).toEqual(plantilla[1])
+    expect(bloqueDePlantilla(plantilla, bloques, 2)).toEqual(plantilla[2])
+    expect(bloqueDePlantilla(plantilla, bloques, 0)).toBeNull()
+  })
+
+  it('bloqueDePlantilla empareja los títulos repetidos por orden de aparición', () => {
+    const conRepetidos = [
+      { titulo: '', contenido: 'Primero sin título', oculto: false },
+      { titulo: 'Alcance', contenido: 'Alcance', oculto: false },
+      { titulo: '', contenido: 'Segundo sin título', oculto: false },
+    ]
+    const bloques = [{ titulo: '' }, { titulo: '' }, { titulo: 'Alcance' }, { titulo: '' }]
+    expect(bloqueDePlantilla(conRepetidos, bloques, 0)).toEqual(conRepetidos[0])
+    expect(bloqueDePlantilla(conRepetidos, bloques, 1)).toEqual(conRepetidos[2])
+    expect(bloqueDePlantilla(conRepetidos, bloques, 2)).toEqual(conRepetidos[1])
+    // La plantilla tiene dos sin título: el tercero no tiene con qué restaurarse.
+    expect(bloqueDePlantilla(conRepetidos, bloques, 3)).toBeNull()
   })
 
   it('mismosBloques: no hay nada que restaurar si son los mismos, en orden y visibles', () => {

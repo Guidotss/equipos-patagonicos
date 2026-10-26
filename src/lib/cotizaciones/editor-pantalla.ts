@@ -168,6 +168,27 @@ const CON_CAMPO = [
   /^bloques\.\d+\.(titulo|contenido)$/,
 ]
 
+/** Los errores de guardado de un bloque de texto, por campo. */
+export type ErroresBloque = Partial<Record<'titulo' | 'contenido', string>>
+
+const RUTA_BLOQUE = /^bloques\.(\d+)\.(titulo|contenido)$/
+
+/**
+ * Errores de guardado de los bloques de texto por clave de bloque, como erroresPorClave (grilla.ts) con los ítems:
+ * las rutas ('bloques.2.contenido') usan la posición de cada bloque en lo que se mandó a guardar, así que `claves` son
+ * las de esos bloques, en ese orden. La marca queda en el bloque que la tuvo aunque después se mueva.
+ */
+export function erroresDeBloques(errores: Record<string, string>, claves: string[]): Record<string, ErroresBloque> {
+  const porClave: Record<string, ErroresBloque> = {}
+  for (const [ruta, mensaje] of Object.entries(errores)) {
+    const partes = RUTA_BLOQUE.exec(ruta)
+    const clave = partes ? claves[Number(partes[1])] : undefined
+    if (!partes || clave === undefined) continue
+    porClave[clave] = { ...porClave[clave], [partes[2]]: mensaje }
+  }
+  return porClave
+}
+
 /** Mensajes de error que no tienen un campo donde mostrarse: van en el aviso de arriba. */
 export function erroresSinCampo(errores: Record<string, string>): string[] {
   return Object.entries(errores)

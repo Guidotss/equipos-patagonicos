@@ -15,6 +15,7 @@ import {
   estadoAlRevertir,
   ETIQUETA_EN_CURSO,
   franjasEstado,
+  motivoBloqueo,
   pendientesVisibles,
   type Franja,
   type Pendiente,
@@ -52,12 +53,14 @@ function textoEnCurso(acciones: AccionesEstado, accion: keyof typeof ETIQUETA_EN
 function ConfirmarAprobacion({
   estado,
   contexto,
+  pendientes,
   acciones,
   hayCambiosSinGuardar,
   hoy,
 }: {
   estado: EstadoEditor
   contexto: ContextoEstado
+  pendientes: Pendientes
   acciones: AccionesEstado
   hayCambiosSinGuardar: boolean
   hoy: string
@@ -65,6 +68,8 @@ function ConfirmarAprobacion({
   // Hoy por defecto; si la cotización tiene fecha futura, su fecha (no se aprueba antes de cotizar).
   const [fecha, setFecha] = useState(hoy < estado.fecha ? estado.fecha : hoy)
   const error = errorFechaAprobacion(fecha, estado.fecha)
+  // Lo que falta se vuelve a mirar con la confirmación abierta: si se vacía un campo, Aprobar se deshabilita.
+  const bloqueo = motivoBloqueo('aprobar', pendientes)
   const aviso = apruebaVersionNoEnviada(estado, contexto, hayCambiosSinGuardar)
   // Una nueva todavía no tiene número: aprobar la guarda primero (decisión 12).
   const nueva = estado.numero === null
@@ -81,7 +86,7 @@ function ConfirmarAprobacion({
       textoConfirmar="Aprobar"
       textoPendiente={textoEnCurso(acciones, 'aprobar')}
       pendiente={acciones.ocupado}
-      confirmarDeshabilitado={error !== null}
+      confirmarDeshabilitado={error !== null || bloqueo !== null}
       alConfirmar={() => void acciones.aprobar(fecha)}
       alCancelar={acciones.cancelar}
     >
@@ -106,6 +111,7 @@ function ConfirmarAprobacion({
             {error}
           </p>
         ) : null}
+        {bloqueo ? <p className="text-destructive">{bloqueo}.</p> : null}
         {aviso ? (
           <p className="flex gap-1.5 text-amber-800">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -120,12 +126,14 @@ function ConfirmarAprobacion({
 function ConfirmacionAbierta({
   estado,
   contexto,
+  pendientes,
   acciones,
   hayCambiosSinGuardar,
   hoy,
 }: {
   estado: EstadoEditor
   contexto: ContextoEstado
+  pendientes: Pendientes
   acciones: AccionesEstado
   hayCambiosSinGuardar: boolean
   hoy: string
@@ -145,6 +153,7 @@ function ConfirmacionAbierta({
         <ConfirmarAprobacion
           estado={estado}
           contexto={contexto}
+          pendientes={pendientes}
           acciones={acciones}
           hayCambiosSinGuardar={hayCambiosSinGuardar}
           hoy={hoy}
@@ -192,6 +201,20 @@ function ConfirmacionAbierta({
           detalle="No se puede deshacer."
           textoConfirmar="Eliminar"
           textoPendiente={textoEnCurso(acciones, 'borrar')}
+        />
+      )
+    case 'duplicar':
+      return (
+        <ConfirmacionEnLugar
+          tono="aviso"
+          pregunta="Tenés cambios sin guardar."
+          detalle="«Duplicar lo guardado» copia la última versión guardada y descarta estos cambios."
+          textoConfirmar="Guardar y duplicar"
+          textoPendiente={textoEnCurso(acciones, 'duplicar')}
+          alternativa={{ texto: 'Duplicar lo guardado', alElegir: () => void acciones.duplicar(false) }}
+          pendiente={acciones.ocupado}
+          alConfirmar={() => void acciones.duplicar(true)}
+          alCancelar={acciones.cancelar}
         />
       )
     case 'finalizar':
@@ -338,6 +361,7 @@ export function FranjasEditor({
       <ConfirmacionAbierta
         estado={estado}
         contexto={contexto}
+        pendientes={pendientes}
         acciones={acciones}
         hayCambiosSinGuardar={hayCambiosSinGuardar}
         hoy={hoy}

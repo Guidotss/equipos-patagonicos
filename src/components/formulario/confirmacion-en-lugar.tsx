@@ -1,7 +1,7 @@
 'use client'
 // src/components/formulario/confirmacion-en-lugar.tsx
 
-import { useCallback, useId } from 'react'
+import { useCallback, useId, useLayoutEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -14,7 +14,8 @@ const TONOS = {
 
 /**
  * Confirmación sin modal (decisión 15): aparece en el lugar, el foco va a "Cancelar" y Escape cancela.
- * Adónde vuelve el foco al cerrarse lo decide quien la abre (alCancelar / alConfirmar).
+ * Adónde vuelve el foco al cerrarse lo decide quien la abre (alCancelar / alConfirmar). Mientras la acción corre
+ * (`pendiente`) los botones se deshabilitan y el foco queda en el grupo, no en el body.
  */
 export function ConfirmacionEnLugar({
   pregunta,
@@ -27,6 +28,7 @@ export function ConfirmacionEnLugar({
   confirmarDeshabilitado = false,
   alConfirmar,
   alCancelar,
+  alternativa,
   children,
   className,
 }: {
@@ -43,16 +45,30 @@ export function ConfirmacionEnLugar({
   confirmarDeshabilitado?: boolean
   alConfirmar: () => void
   alCancelar: () => void
+  /** Otra forma de confirmar, entre Cancelar y el botón principal (p. ej. "Duplicar lo guardado"). */
+  alternativa?: { texto: string; alElegir: () => void }
   /** Controles entre el texto y los botones (p. ej. la fecha de aprobación de la Task 12). */
   children?: React.ReactNode
   className?: string
 }) {
   const id = useId()
+  const grupo = useRef<HTMLDivElement>(null)
   const enfocar = useCallback((boton: HTMLButtonElement | null) => boton?.focus(), [])
+
+  // Con la acción en curso, Cancelar y el botón que se tocó quedan deshabilitados y el navegador mandaría el foco al
+  // body: lo toma el grupo (si estaba adentro), que sigue escuchando Escape para cuando Cancelar se habilite de nuevo.
+  useLayoutEffect(() => {
+    const elemento = grupo.current
+    if (!pendiente || !elemento) return
+    const activo = document.activeElement
+    if (activo === null || activo === document.body || elemento.contains(activo)) elemento.focus()
+  }, [pendiente])
 
   return (
     <div
+      ref={grupo}
       role="group"
+      tabIndex={-1}
       aria-labelledby={`${id}-pregunta`}
       onKeyDown={(evento) => {
         if (evento.key === 'Escape' && !pendiente) {
@@ -60,7 +76,11 @@ export function ConfirmacionEnLugar({
           alCancelar()
         }
       }}
-      className={cn('flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border px-4 py-3 text-sm', TONOS[tono], className)}
+      className={cn(
+        'flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border px-4 py-3 text-sm outline-none',
+        TONOS[tono],
+        className,
+      )}
     >
       <div className="min-w-0 flex-1 basis-64 space-y-0.5">
         <p id={`${id}-pregunta`} className="font-medium [overflow-wrap:anywhere]">
@@ -69,10 +89,15 @@ export function ConfirmacionEnLugar({
         {detalle ? <p className="text-muted-foreground">{detalle}</p> : null}
       </div>
       {children}
-      <div className="ml-auto flex gap-2">
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
         <Button ref={enfocar} type="button" variant="outline" onClick={alCancelar} disabled={pendiente}>
           {textoCancelar}
         </Button>
+        {alternativa ? (
+          <Button type="button" variant="outline" onClick={alternativa.alElegir} disabled={pendiente}>
+            {alternativa.texto}
+          </Button>
+        ) : null}
         <Button
           type="button"
           onClick={alConfirmar}

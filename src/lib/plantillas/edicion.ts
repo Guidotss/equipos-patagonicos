@@ -129,12 +129,32 @@ function bordeFueraDeNegrita(texto: string, posicion: number, borde: 'inicio' | 
   return comienzo + (borde === 'inicio' ? tramo[0] : tramo[1])
 }
 
+// Una variable como la escriben las plantillas (el patrón de variables.ts), sin cruzar saltos de línea.
+const VARIABLE = /\{\{[^{}\n]*\}\}/g
+
+/**
+ * Si un borde de la selección cae dentro de una variable ({{…}}, también entre sus dos llaves), lo lleva al borde de
+ * la variable: el de inicio a su "{{" y el de fin después de su "}}". Con el cursor adentro, queda toda elegida.
+ */
+export function extenderAVariables(texto: string, seleccion: Seleccion): Seleccion {
+  let inicio = Math.min(seleccion.inicio, seleccion.fin)
+  let fin = Math.max(seleccion.inicio, seleccion.fin)
+  for (const variable of texto.matchAll(VARIABLE)) {
+    const apertura = variable.index
+    const cierre = apertura + variable[0].length
+    if (apertura < inicio && inicio < cierre) inicio = apertura
+    if (apertura < fin && fin < cierre) fin = cierre
+  }
+  return { inicio, fin }
+}
+
 /**
  * Negrita sobre la selección (botón o Ctrl/⌘+B). Envuelve en ** cada línea seleccionada por separado porque el
  * formato no cruza saltos de línea; si ya estaba toda en negrita, la quita. Una selección que empieza o termina
  * dentro de una negrita se extiende hasta sus ** ("**ho[la** mu]ndo" actúa sobre "[**hola** mu]ndo"), así que
- * elegir una parte de una negrita la quita entera. Sin selección, inserta "****" con el cursor en el medio (o los
- * saca si el cursor está justo entre "**" y "**").
+ * elegir una parte de una negrita la quita entera. Tampoco corta una variable: la selección que empieza o termina
+ * dentro de una toma la variable entera (extenderAVariables). Sin selección, inserta "****" con el cursor en el medio
+ * (o los saca si el cursor está justo entre "**" y "**"); con el cursor dentro de una variable, la pone en negrita.
  */
 export function alternarNegrita(texto: string, seleccion: Seleccion): Edicion {
   let inicio = Math.min(seleccion.inicio, seleccion.fin)
@@ -142,17 +162,24 @@ export function alternarNegrita(texto: string, seleccion: Seleccion): Edicion {
   const antes = (posicion: number) => (posicion >= 2 ? texto.slice(posicion - 2, posicion) : '')
   const despues = (posicion: number) => texto.slice(posicion, posicion + 2)
 
+  if (inicio !== fin) {
+    // Los espacios y saltos de los bordes quedan afuera de la negrita.
+    while (inicio < fin && /\s/.test(texto[inicio])) inicio += 1
+    while (fin > inicio && /\s/.test(texto[fin - 1])) fin -= 1
+    if (inicio === fin) return { texto, seleccion }
+  }
+
+  // Los ** nunca cortan una variable: un borde (o el cursor) dentro de {{…}} toma la variable entera.
+  const sinCortar = extenderAVariables(texto, { inicio, fin })
+  inicio = sinCortar.inicio
+  fin = sinCortar.fin
+
   if (inicio === fin) {
     if (antes(inicio) === '**' && despues(fin) === '**') {
       return { texto: texto.slice(0, inicio - 2) + texto.slice(fin + 2), seleccion: { inicio: inicio - 2, fin: inicio - 2 } }
     }
     return { texto: `${texto.slice(0, inicio)}****${texto.slice(fin)}`, seleccion: { inicio: inicio + 2, fin: inicio + 2 } }
   }
-
-  // Los espacios y saltos de los bordes quedan afuera de la negrita.
-  while (inicio < fin && /\s/.test(texto[inicio])) inicio += 1
-  while (fin > inicio && /\s/.test(texto[fin - 1])) fin -= 1
-  if (inicio === fin) return { texto, seleccion }
 
   // Solo el borde de la primera línea y el de la última pueden caer dentro de una negrita. También cubre la negrita
   // seleccionada sin sus asteriscos: "**[hola]**" pasa a "[**hola**]" y se quita.
@@ -168,24 +195,59 @@ export function alternarNegrita(texto: string, seleccion: Seleccion): Edicion {
   return { texto: texto.slice(0, inicio) + nuevo + texto.slice(fin), seleccion: { inicio, fin: inicio + nuevo.length } }
 }
 
-// Viñetas de Word o de un mail pegadas como texto: "•\t", "·  ", "§\t" (nivel 1) y "o\t", "◦\t" (nivel 2).
+// Viñetas de Word o de un mail pegadas como texto: "•\t", "·  " (nivel 1) y "o\t", "◦\t" (nivel 2).
 const VINETA_PEGADA_2 = /^[ \t]*(?:o|◦)\t+[ \t]*/
-const VINETA_PEGADA_1 = /^[ \t]*[-–•·●▪■§][ \t]+/
+const VINETA_PEGADA_1 = /^[ \t]*[-–•·●▪■][ \t]+/
+// El tercer nivel de Word ("§\t"). Solo en un pegado de varias líneas: en una sola es el signo de párrafo
+// ("§ 5 del contrato").
+const VINETA_PEGADA_3 = /^[ \t]*§[ \t]+/
+// Espacio duro, espacio de cifra y espacio duro angosto (Word y los mails los usan): pasan a espacios comunes.
+const ESPACIOS_DUROS = /[\u00a0\u2007\u202f]/g
 
-/** Lo pegado se lleva al formato mínimo: saltos de Windows, espacios duros, tabs y viñetas de Word. */
+/** La línea pegada con su viñeta de Word llevada a la marca del formato mínimo (o tal cual, si no tiene). */
+function conMarcaDelFormato(linea: string, variasLineas: boolean, anterior: string | undefined): string {
+  if (MARCA_NIVEL_2.test(linea)) return linea.replace(/\t/g, ' ')
+  if (VINETA_PEGADA_2.test(linea)) return `${MARCAS[2]}${linea.replace(VINETA_PEGADA_2, '')}`
+  if (VINETA_PEGADA_1.test(linea)) return `${MARCAS[1]}${linea.replace(VINETA_PEGADA_1, '')}`
+  if (variasLineas && VINETA_PEGADA_3.test(linea)) {
+    // El formato tiene dos niveles: debajo de una subviñeta, el tercer nivel de Word sigue siendo subviñeta.
+    const nivel = anterior !== undefined && nivelDeLinea(anterior) === 2 ? 2 : 1
+    return `${MARCAS[nivel]}${linea.replace(VINETA_PEGADA_3, '')}`
+  }
+  return linea
+}
+
+/**
+ * Lo pegado se lleva al formato mínimo: saltos de Windows, espacios duros, tabs y viñetas de Word. Varias líneas se
+ * recortan al final una por una; una sola línea sin viñeta no ("palabra " pegada en medio de una frase conserva el
+ * espacio).
+ */
 export function limpiarPegado(texto: string): string {
-  return texto
-    .replace(/\r\n?/g, '\n')
-    .replace(/[   ]/g, ' ')
-    .split('\n')
-    .map((linea) => {
-      if (MARCA_NIVEL_2.test(linea)) return linea.replace(/\t/g, ' ')
-      if (VINETA_PEGADA_2.test(linea)) return `  - ${linea.replace(VINETA_PEGADA_2, '')}`
-      if (VINETA_PEGADA_1.test(linea)) return `- ${linea.replace(VINETA_PEGADA_1, '')}`
-      return linea
-    })
-    .map((linea) => linea.replace(/(?<=\S)\t+/g, ' ').trimEnd())
-    .join('\n')
+  const lineas = texto.replace(/\r\n?/g, '\n').replace(ESPACIOS_DUROS, ' ').split('\n')
+  const variasLineas = lineas.length > 1
+  const limpias: string[] = []
+  for (const linea of lineas) {
+    const limpia = conMarcaDelFormato(linea, variasLineas, limpias.at(-1)).replace(/(?<=\S)\t+/g, ' ')
+    limpias.push(variasLineas || nivelDeLinea(limpia) !== 0 ? limpia.trimEnd() : limpia)
+  }
+  return limpias.join('\n')
+}
+
+/**
+ * El tramo de `viejo` que hay que reemplazar para llegar a `nuevo`, sin el principio ni el final que tienen en común:
+ * [inicio, fin) de `viejo` y lo que va en su lugar. Las ediciones de la barra se aplican así, con un solo insertText
+ * sobre ese tramo, para que entren en el historial del textarea y Ctrl/⌘+Z las deshaga.
+ */
+export function tramoCambiado(viejo: string, nuevo: string): { inicio: number; fin: number; reemplazo: string } {
+  const maximo = Math.min(viejo.length, nuevo.length)
+  let prefijo = 0
+  while (prefijo < maximo && viejo[prefijo] === nuevo[prefijo]) prefijo += 1
+  let sufijo = 0
+  // El final en común no se superpone con el principio ("aa" → "aaa" agrega una "a" al final, no antes de empezar).
+  while (sufijo < maximo - prefijo && viejo[viejo.length - 1 - sufijo] === nuevo[nuevo.length - 1 - sufijo]) {
+    sufijo += 1
+  }
+  return { inicio: prefijo, fin: viejo.length - sufijo, reemplazo: nuevo.slice(prefijo, nuevo.length - sufijo) }
 }
 
 /** Reemplaza la selección por lo pegado (ya limpio) y deja el cursor al final de lo pegado. */
@@ -197,9 +259,20 @@ export function pegar(texto: string, seleccion: Seleccion, pegado: string): Edic
   return { texto: texto.slice(0, inicio) + limpio + texto.slice(fin), seleccion: { inicio: cursor, fin: cursor } }
 }
 
-/** El bloque de la plantilla con el mismo título (decisión 6: "Restaurar este bloque" solo si existe). */
-export function bloqueDePlantilla(bloques: Bloque[], titulo: string): Bloque | null {
-  return bloques.find((bloque) => bloque.titulo.trim() === titulo.trim()) ?? null
+/**
+ * El bloque de la plantilla que corresponde a `bloques[indice]` (decisión 6: "Restaurar este bloque" solo si existe):
+ * el de mismo título y mismo número de aparición de ese título, así el segundo "Sin título" se restaura con el segundo
+ * de la plantilla.
+ */
+export function bloqueDePlantilla(
+  plantilla: Bloque[],
+  bloques: Pick<Bloque, 'titulo'>[],
+  indice: number,
+): Bloque | null {
+  const titulo = bloques[indice]?.titulo.trim()
+  if (titulo === undefined) return null
+  const aparicion = bloques.slice(0, indice).filter((bloque) => bloque.titulo.trim() === titulo).length
+  return plantilla.filter((bloque) => bloque.titulo.trim() === titulo)[aparicion] ?? null
 }
 
 /** true si los bloques son los de la plantilla, en el mismo orden y visibles: no hay nada que restaurar. */

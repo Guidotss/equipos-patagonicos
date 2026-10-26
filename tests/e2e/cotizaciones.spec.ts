@@ -733,12 +733,27 @@ test.describe('textos del editor', () => {
     await page.getByRole('radio', { name: 'Por jornada' }).click()
     await expect(page.getByRole('radio', { name: 'Por jornada' })).toBeChecked()
 
-    // La barra actúa sobre lo seleccionado en el textarea.
+    // Bajar y subir un bloque deja el foco en el botón que se tocó; en la punta, en el otro del mismo bloque.
     const equipo = page.getByRole('article', { name: 'Equipo ofrecido' })
+    await equipo.getByRole('button', { name: 'Bajar bloque' }).click()
+    await expect(page.getByLabel('Título del bloque 2', { exact: true })).toHaveValue('Equipo ofrecido')
+    await expect(equipo.getByRole('button', { name: 'Bajar bloque' })).toBeFocused()
+    await equipo.getByRole('button', { name: 'Subir bloque' }).click()
+    await expect(page.getByLabel('Título del bloque 1', { exact: true })).toHaveValue('Equipo ofrecido')
+    await expect(equipo.getByRole('button', { name: 'Subir bloque' })).toBeDisabled()
+    await expect(equipo.getByRole('button', { name: 'Bajar bloque' })).toBeFocused()
+
+    // La barra (un grupo, no un toolbar) actúa sobre lo seleccionado en el textarea.
     const contenido = equipo.getByLabel(/^Contenido del bloque \d+$/)
+    const formato = equipo.getByRole('group', { name: /^Formato del bloque \d+$/ })
     await contenido.click()
     await contenido.press('ControlOrMeta+a')
-    await equipo.getByRole('button', { name: 'Negrita' }).click()
+    await formato.getByRole('button', { name: 'Negrita' }).click()
+    await expect(contenido).toHaveValue('**{{equipo_descripcion}}**')
+    // El formato entra en el historial del textarea: Ctrl/⌘+Z lo deshace y rehacer lo vuelve a poner.
+    await contenido.press('ControlOrMeta+z')
+    await expect(contenido).toHaveValue('{{equipo_descripcion}}')
+    await contenido.press('ControlOrMeta+Shift+z')
     await expect(contenido).toHaveValue('**{{equipo_descripcion}}**')
     await equipo.getByRole('button', { name: 'Viñeta', exact: true }).click()
     await expect(contenido).toHaveValue('- **{{equipo_descripcion}}**')
@@ -787,10 +802,12 @@ test.describe('textos del editor', () => {
     await expect(restaurarTodos).toBeHidden()
     await expect(alcance.getByText('Oculto en esta cotización')).toBeVisible()
 
-    // Confirmado, vuelven los textos de la plantilla: Alcance otra vez visible y ya no hay nada que restaurar.
+    // Confirmado, vuelven los textos de la plantilla: Alcance otra vez visible y ya no hay nada que restaurar. El foco
+    // va al título del primer bloque (el botón que lo abrió ya no está).
     await restaurarTodosBoton.click()
     await restaurarTodos.getByRole('button', { name: 'Restaurar', exact: true }).click()
     await expect(restaurarTodos).toBeHidden()
+    await expect(page.getByLabel('Título del bloque 1', { exact: true })).toBeFocused()
     await expect(ocultarAlcance).toBeVisible()
     await expect(alcance.getByText('Oculto en esta cotización')).toHaveCount(0)
     await expect(restaurarTodosBoton).toHaveCount(0)
@@ -871,6 +888,35 @@ test.describe('vista previa del editor', () => {
     await expect(panel.getByRole('button', { name: 'Actualizar vista previa' })).toHaveCount(0)
   })
 
+  test('si la vista previa no responde un PDF (un HTML con 200 o un 500), avisa con Reintentar y no hay hoja', async ({
+    page,
+  }) => {
+    const { id } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    await iniciarSesion(page)
+    let respuesta = { status: 200, contentType: 'text/html', body: '<!doctype html><title>Ingresar</title>' }
+    await page.route('**/cotizaciones/vista-previa', (ruta) =>
+      ruta.request().method() === 'POST' ? ruta.fulfill(respuesta) : ruta.continue(),
+    )
+
+    const primera = respuestaVistaPrevia(page)
+    await page.goto(`/cotizaciones/${id}`)
+    expect((await primera).headers()['content-type']).toBe('text/html')
+    const panel = page.getByRole('region', { name: 'Vista previa' })
+    const alerta = panel.getByRole('alert')
+    await expect(alerta).toContainText('No se pudo generar la vista previa.')
+    await expect(alerta.getByRole('button', { name: 'Reintentar' })).toBeVisible()
+    await expect(panel.getByTitle('Vista previa del PDF', { exact: true })).toHaveCount(0)
+
+    respuesta = { status: 500, contentType: 'text/plain', body: 'Error interno' }
+    const segunda = respuestaVistaPrevia(page)
+    await alerta.getByRole('button', { name: 'Reintentar' }).click()
+    expect((await segunda).status()).toBe(500)
+    await expect(alerta).toContainText('No se pudo generar la vista previa.')
+    await expect(alerta.getByRole('button', { name: 'Reintentar' })).toBeEnabled()
+    await expect(panel.getByTitle('Vista previa del PDF', { exact: true })).toHaveCount(0)
+  })
+
   test('con la sesión cerrada avisa que venció en vez de dibujar el login en la hoja', async ({ page }) => {
     const { id } = await conBase((db) => crearCotizacionCompleta(db))
     creadas.push(id)
@@ -907,6 +953,27 @@ test.describe('vista previa del editor', () => {
       // El del panel lateral es el único: la columna oculta sigue sin visor.
       await expect(visor).toHaveCount(1)
     })
+
+    test('al agrandar la ventana al ancho de escritorio, la columna aparece y genera la vista previa', async ({ page }) => {
+      const { id } = await conBase((db) => crearCotizacionCompleta(db))
+      creadas.push(id)
+      await iniciarSesion(page)
+      await page.goto(`/cotizaciones/${id}`)
+      // Con la página ya hidratada (Guardar reacciona a lo tipeado) y sin la columna, todavía no se pidió nada.
+      await page.getByLabel('Asunto', { exact: true }).fill('Alquiler de grúa para Rincón de los Sauces')
+      await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeEnabled()
+      await expect(page.getByRole('region', { name: 'Vista previa' })).toHaveCount(0)
+
+      const respuesta = respuestaVistaPrevia(page)
+      await page.setViewportSize({ width: 1200, height: 805 })
+      const pedido = await respuesta
+      expect(pedido.status()).toBe(200)
+      const cuerpo = JSON.parse(pedido.request().postData() ?? '{}') as { estado: { asunto: string } }
+      expect(cuerpo.estado.asunto).toBe('Alquiler de grúa para Rincón de los Sauces')
+      await expect(
+        page.getByRole('region', { name: 'Vista previa' }).getByTitle('Vista previa del PDF', { exact: true }),
+      ).toHaveAttribute('src', /^blob:/)
+    })
   })
 
   test.describe('en el celular', () => {
@@ -922,6 +989,23 @@ test.describe('vista previa del editor', () => {
       const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
       await page.getByRole('button', { name: 'Vista previa' }).click()
       await expect(cliente).toHaveAttribute('aria-invalid', 'true')
+      expect(pestanas).toHaveLength(0)
+    })
+
+    test('con datos que no se pueden guardar, marca los campos, avisa y no abre la pestaña', async ({ page }) => {
+      await iniciarSesion(page)
+      await page.goto('/cotizaciones/nueva')
+      await page.getByRole('combobox', { name: 'Cliente', exact: true }).click()
+      await page.getByRole('combobox', { name: 'Buscar cliente' }).fill('vertice')
+      await page.getByRole('option', { name: /VERTICE SERVICIOS INTEGRALES/ }).click()
+      const validez = page.getByLabel('Validez (días)', { exact: true })
+      await validez.fill('0')
+      const pestanas: Page[] = []
+      page.context().on('page', (pestana) => pestanas.push(pestana))
+
+      await page.getByRole('button', { name: 'Vista previa' }).click()
+      await expect(page.getByRole('region', { name: /^Notifications/ }).getByText('Revisá los datos marcados')).toBeVisible()
+      await expect(validez).toHaveAttribute('aria-invalid', 'true')
       expect(pestanas).toHaveLength(0)
     })
   })
@@ -1101,6 +1185,93 @@ test.describe('acciones de estado del editor', () => {
     await expect(rechazar).toBeHidden()
   })
 
+  test('duplicar con cambios sin guardar pregunta qué copiar y no guarda la original en silencio', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    const asuntoEnLaBase = async () =>
+      (await conBase((db) => db.query<{ asunto: string }>('select asunto from public.cotizaciones where id = $1', [id])))
+        .rows[0].asunto
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const asunto = page.getByLabel('Asunto', { exact: true })
+    await expect(asunto).toBeEnabled()
+    const original = await asunto.inputValue()
+    const masAcciones = page.getByRole('button', { name: 'Más acciones' })
+    const pregunta = page.getByRole('group', { name: 'Tenés cambios sin guardar.' })
+    const duplicada = page.getByText(`Duplicada de N° ${numero}`)
+
+    // "Duplicar lo guardado": la copia es de la versión guardada y la original queda como estaba.
+    await asunto.fill('Asunto sin guardar')
+    await masAcciones.click()
+    await page.getByRole('menuitem', { name: 'Duplicar' }).click()
+    await expect(pregunta.getByRole('button', { name: 'Cancelar' })).toBeFocused()
+    await pregunta.getByRole('button', { name: 'Duplicar lo guardado' }).click()
+    await expect(duplicada).toBeVisible()
+    creadas.push(idDeLaUrl(page.url()))
+    await expect(asunto).toHaveValue(original)
+    expect(await asuntoEnLaBase()).toBe(original)
+
+    // "Guardar y duplicar": guarda la original y la copia lleva los cambios.
+    await page.goto(`/cotizaciones/${id}`)
+    await asunto.fill('Asunto guardado antes de duplicar')
+    await masAcciones.click()
+    await page.getByRole('menuitem', { name: 'Duplicar' }).click()
+    await pregunta.getByRole('button', { name: 'Guardar y duplicar' }).click()
+    await expect(duplicada).toBeVisible()
+    expect(idDeLaUrl(page.url())).not.toBe(id)
+    creadas.push(idDeLaUrl(page.url()))
+    await expect(asunto).toHaveValue('Asunto guardado antes de duplicar')
+    expect(await asuntoEnLaBase()).toBe('Asunto guardado antes de duplicar')
+
+    // Si lo que hay no se puede guardar, no duplica: el foco va al campo marcado cuando el editor se vuelve a habilitar.
+    const copia = page.url()
+    const validez = page.getByLabel('Validez (días)', { exact: true })
+    await validez.fill('0')
+    await masAcciones.click()
+    await page.getByRole('menuitem', { name: 'Duplicar' }).click()
+    await pregunta.getByRole('button', { name: 'Guardar y duplicar' }).click()
+    await expect(validez).toHaveAttribute('aria-invalid', 'true')
+    await expect(validez).toBeFocused()
+    expect(page.url()).toBe(copia)
+  })
+
+  test('otra acción cierra la confirmación abierta y Aprobar vuelve a mirar lo que falta', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+
+    await page.getByRole('button', { name: 'Más acciones' }).click()
+    await page.getByRole('menuitem', { name: 'Rechazar' }).click()
+    const rechazar = page.getByRole('group', { name: `¿Marcar la cotización N° ${numero} como rechazada?` })
+    await expect(rechazar).toBeVisible()
+    await page.getByRole('button', { name: 'Aprobar', exact: true }).click()
+    await expect(rechazar).toBeHidden()
+
+    // Con la confirmación abierta se vacía un dato que usa el texto: Aprobar se deshabilita y dice por qué.
+    const aprobar = page.getByRole('group', { name: `¿Aprobar la cotización N° ${numero}?` })
+    const confirmarAprobacion = aprobar.getByRole('button', { name: 'Aprobar', exact: true })
+    await expect(confirmarAprobacion).toBeEnabled()
+    const lugar = page.getByLabel('Lugar del servicio', { exact: true })
+    await lugar.fill('')
+    await expect(confirmarAprobacion).toBeDisabled()
+    await expect(aprobar.getByText('Completá lo que falta para enviarla o aprobarla.')).toBeVisible()
+    await lugar.fill('Loma Campana, Añelo')
+    await expect(confirmarAprobacion).toBeEnabled()
+  })
+
+  test.describe('en el celular', () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+
+    test('una nueva también ofrece Aprobar en el ⋯', async ({ page }) => {
+      await iniciarSesion(page)
+      await page.goto('/cotizaciones/nueva')
+      await expect(page.getByRole('heading', { name: 'Nueva cotización' })).toBeVisible()
+      await page.getByRole('button', { name: 'Más acciones' }).click()
+      await expect(page.getByRole('menuitem', { name: 'Aprobar' })).toBeVisible()
+    })
+  })
+
   test('eliminar un borrador pide confirmación y vuelve a la lista', async ({ page }) => {
     const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
     creadas.push(id)
@@ -1227,7 +1398,9 @@ test.describe('acciones de estado del editor', () => {
     await expect(page.getByText('No se pudo completar la operación. Probá de nuevo.')).toBeVisible()
     await expect(rechazar.getByRole('button', { name: 'Rechazar', exact: true })).toBeEnabled()
     await page.unroute(sinRed)
-    await rechazar.getByRole('button', { name: 'Cancelar' }).click()
+    // Mientras corría, el foco quedó en la confirmación (no en el body): Escape la sigue cerrando.
+    await page.keyboard.press('Escape')
+    await expect(rechazar).toBeHidden()
 
     // Otro usuario guarda; acá se edita y el alta rápida revalida: `inicial` trae la versión del otro.
     await conBase((db) =>
