@@ -24,6 +24,7 @@ import { TarjetaAsunto } from './tarjeta-asunto'
 import { TarjetaCliente } from './tarjeta-cliente'
 import { TarjetaDatos } from './tarjeta-datos'
 import { TarjetaItems } from './tarjeta-items'
+import { TarjetaTextos } from './tarjeta-textos'
 
 export type VersionGuardada = { id: string; version: string; numero: number }
 
@@ -226,7 +227,12 @@ export function EditorCotizacion({
               despachar={despachar}
               alCambiarBorradorSeccion={alCambiarBorradorSeccion}
             />
-            {/* Textos (Task 10) */}
+            <TarjetaTextos
+              bloques={estado.bloques}
+              plantilla={catalogos.plantillas.find((plantilla) => plantilla.id === estado.plantillaId) ?? null}
+              errores={errores}
+              despachar={despachar}
+            />
           </fieldset>
           <aside aria-label="Vista previa" className="sticky top-18 hidden self-start min-[72rem]:block">
             {/* Task 11: <PanelVistaPrevia …/> reemplaza este marco vacío (pozo gris con la hoja A4). */}

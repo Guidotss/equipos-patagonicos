@@ -665,3 +665,94 @@ test.describe('grilla de ítems de una cotización guardada', () => {
     await expect(seccion).toHaveValue('Horas adicionales de grúa')
   })
 })
+
+// ── Editor: textos (Task 10) ──
+
+test.describe('textos del editor', () => {
+  const creadas: string[] = []
+
+  test.afterAll(async () => {
+    await conBaseEditor((db) => db.query('delete from public.cotizaciones where id = any($1::uuid[])', [creadas]))
+  })
+
+  test('textos: formato sobre la selección, pegar desde Word, ocultar y restaurar desde la plantilla', async ({ page }) => {
+    await iniciarSesion(page)
+    await page.goto('/cotizaciones/nueva')
+    await page.getByRole('radio', { name: 'Por jornada' }).click()
+    await expect(page.getByRole('radio', { name: 'Por jornada' })).toBeChecked()
+
+    // La barra actúa sobre lo seleccionado en el textarea.
+    const equipo = page.getByRole('article', { name: 'Equipo ofrecido' })
+    const contenido = equipo.getByLabel(/^Contenido del bloque \d+$/)
+    await contenido.click()
+    await contenido.press('ControlOrMeta+a')
+    await equipo.getByRole('button', { name: 'Negrita' }).click()
+    await expect(contenido).toHaveValue('**{{equipo_descripcion}}**')
+    await equipo.getByRole('button', { name: 'Viñeta', exact: true }).click()
+    await expect(contenido).toHaveValue('- **{{equipo_descripcion}}**')
+    await equipo.getByRole('button', { name: 'Subviñeta' }).click()
+    await expect(contenido).toHaveValue('  - **{{equipo_descripcion}}**')
+    await equipo.getByRole('button', { name: 'Quitar sangría' }).click()
+    await expect(contenido).toHaveValue('- **{{equipo_descripcion}}**')
+
+    // Lo pegado desde Word (viñetas • y o con tabs, saltos \r\n) entra en el formato mínimo. El evento se arma a mano
+    // porque el portapapeles del navegador sin interfaz no se puede escribir.
+    await contenido.press('ControlOrMeta+a')
+    await contenido.evaluate((area) => {
+      const datos = new DataTransfer()
+      datos.setData('text/plain', '•\tPrimera\r\no\tSegunda')
+      area.dispatchEvent(new ClipboardEvent('paste', { clipboardData: datos, bubbles: true, cancelable: true }))
+    })
+    await expect(contenido).toHaveValue('- Primera\n  - Segunda')
+
+    // Restaurar este bloque, con confirmación en el lugar.
+    await equipo.getByRole('button', { name: 'Restaurar este bloque' }).click()
+    await equipo
+      .getByRole('group', { name: '¿Restaurar este bloque desde la plantilla?' })
+      .getByRole('button', { name: 'Restaurar' })
+      .click()
+    await expect(contenido).toHaveValue('{{equipo_descripcion}}')
+    await expect(equipo.getByRole('button', { name: 'Restaurar este bloque' })).toHaveCount(0)
+
+    // Ocultar: el bloque se pliega sin perderse y el foco queda en "Mostrar".
+    const alcance = page.getByRole('article', { name: 'Alcance' })
+    const ocultarAlcance = alcance.getByRole('button', { name: 'Ocultar en esta cotización' })
+    await ocultarAlcance.click()
+    await expect(alcance.getByText('Oculto en esta cotización')).toBeVisible()
+    await expect(alcance.getByRole('button', { name: 'Mostrar' })).toBeFocused()
+
+    // Restaurar todo pide confirmación; Escape cancela y no cambia nada.
+    const restaurarTodosBoton = page.getByRole('button', { name: 'Restaurar desde la plantilla' })
+    await restaurarTodosBoton.click()
+    const restaurarTodos = page.getByRole('group', { name: /^¿Restaurar todos los textos/ })
+    await expect(restaurarTodos.getByRole('button', { name: 'Cancelar' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(restaurarTodos).toBeHidden()
+    await expect(alcance.getByText('Oculto en esta cotización')).toBeVisible()
+
+    // Confirmado, vuelven los textos de la plantilla: Alcance otra vez visible y ya no hay nada que restaurar.
+    await restaurarTodosBoton.click()
+    await restaurarTodos.getByRole('button', { name: 'Restaurar', exact: true }).click()
+    await expect(restaurarTodos).toBeHidden()
+    await expect(ocultarAlcance).toBeVisible()
+    await expect(alcance.getByText('Oculto en esta cotización')).toHaveCount(0)
+    await expect(restaurarTodosBoton).toHaveCount(0)
+
+    // El bloque oculto se guarda así y vuelve tal cual con "Mostrar".
+    await ocultarAlcance.click()
+    await expect(alcance.getByText('Oculto en esta cotización')).toBeVisible()
+    const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
+    await cliente.click()
+    await page.getByRole('combobox', { name: 'Buscar cliente' }).fill('vertice')
+    await page.getByRole('option', { name: /VERTICE SERVICIOS INTEGRALES/ }).click()
+    await page.getByRole('button', { name: 'Guardar' }).click()
+    await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/)
+    creadas.push(idDeLaUrl(page.url()))
+    await expect(page.getByRole('heading', { name: /^Cotización N° \d+$/ })).toBeVisible()
+
+    const alcanceGuardado = page.getByRole('article', { name: 'Alcance' })
+    await expect(alcanceGuardado.getByText('Oculto en esta cotización')).toBeVisible()
+    await alcanceGuardado.getByRole('button', { name: 'Mostrar' }).click()
+    await expect(alcanceGuardado.getByLabel(/^Contenido del bloque \d+$/)).toHaveValue(/Horario de \{\{horario\}\}/)
+  })
+})
