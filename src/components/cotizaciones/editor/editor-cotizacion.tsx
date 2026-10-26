@@ -22,6 +22,7 @@ import { EncabezadoEditor } from './encabezado-editor'
 import { TarjetaAsunto } from './tarjeta-asunto'
 import { TarjetaCliente } from './tarjeta-cliente'
 import { TarjetaDatos } from './tarjeta-datos'
+import { TarjetaItems } from './tarjeta-items'
 
 export type VersionGuardada = { id: string; version: string; numero: number }
 
@@ -191,7 +192,13 @@ export function EditorCotizacion({
               despachar={despachar}
             />
             <TarjetaAsunto estado={estado} errores={errores} despachar={despachar} />
-            {/* Ítems (Task 9) */}
+            <TarjetaItems
+              items={estado.items}
+              formato={estado.formato}
+              mostrarTotal={estado.mostrarTotal}
+              errores={errores}
+              despachar={despachar}
+            />
             {/* Textos (Task 10) */}
           </fieldset>
           <aside aria-label="Vista previa" className="sticky top-18 hidden self-start min-[72rem]:block">

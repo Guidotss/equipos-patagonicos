@@ -468,3 +468,63 @@ test.describe('editor de cotizaciones', () => {
     await expect(page.getByRole('button', { name: 'Guardar' })).toHaveCount(0)
   })
 })
+
+// ── Editor: grilla de ítems (Task 9) ──
+
+test('la grilla de ítems se maneja con el teclado y entiende precios pegados', async ({ page }) => {
+  await iniciarSesion(page)
+  await page.goto('/cotizaciones/nueva')
+  await page.getByRole('radio', { name: 'Por jornada' }).click()
+  await expect(page.getByRole('radio', { name: 'Por jornada' })).toBeChecked()
+
+  const descripcion = (numero: number) => page.getByLabel(`Descripción del ítem ${numero}`, { exact: true })
+  const precio = (numero: number) => page.getByLabel(`Precio del ítem ${numero}`, { exact: true })
+
+  // La plantilla por jornada trae tres ítems sin precio en dos secciones.
+  await expect(descripcion(1)).toHaveValue(/^Alquiler jornada de Grúa Telescópica/)
+  await expect(page.getByLabel('Nombre de la sección 1', { exact: true })).toHaveValue('Precios Jornada')
+  await expect(page.getByLabel('Nombre de la sección 2', { exact: true })).toHaveValue('Precios Jornada Adicional')
+
+  // Un precio pegado sin formato queda con formato al salir del campo y calcula el total de la línea.
+  await precio(1).fill('1950000')
+  await page.getByLabel('Cantidad del ítem 1', { exact: true }).fill('2')
+  await expect(precio(1)).toHaveValue('1.950.000,00')
+  await expect(page.getByText('3.900.000,00')).toBeVisible()
+
+  // Enter agrega una fila debajo (en la misma sección) y la enfoca; Tab recorre la fila.
+  await descripcion(1).press('Enter')
+  await expect(descripcion(2)).toBeFocused()
+  await expect(descripcion(2)).toHaveValue('')
+  await page.keyboard.type('Hora adicional de grúa')
+  await page.keyboard.press('Tab')
+  await expect(page.getByLabel('Cantidad del ítem 2', { exact: true })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(precio(2)).toBeFocused()
+  await page.keyboard.type('$ 195.000')
+  await page.keyboard.press('Tab')
+  await expect(precio(2)).toHaveValue('195.000,00')
+  await expect(page.getByLabel('Nombre de la sección 2', { exact: true })).toHaveValue('Precios Jornada Adicional')
+
+  // El menú del agarre: subir y eliminar (el foco queda en la fila vecina).
+  await page.getByRole('button', { name: 'Opciones del ítem 2' }).click()
+  await page.getByRole('menuitem', { name: 'Subir' }).click()
+  await expect(descripcion(1)).toHaveValue('Hora adicional de grúa')
+  await page.getByRole('button', { name: 'Opciones del ítem 1' }).click()
+  await page.getByRole('menuitem', { name: 'Eliminar' }).click()
+  await expect(descripcion(1)).toHaveValue(/^Alquiler jornada de Grúa Telescópica/)
+  await expect(descripcion(1)).toBeFocused()
+
+  // Reordenar con el teclado: Espacio toma el ítem, la flecha lo mueve y Espacio lo suelta.
+  const agarre = page.getByRole('button', { name: 'Opciones del ítem 2' })
+  await agarre.focus()
+  await page.keyboard.press('Space')
+  await expect(agarre).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('ArrowUp')
+  await expect(page.getByText('El ítem 2 pasa a la posición 1.')).toBeAttached()
+  await page.keyboard.press('Space')
+  await expect(descripcion(1)).toHaveValue('Movilización y desmovilización de Grúa Telescópica')
+
+  // Total en el PDF: mientras falten precios, lo avisa.
+  await page.getByRole('switch', { name: 'Total en el PDF' }).click()
+  await expect(page.getByText('Falta el precio de 2 ítems')).toBeVisible()
+})
