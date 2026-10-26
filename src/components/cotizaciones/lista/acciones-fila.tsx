@@ -11,23 +11,28 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import type { TransicionLista } from '@/lib/cotizaciones/acciones-estado'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /**
  * Acciones de una fila de la lista. En la tabla: PDF (salvo un presupuesto directo), Duplicar y ⋯; en el celular,
- * todo dentro del ⋯. Las transiciones (aprobar, rechazar…) las suma la Task 12: llevan al editor con su confirmación.
+ * todo dentro del ⋯. Las transiciones del ⋯ llevan al editor con su confirmación abierta (`?accion=`).
  */
 export function AccionesFila({
   id,
   numero,
   tienePdf,
+  transiciones = [],
   variante = 'tabla',
 }: {
   id: string
   numero: number
   tienePdf: boolean
+  /** Las del ⋯ según el estado (transicionesDeLista, Task 12): abren el editor con la confirmación abierta. */
+  transiciones?: TransicionLista[]
   variante?: 'tabla' | 'movil'
 }) {
   const router = useRouter()
@@ -94,6 +99,12 @@ export function AccionesFila({
             Duplicar
           </DropdownMenuItem>
         ) : null}
+        {transiciones.length > 0 ? <DropdownMenuSeparator /> : null}
+        {transiciones.map(({ accion, etiqueta }) => (
+          <DropdownMenuItem key={accion} asChild variant={accion === 'borrar' ? 'destructive' : 'default'}>
+            <Link href={`/cotizaciones/${id}?accion=${accion}`}>{etiqueta}</Link>
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   )

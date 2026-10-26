@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { EstadoCotizacion } from '@/components/cotizaciones/estado-cotizacion'
 import { AccionesFila } from '@/components/cotizaciones/lista/acciones-fila'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { transicionesDeLista } from '@/lib/cotizaciones/acciones-estado'
 import type { FilaCotizacion } from '@/lib/cotizaciones/lista-vista'
 import { cn } from '@/lib/utils'
 
@@ -58,7 +59,12 @@ export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
               {fila.venceEl ? <span className={cn(fila.vencida && 'text-amber-700')}>{fila.venceEl}</span> : '—'}
             </TableCell>
             <TableCell className="py-2 pr-3">
-              <AccionesFila id={fila.id} numero={fila.numero} tienePdf={fila.tienePdf} />
+              <AccionesFila
+                id={fila.id}
+                numero={fila.numero}
+                tienePdf={fila.tienePdf}
+                transiciones={transicionesDeLista(fila)}
+              />
             </TableCell>
           </TableRow>
         ))}

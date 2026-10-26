@@ -1,7 +1,7 @@
 // tests/e2e/cotizaciones.spec.ts
 import { expect, test, type Page } from '@playwright/test'
 import pg from 'pg'
-import { borrarCotizaciones, conBase, crearCotizacionCompleta } from './base-datos'
+import { borrarCotizaciones, conBase, crearCotizacionCompleta, DATOS_COMPLETOS } from './base-datos'
 import { iniciarSesion, sufijoUnico } from './helpers'
 
 /** Hoy en Argentina, como lo calcula v_cotizaciones para "vencida". */
@@ -862,5 +862,160 @@ test.describe('vista previa del editor', () => {
       await expect(cliente).toHaveAttribute('aria-invalid', 'true')
       expect(pestanas).toHaveLength(0)
     })
+  })
+})
+
+/** Hoy en Argentina, 'YYYY-MM-DD' y 'dd/mm/aaaa' (la fecha por defecto de una cotización y de su aprobación). */
+function hoyArgentina() {
+  const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
+  const [anio, mes, dia] = iso.split('-')
+  return { iso, corta: `${dia}/${mes}/${anio}` }
+}
+
+test.describe('acciones de estado del editor', () => {
+  const creadas: string[] = []
+
+  test.afterAll(async () => {
+    await conBase((db) => borrarCotizaciones(db, creadas))
+  })
+
+  test('rechazar y reabrir se confirman en el lugar; Escape cancela', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+
+    const rechazar = page.getByRole('group', { name: `¿Marcar la cotización N° ${numero} como rechazada?` })
+    const masAcciones = page.getByRole('button', { name: 'Más acciones' })
+    await masAcciones.click()
+    await page.getByRole('menuitem', { name: 'Rechazar' }).click()
+    // Desde el menú también: el foco queda en Cancelar y Escape cierra la confirmación (decisión 15).
+    await expect(rechazar.getByRole('button', { name: 'Cancelar' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(rechazar).toBeHidden()
+    await expect(masAcciones).toBeFocused()
+
+    await masAcciones.click()
+    await page.getByRole('menuitem', { name: 'Rechazar' }).click()
+    await rechazar.getByRole('button', { name: 'Rechazar', exact: true }).click()
+    await expect(page.getByText('Rechazada. Para volver a editarla, reabrila.')).toBeVisible()
+    await expect(page.getByLabel('Asunto', { exact: true })).toBeDisabled()
+
+    await page.getByRole('button', { name: 'Reabrir', exact: true }).click()
+    await page
+      .getByRole('group', { name: `¿Reabrir la cotización N° ${numero}?` })
+      .getByRole('button', { name: 'Reabrir', exact: true })
+      .click()
+    await expect(page.getByText('Rechazada. Para volver a editarla, reabrila.')).toBeHidden()
+    await expect(page.getByLabel('Asunto', { exact: true })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Descargar y marcar enviada' })).toBeEnabled()
+  })
+
+  test('aprobar pide la fecha, no acepta una anterior a la cotización y se puede revertir', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    const hoy = hoyArgentina()
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+
+    await page.getByRole('button', { name: 'Aprobar', exact: true }).click()
+    const aprobar = page.getByRole('group', { name: `¿Aprobar la cotización N° ${numero}?` })
+    const fecha = aprobar.getByLabel('Fecha de aprobación')
+    await expect(fecha).toHaveValue(hoy.iso)
+    await fecha.fill('2020-01-01')
+    await expect(aprobar.getByText(/^No puede ser anterior a la fecha de la cotización/)).toBeVisible()
+    await expect(aprobar.getByRole('button', { name: 'Aprobar', exact: true })).toBeDisabled()
+
+    await fecha.fill(hoy.iso)
+    await aprobar.getByRole('button', { name: 'Aprobar', exact: true }).click()
+    await expect(page.getByText(`Aprobada el ${hoy.corta}: es un presupuesto y no se modifica.`)).toBeVisible()
+    await expect(page.getByLabel('Asunto', { exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toHaveCount(0)
+
+    const masAcciones = page.getByRole('button', { name: 'Más acciones' })
+    const revertir = page.getByRole('group', { name: `¿Revertir la aprobación de la cotización N° ${numero}?` })
+    await masAcciones.click()
+    await page.getByRole('menuitem', { name: 'Revertir aprobación' }).click()
+    await expect(revertir.getByRole('button', { name: 'Cancelar' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(revertir).toBeHidden()
+
+    await masAcciones.click()
+    await page.getByRole('menuitem', { name: 'Revertir aprobación' }).click()
+    await expect(revertir.getByText('Vuelve a borrador y deja de ser un presupuesto.', { exact: false })).toBeVisible()
+    await revertir.getByRole('button', { name: 'Revertir', exact: true }).click()
+    await expect(page.getByLabel('Asunto', { exact: true })).toBeEnabled()
+  })
+
+  test('lo que falta completar bloquea enviar y aprobar, y cada nombre lleva al campo', async ({ page }) => {
+    const { id } = await conBase((db) =>
+      crearCotizacionCompleta(db, { datos: { ...DATOS_COMPLETOS, ubicacion: '' }, precioMovilizacion: null }),
+    )
+    creadas.push(id)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+
+    const enviar = page.getByRole('button', { name: 'Descargar y marcar enviada' })
+    const aprobar = page.getByRole('button', { name: 'Aprobar', exact: true })
+    await expect(enviar).toBeDisabled()
+    await expect(aprobar).toBeDisabled()
+    const franja = page.getByText(/^Para enviar falta completar:/)
+    await expect(franja).toHaveText('Para enviar falta completar: Lugar del servicio · 1 ítem sin precio')
+
+    await franja.getByRole('button', { name: 'Lugar del servicio', exact: true }).click()
+    const lugar = page.getByLabel('Lugar del servicio', { exact: true })
+    await expect(lugar).toBeFocused()
+    await lugar.fill('Loma Campana, Añelo')
+
+    await franja.getByRole('button', { name: '1 ítem sin precio', exact: true }).click()
+    const precio = page.getByLabel('Precio del ítem 2', { exact: true })
+    await expect(precio).toBeFocused()
+    await precio.fill('2.800.000')
+
+    await expect(franja).toBeHidden()
+    await expect(enviar).toBeEnabled()
+    await expect(aprobar).toBeEnabled()
+  })
+
+  test('el ⋯ de la lista abre el editor con la confirmación de la transición', async ({ page }) => {
+    const { id, numero } = await conBase(async (db) => {
+      const creada = await crearCotizacionCompleta(db)
+      await db.query(`update public.cotizaciones set estado = 'enviada' where id = $1`, [creada.id])
+      return creada
+    })
+    creadas.push(id)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones?q=${numero}`)
+
+    await page.getByRole('table').getByRole('button', { name: `Más acciones de la ${numero}` }).click()
+    await expect(page.getByRole('menuitem', { name: 'Aprobar…' })).toHaveAttribute(
+      'href',
+      `/cotizaciones/${id}?accion=aprobar`,
+    )
+    await page.getByRole('menuitem', { name: 'Rechazar…' }).click()
+
+    // El ?accion= se saca de la URL al entrar: recargar no vuelve a abrir la confirmación.
+    await expect(page).toHaveURL(new RegExp(`/cotizaciones/${id}$`))
+    const rechazar = page.getByRole('group', { name: `¿Marcar la cotización N° ${numero} como rechazada?` })
+    await expect(rechazar.getByRole('button', { name: 'Cancelar' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(rechazar).toBeHidden()
+  })
+
+  test('eliminar un borrador pide confirmación y vuelve a la lista', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+
+    await page.getByRole('button', { name: 'Más acciones' }).click()
+    await page.getByRole('menuitem', { name: 'Eliminar borrador' }).click()
+    await page
+      .getByRole('group', { name: `¿Eliminar el borrador N° ${numero}?` })
+      .getByRole('button', { name: 'Eliminar', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/cotizaciones$/)
+    const quedan = await conBase((db) => db.query('select 1 from public.cotizaciones where id = $1', [id]))
+    expect(quedan.rowCount).toBe(0)
   })
 })

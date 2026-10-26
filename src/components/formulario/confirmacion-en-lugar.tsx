@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const TONOS = {
+  exito: 'border-green-200 bg-green-50',
   peligro: 'border-destructive/30 bg-destructive/5',
   aviso: 'border-amber-200 bg-amber-50',
   neutro: 'border-border bg-muted/60',
@@ -20,8 +21,10 @@ export function ConfirmacionEnLugar({
   detalle,
   textoConfirmar,
   textoPendiente,
+  textoCancelar = 'Cancelar',
   tono = 'aviso',
   pendiente = false,
+  confirmarDeshabilitado = false,
   alConfirmar,
   alCancelar,
   children,
@@ -32,8 +35,12 @@ export function ConfirmacionEnLugar({
   textoConfirmar: string
   /** Texto del botón mientras corre la acción ("Aprobando…"). */
   textoPendiente?: string
+  /** Por ejemplo "Dejarlo en curso" (Task 12). */
+  textoCancelar?: string
   tono?: keyof typeof TONOS
   pendiente?: boolean
+  /** Solo el botón de confirmar, por ejemplo con una fecha inválida (Task 12). */
+  confirmarDeshabilitado?: boolean
   alConfirmar: () => void
   alCancelar: () => void
   /** Controles entre el texto y los botones (p. ej. la fecha de aprobación de la Task 12). */
@@ -64,12 +71,12 @@ export function ConfirmacionEnLugar({
       {children}
       <div className="ml-auto flex gap-2">
         <Button ref={enfocar} type="button" variant="outline" onClick={alCancelar} disabled={pendiente}>
-          Cancelar
+          {textoCancelar}
         </Button>
         <Button
           type="button"
           onClick={alConfirmar}
-          disabled={pendiente}
+          disabled={pendiente || confirmarDeshabilitado}
           className={
             tono === 'peligro' ? 'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/30' : undefined
           }

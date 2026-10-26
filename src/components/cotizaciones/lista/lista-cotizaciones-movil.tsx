@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { EstadoCotizacion } from '@/components/cotizaciones/estado-cotizacion'
 import { AccionesFila } from '@/components/cotizaciones/lista/acciones-fila'
+import { transicionesDeLista } from '@/lib/cotizaciones/acciones-estado'
 import type { FilaCotizacion } from '@/lib/cotizaciones/lista-vista'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +32,13 @@ export function ListaCotizacionesMovil({ filas }: { filas: FilaCotizacion[] }) {
               {fila.venceEl ? `${fila.vencida ? 'Venció' : 'Vence'} el ${fila.venceEl}` : null}
             </p>
             <div className="relative z-10">
-              <AccionesFila id={fila.id} numero={fila.numero} tienePdf={fila.tienePdf} variante="movil" />
+              <AccionesFila
+                id={fila.id}
+                numero={fila.numero}
+                tienePdf={fila.tienePdf}
+                transiciones={transicionesDeLista(fila)}
+                variante="movil"
+              />
             </div>
           </div>
         </li>

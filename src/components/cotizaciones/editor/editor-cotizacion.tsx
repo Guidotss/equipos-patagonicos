@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { guardarCotizacion } from '@/app/(app)/cotizaciones/actions'
 import { Contenido } from '@/components/app-shell/encabezado'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { esConflicto, type AccionConfirmable } from '@/lib/cotizaciones/acciones-estado'
 import { CONTEXTO_NUEVA, type ContextoEstado } from '@/lib/cotizaciones/contexto-estado'
 import {
   hayCambios,
@@ -20,8 +21,10 @@ import {
 import { erroresSinCampo, esAtajoGuardar, type ContactoEditor } from '@/lib/cotizaciones/editor-pantalla'
 import { erroresPorClave, type ErroresItem } from '@/lib/cotizaciones/grilla'
 import { lineaVistaPrevia } from '@/lib/cotizaciones/vista-previa'
+import { AccionesEncabezado, useAccionesEstado, type EsperaServidor } from './acciones-editor'
 import { BarraInferior } from './barra-inferior'
 import { EncabezadoEditor } from './encabezado-editor'
+import { FranjasEditor } from './franjas-editor'
 import { BotonVistaPreviaCelular, ColumnaVistaPrevia, useVistaPrevia, VistaPreviaLateral } from './panel-vista-previa'
 import { TarjetaAsunto } from './tarjeta-asunto'
 import { TarjetaCliente } from './tarjeta-cliente'
@@ -37,6 +40,7 @@ export function EditorCotizacion({
   contactos: contactosIniciales,
   hoy,
   contexto = CONTEXTO_NUEVA,
+  accionInicial = null,
 }: {
   inicial: EstadoEditor
   catalogos: CatalogosEditor
@@ -46,6 +50,8 @@ export function EditorCotizacion({
   hoy: string
   /** Envíos, vencimiento, aprobación y anterior (leerContextoEstado). Una nueva no tiene. */
   contexto?: ContextoEstado
+  /** ?accion= de la URL: abre esa confirmación al entrar (la página la lee con accionDesdeParametro). */
+  accionInicial?: AccionConfirmable | null
 }) {
   const router = useRouter()
   const [estado, despachar] = useReducer(reducirEditor, inicial)
@@ -70,8 +76,28 @@ export function EditorCotizacion({
   const sinGuardar = cambios || hayBorradorSeccion
   const pendientes = useMemo(() => pendientesEditor(estado, catalogos), [estado, catalogos])
   const editable = estado.origen === 'app' && (estado.estado === 'borrador' || estado.estado === 'enviada')
-  const ocupado = accion !== null
   const sueltos = erroresSinCampo(errores)
+  /** Otro guardó mientras tanto: franja con "Recargar" (Task 12). */
+  const [conflicto, setConflicto] = useState(false)
+
+  // Después de una transición (o de "Recargar") el servidor manda otra versión en `inicial`: el editor la toma.
+  // Se ignoran la versión que había al empezar y la que dejó el guardado previo, que pueden llegar antes que la
+  // nueva. Se ajusta durante el render (como recomienda React para un estado que depende de una prop), no en un efecto.
+  const [espera, setEspera] = useState<{ modo: EsperaServidor; ignorar: (string | null)[] } | null>(null)
+  function esperarServidor(modo: EsperaServidor | null, versionLocal: string | null = null) {
+    setEspera(modo ? { modo, ignorar: [inicial.version, versionLocal] } : null)
+  }
+  if (espera && inicial.version && !espera.ignorar.includes(inicial.version)) {
+    setEspera(null)
+    setGuardado(inicial)
+    despachar({
+      tipo: 'reemplazar',
+      // Recargar descarta lo local. Después de una transición, lo que se haya tipeado mientras corría queda encima
+      // del estado y la versión nuevos.
+      estado:
+        espera.modo === 'descartar' || !cambios ? inicial : { ...estado, estado: inicial.estado, version: inicial.version },
+    })
+  }
 
   // Vista previa (Task 11): un solo estado para la columna fija (≥ 72rem) y el panel lateral (md a 72rem).
   const vista = useVistaPrevia(estado)
@@ -127,9 +153,15 @@ export function EditorCotizacion({
     try {
       const resultado = await guardarCotizacion(enviado)
       if (!resultado.ok) {
+        // Otro guardó antes: no es un error de los datos, se ofrece "Recargar" (Task 12) sin tocar lo escrito.
+        if (esConflicto(resultado.mensaje)) {
+          setConflicto(true)
+          return null
+        }
         mostrarErrores(resultado.mensaje, resultado.errores ?? {}, enviado)
         return null
       }
+      setConflicto(false)
       const { id, version, numero } = resultado.datos
       const guardadoAhora: AccionEditor = { tipo: 'guardado', id, version, numero }
       // Lo que se mandó pasa a ser lo guardado; lo tipeado mientras tanto sigue contando como cambio.
@@ -162,14 +194,31 @@ export function EditorCotizacion({
     return guardada?.id ?? null
   }
 
+  // Acciones de estado (Task 12): con una en curso se deshabilitan todos los botones, Guardar incluido.
+  const acciones = useAccionesEstado({
+    estado,
+    contexto,
+    pendientes,
+    hayCambiosSinGuardar: cambios,
+    guardar,
+    accion,
+    setAccion,
+    conflicto,
+    setConflicto,
+    esperarServidor,
+    accionInicial,
+  })
+  const ocupado = acciones.ocupado
+
   // Con errores, el foco va al primer campo marcado (como FormularioAccion).
   useEffect(() => {
     if (Object.keys(errores).length === 0) return
     raiz.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [errores])
 
-  // Ctrl/⌘+S guarda (y nunca abre el "Guardar como…" del navegador). Con una acción en curso no hace nada,
-  // igual que el botón deshabilitado (decisión 12).
+  // Ctrl/⌘+S guarda (y nunca abre el "Guardar como…" del navegador). Con una acción en curso (guardar, una de estado
+  // o la recarga) no hace nada, igual que el botón deshabilitado (decisión 12): guardar cambiaría la versión que esa
+  // acción ya mandó.
   const alTeclear = useEffectEvent((evento: KeyboardEvent) => {
     if (esAtajoGuardar(evento)) {
       evento.preventDefault()
@@ -204,8 +253,16 @@ export function EditorCotizacion({
           guardando={accion === 'guardar'}
           ocupado={ocupado}
           alGuardar={() => void guardar()}
+          acciones={<AccionesEncabezado estado={estado} contexto={contexto} pendientes={pendientes} acciones={acciones} />}
         />
-        {/* Task 12: FranjasEditor (estado, pendientes y confirmaciones) va acá, antes del aviso de errores. */}
+        <FranjasEditor
+          estado={estado}
+          contexto={contexto}
+          pendientes={pendientes}
+          acciones={acciones}
+          hayCambiosSinGuardar={cambios}
+          hoy={hoy}
+        />
         {aviso ? (
           <Alert variant="destructive">
             <AlertDescription>

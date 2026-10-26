@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { BarraMigas } from '@/components/app-shell/encabezado'
 import { CotizacionSoloLectura } from '@/components/cotizaciones/cotizacion-solo-lectura'
 import { EditorCotizacion } from '@/components/cotizaciones/editor/editor-cotizacion'
+import { accionDesdeParametro } from '@/lib/cotizaciones/acciones-estado'
 import { leerContextoEstado } from '@/lib/cotizaciones/contexto-estado'
 import { SELECT_EDITOR, estadoDesdeFila } from '@/lib/cotizaciones/editor'
 import { leerCatalogosEditor, leerContactos } from '@/lib/cotizaciones/lecturas-editor'
@@ -16,7 +17,13 @@ export const metadata: Metadata = { title: 'Cotización' }
 /** FilaEditor (Task 3) más el id del cliente, para leer sus contactos. */
 const COLUMNAS = `${SELECT_EDITOR}, cliente_id` as const
 
-export default async function CotizacionPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CotizacionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { id } = await params
   if (!esUuid(id)) notFound()
 
@@ -71,6 +78,7 @@ export default async function CotizacionPage({ params }: { params: Promise<{ id:
         contactos={contactos}
         hoy={hoyArgentina()}
         contexto={contexto}
+        accionInicial={accionDesdeParametro((await searchParams).accion)}
       />
     </>
   )
