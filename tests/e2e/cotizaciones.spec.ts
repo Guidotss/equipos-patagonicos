@@ -808,4 +808,59 @@ test.describe('vista previa del editor', () => {
     await expect(panel.getByText(/^PDF aprobado el \d{2}\/\d{2}\/\d{4}$/)).toBeVisible()
     await expect(panel.getByRole('button', { name: 'Actualizar vista previa' })).toHaveCount(0)
   })
+
+  test('con la sesión cerrada avisa que venció en vez de dibujar el login en la hoja', async ({ page }) => {
+    const { id } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    await iniciarSesion(page)
+    const primera = respuestaVistaPrevia(page)
+    await page.goto(`/cotizaciones/${id}`)
+    await primera
+
+    // Sin cookies, el proxy redirige el POST al login (307) antes de que llegue a la ruta.
+    await page.context().clearCookies()
+    const panel = page.getByRole('region', { name: 'Vista previa' })
+    await panel.getByRole('button', { name: 'Actualizar vista previa' }).click()
+    await expect(panel.getByRole('alert')).toContainText('Tu sesión venció: volvé a ingresar para ver la vista previa.')
+    await expect(panel.getByTitle('Vista previa del PDF', { exact: true })).toHaveCount(0)
+  })
+
+  test.describe('sin la columna fija', () => {
+    test.use({ viewport: { width: 1024, height: 768 } })
+
+    test('una aprobada no carga el PDF en la columna oculta: aparece al abrir el panel lateral', async ({ page }) => {
+      const { id } = await conBase((db) => crearCotizacionCompleta(db, { estado: 'aprobada' }))
+      creadas.push(id)
+      await iniciarSesion(page)
+      await page.goto(`/cotizaciones/${id}`)
+
+      const visor = page.getByTitle('Vista previa del PDF', { exact: true })
+      await expect(visor).toHaveCount(0)
+      await page.getByRole('button', { name: 'Vista previa' }).click()
+      const lateral = page.getByRole('dialog', { name: 'Vista previa del PDF' })
+      await expect(lateral.getByTitle('Vista previa del PDF', { exact: true })).toHaveAttribute(
+        'src',
+        `/cotizaciones/${id}/pdf#toolbar=0&navpanes=0&view=FitH`,
+      )
+      // El del panel lateral es el único: la columna oculta sigue sin visor.
+      await expect(visor).toHaveCount(1)
+    })
+  })
+
+  test.describe('en el celular', () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+
+    test('sin cliente, "Vista previa" marca el cliente y no abre una pestaña en blanco', async ({ page }) => {
+      await iniciarSesion(page)
+      await page.goto('/cotizaciones/nueva')
+      await expect(page.getByRole('heading', { name: 'Nueva cotización' })).toBeVisible()
+      const pestanas: Page[] = []
+      page.context().on('page', (pestana) => pestanas.push(pestana))
+
+      const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
+      await page.getByRole('button', { name: 'Vista previa' }).click()
+      await expect(cliente).toHaveAttribute('aria-invalid', 'true')
+      expect(pestanas).toHaveLength(0)
+    })
+  })
 })

@@ -2,7 +2,7 @@
 // src/components/cotizaciones/editor/panel-vista-previa.tsx
 
 import { CircleAlert, ExternalLink, FileText, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -19,6 +19,16 @@ import { cn } from '@/lib/utils'
 
 /** Desde este ancho la vista previa es una columna fija (docs/diseno/referencias/03-editor-cotizacion.png). */
 const ESCRITORIO = '(min-width: 72rem)'
+
+function esEscritorio(): boolean {
+  return window.matchMedia(ESCRITORIO).matches
+}
+
+function suscribirEscritorio(avisar: () => void) {
+  const consulta = window.matchMedia(ESCRITORIO)
+  consulta.addEventListener('change', avisar)
+  return () => consulta.removeEventListener('change', avisar)
+}
 
 class ErrorRespuesta extends Error {
   status: number
@@ -67,8 +77,16 @@ export function useVistaPrevia(estado: EstadoEditor): VistaPrevia {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ estado: enviado }),
           signal: controlador.signal,
+          // Sin sesión, el proxy no deja llegar el pedido a la ruta y redirige al login. Seguir ese redirect daría
+          // un 200 con el HTML del login, que se dibujaría en la hoja: se corta acá y se toma como sesión vencida.
+          redirect: 'manual',
         })
+        if (respuesta.type === 'opaqueredirect') throw new ErrorRespuesta(401)
         if (!respuesta.ok) throw new ErrorRespuesta(respuesta.status)
+        // Solo un PDF va al visor (y al "Abrir el PDF en otra pestaña"): cualquier otra respuesta es un error.
+        if (!respuesta.headers.get('content-type')?.startsWith('application/pdf')) {
+          throw new ErrorRespuesta(respuesta.status)
+        }
         const pdf = await respuesta.blob()
         if (controlador.signal.aborted) return
         // El blob anterior se libera recién cuando hay uno nuevo: el <iframe> lo sigue mostrando hasta entonces.
@@ -92,7 +110,7 @@ export function useVistaPrevia(estado: EstadoEditor): VistaPrevia {
   // El ancho se mira acá y no con un estado (useSyncExternalStore): en el servidor no se conoce, y el render extra
   // al hidratar volvería a dibujar todo el editor y los inputs controlados pisarían lo tipeado antes de hidratar.
   useEffect(() => {
-    if (intentada.current || modo.tipo !== 'generada' || !window.matchMedia(ESCRITORIO).matches) return
+    if (intentada.current || modo.tipo !== 'generada' || !esEscritorio()) return
     intentada.current = true
     actualizar()
   })
@@ -143,11 +161,14 @@ function HojaVacia({ cargando }: { cargando: boolean }) {
 export function PanelVistaPrevia({
   vista,
   linea,
+  mostrarVisor = true,
   className,
 }: {
   vista: VistaPrevia
   /** lineaVistaPrevia(…): qué se está viendo. */
   linea: string
+  /** false: la hoja queda sin el <iframe> del PDF (el panel no está a la vista; ver ColumnaVistaPrevia). */
+  mostrarVisor?: boolean
   className?: string
 }) {
   const idTitulo = useId()
@@ -219,12 +240,14 @@ export function PanelVistaPrevia({
               {vista.url ? (
                 // Un <iframe> nuevo por PDF (key): cambiarle el src agregaría entradas al historial y "Atrás"
                 // navegaría dentro del panel en vez de salir del editor.
-                <iframe
-                  key={vista.url}
-                  src={urlVisor(vista.url)}
-                  title="Vista previa del PDF"
-                  className="absolute inset-0 size-full border-0"
-                />
+                mostrarVisor ? (
+                  <iframe
+                    key={vista.url}
+                    src={urlVisor(vista.url)}
+                    title="Vista previa del PDF"
+                    className="absolute inset-0 size-full border-0"
+                  />
+                ) : null
               ) : modo.tipo === 'sin-cliente' ? (
                 <p className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
                   Elegí el cliente para ver cómo sale el PDF.
@@ -237,6 +260,23 @@ export function PanelVistaPrevia({
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * La columna fija del editor (≥ 72rem). Más angosta queda oculta (display: none), pero un <iframe> oculto igual se
+ * carga: bajaría el PDF para nada (y, en un navegador sin visor embebido, como el de algunos celulares, lo
+ * descargaría sin que nadie lo pida). Por eso el visor se dibuja recién cuando la columna se ve. El ancho se mira
+ * acá y no en EditorCotizacion: el render extra al hidratar (en el servidor no se conoce) queda en esta columna.
+ */
+export function ColumnaVistaPrevia({ vista, linea }: { vista: VistaPrevia; linea: string }) {
+  const seVe = useSyncExternalStore(suscribirEscritorio, esEscritorio, () => false)
+  return (
+    // 56 px de migas + 16: la columna acompaña el scroll debajo de la barra (relev-visual §3.8).
+    // pt-5.5: el título "Vista previa" queda a la altura del de la tarjeta Cliente (borde + p-6).
+    <aside className="sticky top-18 hidden self-start min-[72rem]:block">
+      <PanelVistaPrevia vista={vista} linea={linea} mostrarVisor={seVe} className="pt-5.5" />
+    </aside>
   )
 }
 
@@ -276,9 +316,12 @@ export function VistaPreviaLateral({ vista, linea }: { vista: VistaPrevia; linea
  */
 export function BotonVistaPreviaCelular({
   modo,
+  ocupado,
   guardarParaVer,
 }: {
   modo: ModoVistaPrevia
+  /** Hay una acción en curso. Este botón guarda, así que espera como los demás (decisión 12). */
+  ocupado: boolean
   guardarParaVer: () => Promise<string | null>
 }) {
   const [abriendo, setAbriendo] = useState(false)
@@ -297,6 +340,11 @@ export function BotonVistaPreviaCelular({
   }
 
   async function abrir() {
+    // Sin cliente no se puede guardar: el intento marca el campo y explica por qué, sin abrir una pestaña en blanco.
+    if (modo.tipo === 'sin-cliente') {
+      await guardarParaVer()
+      return
+    }
     // La pestaña se abre en el clic: abierta después de guardar, el navegador la bloquearía por no venir del usuario.
     const pestana = window.open('', '_blank')
     setAbriendo(true)
@@ -312,13 +360,24 @@ export function BotonVistaPreviaCelular({
       } else {
         toast.info('El navegador bloqueó la pestaña nueva: permitila para ver la vista previa.')
       }
+    } catch (error) {
+      // Un redirect que relanza guardar (la sesión venció) o algo inesperado: la pestaña en blanco no queda abierta.
+      pestana?.close()
+      throw error
     } finally {
       setAbriendo(false)
     }
   }
 
   return (
-    <Button type="button" variant="outline" size="lg" className={clases} onClick={abrir} disabled={abriendo}>
+    <Button
+      type="button"
+      variant="outline"
+      size="lg"
+      className={clases}
+      onClick={abrir}
+      disabled={abriendo || ocupado}
+    >
       <FileText aria-hidden />
       {abriendo ? 'Guardando…' : 'Vista previa'}
     </Button>

@@ -22,7 +22,7 @@ import { erroresPorClave, type ErroresItem } from '@/lib/cotizaciones/grilla'
 import { lineaVistaPrevia } from '@/lib/cotizaciones/vista-previa'
 import { BarraInferior } from './barra-inferior'
 import { EncabezadoEditor } from './encabezado-editor'
-import { BotonVistaPreviaCelular, PanelVistaPrevia, useVistaPrevia, VistaPreviaLateral } from './panel-vista-previa'
+import { BotonVistaPreviaCelular, ColumnaVistaPrevia, useVistaPrevia, VistaPreviaLateral } from './panel-vista-previa'
 import { TarjetaAsunto } from './tarjeta-asunto'
 import { TarjetaCliente } from './tarjeta-cliente'
 import { TarjetaDatos } from './tarjeta-datos'
@@ -257,11 +257,7 @@ export function EditorCotizacion({
               despachar={despachar}
             />
           </fieldset>
-          {/* 56 px de migas + 16: la columna acompaña el scroll debajo de la barra (relev-visual §3.8).
-              pt-5.5: el título "Vista previa" queda a la altura del de la tarjeta Cliente (borde + p-6). */}
-          <aside className="sticky top-18 hidden self-start min-[72rem]:block">
-            <PanelVistaPrevia vista={vista} linea={lineaVista} className="pt-5.5" />
-          </aside>
+          <ColumnaVistaPrevia vista={vista} linea={lineaVista} />
         </div>
       </Contenido>
       <BarraInferior
@@ -274,7 +270,7 @@ export function EditorCotizacion({
         vistaPrevia={
           <>
             <VistaPreviaLateral vista={vista} linea={lineaVista} />
-            <BotonVistaPreviaCelular modo={vista.modo} guardarParaVer={guardarParaVer} />
+            <BotonVistaPreviaCelular modo={vista.modo} ocupado={ocupado} guardarParaVer={guardarParaVer} />
           </>
         }
       />
