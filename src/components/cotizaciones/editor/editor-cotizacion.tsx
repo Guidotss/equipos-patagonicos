@@ -80,27 +80,17 @@ export function EditorCotizacion({
   /** Otro guardó mientras tanto: franja con "Recargar" (Task 12). */
   const [conflicto, setConflicto] = useState(false)
 
-  // Después de una transición (o de "Recargar") el servidor manda otra versión en `inicial`: el editor la toma.
-  // Después de una transición se ignoran la versión que había al empezar y la que dejó el guardado previo, que pueden
-  // llegar antes que la nueva. "Recargar" solo ignora la local (la que chocó): cualquier acción que revalida (el alta
-  // rápida de un cliente, por ejemplo) vuelve a dibujar la página, así que `inicial` puede traer ya la versión del
-  // otro usuario; si la ignorara, el refresco traería esa misma y nunca se tomaría. Se ajusta durante el render (como
-  // recomienda React para un estado que depende de una prop), no en un efecto.
-  const [espera, setEspera] = useState<{ modo: EsperaServidor; ignorar: (string | null)[] } | null>(null)
+  /**
+   * El editor espera la versión del servidor que va a llegar en `inicial` (ver la adopción, después del hook de
+   * acciones). Después de una transición se ignoran la versión que había al empezar y la que dejó el guardado previo,
+   * que pueden llegar antes que la nueva. "Recargar" no compara versiones: toma lo que haya cuando termina el refresco.
+   */
+  const [espera, setEspera] = useState<
+    { modo: 'adoptar'; ignorar: (string | null)[] } | { modo: 'descartar' } | null
+  >(null)
   function esperarServidor(modo: EsperaServidor | null, versionLocal: string | null = null) {
     if (!modo) return setEspera(null)
-    setEspera({ modo, ignorar: modo === 'descartar' ? [versionLocal] : [inicial.version, versionLocal] })
-  }
-  if (espera && inicial.version && !espera.ignorar.includes(inicial.version)) {
-    setEspera(null)
-    setGuardado(inicial)
-    despachar({
-      tipo: 'reemplazar',
-      // Recargar descarta lo local. Después de una transición, lo que se haya tipeado mientras corría queda encima
-      // del estado y la versión nuevos.
-      estado:
-        espera.modo === 'descartar' || !cambios ? inicial : { ...estado, estado: inicial.estado, version: inicial.version },
-    })
+    setEspera(modo === 'descartar' ? { modo } : { modo, ignorar: [inicial.version, versionLocal] })
   }
 
   // Vista previa (Task 11): un solo estado para la columna fija (≥ 72rem) y el panel lateral (md a 72rem).
@@ -213,6 +203,34 @@ export function EditorCotizacion({
     accionInicial,
   })
   const ocupado = acciones.ocupado
+
+  // Después de una transición (o de "Recargar") el servidor manda otra versión en `inicial`: el editor la toma. Se
+  // ajusta durante el render (como recomienda React para un estado que depende de una prop), no en un efecto.
+  // "Recargar" toma `inicial` cuando termina el refresco, sin comparar versiones: cualquier acción que revalida (el
+  // alta rápida de un cliente, por ejemplo) vuelve a dibujar la página, así que `inicial` puede traer antes la versión
+  // del otro usuario o una intermedia (si después volvió a guardar); tomarla en cuanto difiere de la local ignoraría
+  // la del refresco, que es la actual.
+  const llegoLaVersion =
+    espera?.modo === 'descartar'
+      ? !acciones.recargando
+      : espera !== null && inicial.version !== null && !espera.ignorar.includes(inicial.version)
+  if (espera && llegoLaVersion) {
+    // Recargar descarta lo local. Después de una transición, lo que se haya tipeado mientras corría queda encima del
+    // estado y la versión nuevos.
+    const tomado =
+      espera.modo === 'descartar' || !cambios ? inicial : { ...estado, estado: inicial.estado, version: inicial.version }
+    setEspera(null)
+    setGuardado(inicial)
+    despachar({ tipo: 'reemplazar', estado: tomado })
+    // Los contactos son los del cliente de `inicial` (la página los vuelve a leer en cada render), salvo que lo
+    // tipeado durante la transición haya cambiado de cliente: ahí siguen los de ese.
+    if (tomado.cliente?.id === inicial.cliente?.id) setContactos(contactosIniciales)
+    if (espera.modo === 'descartar') {
+      setErrores({})
+      setErroresItems({})
+      setAviso(null)
+    }
+  }
 
   // Con errores, el foco va al primer campo marcado (como FormularioAccion).
   useEffect(() => {

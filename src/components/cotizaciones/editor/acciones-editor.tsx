@@ -2,7 +2,7 @@
 // src/components/cotizaciones/editor/acciones-editor.tsx
 
 import { Ellipsis, FileText } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import * as acciones from '@/app/(app)/cotizaciones/actions'
@@ -48,6 +48,8 @@ export type AccionesEstado = {
   enCurso: string | null
   /** Corre una acción (o una recarga): todos los botones de acción quedan deshabilitados (decisión 12). */
   ocupado: boolean
+  /** Corre el refresco de "Recargar": al terminar, el editor toma lo que haya en `inicial`. */
+  recargando: boolean
   confirmacion: Confirmacion | null
   conflicto: boolean
   iniciar: (accion: AccionEstado) => void
@@ -69,6 +71,9 @@ export function descargarArchivo(url: string) {
   enlace.click()
   enlace.remove()
 }
+
+/** Una Server Action que no llegó a responder (sin red, por ejemplo): no hay mensaje del servidor que mostrar. */
+const MENSAJE_SIN_RESPUESTA = 'No se pudo completar la operación. Probá de nuevo.'
 
 const EXITO = {
   rechazar: 'Cotización rechazada',
@@ -121,8 +126,9 @@ export function useAccionesEstado({
   conflicto: boolean
   setConflicto: (conflicto: boolean) => void
   /**
-   * Avisa al editor que tome la próxima versión del servidor distinta de `versionLocal` (null: ya no la espera). En
-   * 'descartar' la toma aunque ya esté en `inicial`; 'adoptar' también ignora la que había en `inicial` al llamarlo.
+   * Avisa al editor que tome la versión del servidor (null: ya no la espera). 'adoptar' toma la próxima distinta de
+   * `versionLocal` y de la que había en `inicial` al llamarlo; 'descartar' toma lo que haya en `inicial` cuando
+   * termina el refresco de "Recargar" (`recargando`), sin comparar versiones.
    */
   esperarServidor: (modo: EsperaServidor | null, versionLocal?: string | null) => void
   /** ?accion= de la URL: abre esa confirmación al entrar. */
@@ -165,6 +171,17 @@ export function useAccionesEstado({
   }
 
   /**
+   * La Server Action tiró en vez de devolver un resultado (sin red, por ejemplo). Se avisa y el editor deja de esperar
+   * la versión del servidor: si la siguiera esperando, tomaría la próxima que traiga una revalidación (la de otro
+   * usuario) debajo de lo local, y el guardado siguiente la pisaría sin conflicto.
+   */
+  function sinRespuesta(error: unknown) {
+    unstable_rethrow(error)
+    esperarServidor(null)
+    toast.error(MENSAJE_SIN_RESPUESTA)
+  }
+
+  /**
    * Guarda lo que haya sin guardar y devuelve el id y la versión con los que seguir (null si no se pudo). Una nueva
    * se guarda sin navegar (decisión 12): la transición usa el id que vuelve y después se va a su página. `guardar()`
    * deja la acción del editor en null al terminar: se vuelve a marcar la que sigue corriendo.
@@ -187,11 +204,13 @@ export function useAccionesEstado({
 
   async function enviar(accion: 'enviar' | 'reenviar') {
     const eraNueva = estado.id === null
+    let guardadaId: string | null = null
     setAccion(accion)
     try {
       const guardada = await versionParaSeguir(accion)
       if (!guardada) return
       const { id, version } = guardada
+      guardadaId = id
       esperarServidor('adoptar', version)
       const resultado = await acciones.enviarCotizacion(id, version)
       if (!resultado.ok) {
@@ -202,6 +221,9 @@ export function useAccionesEstado({
       descargarArchivo(`/cotizaciones/${id}/pdf?envio=${resultado.datos.envioId}&descargar=1`)
       toast.success('Se descargó el PDF y la cotización quedó enviada')
       despuesDeLaTransicion(id, eraNueva, true)
+    } catch (error) {
+      sinRespuesta(error)
+      if (guardadaId) despuesDeLaTransicion(guardadaId, eraNueva, false)
     } finally {
       setAccion(null)
     }
@@ -218,6 +240,8 @@ export function useAccionesEstado({
       if (!resultado.ok) return fallo(resultado.mensaje)
       toast.success('Se creó una copia en borrador')
       router.push(`/cotizaciones/${resultado.datos.id}`)
+    } catch (error) {
+      sinRespuesta(error)
     } finally {
       setAccion(null)
     }
@@ -232,11 +256,13 @@ export function useAccionesEstado({
 
   async function aprobar(fecha: string) {
     const eraNueva = estado.id === null
+    let guardadaId: string | null = null
     setAccion('aprobar')
     try {
       const guardada = await versionParaSeguir('aprobar')
       if (!guardada) return
       const { id, version } = guardada
+      guardadaId = id
       esperarServidor('adoptar', version)
       const resultado = await acciones.aprobarCotizacion(id, version, fecha)
       if (!resultado.ok) {
@@ -250,6 +276,9 @@ export function useAccionesEstado({
       const { anterior } = resultado.datos
       setConfirmacion(anterior ? { tipo: 'finalizar', anterior } : null)
       despuesDeLaTransicion(id, eraNueva, true)
+    } catch (error) {
+      sinRespuesta(error)
+      if (guardadaId) despuesDeLaTransicion(guardadaId, eraNueva, false)
     } finally {
       setAccion(null)
     }
@@ -285,6 +314,8 @@ export function useAccionesEstado({
       setConfirmacion(null)
       toast.success(EXITO[tipo])
       router.refresh()
+    } catch (error) {
+      sinRespuesta(error)
     } finally {
       setAccion(null)
     }
@@ -299,14 +330,17 @@ export function useAccionesEstado({
       if (!resultado.ok) return fallo(resultado.mensaje)
       setConfirmacion(null)
       toast.success(`Se finalizó el presupuesto N° ${anterior.numero}`)
+    } catch (error) {
+      sinRespuesta(error)
     } finally {
       setAccion(null)
     }
   }
 
   function confirmarRecarga() {
-    // Toma cualquier versión distinta de la local, también la que ya haya traído una revalidación anterior.
-    esperarServidor('descartar', estado.version)
+    // El editor toma lo que haya en `inicial` cuando termina el refresco (`recargando`), sin comparar versiones: una
+    // revalidación anterior pudo haber traído ya la del otro usuario, o una intermedia.
+    esperarServidor('descartar')
     setConfirmacion(null)
     setConflicto(false)
     iniciarRecarga(() => router.refresh())
@@ -320,6 +354,7 @@ export function useAccionesEstado({
   return {
     enCurso: accion,
     ocupado: accion !== null || recargando,
+    recargando,
     confirmacion,
     conflicto,
     iniciar,

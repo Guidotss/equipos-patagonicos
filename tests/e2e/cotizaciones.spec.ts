@@ -1,5 +1,5 @@
 // tests/e2e/cotizaciones.spec.ts
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type Request } from '@playwright/test'
 import pg from 'pg'
 import { borrarCotizaciones, conBase, crearCotizacionCompleta, DATOS_COMPLETOS } from './base-datos'
 import { iniciarSesion, sufijoUnico } from './helpers'
@@ -865,6 +865,39 @@ test.describe('vista previa del editor', () => {
   })
 })
 
+/** Un cliente con un contacto, para ver qué ofrece Atte. (VERTICE, el de crearCotizacionCompleta, no tiene). */
+async function crearClienteConContacto(
+  db: pg.Client,
+  razonSocial: string,
+): Promise<{ clienteId: string; contactoId: string }> {
+  const { rows } = await db.query<{ cliente_id: string; id: string }>(
+    `with cliente as (insert into public.clientes (razon_social) values ($1) returning id)
+     insert into public.contactos (cliente_id, nombre) select id, 'Marisa Quintriqueo' from cliente
+     returning cliente_id, id`,
+    [razonSocial],
+  )
+  return { clienteId: rows[0].cliente_id, contactoId: rows[0].id }
+}
+
+/**
+ * Alta rápida de un cliente desde el combo del editor. La acción revalida y su respuesta trae la página dibujada de
+ * nuevo: se espera a que termine para que `inicial` ya tenga la versión que haya en la base en ese momento. En dev el
+ * cliente a veces corta esa respuesta al pasar a la acción siguiente (la de los contactos): también cuenta.
+ */
+async function altaRapidaQueRevalida(page: Page, razonSocial: string) {
+  await page.getByRole('combobox', { name: 'Cliente', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Buscar cliente' }).fill(razonSocial)
+  const revalido = async (pedido: Request) =>
+    ((await pedido.response())?.headers()['x-action-revalidated'] ?? '0') !== '0'
+  const revalidacion = Promise.race([
+    page.waitForEvent('requestfinished', { predicate: revalido }).catch(() => null),
+    page.waitForEvent('requestfailed', { predicate: revalido }).catch(() => null),
+  ])
+  await page.getByRole('option', { name: `Crear cliente «${razonSocial}»` }).click()
+  await revalidacion
+  await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+}
+
 /** Hoy en Argentina, 'YYYY-MM-DD' y 'dd/mm/aaaa' (la fecha por defecto de una cotización y de su aprobación). */
 function hoyArgentina() {
   const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
@@ -1024,32 +1057,46 @@ test.describe('acciones de estado del editor', () => {
   })
 
   test('Recargar toma la versión del otro aunque una revalidación ya la haya traído', async ({ page }) => {
-    const { id } = await conBase((db) => crearCotizacionCompleta(db))
+    const conContacto = `Hormigones Collón Curá ${sufijoUnico()} S.A.`
+    clientesCreados.push(conContacto)
+    const { id, contactoId } = await conBase(async (db) => {
+      const { id } = await crearCotizacionCompleta(db)
+      const { clienteId, contactoId } = await crearClienteConContacto(db, conContacto)
+      await db.query('update public.cotizaciones set cliente_id = $2, contacto_id = $3 where id = $1', [
+        id,
+        clienteId,
+        contactoId,
+      ])
+      return { id, contactoId }
+    })
     creadas.push(id)
     const razonSocial = `Grúas Lanín ${sufijoUnico()} S.R.L.`
     clientesCreados.push(razonSocial)
     await iniciarSesion(page)
     await page.goto(`/cotizaciones/${id}`)
     const asunto = page.getByLabel('Asunto', { exact: true })
+    const atte = page.getByLabel('Atte.')
     await expect(asunto).toBeEnabled()
+    await expect(atte).toHaveValue(contactoId)
 
     // Otro usuario guarda mientras tanto.
     await conBase((db) =>
       db.query(`update public.cotizaciones set asunto = 'Asunto de otro usuario' where id = $1`, [id]),
     )
     // El alta rápida revalida /clientes y la página se vuelve a dibujar: `inicial` ya trae la versión del otro.
+    await altaRapidaQueRevalida(page, razonSocial)
     const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
-    await cliente.click()
-    await page.getByRole('combobox', { name: 'Buscar cliente' }).fill(razonSocial)
-    await page.getByRole('option', { name: `Crear cliente «${razonSocial}»` }).click()
-    await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+    const sinContactos = page.getByText('Este cliente no tiene contactos.')
 
     const guardar = page.getByRole('button', { name: 'Guardar', exact: true })
     await guardar.click()
     await page.getByRole('button', { name: 'Recargar' }).click()
     await page.getByRole('button', { name: 'Descartar y recargar' }).click()
     await expect(asunto).toHaveValue('Asunto de otro usuario')
-    await expect(cliente).toContainText('VERTICE SERVICIOS INTEGRALES S.R.L.')
+    await expect(cliente).toContainText(conContacto)
+    // Atte. vuelve a ofrecer los contactos del cliente guardado, con el suyo elegido.
+    await expect(atte).toHaveValue(contactoId)
+    await expect(sinContactos).toBeHidden()
 
     // Con la versión del otro, guardar ya no choca.
     await asunto.fill('Asunto corregido')
@@ -1061,5 +1108,109 @@ test.describe('acciones de estado del editor', () => {
       db.query<{ asunto: string }>('select asunto from public.cotizaciones where id = $1', [id]),
     )
     expect(rows[0].asunto).toBe('Asunto corregido')
+  })
+
+  test('Recargar toma la versión actual aunque una revalidación haya traído una intermedia', async ({ page }) => {
+    const { id } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    const razonSocial = `Grúas Huechulafquen ${sufijoUnico()} S.R.L.`
+    clientesCreados.push(razonSocial)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const asunto = page.getByLabel('Asunto', { exact: true })
+    await expect(asunto).toBeEnabled()
+
+    const otroGuarda = (texto: string) =>
+      conBase((db) => db.query('update public.cotizaciones set asunto = $2 where id = $1', [id, texto]))
+    // El otro guarda, el alta rápida revalida (`inicial` trae esa versión) y el otro vuelve a guardar.
+    await otroGuarda('Primer guardado ajeno')
+    await altaRapidaQueRevalida(page, razonSocial)
+    await otroGuarda('Segundo guardado ajeno')
+
+    const guardar = page.getByRole('button', { name: 'Guardar', exact: true })
+    await guardar.click()
+    await page.getByRole('button', { name: 'Recargar' }).click()
+    await page.getByRole('button', { name: 'Descartar y recargar' }).click()
+    // Toma la que trae el refresco, no la intermedia: un solo Recargar alcanza.
+    await expect(asunto).toHaveValue('Segundo guardado ajeno')
+    await expect(page.getByRole('combobox', { name: 'Cliente', exact: true })).toContainText(
+      'VERTICE SERVICIOS INTEGRALES S.R.L.',
+    )
+
+    await asunto.fill('Asunto corregido')
+    await guardar.click()
+    await expect(page.getByText('Cotización guardada')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Recargar' })).toHaveCount(0)
+  })
+
+  test('una transición que no llega al servidor avisa y no deja pisar lo que guardó otro', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    const razonSocial = `Grúas Aluminé ${sufijoUnico()} S.R.L.`
+    clientesCreados.push(razonSocial)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const asunto = page.getByLabel('Asunto', { exact: true })
+    await expect(asunto).toBeEnabled()
+
+    // Sin red para las Server Actions de la página: rechazar no llega al servidor.
+    const sinRed = (url: URL) => url.pathname === `/cotizaciones/${id}`
+    await page.route(sinRed, (ruta) =>
+      ruta.request().method() === 'POST' ? ruta.abort('failed') : ruta.continue(),
+    )
+    await page.getByRole('button', { name: 'Más acciones' }).click()
+    await page.getByRole('menuitem', { name: 'Rechazar' }).click()
+    const rechazar = page.getByRole('group', { name: `¿Marcar la cotización N° ${numero} como rechazada?` })
+    await rechazar.getByRole('button', { name: 'Rechazar', exact: true }).click()
+    await expect(page.getByText('No se pudo completar la operación. Probá de nuevo.')).toBeVisible()
+    await expect(rechazar.getByRole('button', { name: 'Rechazar', exact: true })).toBeEnabled()
+    await page.unroute(sinRed)
+    await rechazar.getByRole('button', { name: 'Cancelar' }).click()
+
+    // Otro usuario guarda; acá se edita y el alta rápida revalida: `inicial` trae la versión del otro.
+    await conBase((db) =>
+      db.query(`update public.cotizaciones set asunto = 'Asunto de otro usuario' where id = $1`, [id]),
+    )
+    await asunto.fill('Asunto local')
+    await altaRapidaQueRevalida(page, razonSocial)
+
+    // El editor no quedó esperando la versión del servidor: no la toma debajo de lo local y guardar choca.
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Recargar' })).toBeVisible()
+    const { rows } = await conBase((db) =>
+      db.query<{ asunto: string }>('select asunto from public.cotizaciones where id = $1', [id]),
+    )
+    expect(rows[0].asunto).toBe('Asunto de otro usuario')
+  })
+
+  test('después de una transición el editor toma el cliente del servidor con sus contactos', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    const conContacto = `Hormigones Pulmarí ${sufijoUnico()} S.A.`
+    clientesCreados.push(conContacto)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+
+    // Otro usuario le cambia el cliente (con un contacto) mientras se rechaza.
+    const { contactoId } = await conBase(async (db) => {
+      const creado = await crearClienteConContacto(db, conContacto)
+      await db.query('update public.cotizaciones set cliente_id = $2, contacto_id = $3 where id = $1', [
+        id,
+        creado.clienteId,
+        creado.contactoId,
+      ])
+      return creado
+    })
+    await page.getByRole('button', { name: 'Más acciones' }).click()
+    await page.getByRole('menuitem', { name: 'Rechazar' }).click()
+    await page
+      .getByRole('group', { name: `¿Marcar la cotización N° ${numero} como rechazada?` })
+      .getByRole('button', { name: 'Rechazar', exact: true })
+      .click()
+    await expect(page.getByText('Rechazada. Para volver a editarla, reabrila.')).toBeVisible()
+    await expect(page.getByRole('combobox', { name: 'Cliente', exact: true })).toContainText(conContacto)
+    await expect(page.getByLabel('Atte.')).toHaveValue(contactoId)
+    await expect(page.getByText('Este cliente no tiene contactos.')).toBeHidden()
   })
 })
