@@ -35,7 +35,8 @@ export function SelectorCliente({
 }) {
   const [abierto, setAbierto] = useState(false)
   const [texto, setTexto] = useState('')
-  const [resultados, setResultados] = useState<ClienteBuscado[]>([])
+  // Cada lista guarda el texto que la pidió: ver `resultados` más abajo.
+  const [busqueda, setBusqueda] = useState<{ texto: string; resultados: ClienteBuscado[] } | null>(null)
   const [buscando, setBuscando] = useState(false)
   const [creando, setCreando] = useState(false)
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -49,9 +50,9 @@ export function SelectorCliente({
       try {
         const resultado = await buscarClientes(valor)
         if (pedido !== ultimoPedido.current) return
-        if (resultado.ok) setResultados(resultado.datos)
+        if (resultado.ok) setBusqueda({ texto: valor, resultados: resultado.datos })
         else {
-          setResultados([])
+          setBusqueda({ texto: valor, resultados: [] })
           toast.error(resultado.mensaje)
         }
       } catch (error) {
@@ -102,10 +103,15 @@ export function SelectorCliente({
     }
   }
 
-  // Mientras corre la búsqueda, `resultados` es la de antes: ofrecer crear ahí deja crear un duplicado de un cliente
-  // que ya existe (solo el CUIT es único en la tabla).
+  // Solo se muestra la lista del texto que está escrito. Mientras llega la del texto nuevo, la anterior no se puede
+  // elegir: cmdk deja marcado su primer ítem y un Enter rápido lo elegiría (una cotización a nombre de otro cliente).
+  const alDia = busqueda !== null && busqueda.texto === texto
+  const resultados = alDia ? busqueda.resultados : []
+
+  // Ofrecer crear sin la lista de este texto deja crear un duplicado de un cliente que ya existe (solo el CUIT es
+  // único en la tabla).
   const ofrecerCrear =
-    !buscando && razonSocial !== '' && !resultados.some((otro) => mismoNombre(otro.razon_social, razonSocial))
+    !buscando && alDia && razonSocial !== '' && !resultados.some((otro) => mismoNombre(otro.razon_social, razonSocial))
 
   return (
     <Popover open={abierto} onOpenChange={alAbrir}>

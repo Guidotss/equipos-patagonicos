@@ -393,6 +393,28 @@ test.describe('editor de cotizaciones', () => {
     await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled()
   })
 
+  test('Enter elige el cliente del texto escrito, no uno de la búsqueda anterior', async ({ page }) => {
+    await iniciarSesion(page)
+    await page.goto('/cotizaciones/nueva')
+    const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
+    await cliente.click()
+    // La lista inicial ya llegó y su primer cliente no es el que se va a buscar.
+    const opciones = page.getByRole('listbox').getByRole('option')
+    const primera = opciones.first()
+    await expect(primera).toBeVisible()
+    await expect(primera).not.toContainText('VERTICE')
+
+    // Tipear y apretar Enter enseguida (antes de que llegue la búsqueda) no elige el primero de la lista anterior.
+    await page.getByRole('combobox', { name: 'Buscar cliente' }).fill('vertice')
+    await page.keyboard.press('Enter')
+    await expect(cliente).toContainText('Buscá o creá un cliente')
+
+    // Cuando llega la lista del texto escrito, Enter elige su primer cliente.
+    await expect(primera).toContainText('VERTICE SERVICIOS INTEGRALES S.R.L.')
+    await page.keyboard.press('Enter')
+    await expect(cliente).toContainText('VERTICE SERVICIOS INTEGRALES S.R.L.')
+  })
+
   test('una cotización cargada se muestra en solo lectura', async ({ page }) => {
     const { id, numero } = await conBaseEditor(async (db) => {
       const { rows } = await db.query<{ id: string; numero: string }>(
