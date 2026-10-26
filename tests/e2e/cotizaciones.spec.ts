@@ -558,3 +558,69 @@ test('los errores de guardado siguen en su ítem cuando se agregan o mueven otro
   await expect(descripcion(3)).toHaveAttribute('aria-invalid', 'true')
   await expect(descripcion(4)).toHaveAttribute('aria-invalid', 'false')
 })
+
+test.describe('grilla de ítems de una cotización guardada', () => {
+  const creadas: string[] = []
+
+  test.afterAll(async () => {
+    await conBaseEditor((db) => db.query('delete from public.cotizaciones where id = any($1::uuid[])', [creadas]))
+  })
+
+  /** Un borrador por jornada con dos ítems con precio, cada uno en su sección (los precios llegan como "195.000"). */
+  async function cotizacionGuardada(): Promise<string> {
+    const id = await conBaseEditor(async (db) => {
+      const { rows } = await db.query<{ id: string }>(
+        `insert into public.cotizaciones (cliente_id, formato, notas)
+         select id, 'jornada', $1 from public.clientes where razon_social = 'VERTICE SERVICIOS INTEGRALES S.R.L.'
+         returning id`,
+        [MARCA_EDITOR],
+      )
+      await db.query(
+        `insert into public.cotizacion_items (cotizacion_id, orden, seccion, descripcion, cantidad, precio_unitario, unidad)
+         values ($1, 1, 'Precios Jornada', 'Alquiler jornada de grúa', 1, 1950000, 'JORNADA'),
+                ($1, 2, 'Precios Jornada Adicional', 'Hora adicional de grúa', 1, 195000, 'HORA')`,
+        [rows[0].id],
+      )
+      return rows[0].id
+    })
+    creadas.push(id)
+    return id
+  }
+
+  test('entrar con Tab a un precio cargado y tipear lo reemplaza', async ({ page }) => {
+    const id = await cotizacionGuardada()
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const precio = page.getByLabel('Precio del ítem 2', { exact: true })
+    await expect(precio).toHaveValue('195.000,00')
+
+    await page.getByLabel('Cantidad del ítem 2', { exact: true }).focus()
+    await page.keyboard.press('Tab')
+    await expect(precio).toBeFocused()
+    await page.keyboard.type('210000')
+    await page.keyboard.press('Tab')
+    await expect(precio).toHaveValue('210.000,00')
+
+    await page.keyboard.press('ControlOrMeta+s')
+    await expect(page.getByText('Cotización guardada')).toBeVisible()
+    await page.reload()
+    await expect(precio).toHaveValue('210.000,00')
+  })
+
+  test('Ctrl/⌘+S con el foco en el nombre de una sección guarda el nombre nuevo', async ({ page }) => {
+    const id = await cotizacionGuardada()
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const seccion = page.getByLabel('Nombre de la sección 1', { exact: true })
+    await expect(seccion).toHaveValue('Precios Jornada')
+
+    await seccion.fill('Precios Jornada (equipo de 70 TN)')
+    await page.keyboard.press('ControlOrMeta+s')
+    await expect(page.getByText('Cotización guardada')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await expect(seccion).toHaveValue('Precios Jornada (equipo de 70 TN)')
+
+    await page.reload()
+    await expect(seccion).toHaveValue('Precios Jornada (equipo de 70 TN)')
+  })
+})

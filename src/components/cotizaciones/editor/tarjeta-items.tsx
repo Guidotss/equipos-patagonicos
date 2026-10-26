@@ -17,6 +17,7 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities'
 import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Tarjeta } from '@/components/formulario/tarjeta'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,7 +33,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import type { ItemEditor } from '@/lib/cotizaciones/editor'
-import type { Despachar } from '@/lib/cotizaciones/editor-pantalla'
+import { esAtajoGuardar, type Despachar } from '@/lib/cotizaciones/editor-pantalla'
 import {
   destinoFoco,
   erroresPorClave,
@@ -101,7 +102,14 @@ function EncabezadoSeccion({ fila, error, despachar }: { fila: FilaSeccion; erro
         onChange={(evento) => setBorrador(evento.target.value)}
         onBlur={aplicar}
         onKeyDown={(evento) => {
-          if (evento.key !== 'Enter' || evento.nativeEvent.isComposing) return
+          if (evento.nativeEvent.isComposing) return
+          if (esAtajoGuardar(evento)) {
+            // El editor guarda en el keydown de window, que llega después de este: flushSync aplica el nombre y
+            // renderiza antes, así se guarda el nombre que se ve (y no queda como "sin cambios" sin estar guardado).
+            flushSync(aplicar)
+            return
+          }
+          if (evento.key !== 'Enter') return
           evento.preventDefault()
           aplicar()
         }}
@@ -148,7 +156,9 @@ function FilaItem({
   })
   const [menuAbierto, setMenuAbierto] = useState(false)
   // Mientras se escribe el precio se ve tal cual; fuera del campo, con formato ("1.950.000,00"), venga de donde venga
-  // (lo cargado de la base llega como "1.950.000", textoPrecio de la Task 3).
+  // (lo cargado de la base llega como "1.950.000", textoPrecio de la Task 3). Se pasa a "escribiendo" con la primera
+  // tecla y no al enfocar: si el texto cambiara al entrar con Tab, React reasignaría el valor, se perdería la
+  // selección del navegador y lo tipeado se agregaría al precio en vez de reemplazarlo.
   const [editandoPrecio, setEditandoPrecio] = useState(false)
   // Un clic sin mover abre el menú; el clic que llega al soltar después de arrastrar, no.
   const huboArrastre = useRef(false)
@@ -288,8 +298,10 @@ function FilaItem({
           inputMode="decimal"
           value={editandoPrecio ? item.precio : normalizarPrecio(item.precio)}
           placeholder="Sin precio"
-          onChange={(evento) => cambiar({ precio: evento.target.value })}
-          onFocus={() => setEditandoPrecio(true)}
+          onChange={(evento) => {
+            setEditandoPrecio(true)
+            cambiar({ precio: evento.target.value })
+          }}
           onBlur={() => {
             setEditandoPrecio(false)
             const normal = normalizarPrecio(item.precio)

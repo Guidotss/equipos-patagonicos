@@ -16,7 +16,7 @@ import {
   type CatalogosEditor,
   type EstadoEditor,
 } from '@/lib/cotizaciones/editor'
-import { erroresSinCampo, type ContactoEditor } from '@/lib/cotizaciones/editor-pantalla'
+import { erroresSinCampo, esAtajoGuardar, type ContactoEditor } from '@/lib/cotizaciones/editor-pantalla'
 import { BarraInferior } from './barra-inferior'
 import { EncabezadoEditor } from './encabezado-editor'
 import { TarjetaAsunto } from './tarjeta-asunto'
@@ -121,7 +121,7 @@ export function EditorCotizacion({
   // Ctrl/⌘+S guarda (y nunca abre el "Guardar como…" del navegador). Con una acción en curso no hace nada,
   // igual que el botón deshabilitado (decisión 12).
   const alTeclear = useEffectEvent((evento: KeyboardEvent) => {
-    if ((evento.ctrlKey || evento.metaKey) && !evento.altKey && evento.key.toLowerCase() === 's') {
+    if (esAtajoGuardar(evento)) {
       evento.preventDefault()
       if (!ocupado) void guardar()
     }

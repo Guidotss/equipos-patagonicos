@@ -5,6 +5,7 @@ import {
   camposDatosVisibles,
   contactoInicial,
   erroresSinCampo,
+  esAtajoGuardar,
   esFechaIso,
   firmantePorDefecto,
   idCampoVariable,
@@ -183,6 +184,28 @@ describe('erroresSinCampo', () => {
         notas: 'Algo raro',
       }),
     ).toEqual(['Algo raro'])
+  })
+})
+
+describe('esAtajoGuardar', () => {
+  const tecla = (key: string, modificadores: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
+    key,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    ...modificadores,
+  })
+
+  it('Ctrl+S o ⌘+S, también con Mayús', () => {
+    expect(esAtajoGuardar(tecla('s', { ctrlKey: true }))).toBe(true)
+    expect(esAtajoGuardar(tecla('s', { metaKey: true }))).toBe(true)
+    expect(esAtajoGuardar(tecla('S', { ctrlKey: true }))).toBe(true)
+  })
+
+  it('no con Alt, sin Ctrl/⌘ ni con otra tecla', () => {
+    expect(esAtajoGuardar(tecla('s', { ctrlKey: true, altKey: true }))).toBe(false)
+    expect(esAtajoGuardar(tecla('s'))).toBe(false)
+    expect(esAtajoGuardar(tecla('Enter', { ctrlKey: true }))).toBe(false)
   })
 })
 

@@ -175,6 +175,14 @@ export function erroresSinCampo(errores: Record<string, string>): string[] {
     .map(([, mensaje]) => mensaje)
 }
 
+/**
+ * Ctrl/⌘+S, el atajo de Guardar. Lo escucha el editor en `window`; un campo con borrador propio (el nombre de una
+ * sección) lo aplica antes, en su keydown, para que se guarde lo que se ve.
+ */
+export function esAtajoGuardar(tecla: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean }): boolean {
+  return (tecla.ctrlKey || tecla.metaKey) && !tecla.altKey && tecla.key.toLowerCase() === 's'
+}
+
 const comparable = (texto: string) =>
   texto
     .normalize('NFD')
