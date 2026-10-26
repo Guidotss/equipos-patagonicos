@@ -2,7 +2,7 @@
 // Reglas de la pantalla del editor que no son parte del estado (eso vive en editor.ts): valores por defecto, qué
 // campos de "Datos de esta cotización" se muestran, ids de los campos y el resumen del encabezado.
 // Puro: lo usan las páginas, los componentes y Vitest.
-import { formatFechaCorta, mesEnLetras, sumarDias } from '@/lib/format/fechas'
+import { esMes, formatFechaCorta, mesEnLetras, sumarDias } from '@/lib/format/fechas'
 import { FORMATOS, type Formato } from '@/lib/plantillas/contenido'
 import { variablesUsadas, type NombreVariable } from '@/lib/plantillas/variables'
 import { CAMPOS_DATOS, type CampoDatos } from './datos'
@@ -98,9 +98,12 @@ export function camposDatosVisibles(estado: Textos & Pick<EstadoEditor, 'datos'>
   )
 }
 
-/** Lo que imprime el PDF como próxima actualización (decisión 7): el mes elegido, el texto que tenía o el de la empresa. */
+/**
+ * Lo que imprime el PDF como próxima actualización (decisión 7): el mes elegido, el texto que tenía o el de la empresa.
+ * Se llama en cada render: un año a medio escribir (Chrome pasa por '0002-11', '0020-11'…) no es un mes y no tira.
+ */
 export function textoProximaActualizacion(mes: string, textoGuardado: string, textoEmpresa: string): string {
-  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) return mesEnLetras(mes)
+  if (esMes(mes)) return mesEnLetras(mes)
   return textoGuardado.trim() || textoEmpresa.trim()
 }
 

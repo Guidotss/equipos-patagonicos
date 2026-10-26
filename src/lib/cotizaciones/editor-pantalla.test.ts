@@ -108,6 +108,10 @@ describe('textoProximaActualizacion', () => {
     expect(textoProximaActualizacion('', 'marzo de 2027', 'junio de 2027')).toBe('marzo de 2027')
     expect(textoProximaActualizacion('', '', 'junio de 2027')).toBe('junio de 2027')
   })
+
+  it('un año a medio escribir (Chrome pasa por 0002-11) no rompe: queda el texto que había', () => {
+    expect(textoProximaActualizacion('0002-11', 'marzo de 2027', 'junio de 2027')).toBe('marzo de 2027')
+  })
 })
 
 describe('esFechaIso', () => {

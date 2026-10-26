@@ -18,6 +18,11 @@ export type ClienteBuscado = { id: string; razon_social: string; cuit: string | 
 
 const DEMORA_BUSQUEDA = 250
 
+const MENSAJE_FALLO_BUSQUEDA = 'No se pudo buscar. Probá de nuevo en un momento.'
+
+/** La lista que devolvió la búsqueda de un texto, o la marca de que falló (entonces no hay lista). */
+type Busqueda = { texto: string; resultados: ClienteBuscado[]; fallo: boolean }
+
 /**
  * Combobox de cliente (decisión 18): busca con buscar_clientes (sin acentos, por CUIT y por contacto), muestra los
  * inactivos al final con su marca y ofrece "+ Crear cliente «texto»" con solo la razón social.
@@ -36,7 +41,7 @@ export function SelectorCliente({
   const [abierto, setAbierto] = useState(false)
   const [texto, setTexto] = useState('')
   // Cada lista guarda el texto que la pidió: ver `resultados` más abajo.
-  const [busqueda, setBusqueda] = useState<{ texto: string; resultados: ClienteBuscado[] } | null>(null)
+  const [busqueda, setBusqueda] = useState<Busqueda | null>(null)
   const [buscando, setBuscando] = useState(false)
   const [creando, setCreando] = useState(false)
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -50,14 +55,18 @@ export function SelectorCliente({
       try {
         const resultado = await buscarClientes(valor)
         if (pedido !== ultimoPedido.current) return
-        if (resultado.ok) setBusqueda({ texto: valor, resultados: resultado.datos })
+        if (resultado.ok) setBusqueda({ texto: valor, resultados: resultado.datos, fallo: false })
         else {
-          setBusqueda({ texto: valor, resultados: [] })
+          // Una falla no es "no hay coincidencias": sin la marca se ofrecería crear un cliente que quizás ya existe.
+          setBusqueda({ texto: valor, resultados: [], fallo: true })
           toast.error(resultado.mensaje)
         }
       } catch (error) {
         unstable_rethrow(error)
-        if (pedido === ultimoPedido.current) toast.error('No se pudo buscar. Probá de nuevo en un momento.')
+        if (pedido === ultimoPedido.current) {
+          setBusqueda({ texto: valor, resultados: [], fallo: true })
+          toast.error(MENSAJE_FALLO_BUSQUEDA)
+        }
       } finally {
         if (pedido === ultimoPedido.current) setBuscando(false)
       }
@@ -107,11 +116,16 @@ export function SelectorCliente({
   // elegir: cmdk deja marcado su primer ítem y un Enter rápido lo elegiría (una cotización a nombre de otro cliente).
   const alDia = busqueda !== null && busqueda.texto === texto
   const resultados = alDia ? busqueda.resultados : []
+  const fallo = alDia && busqueda.fallo
 
-  // Ofrecer crear sin la lista de este texto deja crear un duplicado de un cliente que ya existe (solo el CUIT es
-  // único en la tabla).
+  // Ofrecer crear sin la lista de este texto (todavía no llegó o la búsqueda falló) deja crear un duplicado de un
+  // cliente que ya existe (solo el CUIT es único en la tabla).
   const ofrecerCrear =
-    !buscando && alDia && razonSocial !== '' && !resultados.some((otro) => mismoNombre(otro.razon_social, razonSocial))
+    !buscando &&
+    alDia &&
+    !fallo &&
+    razonSocial !== '' &&
+    !resultados.some((otro) => mismoNombre(otro.razon_social, razonSocial))
 
   return (
     <Popover open={abierto} onOpenChange={alAbrir}>
@@ -139,7 +153,9 @@ export function SelectorCliente({
             {buscando && resultados.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Buscando…</p>
             ) : null}
-            {buscando ? null : (
+            {buscando ? null : fallo ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">{MENSAJE_FALLO_BUSQUEDA}</p>
+            ) : (
               <CommandEmpty>{texto ? 'No hay clientes que coincidan.' : 'Todavía no hay clientes cargados.'}</CommandEmpty>
             )}
             {resultados.length > 0 ? (

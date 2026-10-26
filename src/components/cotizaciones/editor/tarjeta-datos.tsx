@@ -218,6 +218,44 @@ function AyudaEquipo({ catalogos, estado, faltan }: { catalogos: CatalogosEditor
   )
 }
 
+/** Una fecha que se puede despachar: existe y su año tiene cuatro cifras (0202 es "2027" a medio escribir). */
+function fechaCompleta(valor: string): boolean {
+  return esFechaIso(valor) && !valor.startsWith('0')
+}
+
+type PropsInputFecha = Omit<React.ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'onBlur'> & {
+  valor: string
+  despachar: Despachar
+}
+
+/**
+ * La fecha, con un borrador propio. Al tipear el año, Chrome pasa por 0002, 0020 y 0202: como esas fechas a medio
+ * escribir no se despachan (el documento no se puede armar sin fecha), un input atado al estado volvería a la fecha
+ * anterior en cada tecla y el año no se podría tipear. El input muestra el borrador; se despacha solo una fecha
+ * completa y, al salir del campo, lo que no llegó a serlo vuelve a la fecha del estado.
+ */
+function InputFecha({ valor, despachar, ...props }: PropsInputFecha) {
+  const [borrador, setBorrador] = useState({ de: valor, texto: valor })
+  // Si la fecha cambia desde afuera (recargar, la fecha recién despachada), el borrador la sigue.
+  if (borrador.de !== valor) setBorrador({ de: valor, texto: valor })
+
+  return (
+    <Input
+      {...props}
+      type="date"
+      value={borrador.texto}
+      onChange={(evento) => {
+        const texto = evento.target.value
+        setBorrador({ de: valor, texto })
+        if (fechaCompleta(texto) && texto !== valor) despachar({ tipo: 'campo', campo: 'fecha', valor: texto })
+      }}
+      onBlur={() => {
+        if (borrador.texto !== valor) setBorrador({ de: valor, texto: valor })
+      }}
+    />
+  )
+}
+
 export function TarjetaDatos({
   estado,
   catalogos,
@@ -318,17 +356,11 @@ export function TarjetaDatos({
         {/* Fecha, validez y firma en una fila de tres (entran a 548 px y ahorran alto). */}
         <div className="grid gap-x-4 gap-y-3 @md:col-span-2 @md:grid-cols-3">
           <Campo id={ID_CAMPO.fecha} etiqueta="Fecha" error={errores.fecha}>
-            <Input
+            <InputFecha
               id={ID_CAMPO.fecha}
-              type="date"
               required
-              value={estado.fecha}
-              // Una fecha vacía o a medio escribir no se despacha: el documento no se puede armar sin fecha.
-              onChange={(evento) => {
-                if (esFechaIso(evento.target.value)) {
-                  despachar({ tipo: 'campo', campo: 'fecha', valor: evento.target.value })
-                }
-              }}
+              valor={estado.fecha}
+              despachar={despachar}
               aria-invalid={Boolean(errores.fecha)}
             />
           </Campo>

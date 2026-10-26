@@ -415,6 +415,39 @@ test.describe('editor de cotizaciones', () => {
     await expect(cliente).toContainText('VERTICE SERVICIOS INTEGRALES S.R.L.')
   })
 
+  test('la fecha y la próxima actualización se tipean con el teclado, año incluido', async ({ page }) => {
+    await iniciarSesion(page)
+    await page.goto('/cotizaciones/nueva')
+
+    // Al tipear el año, Chrome pasa por 0002, 0020 y 0202: el campo no vuelve a la fecha anterior en cada tecla.
+    const fecha = page.getByLabel('Fecha', { exact: true })
+    await fecha.fill('2026-10-25')
+    await fecha.focus()
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.type('2027')
+    await expect(fecha).toHaveValue('2027-10-25')
+    await expect(page.getByText(/· 25\/10\/2027$/)).toBeVisible()
+
+    // Lo que no llegó a ser una fecha vuelve, al salir, a la que quedó.
+    await fecha.focus()
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.type('2')
+    await expect(fecha).toHaveValue('0002-10-25')
+    await page.getByLabel('Validez (días)', { exact: true }).click()
+    await expect(fecha).toHaveValue('2027-10-25')
+
+    // En la próxima actualización, los años a medio escribir (0002-11…) no rompen la pantalla.
+    const proxima = page.getByLabel('Próxima actualización', { exact: true })
+    await proxima.focus()
+    await page.keyboard.type('11')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.type('2027')
+    await expect(proxima).toHaveValue('2027-11')
+    await expect(page.getByText('En el PDF: «noviembre de 2027»')).toBeVisible()
+  })
+
   test('una cotización cargada se muestra en solo lectura', async ({ page }) => {
     const { id, numero } = await conBaseEditor(async (db) => {
       const { rows } = await db.query<{ id: string; numero: string }>(
