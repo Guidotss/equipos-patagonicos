@@ -14,6 +14,9 @@ const ENCABEZADO = 'h-11 text-muted-foreground'
  * Cliente tiene un mínimo de 11rem (una razón social como "VERTICE SERVICIOS INTEGRALES S.R.L." entra entera en dos
  * líneas a 1200 px) y Trabajo se queda con el resto (w-full); las dos cortan en la segunda línea, con el texto completo
  * en el title.
+ * Formato es la primera que se va: aparece desde 60rem, cuando a Trabajo le quedan ~200 px y "{equipo} · {ubicación}"
+ * entra en dos líneas. A 1200 px (tarjeta de ~56rem) no se muestra: con ella, Trabajo quedaba en ~140 px y el equipo
+ * llenaba las dos líneas sin dejar ver la ubicación.
  */
 export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
   return (
@@ -24,7 +27,7 @@ export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
           <TableHead className={cn(ENCABEZADO, 'hidden @min-[50rem]:table-cell')}>Fecha</TableHead>
           <TableHead className={ENCABEZADO}>Cliente</TableHead>
           <TableHead className={ENCABEZADO}>Trabajo</TableHead>
-          <TableHead className={cn(ENCABEZADO, 'hidden @min-[54rem]:table-cell')}>Formato</TableHead>
+          <TableHead className={cn(ENCABEZADO, 'hidden @min-[60rem]:table-cell')}>Formato</TableHead>
           <TableHead className={ENCABEZADO}>Estado</TableHead>
           <TableHead className={cn(ENCABEZADO, 'hidden @min-[44rem]:table-cell')}>Vence el</TableHead>
           <TableHead className={cn(ENCABEZADO, 'pr-3')}>
@@ -56,7 +59,7 @@ export function TablaCotizaciones({ filas }: { filas: FilaCotizacion[] }) {
               </span>
             </TableCell>
             {/* "Por jornada" en dos líneas, como en la referencia: deja el ancho para Cliente y Trabajo. */}
-            <TableCell className="hidden py-2 leading-snug whitespace-normal text-foreground/80 @min-[54rem]:table-cell">
+            <TableCell className="hidden py-2 leading-snug whitespace-normal text-foreground/80 @min-[60rem]:table-cell">
               {fila.formato}
             </TableCell>
             <TableCell className="py-2">

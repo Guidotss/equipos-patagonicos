@@ -63,8 +63,9 @@ export function TarjetaCliente({
 
   const errorCliente = errores.cliente
   const errorContacto = errores.contactoId
-  // Sin contactos lo dice la misma opción: no suma una línea debajo (densidad de la referencia 03).
-  const textoSinAtte = contactos.length === 0 ? 'Sin Atte. (no tiene contactos)' : 'Sin Atte.'
+  // Sin contactos lo dice la misma opción: no suma una línea debajo (densidad de la referencia 03). Corto, para que
+  // entre entero a 1200 px junto al prefijo "Atte." (que ya está a la vista: no se repite).
+  const textoSinAtte = contactos.length === 0 ? 'Sin contactos' : 'Sin Atte.'
   // A 1200 px el select no muestra entero un texto largo: el title lo deja leer sin abrirlo.
   const textoAtte =
     estado.cliente && !cargando

@@ -300,7 +300,7 @@ async function conBaseEditor<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
 
 /** La opción del Atte. de un cliente sin contactos (ya leídos): reemplaza la línea "Este cliente no tiene contactos". */
 function opcionSinContactos(page: Page) {
-  return page.getByLabel('Atte.', { exact: true }).getByRole('option', { name: 'Sin Atte. (no tiene contactos)' })
+  return page.getByLabel('Atte.', { exact: true }).getByRole('option', { name: 'Sin contactos', exact: true })
 }
 
 /** El id de la cotización abierta en el editor (`/cotizaciones/{id}`). */
