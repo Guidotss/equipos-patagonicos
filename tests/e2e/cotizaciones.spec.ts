@@ -1,18 +1,8 @@
 // tests/e2e/cotizaciones.spec.ts
 import { expect, test, type Page } from '@playwright/test'
 import pg from 'pg'
+import { borrarCotizaciones, conBase, crearCotizacionCompleta } from './base-datos'
 import { iniciarSesion, sufijoUnico } from './helpers'
-
-async function conBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
-  process.loadEnvFile('.env.local')
-  const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
-  await db.connect()
-  try {
-    return await fn(db)
-  } finally {
-    await db.end()
-  }
-}
 
 /** Hoy en Argentina, como lo calcula v_cotizaciones para "vencida". */
 const HOY = "(now() at time zone 'America/Argentina/Buenos_Aires')::date"
@@ -759,5 +749,63 @@ test.describe('textos del editor', () => {
     await expect(alcanceGuardado.getByText('Oculto en esta cotización')).toBeVisible()
     await alcanceGuardado.getByRole('button', { name: 'Mostrar' }).click()
     await expect(alcanceGuardado.getByLabel(/^Contenido del bloque \d+$/)).toHaveValue(/Horario de \{\{horario\}\}/)
+  })
+})
+
+/** La respuesta del POST de la vista previa (el panel la pide sola al abrir y con "Actualizar vista previa"). */
+function respuestaVistaPrevia(page: Page) {
+  return page.waitForResponse(
+    (respuesta) => respuesta.url().endsWith('/cotizaciones/vista-previa') && respuesta.request().method() === 'POST',
+  )
+}
+
+test.describe('vista previa del editor', () => {
+  const creadas: string[] = []
+
+  test.afterAll(async () => {
+    await conBase((db) => borrarCotizaciones(db, creadas))
+  })
+
+  test('se genera con lo que hay en pantalla y avisa cuando quedó vieja', async ({ page }) => {
+    const { id } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    await iniciarSesion(page)
+
+    const primera = respuestaVistaPrevia(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const respuesta = await primera
+    expect(respuesta.status()).toBe(200)
+    expect(respuesta.headers()['content-type']).toBe('application/pdf')
+
+    const panel = page.getByRole('region', { name: 'Vista previa' })
+    await expect(panel.getByTitle('Vista previa del PDF', { exact: true })).toHaveAttribute(
+      'src',
+      /^blob:.+#toolbar=0&navpanes=0&view=FitH$/,
+    )
+    await expect(panel.getByText('Con lo que hay en pantalla, aunque no esté guardado')).toBeVisible()
+
+    await page.getByLabel('Asunto', { exact: true }).fill('Alquiler de grúa para Loma Campana')
+    await expect(panel.getByText('Hay cambios sin reflejar')).toBeVisible()
+
+    const segunda = respuestaVistaPrevia(page)
+    await panel.getByRole('button', { name: 'Actualizar vista previa' }).click()
+    const cuerpo = JSON.parse((await segunda).request().postData() ?? '{}') as { estado: { asunto: string } }
+    expect(cuerpo.estado.asunto).toBe('Alquiler de grúa para Loma Campana')
+    await expect(panel.getByText('Hay cambios sin reflejar')).toBeHidden()
+  })
+
+  test('una aprobada muestra el PDF guardado y no se actualiza', async ({ page }) => {
+    const { id } = await conBase((db) => crearCotizacionCompleta(db, { estado: 'aprobada' }))
+    creadas.push(id)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+
+    const panel = page.getByRole('region', { name: 'Vista previa' })
+    await expect(panel.getByTitle('Vista previa del PDF', { exact: true })).toHaveAttribute(
+      'src',
+      `/cotizaciones/${id}/pdf#toolbar=0&navpanes=0&view=FitH`,
+    )
+    await expect(panel.getByText(/^PDF aprobado el \d{2}\/\d{2}\/\d{4}$/)).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'Actualizar vista previa' })).toHaveCount(0)
   })
 })

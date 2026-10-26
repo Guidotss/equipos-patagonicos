@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { guardarCotizacion } from '@/app/(app)/cotizaciones/actions'
 import { Contenido } from '@/components/app-shell/encabezado'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { CONTEXTO_NUEVA, type ContextoEstado } from '@/lib/cotizaciones/contexto-estado'
 import {
   hayCambios,
   payloadGuardar,
@@ -18,8 +19,10 @@ import {
 } from '@/lib/cotizaciones/editor'
 import { erroresSinCampo, esAtajoGuardar, type ContactoEditor } from '@/lib/cotizaciones/editor-pantalla'
 import { erroresPorClave, type ErroresItem } from '@/lib/cotizaciones/grilla'
+import { lineaVistaPrevia } from '@/lib/cotizaciones/vista-previa'
 import { BarraInferior } from './barra-inferior'
 import { EncabezadoEditor } from './encabezado-editor'
+import { BotonVistaPreviaCelular, PanelVistaPrevia, useVistaPrevia, VistaPreviaLateral } from './panel-vista-previa'
 import { TarjetaAsunto } from './tarjeta-asunto'
 import { TarjetaCliente } from './tarjeta-cliente'
 import { TarjetaDatos } from './tarjeta-datos'
@@ -33,6 +36,7 @@ export function EditorCotizacion({
   catalogos,
   contactos: contactosIniciales,
   hoy,
+  contexto = CONTEXTO_NUEVA,
 }: {
   inicial: EstadoEditor
   catalogos: CatalogosEditor
@@ -40,6 +44,8 @@ export function EditorCotizacion({
   contactos: ContactoEditor[]
   /** Hoy en Argentina ('YYYY-MM-DD'), calculado en el servidor. */
   hoy: string
+  /** Envíos, vencimiento, aprobación y anterior (leerContextoEstado). Una nueva no tiene. */
+  contexto?: ContextoEstado
 }) {
   const router = useRouter()
   const [estado, despachar] = useReducer(reducirEditor, inicial)
@@ -66,6 +72,17 @@ export function EditorCotizacion({
   const editable = estado.origen === 'app' && (estado.estado === 'borrador' || estado.estado === 'enviada')
   const ocupado = accion !== null
   const sueltos = erroresSinCampo(errores)
+
+  // Vista previa (Task 11): un solo estado para la columna fija (≥ 72rem) y el panel lateral (md a 72rem).
+  const vista = useVistaPrevia(estado)
+  const lineaVista = lineaVistaPrevia({
+    modo: vista.modo,
+    estado: estado.estado,
+    origen: estado.origen,
+    desactualizada: vista.desactualizada,
+    ultimoEnvio: contexto.envios[0]?.enviada_at ?? null,
+    fechaAprobacion: contexto.fechaAprobacion,
+  })
 
   const alCambiarBorradorSeccion = useCallback((clave: string, hay: boolean) => {
     setBorradoresSeccion((actuales) => {
@@ -137,6 +154,12 @@ export function EditorCotizacion({
       enCurso.current = false
       setAccion(null)
     }
+  }
+
+  /** Para el celular: guarda si hace falta y devuelve el id de lo guardado (null si no se pudo). */
+  async function guardarParaVer(): Promise<string | null> {
+    const guardada = await guardar()
+    return guardada?.id ?? null
   }
 
   // Con errores, el foco va al primer campo marcado (como FormularioAccion).
@@ -234,11 +257,10 @@ export function EditorCotizacion({
               despachar={despachar}
             />
           </fieldset>
-          <aside aria-label="Vista previa" className="sticky top-18 hidden self-start min-[72rem]:block">
-            {/* Task 11: <PanelVistaPrevia …/> reemplaza este marco vacío (pozo gris con la hoja A4). */}
-            <div className="rounded-xl bg-muted p-3">
-              <div className="aspect-[210/297] w-full rounded-[2px] bg-white shadow-md ring-1 ring-black/5" />
-            </div>
+          {/* 56 px de migas + 16: la columna acompaña el scroll debajo de la barra (relev-visual §3.8).
+              pt-5.5: el título "Vista previa" queda a la altura del de la tarjeta Cliente (borde + p-6). */}
+          <aside className="sticky top-18 hidden self-start min-[72rem]:block">
+            <PanelVistaPrevia vista={vista} linea={lineaVista} className="pt-5.5" />
           </aside>
         </div>
       </Contenido>
@@ -249,6 +271,12 @@ export function EditorCotizacion({
         guardando={accion === 'guardar'}
         ocupado={ocupado}
         alGuardar={() => void guardar()}
+        vistaPrevia={
+          <>
+            <VistaPreviaLateral vista={vista} linea={lineaVista} />
+            <BotonVistaPreviaCelular modo={vista.modo} guardarParaVer={guardarParaVer} />
+          </>
+        }
       />
     </div>
   )

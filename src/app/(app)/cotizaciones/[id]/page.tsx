@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { BarraMigas } from '@/components/app-shell/encabezado'
 import { CotizacionSoloLectura } from '@/components/cotizaciones/cotizacion-solo-lectura'
 import { EditorCotizacion } from '@/components/cotizaciones/editor/editor-cotizacion'
+import { leerContextoEstado } from '@/lib/cotizaciones/contexto-estado'
 import { SELECT_EDITOR, estadoDesdeFila } from '@/lib/cotizaciones/editor'
 import { leerCatalogosEditor, leerContactos } from '@/lib/cotizaciones/lecturas-editor'
 import { hoyArgentina, sumarDias } from '@/lib/format/fechas'
@@ -49,20 +50,28 @@ export default async function CotizacionPage({ params }: { params: Promise<{ id:
     )
   }
 
-  const [catalogos, contactos] = await Promise.all([
+  const [catalogos, contactos, contexto] = await Promise.all([
     leerCatalogosEditor(supabase, {
       plantillaId: fila.plantilla_id,
       equipoId: fila.equipo_id,
       firmanteId: fila.firmante_id,
     }),
     leerContactos(supabase, fila.cliente_id),
+    leerContextoEstado(supabase, id),
   ])
+  if (!contexto) notFound()
   const inicial = estadoDesdeFila(fila)
 
   return (
     <>
       <BarraMigas migas={migas} />
-      <EditorCotizacion inicial={inicial} catalogos={catalogos} contactos={contactos} hoy={hoyArgentina()} />
+      <EditorCotizacion
+        inicial={inicial}
+        catalogos={catalogos}
+        contactos={contactos}
+        hoy={hoyArgentina()}
+        contexto={contexto}
+      />
     </>
   )
 }
