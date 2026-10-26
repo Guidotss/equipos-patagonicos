@@ -1214,3 +1214,170 @@ test.describe('acciones de estado del editor', () => {
     await expect(page.getByText('Este cliente no tiene contactos.')).toBeHidden()
   })
 })
+
+test.describe('flujo completo de una cotización', () => {
+  const sufijo = sufijoUnico()
+  const contacto = `Contacto E2E ${sufijo}`
+  let contactoId: string
+  const creadas: string[] = []
+
+  test.beforeAll(async () => {
+    // VERTICE no tiene contactos en la semilla: uno propio para elegir el Atte.
+    contactoId = await conBase(async (db) => {
+      const { rows } = await db.query<{ id: string }>(
+        `insert into public.contactos (cliente_id, nombre, email)
+         select id, $1, $2 from public.clientes where razon_social = 'VERTICE SERVICIOS INTEGRALES S.R.L.'
+         returning id`,
+        [contacto, `e2e-${sufijo}@vertice.test`],
+      )
+      return rows[0].id
+    })
+  })
+
+  test.afterAll(async () => {
+    await conBase(async (db) => {
+      await borrarCotizaciones(db, creadas)
+      await db.query('delete from public.contactos where id = $1', [contactoId])
+    })
+  })
+
+  test('de nueva a aprobada, y renegociada con el presupuesto anterior finalizado', async ({ page }) => {
+    await iniciarSesion(page)
+    await page.goto('/cotizaciones')
+    await page.getByRole('link', { name: 'Nueva cotización' }).click()
+    await expect(page).toHaveURL(/\/cotizaciones\/nueva$/)
+
+    // Formato (la nueva arranca con la primera plantilla por nombre: la mensual), cliente y Atte.
+    await page.getByRole('radio', { name: 'Por jornada' }).click()
+    await expect(page.getByRole('radio', { name: 'Por jornada' })).toBeChecked()
+    await page.getByRole('combobox', { name: 'Cliente', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Buscar cliente' }).fill('vertice')
+    await page.getByRole('option', { name: /VERTICE SERVICIOS INTEGRALES S\.R\.L\./ }).click()
+    await page.getByLabel('Atte.', { exact: true }).selectOption({ label: contacto })
+
+    // Datos de esta cotización (los que usa la plantilla por jornada; las etiquetas son las de VARIABLES).
+    await page.getByLabel('Equipo', { exact: true }).selectOption({ label: 'Grúa telescópica XCMG 70 TN' })
+    await page.getByLabel('Lugar del servicio', { exact: true }).fill('Loma Campana, Añelo')
+    await page.getByLabel('Horario', { exact: true }).fill('lunes a sábado de 8 a 17 hs')
+    await page.getByLabel('Tiempo estimado de contratación', { exact: true }).fill('10 jornadas')
+    await page.getByLabel('Forma de pago', { exact: true }).fill('30 días fecha de factura')
+    await page.getByLabel('Disponibilidad', { exact: true }).fill('inmediata')
+
+    // Precios de los tres ítems de la plantilla, pegados como vienen de una planilla.
+    await expect(page.getByLabel(/^Precio del ítem \d+$/)).toHaveCount(3)
+    await page.getByLabel('Precio del ítem 1', { exact: true }).fill('1.950.000')
+    await page.getByLabel('Precio del ítem 2', { exact: true }).fill('2800000')
+    await page.getByLabel('Precio del ítem 3', { exact: true }).fill('2.530.000,00')
+
+    // Sin guardar todavía: no falta nada (el número se asigna al guardar, decisión 8).
+    await expect(page.getByText('Para enviar falta completar')).toBeHidden()
+
+    // Vista previa: el PDF real de lo que hay en pantalla, aunque no esté guardado.
+    const vista = respuestaVistaPrevia(page)
+    await page.getByRole('button', { name: 'Actualizar vista previa' }).click()
+    expect((await vista).headers()['content-type']).toBe('application/pdf')
+
+    // Descargar y marcar enviada sin haber guardado (decisión 12): guarda, marca enviada, baja el PDF del envío con
+    // el nombre de siempre y recién ahí pasa a /cotizaciones/{id}.
+    const descarga = page.waitForEvent('download', {
+      predicate: (archivo) => archivo.suggestedFilename().startsWith('COTIZACION'),
+    })
+    await page.getByRole('button', { name: 'Descargar y marcar enviada' }).click()
+    const nombreArchivo = (await descarga).suggestedFilename()
+    await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/)
+    const id = page.url().split('/').at(-1)!
+    creadas.push(id)
+    const titulo = page.getByRole('heading', { level: 1 })
+    await expect(titulo).toHaveText(/^Cotización N° \d+$/)
+    const numero = Number((await titulo.textContent())!.replace(/\D/g, ''))
+    expect(nombreArchivo).toBe(`COTIZACION N° ${numero} VERTICE.pdf`)
+    await expect(page.getByText(/^Enviada el \d{2}\/\d{2}\/\d{4}\. Lo que edites/)).toBeVisible()
+
+    // Aprobar con fecha: queda congelada.
+    await page.getByRole('button', { name: 'Aprobar', exact: true }).click()
+    const aprobar = page.getByRole('group', { name: `¿Aprobar la cotización N° ${numero}?` })
+    await expect(aprobar.getByLabel('Fecha de aprobación')).toHaveValue(hoyArgentina().iso)
+    await aprobar.getByRole('button', { name: 'Aprobar', exact: true }).click()
+    await expect(page.getByText(/^Aprobada el \d{2}\/\d{2}\/\d{4}: es un presupuesto y no se modifica\.$/)).toBeVisible()
+    await expect(page.getByLabel('Lugar del servicio', { exact: true })).toBeDisabled()
+
+    // En la lista, con el filtro Aprobada.
+    await page.goto(`/cotizaciones?estado=aprobada&q=${numero}`)
+    const fila = page.getByRole('row').filter({ hasText: String(numero) })
+    await expect(fila.getByText('Aprobada', { exact: true })).toBeVisible()
+    await fila.getByRole('link', { name: String(numero), exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/cotizaciones/${id}$`))
+
+    // Duplicar: un borrador nuevo que reemplaza a la aprobada.
+    await page.getByRole('button', { name: 'Duplicar', exact: true }).click()
+    await expect(page).not.toHaveURL(new RegExp(`/cotizaciones/${id}$`))
+    await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/)
+    const copia = page.url().split('/').at(-1)!
+    creadas.push(copia)
+    await expect(page.getByText(`Duplicada de N° ${numero}`)).toBeVisible()
+    await expect(page.getByRole('link', { name: `N° ${numero}`, exact: true })).toHaveAttribute('href', `/cotizaciones/${id}`)
+    const reemplaza = await conBase((db) =>
+      db.query<{ reemplaza_a: string }>('select reemplaza_a from public.cotizaciones where id = $1', [copia]),
+    )
+    expect(reemplaza.rows[0].reemplaza_a).toBe(id)
+
+    // Aprobar la copia (trae precios y datos, con fecha de hoy) ofrece finalizar el presupuesto que reemplaza.
+    await expect(titulo).not.toHaveText(`Cotización N° ${numero}`)
+    const numeroCopia = Number((await titulo.textContent())!.replace(/\D/g, ''))
+    await page.getByRole('button', { name: 'Aprobar', exact: true }).click()
+    await page
+      .getByRole('group', { name: `¿Aprobar la cotización N° ${numeroCopia}?` })
+      .getByRole('button', { name: 'Aprobar', exact: true })
+      .click()
+    const finalizar = page.getByRole('group', {
+      name: `Esta cotización reemplaza a la N° ${numero}, que sigue en curso como presupuesto.`,
+    })
+    await finalizar.getByRole('button', { name: `Finalizar el presupuesto N° ${numero}` }).click()
+    await expect(page.getByText(`Se finalizó el presupuesto N° ${numero}`)).toBeVisible()
+    await expect(finalizar).toBeHidden()
+    const original = await conBase((db) =>
+      db.query<{ presupuesto_estado: string }>('select presupuesto_estado from public.cotizaciones where id = $1', [id]),
+    )
+    expect(original.rows[0].presupuesto_estado).toBe('finalizado')
+  })
+})
+
+test.describe('conflicto de versión', () => {
+  const creadas: string[] = []
+
+  test.afterAll(async () => {
+    await conBase((db) => borrarCotizaciones(db, creadas))
+  })
+
+  test('si otro guardó antes, avisa sin perder lo escrito y Recargar trae la versión nueva', async ({ page }) => {
+    const { id, numero } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+
+    const asunto = page.getByLabel('Asunto', { exact: true })
+    const original = await asunto.inputValue()
+    await asunto.fill('Asunto cambiado en esta pestaña')
+
+    // Otra pestaña (u otra persona) guarda: cambia la versión en la base.
+    await conBase((db) => db.query('update public.cotizaciones set updated_at = now() where id = $1', [id]))
+
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+    await expect(page.getByText('La cotización cambió desde que la abriste; volvé a intentarlo').first()).toBeVisible()
+    await expect(asunto).toHaveValue('Asunto cambiado en esta pestaña')
+
+    await page.getByRole('button', { name: 'Recargar' }).click()
+    await page
+      .getByRole('group', { name: 'Se descartan los cambios que no guardaste y se carga la versión actual.' })
+      .getByRole('button', { name: 'Descartar y recargar' })
+      .click()
+    await expect(asunto).toHaveValue(original)
+
+    // Con la versión nueva se vuelve a operar.
+    const descarga = page.waitForEvent('download', {
+      predicate: (archivo) => archivo.suggestedFilename().startsWith('COTIZACION'),
+    })
+    await page.getByRole('button', { name: 'Descargar y marcar enviada' }).click()
+    expect((await descarga).suggestedFilename()).toBe(`COTIZACION N° ${numero} VERTICE.pdf`)
+  })
+})
