@@ -27,6 +27,7 @@ import {
   alternarNegrita,
   alternarVineta,
   bloqueDePlantilla,
+  limpiarPegado,
   mismosBloques,
   pegar,
   quitarSangria,
@@ -279,9 +280,15 @@ function EditorBloque({
         // Lo pegado desde Word llega como texto plano, pero con sus viñetas y tabs: se lleva al formato mínimo.
         onPaste={(evento) => {
           const pegado = evento.clipboardData.getData('text/plain')
-          if (!pegado) return
+          const limpio = limpiarPegado(pegado)
+          // Si no hay nada que limpiar, el pegado nativo.
+          if (!pegado || limpio === pegado) return
           evento.preventDefault()
-          editar((texto, seleccion) => pegar(texto, seleccion, pegado))
+          // insertText conserva Ctrl/⌘+Z (asignar el value por programa lo pierde) y dispara input, que React toma
+          // por onChange. Si el navegador no lo soporta, se reemplaza el texto a mano.
+          if (!document.execCommand('insertText', false, limpio)) {
+            editar((texto, seleccion) => pegar(texto, seleccion, pegado))
+          }
         }}
         aria-invalid={Boolean(errorContenido)}
         aria-describedby={describir}

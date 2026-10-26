@@ -60,6 +60,44 @@ describe('alternarNegrita', () => {
     expect(alternarNegrita('**a** b', { inicio: 0, fin: 7 }).texto).toBe('**a b**')
   })
 
+  it('una selección que empieza dentro de una negrita y termina afuera la extiende, sin ** sueltos', () => {
+    const edicion = alternarNegrita('**hola** mundo', { inicio: 2, fin: 14 })
+    expect(edicion).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
+    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
+  })
+
+  it('una selección que empieza afuera y termina dentro de una negrita la extiende, sin ** sueltos', () => {
+    const edicion = alternarNegrita('hola **mundo**', { inicio: 0, fin: 9 })
+    expect(edicion).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
+    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
+  })
+
+  it('extender la negrita de la forma de pago de la plantilla por jornada hasta el final', () => {
+    const texto = '**Forma de pago:** {{forma_pago}}.'
+    const edicion = alternarNegrita(texto, { inicio: texto.indexOf('pago:'), fin: texto.length })
+    expect(edicion.texto).toBe('**Forma de pago: {{forma_pago}}.**')
+    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([
+      { texto: 'Forma de pago: {{forma_pago}}.', negrita: true },
+    ])
+  })
+
+  it('una selección dentro de una negrita la quita entera (no deja ** sueltos)', () => {
+    expect(alternarNegrita('**hola mundo** chau', { inicio: 7, fin: 12 })).toEqual({
+      texto: 'hola mundo chau',
+      seleccion: { inicio: 0, fin: 10 },
+    })
+  })
+
+  it('entre dos negritas, pone en negrita lo elegido sin desparejar los ** de al lado', () => {
+    // El "**" del final ya era texto suelto y sigue siéndolo.
+    const edicion = alternarNegrita('**x**y**', { inicio: 5, fin: 6 })
+    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([
+      { texto: 'x', negrita: true },
+      { texto: 'y', negrita: true },
+      { texto: '**', negrita: false },
+    ])
+  })
+
   it('sin selección inserta **** con el cursor en el medio, y lo saca si se repite', () => {
     expect(alternarNegrita('ab', { inicio: 1, fin: 1 })).toEqual({ texto: 'a****b', seleccion: { inicio: 3, fin: 3 } })
     expect(alternarNegrita('a****b', { inicio: 3, fin: 3 })).toEqual({ texto: 'ab', seleccion: { inicio: 1, fin: 1 } })

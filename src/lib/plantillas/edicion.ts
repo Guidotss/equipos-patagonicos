@@ -102,10 +102,39 @@ function desenvolver(pieza: string): string {
   return partes ? `${partes[1]}${partes[2]}${partes[3]}` : pieza
 }
 
+/** Los tramos en negrita de una línea, [apertura, cierre + 2), con los ** emparejados como en parsearNegritas. */
+function tramosEnNegrita(linea: string): Array<[number, number]> {
+  const marcas: number[] = []
+  for (let marca = linea.indexOf('**'); marca !== -1; marca = linea.indexOf('**', marca + 2)) marcas.push(marca)
+  const tramos: Array<[number, number]> = []
+  // Un ** sin pareja al final es texto, no abre nada.
+  for (let indice = 0; indice + 1 < marcas.length; indice += 2) tramos.push([marcas[indice], marcas[indice + 1] + 2])
+  return tramos
+}
+
+/**
+ * Si el borde de la selección cae dentro de un tramo en negrita (o entre los dos * de una marca), lo lleva a la
+ * apertura de ese tramo (borde de inicio) o después de su cierre (borde de fin). Si no, los ** que quedan afuera de
+ * la selección se desparejan y salen literales en el PDF.
+ */
+function bordeFueraDeNegrita(texto: string, posicion: number, borde: 'inicio' | 'fin'): number {
+  // El borde ya no es un espacio ni un salto, así que la línea es la del carácter en `posicion` (inicio) o el de
+  // antes (fin): en los dos casos, la que empieza después del último salto anterior a `posicion`.
+  const comienzo = texto.lastIndexOf('\n', posicion - 1) + 1
+  const salto = texto.indexOf('\n', posicion)
+  const linea = texto.slice(comienzo, salto === -1 ? texto.length : salto)
+  const enLinea = posicion - comienzo
+  const tramo = tramosEnNegrita(linea).find(([apertura, cierre]) => apertura < enLinea && enLinea < cierre)
+  if (!tramo) return posicion
+  return comienzo + (borde === 'inicio' ? tramo[0] : tramo[1])
+}
+
 /**
  * Negrita sobre la selección (botón o Ctrl/⌘+B). Envuelve en ** cada línea seleccionada por separado porque el
- * formato no cruza saltos de línea; si ya estaba toda en negrita, la quita. Sin selección, inserta "****" con el
- * cursor en el medio (o los saca si el cursor está justo entre "**" y "**").
+ * formato no cruza saltos de línea; si ya estaba toda en negrita, la quita. Una selección que empieza o termina
+ * dentro de una negrita se extiende hasta sus ** ("**ho[la** mu]ndo" actúa sobre "[**hola** mu]ndo"), así que
+ * elegir una parte de una negrita la quita entera. Sin selección, inserta "****" con el cursor en el medio (o los
+ * saca si el cursor está justo entre "**" y "**").
  */
 export function alternarNegrita(texto: string, seleccion: Seleccion): Edicion {
   let inicio = Math.min(seleccion.inicio, seleccion.fin)
@@ -125,15 +154,12 @@ export function alternarNegrita(texto: string, seleccion: Seleccion): Edicion {
   while (fin > inicio && /\s/.test(texto[fin - 1])) fin -= 1
   if (inicio === fin) return { texto, seleccion }
 
-  const elegido = texto.slice(inicio, fin)
-  // Seleccionado sin los asteriscos: "**[hola]**".
-  if (!elegido.includes('\n') && !elegido.includes('**') && antes(inicio) === '**' && despues(fin) === '**') {
-    return {
-      texto: texto.slice(0, inicio - 2) + elegido + texto.slice(fin + 2),
-      seleccion: { inicio: inicio - 2, fin: fin - 2 },
-    }
-  }
+  // Solo el borde de la primera línea y el de la última pueden caer dentro de una negrita. También cubre la negrita
+  // seleccionada sin sus asteriscos: "**[hola]**" pasa a "[**hola**]" y se quita.
+  inicio = bordeFueraDeNegrita(texto, inicio, 'inicio')
+  fin = bordeFueraDeNegrita(texto, fin, 'fin')
 
+  const elegido = texto.slice(inicio, fin)
   const piezas = elegido.split('\n')
   const quitar = piezas.filter((pieza) => pieza.trim() !== '').every((pieza) => EN_NEGRITA.test(pieza))
   const nuevo = piezas

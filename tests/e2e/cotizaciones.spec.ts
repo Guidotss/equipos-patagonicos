@@ -704,6 +704,11 @@ test.describe('textos del editor', () => {
       area.dispatchEvent(new ClipboardEvent('paste', { clipboardData: datos, bubbles: true, cancelable: true }))
     })
     await expect(contenido).toHaveValue('- Primera\n  - Segunda')
+    // El pegado limpio entra al historial del textarea: Ctrl/⌘+Z recupera lo que reemplazó y rehacer lo vuelve a poner.
+    await contenido.press('ControlOrMeta+z')
+    await expect(contenido).toHaveValue('- **{{equipo_descripcion}}**')
+    await contenido.press('ControlOrMeta+Shift+z')
+    await expect(contenido).toHaveValue('- Primera\n  - Segunda')
 
     // Restaurar este bloque, con confirmación en el lugar.
     await equipo.getByRole('button', { name: 'Restaurar este bloque' }).click()
