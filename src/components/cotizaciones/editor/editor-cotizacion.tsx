@@ -81,11 +81,15 @@ export function EditorCotizacion({
   const [conflicto, setConflicto] = useState(false)
 
   // Después de una transición (o de "Recargar") el servidor manda otra versión en `inicial`: el editor la toma.
-  // Se ignoran la versión que había al empezar y la que dejó el guardado previo, que pueden llegar antes que la
-  // nueva. Se ajusta durante el render (como recomienda React para un estado que depende de una prop), no en un efecto.
+  // Después de una transición se ignoran la versión que había al empezar y la que dejó el guardado previo, que pueden
+  // llegar antes que la nueva. "Recargar" solo ignora la local (la que chocó): cualquier acción que revalida (el alta
+  // rápida de un cliente, por ejemplo) vuelve a dibujar la página, así que `inicial` puede traer ya la versión del
+  // otro usuario; si la ignorara, el refresco traería esa misma y nunca se tomaría. Se ajusta durante el render (como
+  // recomienda React para un estado que depende de una prop), no en un efecto.
   const [espera, setEspera] = useState<{ modo: EsperaServidor; ignorar: (string | null)[] } | null>(null)
   function esperarServidor(modo: EsperaServidor | null, versionLocal: string | null = null) {
-    setEspera(modo ? { modo, ignorar: [inicial.version, versionLocal] } : null)
+    if (!modo) return setEspera(null)
+    setEspera({ modo, ignorar: modo === 'descartar' ? [versionLocal] : [inicial.version, versionLocal] })
   }
   if (espera && inicial.version && !espera.ignorar.includes(inicial.version)) {
     setEspera(null)

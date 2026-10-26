@@ -120,7 +120,10 @@ export function useAccionesEstado({
   setAccion: (accion: string | null) => void
   conflicto: boolean
   setConflicto: (conflicto: boolean) => void
-  /** Avisa al editor que tome la próxima versión del servidor (null: ya no la espera). */
+  /**
+   * Avisa al editor que tome la próxima versión del servidor distinta de `versionLocal` (null: ya no la espera). En
+   * 'descartar' la toma aunque ya esté en `inicial`; 'adoptar' también ignora la que había en `inicial` al llamarlo.
+   */
   esperarServidor: (modo: EsperaServidor | null, versionLocal?: string | null) => void
   /** ?accion= de la URL: abre esa confirmación al entrar. */
   accionInicial?: AccionConfirmable | null
@@ -302,6 +305,7 @@ export function useAccionesEstado({
   }
 
   function confirmarRecarga() {
+    // Toma cualquier versión distinta de la local, también la que ya haya traído una revalidación anterior.
     esperarServidor('descartar', estado.version)
     setConfirmacion(null)
     setConflicto(false)

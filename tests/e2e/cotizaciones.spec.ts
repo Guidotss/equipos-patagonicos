@@ -874,9 +874,13 @@ function hoyArgentina() {
 
 test.describe('acciones de estado del editor', () => {
   const creadas: string[] = []
+  const clientesCreados: string[] = []
 
   test.afterAll(async () => {
-    await conBase((db) => borrarCotizaciones(db, creadas))
+    await conBase(async (db) => {
+      await borrarCotizaciones(db, creadas)
+      await db.query('delete from public.clientes where razon_social = any($1::text[])', [clientesCreados])
+    })
   })
 
   test('rechazar y reabrir se confirman en el lugar; Escape cancela', async ({ page }) => {
@@ -1017,5 +1021,45 @@ test.describe('acciones de estado del editor', () => {
     await expect(page).toHaveURL(/\/cotizaciones$/)
     const quedan = await conBase((db) => db.query('select 1 from public.cotizaciones where id = $1', [id]))
     expect(quedan.rowCount).toBe(0)
+  })
+
+  test('Recargar toma la versión del otro aunque una revalidación ya la haya traído', async ({ page }) => {
+    const { id } = await conBase((db) => crearCotizacionCompleta(db))
+    creadas.push(id)
+    const razonSocial = `Grúas Lanín ${sufijoUnico()} S.R.L.`
+    clientesCreados.push(razonSocial)
+    await iniciarSesion(page)
+    await page.goto(`/cotizaciones/${id}`)
+    const asunto = page.getByLabel('Asunto', { exact: true })
+    await expect(asunto).toBeEnabled()
+
+    // Otro usuario guarda mientras tanto.
+    await conBase((db) =>
+      db.query(`update public.cotizaciones set asunto = 'Asunto de otro usuario' where id = $1`, [id]),
+    )
+    // El alta rápida revalida /clientes y la página se vuelve a dibujar: `inicial` ya trae la versión del otro.
+    const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
+    await cliente.click()
+    await page.getByRole('combobox', { name: 'Buscar cliente' }).fill(razonSocial)
+    await page.getByRole('option', { name: `Crear cliente «${razonSocial}»` }).click()
+    await expect(page.getByText('Este cliente no tiene contactos.')).toBeVisible()
+
+    const guardar = page.getByRole('button', { name: 'Guardar', exact: true })
+    await guardar.click()
+    await page.getByRole('button', { name: 'Recargar' }).click()
+    await page.getByRole('button', { name: 'Descartar y recargar' }).click()
+    await expect(asunto).toHaveValue('Asunto de otro usuario')
+    await expect(cliente).toContainText('VERTICE SERVICIOS INTEGRALES S.R.L.')
+
+    // Con la versión del otro, guardar ya no choca.
+    await asunto.fill('Asunto corregido')
+    await guardar.click()
+    await expect(page.getByText('Cotización guardada')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Recargar' })).toHaveCount(0)
+    await expect(asunto).toHaveValue('Asunto corregido')
+    const { rows } = await conBase((db) =>
+      db.query<{ asunto: string }>('select asunto from public.cotizaciones where id = $1', [id]),
+    )
+    expect(rows[0].asunto).toBe('Asunto corregido')
   })
 })
