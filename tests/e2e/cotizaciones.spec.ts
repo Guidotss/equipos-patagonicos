@@ -203,6 +203,14 @@ test.describe('lista de cotizaciones', () => {
     await buscador.press('Enter')
     await expect(page.getByText(`No hay cotizaciones que coincidan con "sin resultados ${clave}".`)).toBeVisible()
     await expect(buscador).toBeFocused()
+    // Atrás y adelante con el foco todavía en el buscador: el texto sigue a la URL (no se tipeó nada después).
+    await page.goBack()
+    await expect(page).not.toHaveURL(/q=/)
+    await expect(buscador).toBeFocused()
+    await expect(buscador).toHaveValue('')
+    await page.goForward()
+    await expect(page).toHaveURL(/q=/)
+    await expect(buscador).toHaveValue(`sin resultados ${clave}`)
     await page.getByRole('link', { name: 'Limpiar filtros' }).click()
     await expect(page).toHaveURL(/\/cotizaciones$/)
     // Los campos vuelven a leer la URL cuando cambia desde afuera: "Limpiar filtros" y atrás del navegador.

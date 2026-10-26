@@ -18,7 +18,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { ESTADOS_FILTRO, hrefConFiltros, type FiltrosLista } from '@/lib/cotizaciones/lista'
+import { ESTADOS_FILTRO, hrefConFiltros, leerFiltros, type FiltrosLista } from '@/lib/cotizaciones/lista'
 import { atajosFechas, textoRangoFechas, type AtajoFechas } from '@/lib/cotizaciones/lista-vista'
 import { hoyArgentina } from '@/lib/format/fechas'
 import { cn } from '@/lib/utils'
@@ -279,7 +279,7 @@ function FiltrosMovil({
  * buscador con Enter. Mientras navega marca data-pendiente, que la tarjeta de resultados usa para atenuarse.
  *
  * Ningún control se vuelve a montar al cambiar la URL (un key le sacaba el foco al que se estaba usando): los selects
- * son controlados y el buscador se actualiza a mano.
+ * son controlados y el buscador se actualiza a mano cuando no se tipeó nada distinto de lo que mostraba.
  */
 export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLista; clientes: ClienteFiltro[] }) {
   const router = useRouter()
@@ -291,11 +291,17 @@ export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLis
     (actuales: FiltrosLista, cambios: Partial<FiltrosLista>): FiltrosLista => ({ ...actuales, ...cambios }),
   )
   const buscador = useRef<HTMLInputElement>(null)
+  // La última búsqueda de la URL que se reflejó en el buscador.
+  const qReflejada = useRef(filtros.q)
 
-  // Si la búsqueda cambia desde afuera, el buscador vuelve a leer la URL, salvo que se esté escribiendo en él.
+  // Si la búsqueda cambia desde afuera ("Limpiar filtros", atrás o adelante del navegador), el buscador vuelve a leer
+  // la URL aunque tenga el foco, salvo que se haya tipeado algo distinto de lo que mostraba: eso no se pisa. Se decide
+  // por el contenido y no por el foco porque después de buscar con Enter el foco se queda en el buscador.
   useEffect(() => {
     const campo = buscador.current
-    if (campo && campo !== document.activeElement) campo.value = filtros.q
+    // El texto se normaliza como el de la URL (espacios, largo máximo) para compararlo con la búsqueda que mostraba.
+    if (campo && leerFiltros({ q: campo.value }).q === qReflejada.current) campo.value = filtros.q
+    qReflejada.current = filtros.q
   }, [filtros.q])
 
   function aplicar(cambios: Partial<FiltrosLista>) {
