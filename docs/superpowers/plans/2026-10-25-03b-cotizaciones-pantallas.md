@@ -15710,3 +15710,133 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 Expected (`git status` antes del commit): nada sin agregar salvo lo que no es de esta tarea. Si la verificación visual no cambió nada, el segundo `git add` no agrega nada y el cuerpo del commit no lleva la tercera viñeta.
+
+---
+
+## Pulido después de la verificación final (agregado por el orquestador)
+
+### Task 14: Pulido de la lista, la grilla de ítems y la densidad del editor
+
+Origen: la verificación final del plan 3B (capturas a 1200×805 contra las referencias 02 y 03) y menores de las revisiones de las Tasks 9 y 13. Son decisiones del orquestador: aplicalas tal cual. La migración `20261027100000_cotizaciones_editor.sql` todavía no está en `main`, así que se **edita en el lugar** (`npm run db:reset && npm run db:types`). Capturas de referencia de la verificación: `/private/tmp/claude-501/-Users-guidoolguin-Desktop-equipos-patagonicos/f204ed8f-2b7c-4e0e-845d-e3dc462cd7cb/scratchpad/revision/` (`lista-1200.png`, `editor-1200.png`, `ref-02.png`, `ref-03.png`).
+
+**Files:**
+- Modify: `src/lib/cotizaciones/lista.ts`, `src/lib/cotizaciones/lista.test.ts`
+- Modify: `supabase/migrations/20261027100000_cotizaciones_editor.sql`, `tests/integration/cotizaciones-editor.test.ts`
+- Modify: `src/components/cotizaciones/lista/tabla-cotizaciones.tsx` (y la lista móvil si comparte el resumen)
+- Modify: `src/components/cotizaciones/editor/tarjeta-items.tsx`, `tarjeta-cliente.tsx`, `tarjeta-datos.tsx`, `editor-cotizacion.tsx` y lo que haga falta para la densidad
+- Modify: `src/app/layout.tsx` (Toaster)
+- Test: `tests/e2e/cotizaciones.spec.ts`
+
+- [ ] **Step 1: Columna "Trabajo" que dice algo**
+
+Hoy en las de jornada muestra "Cotización N° 112989 alquiler de 1 (una)…" (repite el número y se corta antes del dato útil). Nueva regla de `resumenCotizacion` (actualizá la firma si hace falta sumar `origen`):
+- Origen `app`: primero `"{nombre del equipo} · {ubicación}"` con lo que exista (si hay equipo o ubicación). Si no hay ninguno de los dos, el asunto resuelto como hoy pero **sin el prefijo** "Cotización N° {número}" (regex sin acentos ni mayúsculas que tolere "Cotizacion", "N°", "Nº", "Nro."), con la primera letra en mayúscula. Si queda vacío, "—".
+- Origen `importada` o `directa`: el asunto (es lo que escribió el usuario), o "—".
+Tests unitarios de cada caso, incluido el prefijo con y sin tilde.
+
+- [ ] **Step 2: Buscar también por ubicación y equipo**
+
+En `buscar_cotizaciones`, el texto también matchea (sin acentos) `datos->>'ubicacion'` y el nombre del equipo (`equipos.nombre` por `equipo_id`), para que lo que muestra la columna Trabajo se pueda buscar. Tests de integración: buscar una ubicación con tilde escrita sin tilde ("anelo" → "Añelo") y el nombre de un equipo.
+
+- [ ] **Step 3: Cliente completo en la tabla**
+
+A 1200×805 la razón social "VERTICE SERVICIOS INTEGRALES S.R.L." se corta en "VERTICE SERVICIOS…". Ajustá los anchos de columna (por ejemplo, Cliente con un mínimo de ~11rem y Trabajo con el resto) para que una razón social de ese largo entre completa en dos líneas a 1200. Mantené `line-clamp-2` como tope para nombres más largos, con el nombre completo en `title`.
+
+- [ ] **Step 4: Grilla de ítems legible a 1200**
+
+A 1200 px la tarjeta mide ~548 px y Descripción queda en ~120 px (las descripciones de la plantilla por jornada ocupan 4 a 6 líneas). Decisión: la disposición de **una línea por ítem** solo se usa cuando la tarjeta mide al menos `44rem`; por debajo (incluido 1200 px) se usa la de dos líneas que ya existe (descripción a todo el ancho; debajo cantidad, unidad, precio y total). El encabezado de columnas se adapta igual. Verificá con captura a 1200 que una descripción de la plantilla por jornada ocupa 1 o 2 líneas, y a 1440 y 1920 qué disposición queda.
+
+- [ ] **Step 5: Densidad del editor más cerca de la 03**
+
+Hoy a 1200×805 solo se ven Cliente y parte de Datos; en la 03 se ven Cliente, Datos, Ítems y el comienzo de Textos. Sin cambiar `Tarjeta` para el resto de la app:
+- Agregá a `Tarjeta` una prop `compacta` (cuerpo `p-4 space-y-3`, título `text-base font-medium`) y usala en las tarjetas del editor. Separación entre tarjetas del editor: `space-y-3`.
+- Cliente: "Este cliente no tiene contactos" deja de ser una línea aparte: el select de Atte. muestra la opción "Sin Atte. (no tiene contactos)".
+- Combobox de Cliente: la razón social completa de "VERTICE SERVICIOS INTEGRALES S.R.L." entra a 1200 (texto `text-sm`, padding horizontal menor, columnas `3fr | 2fr` o lo que haga falta); si no entra, que se vea con `title`. El select de Equipo no corta "Grúa telescópica XCMG 70 TN" contra el chevron.
+Verificá con captura a 1200×805 contra `ref-03.png` y reportá qué tarjetas entran en la primera pantalla.
+
+- [ ] **Step 6: Los avisos no tapan los botones**
+
+El `Toaster` global (`src/app/layout.tsx`, hoy `position="top-right"`) se superpone con la fila de acciones del encabezado (Guardar, Aprobar, ⋯) y, con el puntero encima, el toast no se va y se come los clics. Decisión: `position="top-center"`. Verificá con captura a 1200 que un toast de dos líneas no se cruza con los botones del encabezado del editor ni con "Nueva cotización" de la lista, y que en 390 se sigue viendo bien.
+
+- [ ] **Step 7: Nombre de sección: robusto fuera de Chromium y con arrastre**
+
+- `guardar` (y Ctrl/⌘+S) aplica primero los borradores de nombre de sección pendientes de forma explícita (registro de borradores por clave con su `aplicar`, más `flushSync`), en vez de depender de que el blur del mousedown llegue antes del click (no verificado en Safari/iOS).
+- Al empezar un arrastre con el mouse desde el agarre, el input de sección que tenga el foco se aplica antes (en el `onPointerDown` del agarre, antes del `preventDefault`: `evento.currentTarget.focus()`), para que un arrastre que cambia el primer ítem del grupo no descarte el nombre a medio escribir.
+- Un clic en el agarre con su menú abierto lo cierra (hoy se cierra y se vuelve a abrir): guardá en el `onPointerDown` si el menú estaba abierto y no lo reabras en el `onClick`.
+E2E: escribir un nombre de sección y, sin salir del campo, arrastrar el primer ítem del grupo con el mouse: el nombre nuevo se conserva.
+
+- [ ] **Step 8: Verificar y commit**
+
+```bash
+npm run db:reset && npm run db:types && npm run check && npm run test:int && npm run test:e2e
+```
+
+Expected: todo en verde. Capturas finales de lista y editor a 1200×805 en el scratchpad, comparadas con `ref-02.png` y `ref-03.png`.
+
+```bash
+git add supabase/migrations src tests
+git commit -m "fix: columna Trabajo útil, grilla legible, editor más compacto y avisos que no tapan los botones
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 15: Pulido de textos, vista previa y acciones de estado
+
+Origen: menores de las revisiones de las Tasks 10 a 13 y de la verificación final. Son decisiones del orquestador: aplicalas tal cual. No toques lo que cambió la Task 14 salvo que haga falta para esto.
+
+**Files:**
+- Modify: `src/lib/plantillas/edicion.ts`, `src/lib/plantillas/edicion.test.ts`, `src/components/cotizaciones/editor/tarjeta-textos.tsx`
+- Modify: `src/components/cotizaciones/editor/panel-vista-previa.tsx`, `editor-cotizacion.tsx`
+- Modify: `src/components/cotizaciones/editor/acciones-editor.tsx`, `franjas-editor.tsx`, `src/components/formulario/confirmacion-en-lugar.tsx` (y `src/lib/cotizaciones/acciones-estado.ts` si la regla vive ahí)
+- Test: `tests/e2e/cotizaciones.spec.ts`
+
+- [ ] **Step 1: Textos: deshacer y formato bien formado**
+
+- Las acciones de la barra (Negrita, Viñeta, Subviñeta, Quitar sangría) y Ctrl/⌘+B aplican el cambio con el mismo mecanismo que el pegado: seleccionar el tramo que cambia (prefijo y sufijo en común entre el texto viejo y el nuevo), `document.execCommand('insertText', false, reemplazo)` y después `setSelectionRange` con la selección resultante; el reducer queda solo como respaldo si `execCommand` devuelve false. Así Ctrl/⌘+Z deshace el formato. E2E: Negrita y después Ctrl/⌘+Z recupera el texto anterior.
+- Negrita nunca corta una variable: si un borde de la selección cae dentro de `{{…}}`, la selección se extiende para incluir la variable entera (función pura en `edicion.ts`, con test: `'{{equipo_descripcion}}'` con la selección dentro).
+- Tests unitarios que faltan: selección de varias líneas con los dos bordes dentro de negritas (`'**uno** x\ny **dos**'` con {3,16}) y un borde entre los dos `*` de una marca (`'**hola** mundo'` con {1,5}).
+- En `edicion.ts`, los caracteres invisibles de la clase de espacios se escriben como escapes (` `, ` `, ` `).
+- `limpiarPegado`: lo pegado de una sola línea sin viñeta no se recorta al final (pegar `'palabra '` en medio de una frase conserva el espacio); en pegados de varias líneas se recorta cada línea. `§ ` solo cuenta como viñeta si el pegado tiene varias líneas y no se convierte en nivel 1 si viene debajo de una de nivel 2 (queda en nivel 2). Tests.
+
+- [ ] **Step 2: Textos: foco, confirmaciones y errores**
+
+- Ocultar un bloque cierra su confirmación abierta (`confirmando = false`), y "Ocultar" queda deshabilitado mientras se confirma.
+- Después de confirmar "Restaurar desde la plantilla", el foco va al título del primer bloque restaurado (no queda en el body).
+- "Bajar bloque" y "Subir bloque" conservan el foco en el botón que se tocó (el del bloque que se movió).
+- Los errores de los bloques se guardan por clave del bloque, como los de los ítems (mapeo en `guardar` con las claves de lo que se mandó).
+- "Restaurar este bloque" busca el bloque de la plantilla por título **y** por número de aparición de ese título (el segundo "Sin título" se restaura con el segundo de la plantilla).
+- La fila de un bloque oculto tiene como nombre accesible el texto que se ve ("Sin título" o el título). La barra de formato: o implementa el patrón `toolbar` del APG (un tab stop, flechas para moverse) o deja de declarar `role="toolbar"` y usa un `role="group"` con `aria-label`. Elegí la segunda.
+
+- [ ] **Step 3: Vista previa**
+
+- La generación automática en escritorio escucha `matchMedia('(min-width: 72rem)')` (con `addEventListener('change')`) y genera cuando la ventana pasa a ese ancho con la hoja vacía.
+- En el celular, si el estado no pasa la validación local (`payloadGuardar`), no se abre la pestaña: se muestran los errores en los campos y un toast "Revisá los datos marcados".
+- E2E con `page.route`: el POST de la vista previa responde 200 con `text/html` → se ve el error (role=alert) con "Reintentar" y no hay iframe; responde 500 → lo mismo.
+
+- [ ] **Step 4: Acciones de estado**
+
+- **Duplicar con cambios sin guardar** no guarda en silencio la original (hoy persiste las ediciones en la original, que puede ser una enviada). Abre una confirmación en el lugar: "Tenés cambios sin guardar." con [Guardar y duplicar] [Duplicar lo guardado] [Cancelar]. Sin cambios, duplica directo como hoy. E2E de los dos caminos.
+- La confirmación de Aprobar vuelve a mirar los pendientes: si aparecen (por ejemplo, se vació un campo con la confirmación abierta), "Aprobar" queda deshabilitado con el motivo.
+- Abrir otra acción cierra la confirmación abierta, y cualquier cambio de estado de la cotización (enviada, aprobada, etc.) también la cierra.
+- Mientras corre una transición, el contenido del editor queda deshabilitado (`fieldset disabled`, con `[&_:disabled]:opacity-100` para que se siga leyendo), así no se tipea sobre algo que se está aprobando o rechazando.
+- Al tomar la versión del servidor (adoptar o descartar), además de `estado` y `guardado` se reinician `contactos` (los del cliente del estado nuevo), `errores`, `erroresItems`, `aviso` y `conflicto`.
+- Con la confirmación en curso (`pendiente`), el foco no cae en el body: el grupo de la confirmación tiene `tabIndex={-1}` y recibe el foco cuando se deshabilita Cancelar, y Escape sigue funcionando cuando vuelve a estar habilitado.
+- Los `catch` genéricos de las transiciones hacen `console.error(error)` antes de mostrar el toast.
+- En el celular, una cotización nueva también ofrece Aprobar: el ⋯ se dibuja cuando hay acciones para el menú, aunque no haya id.
+
+- [ ] **Step 5: Verificar y commit**
+
+```bash
+npm run check && npm run test:int && npm run test:e2e
+```
+
+Expected: todo en verde; puerto 3000 libre.
+
+```bash
+git add src tests
+git commit -m "fix: deshacer en los textos, vista previa más robusta y acciones de estado sin efectos colaterales
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
