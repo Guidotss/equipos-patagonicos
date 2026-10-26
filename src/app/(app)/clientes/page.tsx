@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
 import { TablaClientes } from '@/components/clientes/tabla-clientes'
 import { Button } from '@/components/ui/button'
+import { Conteo } from '@/components/ui/conteo'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/server'
 
@@ -21,11 +22,7 @@ export default async function ClientesPage({ searchParams }: { searchParams: Pro
       <Contenido>
         <EncabezadoPagina
           titulo="Clientes"
-          extra={
-            <span className="rounded-md bg-muted px-2 py-0.5 text-base font-medium text-muted-foreground tabular-nums">
-              {clientes.length}
-            </span>
-          }
+          extra={<Conteo>{clientes.length}</Conteo>}
           acciones={
             <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
               <Link href="/clientes/nuevo">

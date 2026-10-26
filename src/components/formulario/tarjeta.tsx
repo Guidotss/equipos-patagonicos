@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { valorCampo, type EstadoFormulario } from '@/lib/formularios'
 import { esVariable, partirVariables, VARIABLES } from '@/lib/plantillas/variables'
+import { cn } from '@/lib/utils'
 
 /** Piezas de las pantallas de alta/edición (docs/diseno/referencias/09-empresa.png y 10-edicion.png). */
 
@@ -22,31 +23,40 @@ export type DefinicionCampo = {
   props?: React.ComponentProps<typeof Input>
 }
 
-/** Tarjeta de un grupo de campos: ícono, título, bajada y, abajo, una franja opcional ("Así sale…"). */
+/**
+ * Tarjeta de un grupo de campos: título y, opcionales, ícono, bajada, acciones a la derecha del título y una franja
+ * abajo ("Así sale…"). Sin ícono ni bajada es la tarjeta compacta del editor de cotización.
+ */
 export function Tarjeta({
   icono: Icono,
   titulo,
   descripcion,
+  acciones,
   franja,
   children,
 }: {
-  icono: LucideIcon | ((props: { className?: string }) => React.ReactNode)
+  icono?: LucideIcon | ((props: { className?: string }) => React.ReactNode)
   titulo: string
-  descripcion: string
+  descripcion?: string
+  /** Botones chicos a la derecha del título (por ejemplo "Restaurar desde la plantilla"). */
+  acciones?: React.ReactNode
   franja?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <section className="@container overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       <div className="space-y-4 p-5 sm:p-6">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-primary">
-            <Icono className="size-5" aria-hidden />
-          </span>
-          <div className="min-w-0 space-y-0.5">
+        <div className={cn('flex gap-3', descripcion ? 'items-start' : 'items-center')}>
+          {Icono ? (
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-primary">
+              <Icono className="size-5" aria-hidden />
+            </span>
+          ) : null}
+          <div className="min-w-0 flex-1 space-y-0.5">
             <h2 className="text-lg leading-tight font-medium">{titulo}</h2>
-            <p className="text-sm text-muted-foreground">{descripcion}</p>
+            {descripcion ? <p className="text-sm text-muted-foreground">{descripcion}</p> : null}
           </div>
+          {acciones ? <div className="-my-1 flex shrink-0 items-center gap-1">{acciones}</div> : null}
         </div>
         {children}
       </div>

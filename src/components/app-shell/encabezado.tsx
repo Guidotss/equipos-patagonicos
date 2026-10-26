@@ -97,23 +97,35 @@ export function EncabezadoFicha({
   )
 }
 
-/** Encabezado de una página sin banda (listas, subpáginas de configuración). */
+/**
+ * Encabezado de una página sin banda (listas, subpáginas de configuración). `compacto` es el del editor de cotización:
+ * título más chico y en semibold para que entren el número, la pastilla y tres botones en una fila a 1200 px.
+ */
 export function EncabezadoPagina({
   titulo,
   descripcion,
   extra,
   acciones,
+  compacto = false,
 }: {
   titulo: string
   descripcion?: React.ReactNode
   extra?: React.ReactNode
   acciones?: React.ReactNode
+  compacto?: boolean
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
       <div className="min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[2.1875rem] leading-tight font-normal tracking-tight">{titulo}</h1>
+          <h1
+            className={cn(
+              'leading-tight tracking-tight',
+              compacto ? 'text-[1.75rem] font-semibold' : 'text-[2.1875rem] font-normal',
+            )}
+          >
+            {titulo}
+          </h1>
           {extra}
         </div>
         {descripcion ? <p className="text-[15px] text-muted-foreground">{descripcion}</p> : null}

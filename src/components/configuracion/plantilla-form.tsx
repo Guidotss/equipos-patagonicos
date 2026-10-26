@@ -8,14 +8,13 @@ import { Campo } from '@/components/formulario/campo'
 import { FormularioAccion } from '@/components/formulario/formulario-accion'
 import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
 import { Tarjeta } from '@/components/formulario/tarjeta'
+import { ConVariables, TextoBloque } from '@/components/plantillas/texto-formateado'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Pastilla } from '@/components/ui/pastilla'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { valorCampo, type AccionFormulario } from '@/lib/formularios'
 import type { Bloque, ItemPlantilla } from '@/lib/plantillas/contenido'
-import { parsearFormato, type Segmento } from '@/lib/plantillas/formato'
-import { esVariable, partirVariables, VARIABLES } from '@/lib/plantillas/variables'
 import { cn } from '@/lib/utils'
 
 const LISTA = '/configuracion/plantillas'
@@ -60,59 +59,6 @@ function BotonGuardar({
     >
       {pendiente ? 'Guardando…' : 'Guardar cambios'}
     </Button>
-  )
-}
-
-/** Texto de la plantilla con las variables ({{capacidad}}) marcadas en amarillo: se completan en cada cotización. */
-function ConVariables({ texto }: { texto: string }) {
-  return partirVariables(texto).map((parte, indice) =>
-    indice % 2 === 0 ? (
-      parte
-    ) : (
-      <mark
-        key={indice}
-        title={esVariable(parte) ? VARIABLES[parte] : 'Variable desconocida'}
-        className="rounded-sm bg-brand-yellow/40 px-0.5 text-inherit"
-      >
-        {`{{${parte}}}`}
-      </mark>
-    ),
-  )
-}
-
-function Segmentos({ segmentos }: { segmentos: Segmento[] }) {
-  return segmentos.map((segmento, indice) =>
-    segmento.negrita ? (
-      <strong key={indice} className="font-semibold text-foreground">
-        <ConVariables texto={segmento.texto} />
-      </strong>
-    ) : (
-      <ConVariables key={indice} texto={segmento.texto} />
-    ),
-  )
-}
-
-/** El contenido de un bloque con el formato mínimo (viñetas y negritas), como en el PDF. */
-function TextoBloque({ contenido }: { contenido: string }) {
-  return (
-    <div className="space-y-1.5 text-[15px] text-foreground/80">
-      {parsearFormato(contenido).map((nodo, indice) =>
-        nodo.tipo === 'parrafo' ? (
-          <p key={indice}>
-            <Segmentos segmentos={nodo.segmentos} />
-          </p>
-        ) : (
-          <p key={indice} className={cn('flex gap-2', nodo.nivel === 2 && 'pl-5')}>
-            <span aria-hidden className="shrink-0 text-muted-foreground">
-              {nodo.nivel === 1 ? '-' : '•'}
-            </span>
-            <span className="min-w-0">
-              <Segmentos segmentos={nodo.segmentos} />
-            </span>
-          </p>
-        ),
-      )}
-    </div>
   )
 }
 
