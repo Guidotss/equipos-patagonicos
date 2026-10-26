@@ -129,9 +129,14 @@ export function EditorCotizacion({
    * Guarda y devuelve la versión nueva; null si no se pudo (el motivo queda a la vista). En una ya guardada y sin
    * cambios no llama al servidor y devuelve la versión actual (las transiciones de la Task 12 guardan primero).
    * Al crear navega a /cotizaciones/{id}; con `navegar: false` no: enviar y aprobar una nueva (Task 12) guardan,
-   * hacen la transición con el id que vuelve y navegan después (decisión 12).
+   * hacen la transición con el id que vuelve y navegan después (decisión 12). Con `avisar: false` no muestra el
+   * toast de guardado: cuando guarda antes de una transición, el aviso es el de la transición (dos toasts apilados
+   * arriba a la derecha tapan los botones del encabezado y, con el puntero encima, no se van).
    */
-  async function guardar({ navegar = true }: { navegar?: boolean } = {}): Promise<VersionGuardada | null> {
+  async function guardar({
+    navegar = true,
+    avisar = true,
+  }: { navegar?: boolean; avisar?: boolean } = {}): Promise<VersionGuardada | null> {
     if (!editable || enCurso.current) return null
     if (estado.id !== null && estado.version !== null && estado.numero !== null && !cambios) {
       return { id: estado.id, version: estado.version, numero: estado.numero }
@@ -164,13 +169,9 @@ export function EditorCotizacion({
       setErrores({})
       setErroresItems({})
       setAviso(null)
-      if (enviado.id === null) {
-        toast.success(`Cotización N° ${numero} creada`)
-        // replace: "Atrás" no vuelve a una cotización nueva vacía (decisión 8).
-        if (navegar) router.replace(`/cotizaciones/${id}`)
-      } else {
-        toast.success('Cotización guardada')
-      }
+      if (avisar) toast.success(enviado.id === null ? `Cotización N° ${numero} creada` : 'Cotización guardada')
+      // replace: "Atrás" no vuelve a una cotización nueva vacía (decisión 8).
+      if (enviado.id === null && navegar) router.replace(`/cotizaciones/${id}`)
       return resultado.datos
     } catch (error) {
       unstable_rethrow(error)

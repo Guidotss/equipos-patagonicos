@@ -117,9 +117,9 @@ export function useAccionesEstado({
   /**
    * El guardar del editor (Task 8): guarda si hay cambios y devuelve la versión (la actual si no había nada que
    * guardar); null si no se pudo (ya lo mostró) o si la cotización no se edita. Con `navegar: false`, una nueva se
-   * crea sin ir a su página.
+   * crea sin ir a su página; con `avisar: false`, sin el toast de guardado.
    */
-  guardar: (opciones?: { navegar?: boolean }) => Promise<CotizacionGuardada | null>
+  guardar: (opciones?: { navegar?: boolean; avisar?: boolean }) => Promise<CotizacionGuardada | null>
   /** La acción en curso del editor (Task 8): con una en curso se deshabilitan todos los botones. */
   accion: string | null
   setAccion: (accion: string | null) => void
@@ -183,12 +183,13 @@ export function useAccionesEstado({
 
   /**
    * Guarda lo que haya sin guardar y devuelve el id y la versión con los que seguir (null si no se pudo). Una nueva
-   * se guarda sin navegar (decisión 12): la transición usa el id que vuelve y después se va a su página. `guardar()`
-   * deja la acción del editor en null al terminar: se vuelve a marcar la que sigue corriendo.
+   * se guarda sin navegar (decisión 12): la transición usa el id que vuelve y después se va a su página. Sin el toast
+   * de guardado: el que avisa es el de la transición (o su error). `guardar()` deja la acción del editor en null al
+   * terminar: se vuelve a marcar la que sigue corriendo.
    */
   async function versionParaSeguir(propia: string): Promise<{ id: string; version: string } | null> {
     if (!hayCambiosSinGuardar && estado.id && estado.version) return { id: estado.id, version: estado.version }
-    const guardada = await guardar({ navegar: false })
+    const guardada = await guardar({ navegar: false, avisar: false })
     setAccion(propia)
     return guardada ? { id: guardada.id, version: guardada.version } : null
   }
