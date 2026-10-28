@@ -1,0 +1,636 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T21:22:28.081881Z",
+  "title": "Design System: Equipos Patagónicos",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Índigo de acción",
+        "canonical": "oklch(0.478 0.202 272.6)",
+        "tonalRamp": [
+          "oklch(15% 0.202 272.6)",
+          "oklch(26% 0.202 272.6)",
+          "oklch(38% 0.202 272.6)",
+          "oklch(49% 0.202 272.6)",
+          "oklch(61% 0.202 272.6)",
+          "oklch(72% 0.202 272.6)",
+          "oklch(84% 0.202 272.6)",
+          "oklch(95% 0.202 272.6)"
+        ]
+      },
+      "primary-foreground": {
+        "role": "neutral",
+        "displayName": "Blanco de acción",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Blanco de superficie",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Carbón frío",
+        "canonical": "oklch(0.249 0.008 240.2)",
+        "tonalRamp": [
+          "oklch(15% 0.008 240.2)",
+          "oklch(26% 0.008 240.2)",
+          "oklch(38% 0.008 240.2)",
+          "oklch(49% 0.008 240.2)",
+          "oklch(61% 0.008 240.2)",
+          "oklch(72% 0.008 240.2)",
+          "oklch(84% 0.008 240.2)",
+          "oklch(95% 0.008 240.2)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Gris frío suave",
+        "canonical": "oklch(0.97 0.006 264.5)",
+        "tonalRamp": [
+          "oklch(15% 0.006 264.5)",
+          "oklch(26% 0.006 264.5)",
+          "oklch(38% 0.006 264.5)",
+          "oklch(49% 0.006 264.5)",
+          "oklch(61% 0.006 264.5)",
+          "oklch(72% 0.006 264.5)",
+          "oklch(84% 0.006 264.5)",
+          "oklch(95% 0.006 264.5)"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Gris de apoyo",
+        "canonical": "oklch(0.544 0.035 265.1)",
+        "tonalRamp": [
+          "oklch(15% 0.035 265.1)",
+          "oklch(26% 0.035 265.1)",
+          "oklch(38% 0.035 265.1)",
+          "oklch(49% 0.035 265.1)",
+          "oklch(61% 0.035 265.1)",
+          "oklch(72% 0.035 265.1)",
+          "oklch(84% 0.035 265.1)",
+          "oklch(95% 0.035 265.1)"
+        ]
+      },
+      "accent": {
+        "role": "neutral",
+        "displayName": "Lavanda tenue",
+        "canonical": "oklch(0.95 0.021 271.2)",
+        "tonalRamp": [
+          "oklch(15% 0.021 271.2)",
+          "oklch(26% 0.021 271.2)",
+          "oklch(38% 0.021 271.2)",
+          "oklch(49% 0.021 271.2)",
+          "oklch(61% 0.021 271.2)",
+          "oklch(72% 0.021 271.2)",
+          "oklch(84% 0.021 271.2)",
+          "oklch(95% 0.021 271.2)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Borde de superficie",
+        "canonical": "oklch(0.923 0.011 256.7)",
+        "tonalRamp": [
+          "oklch(15% 0.011 256.7)",
+          "oklch(26% 0.011 256.7)",
+          "oklch(38% 0.011 256.7)",
+          "oklch(49% 0.011 256.7)",
+          "oklch(61% 0.011 256.7)",
+          "oklch(72% 0.011 256.7)",
+          "oklch(84% 0.011 256.7)",
+          "oklch(95% 0.011 256.7)"
+        ]
+      },
+      "input": {
+        "role": "neutral",
+        "displayName": "Borde de control",
+        "canonical": "oklch(0.86 0.008 250)",
+        "tonalRamp": [
+          "oklch(15% 0.008 250)",
+          "oklch(26% 0.008 250)",
+          "oklch(38% 0.008 250)",
+          "oklch(49% 0.008 250)",
+          "oklch(61% 0.008 250)",
+          "oklch(72% 0.008 250)",
+          "oklch(84% 0.008 250)",
+          "oklch(95% 0.008 250)"
+        ]
+      },
+      "destructive": {
+        "role": "secondary",
+        "displayName": "Rojo de error",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(15% 0.245 27.325)",
+          "oklch(26% 0.245 27.325)",
+          "oklch(38% 0.245 27.325)",
+          "oklch(49% 0.245 27.325)",
+          "oklch(61% 0.245 27.325)",
+          "oklch(72% 0.245 27.325)",
+          "oklch(84% 0.245 27.325)",
+          "oklch(95% 0.245 27.325)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Gris lateral",
+        "canonical": "oklch(0.962 0.008 241.7)",
+        "tonalRamp": [
+          "oklch(15% 0.008 241.7)",
+          "oklch(26% 0.008 241.7)",
+          "oklch(38% 0.008 241.7)",
+          "oklch(49% 0.008 241.7)",
+          "oklch(61% 0.008 241.7)",
+          "oklch(72% 0.008 241.7)",
+          "oklch(84% 0.008 241.7)",
+          "oklch(95% 0.008 241.7)"
+        ]
+      },
+      "sidebar-accent": {
+        "role": "neutral",
+        "displayName": "Lavanda de navegación activa",
+        "canonical": "oklch(0.917 0.031 271.7)",
+        "tonalRamp": [
+          "oklch(15% 0.031 271.7)",
+          "oklch(26% 0.031 271.7)",
+          "oklch(38% 0.031 271.7)",
+          "oklch(49% 0.031 271.7)",
+          "oklch(61% 0.031 271.7)",
+          "oklch(72% 0.031 271.7)",
+          "oklch(84% 0.031 271.7)",
+          "oklch(95% 0.031 271.7)"
+        ]
+      },
+      "sidebar-border": {
+        "role": "neutral",
+        "displayName": "Borde lateral",
+        "canonical": "oklch(0.886 0.006 239.8)",
+        "tonalRamp": [
+          "oklch(15% 0.006 239.8)",
+          "oklch(26% 0.006 239.8)",
+          "oklch(38% 0.006 239.8)",
+          "oklch(49% 0.006 239.8)",
+          "oklch(61% 0.006 239.8)",
+          "oklch(72% 0.006 239.8)",
+          "oklch(84% 0.006 239.8)",
+          "oklch(95% 0.006 239.8)"
+        ]
+      },
+      "brand-yellow": {
+        "role": "secondary",
+        "displayName": "Amarillo de marca",
+        "canonical": "oklch(0.875 0.181 106.2)",
+        "tonalRamp": [
+          "oklch(15% 0.181 106.2)",
+          "oklch(26% 0.181 106.2)",
+          "oklch(38% 0.181 106.2)",
+          "oklch(49% 0.181 106.2)",
+          "oklch(61% 0.181 106.2)",
+          "oklch(72% 0.181 106.2)",
+          "oklch(84% 0.181 106.2)",
+          "oklch(95% 0.181 106.2)"
+        ]
+      },
+      "portada-desde": {
+        "role": "primary",
+        "displayName": "Azul de portada",
+        "canonical": "oklch(0.485 0.184 267.8)",
+        "tonalRamp": [
+          "oklch(15% 0.184 267.8)",
+          "oklch(26% 0.184 267.8)",
+          "oklch(38% 0.184 267.8)",
+          "oklch(49% 0.184 267.8)",
+          "oklch(61% 0.184 267.8)",
+          "oklch(72% 0.184 267.8)",
+          "oklch(84% 0.184 267.8)",
+          "oklch(95% 0.184 267.8)"
+        ]
+      },
+      "portada-hasta": {
+        "role": "primary",
+        "displayName": "Índigo de portada",
+        "canonical": "oklch(0.441 0.169 282.4)",
+        "tonalRamp": [
+          "oklch(15% 0.169 282.4)",
+          "oklch(26% 0.169 282.4)",
+          "oklch(38% 0.169 282.4)",
+          "oklch(49% 0.169 282.4)",
+          "oklch(61% 0.169 282.4)",
+          "oklch(72% 0.169 282.4)",
+          "oklch(84% 0.169 282.4)",
+          "oklch(95% 0.169 282.4)"
+        ]
+      },
+      "status-success-bg": {
+        "role": "secondary",
+        "displayName": "Estado success · fondo",
+        "canonical": "oklch(96.2% 0.044 156.743)",
+        "tonalRamp": [
+          "oklch(26.6% 0.065 152.934)",
+          "oklch(39.3% 0.095 152.535)",
+          "oklch(44.8% 0.119 151.328)",
+          "oklch(52.7% 0.154 150.069)",
+          "oklch(72.3% 0.219 149.579)",
+          "oklch(87.1% 0.15 154.449)",
+          "oklch(96.2% 0.044 156.743)",
+          "oklch(98.2% 0.018 155.826)"
+        ]
+      },
+      "status-success-text": {
+        "role": "secondary",
+        "displayName": "Estado success · texto",
+        "canonical": "oklch(44.8% 0.119 151.328)",
+        "tonalRamp": [
+          "oklch(26.6% 0.065 152.934)",
+          "oklch(39.3% 0.095 152.535)",
+          "oklch(44.8% 0.119 151.328)",
+          "oklch(52.7% 0.154 150.069)",
+          "oklch(72.3% 0.219 149.579)",
+          "oklch(87.1% 0.15 154.449)",
+          "oklch(96.2% 0.044 156.743)",
+          "oklch(98.2% 0.018 155.826)"
+        ]
+      },
+      "status-info-bg": {
+        "role": "secondary",
+        "displayName": "Estado info · fondo",
+        "canonical": "oklch(93.2% 0.032 255.585)",
+        "tonalRamp": [
+          "oklch(28.2% 0.091 267.935)",
+          "oklch(37.9% 0.146 265.522)",
+          "oklch(42.4% 0.199 265.638)",
+          "oklch(48.8% 0.243 264.376)",
+          "oklch(62.3% 0.214 259.815)",
+          "oklch(80.9% 0.105 251.813)",
+          "oklch(93.2% 0.032 255.585)",
+          "oklch(97% 0.014 254.604)"
+        ]
+      },
+      "status-info-text": {
+        "role": "secondary",
+        "displayName": "Estado info · texto",
+        "canonical": "oklch(42.4% 0.199 265.638)",
+        "tonalRamp": [
+          "oklch(28.2% 0.091 267.935)",
+          "oklch(37.9% 0.146 265.522)",
+          "oklch(42.4% 0.199 265.638)",
+          "oklch(48.8% 0.243 264.376)",
+          "oklch(62.3% 0.214 259.815)",
+          "oklch(80.9% 0.105 251.813)",
+          "oklch(93.2% 0.032 255.585)",
+          "oklch(97% 0.014 254.604)"
+        ]
+      },
+      "status-warning-bg": {
+        "role": "secondary",
+        "displayName": "Estado warning · fondo",
+        "canonical": "oklch(96.2% 0.059 95.617)",
+        "tonalRamp": [
+          "oklch(27.9% 0.077 45.635)",
+          "oklch(41.4% 0.112 45.904)",
+          "oklch(47.3% 0.137 46.201)",
+          "oklch(55.5% 0.163 48.998)",
+          "oklch(76.9% 0.188 70.08)",
+          "oklch(87.9% 0.169 91.605)",
+          "oklch(96.2% 0.059 95.617)",
+          "oklch(98.7% 0.022 95.277)"
+        ]
+      },
+      "status-warning-text": {
+        "role": "secondary",
+        "displayName": "Estado warning · texto",
+        "canonical": "oklch(47.3% 0.137 46.201)",
+        "tonalRamp": [
+          "oklch(27.9% 0.077 45.635)",
+          "oklch(41.4% 0.112 45.904)",
+          "oklch(47.3% 0.137 46.201)",
+          "oklch(55.5% 0.163 48.998)",
+          "oklch(76.9% 0.188 70.08)",
+          "oklch(87.9% 0.169 91.605)",
+          "oklch(96.2% 0.059 95.617)",
+          "oklch(98.7% 0.022 95.277)"
+        ]
+      },
+      "status-danger-bg": {
+        "role": "secondary",
+        "displayName": "Estado danger · fondo",
+        "canonical": "oklch(93.6% 0.032 17.717)",
+        "tonalRamp": [
+          "oklch(25.8% 0.092 26.042)",
+          "oklch(39.6% 0.141 25.723)",
+          "oklch(44.4% 0.177 26.899)",
+          "oklch(50.5% 0.213 27.518)",
+          "oklch(63.7% 0.237 25.331)",
+          "oklch(80.8% 0.114 19.571)",
+          "oklch(93.6% 0.032 17.717)",
+          "oklch(97.1% 0.013 17.38)"
+        ]
+      },
+      "status-danger-text": {
+        "role": "secondary",
+        "displayName": "Estado danger · texto",
+        "canonical": "oklch(44.4% 0.177 26.899)",
+        "tonalRamp": [
+          "oklch(25.8% 0.092 26.042)",
+          "oklch(39.6% 0.141 25.723)",
+          "oklch(44.4% 0.177 26.899)",
+          "oklch(50.5% 0.213 27.518)",
+          "oklch(63.7% 0.237 25.331)",
+          "oklch(80.8% 0.114 19.571)",
+          "oklch(93.6% 0.032 17.717)",
+          "oklch(97.1% 0.013 17.38)"
+        ]
+      },
+      "status-neutral-bg": {
+        "role": "secondary",
+        "displayName": "Estado neutral · fondo",
+        "canonical": "oklch(96.8% 0.007 247.896)",
+        "tonalRamp": [
+          "oklch(12.9% 0.042 264.695)",
+          "oklch(20.8% 0.042 265.755)",
+          "oklch(27.9% 0.041 260.031)",
+          "oklch(37.2% 0.044 257.287)",
+          "oklch(55.4% 0.046 257.417)",
+          "oklch(86.9% 0.022 252.894)",
+          "oklch(96.8% 0.007 247.896)",
+          "oklch(98.4% 0.003 247.858)"
+        ]
+      },
+      "status-neutral-text": {
+        "role": "secondary",
+        "displayName": "Estado neutral · texto",
+        "canonical": "oklch(44.6% 0.043 257.281)",
+        "tonalRamp": [
+          "oklch(12.9% 0.042 264.695)",
+          "oklch(20.8% 0.042 265.755)",
+          "oklch(27.9% 0.041 260.031)",
+          "oklch(37.2% 0.044 257.287)",
+          "oklch(55.4% 0.046 257.417)",
+          "oklch(86.9% 0.022 252.894)",
+          "oklch(96.8% 0.007 247.896)",
+          "oklch(98.4% 0.003 247.858)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Títulos de páginas y listas sin banda."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Encabezados compactos de formulario."
+      },
+      "headline-section": {
+        "displayName": "Headline Section",
+        "purpose": "Título de banda principal en escritorio."
+      },
+      "headline-detail": {
+        "displayName": "Headline Detail",
+        "purpose": "Título de ficha."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Título de sección de hoja."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto base y controles móviles."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Texto breve y controles de escritorio."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Etiquetas de hoja con interlínea compacta."
+      },
+      "help": {
+        "displayName": "Help",
+        "purpose": "Ayudas de campo."
+      },
+      "section-help": {
+        "displayName": "Section Help",
+        "purpose": "Descripción del propósito de una sección."
+      },
+      "navigation": {
+        "displayName": "Navigation",
+        "purpose": "Filas del sidebar."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Texto de botones comunes."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tarjeta",
+        "value": "0 2px 8px -2px rgb(15 23 42 / 0.12)",
+        "purpose": "Agrupaciones fuera de la hoja; token --shadow-tarjeta."
+      },
+      {
+        "name": "detail-identity",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Recuadro de identidad superpuesto a la banda de ficha; shadow-lg existente."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent)",
+        "purpose": "Foco visible de controles y botones."
+      }
+    ],
+    "motion": [
+      {
+        "name": "transition-standard",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Transiciones de color y estado de los controles existentes."
+      },
+      {
+        "name": "button-active",
+        "value": "translateY(1px)",
+        "purpose": "Respuesta del botón al presionar; excluye los que abren un popup."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm-viewport",
+        "value": "40rem"
+      },
+      {
+        "name": "md-viewport",
+        "value": "48rem"
+      },
+      {
+        "name": "editor-preview-viewport",
+        "value": "72rem"
+      },
+      {
+        "name": "2xl-viewport",
+        "value": "96rem"
+      },
+      {
+        "name": "field-grid-container",
+        "value": "28rem"
+      },
+      {
+        "name": "form-purpose-container",
+        "value": "48rem"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Variante existente del botón común; las barras de formulario usan altura de 40px y relleno horizontal de 20px.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Guardar cambios</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:4px 10px;border:1px solid transparent;border-radius:var(--radius-lg,10px);font-family:var(--font-inter,Inter,sans-serif);font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;transition:all 150ms cubic-bezier(0.4,0,0.2,1);outline:none;background:var(--primary,oklch(0.478 0.202 272.6));color:var(--primary-foreground,oklch(0.985 0 0));}.ds-btn-primary:hover{background:color-mix(in oklab,var(--primary,oklch(0.478 0.202 272.6)) 80%,transparent);}.ds-btn-primary:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}.ds-btn-primary:active{transform:translateY(1px);}.ds-btn-primary:disabled{pointer-events:none;opacity:.5;}@media(max-width:47.999rem){.ds-btn-primary{min-height:44px;}}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Variante existente del botón común; las barras de formulario usan altura de 40px y relleno horizontal de 20px.",
+      "html": "<button class=\"ds-btn-outline\" type=\"button\">Cancelar</button>",
+      "css": ".ds-btn-outline{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:4px 10px;border:1px solid transparent;border-radius:var(--radius-lg,10px);font-family:var(--font-inter,Inter,sans-serif);font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;transition:all 150ms cubic-bezier(0.4,0,0.2,1);outline:none;background:var(--background,white);color:var(--foreground,oklch(0.249 0.008 240.2));border-color:var(--border,oklch(0.923 0.011 256.7));}.ds-btn-outline:hover{background:var(--muted,oklch(0.97 0.006 264.5));}.ds-btn-outline:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}.ds-btn-outline:active{transform:translateY(1px);}.ds-btn-outline:disabled{pointer-events:none;opacity:.5;}@media(max-width:47.999rem){.ds-btn-outline{min-height:44px;}}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Variante existente del botón común; las barras de formulario usan altura de 40px y relleno horizontal de 20px.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Subir documento</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:4px 10px;border:1px solid transparent;border-radius:var(--radius-lg,10px);font-family:var(--font-inter,Inter,sans-serif);font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;transition:all 150ms cubic-bezier(0.4,0,0.2,1);outline:none;background:var(--secondary,oklch(0.97 0.006 264.5));color:var(--secondary-foreground,oklch(0.249 0.008 240.2));}.ds-btn-secondary:hover{background:color-mix(in oklch,var(--secondary,oklch(0.97 0.006 264.5)),var(--foreground,oklch(0.249 0.008 240.2)) 5%);}.ds-btn-secondary:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}.ds-btn-secondary:active{transform:translateY(1px);}.ds-btn-secondary:disabled{pointer-events:none;opacity:.5;}@media(max-width:47.999rem){.ds-btn-secondary{min-height:44px;}}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Variante existente del botón común; las barras de formulario usan altura de 40px y relleno horizontal de 20px.",
+      "html": "<button class=\"ds-btn-ghost\" type=\"button\">Editar</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:4px 10px;border:1px solid transparent;border-radius:var(--radius-lg,10px);font-family:var(--font-inter,Inter,sans-serif);font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;transition:all 150ms cubic-bezier(0.4,0,0.2,1);outline:none;background:transparent;color:var(--foreground,oklch(0.249 0.008 240.2));}.ds-btn-ghost:hover{background:var(--muted,oklch(0.97 0.006 264.5));}.ds-btn-ghost:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}.ds-btn-ghost:active{transform:translateY(1px);}.ds-btn-ghost:disabled{pointer-events:none;opacity:.5;}@media(max-width:47.999rem){.ds-btn-ghost{min-height:44px;}}"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Variante existente del botón común; las barras de formulario usan altura de 40px y relleno horizontal de 20px.",
+      "html": "<button class=\"ds-btn-destructive\" type=\"button\">Desactivar</button>",
+      "css": ".ds-btn-destructive{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:4px 10px;border:1px solid transparent;border-radius:var(--radius-lg,10px);font-family:var(--font-inter,Inter,sans-serif);font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;transition:all 150ms cubic-bezier(0.4,0,0.2,1);outline:none;background:color-mix(in oklab,var(--destructive,oklch(0.577 0.245 27.325)) 10%,transparent);color:var(--destructive,oklch(0.577 0.245 27.325));}.ds-btn-destructive:hover{background:color-mix(in oklab,var(--destructive,oklch(0.577 0.245 27.325)) 20%,transparent);}.ds-btn-destructive:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}.ds-btn-destructive:active{transform:translateY(1px);}.ds-btn-destructive:disabled{pointer-events:none;opacity:.5;}@media(max-width:47.999rem){.ds-btn-destructive{min-height:44px;}}.ds-btn-destructive:focus-visible{border-color:color-mix(in oklab,var(--destructive,oklch(0.577 0.245 27.325)) 40%,transparent);box-shadow:0 0 0 3px color-mix(in oklab,var(--destructive,oklch(0.577 0.245 27.325)) 20%,transparent);}"
+    },
+    {
+      "name": "Link Button",
+      "kind": "button",
+      "refersTo": "button-link",
+      "description": "Variante existente del botón común; las barras de formulario usan altura de 40px y relleno horizontal de 20px.",
+      "html": "<a class=\"ds-btn-link\" href=\"#cotizaciones\">Ver cotizaciones</a>",
+      "css": ".ds-btn-link{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:4px 10px;border:1px solid transparent;border-radius:var(--radius-lg,10px);font-family:var(--font-inter,Inter,sans-serif);font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;transition:all 150ms cubic-bezier(0.4,0,0.2,1);outline:none;background:transparent;color:var(--primary,oklch(0.478 0.202 272.6));text-decoration:none;text-underline-offset:4px;}.ds-btn-link:hover{text-decoration:underline;}.ds-btn-link:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}.ds-btn-link:active{transform:translateY(1px);}.ds-btn-link:disabled{pointer-events:none;opacity:.5;}@media(max-width:47.999rem){.ds-btn-link{min-height:44px;}}"
+    },
+    {
+      "name": "Form Field",
+      "kind": "input",
+      "refersTo": "input-form",
+      "description": "Etiqueta visible, control de hoja y ayuda asociada; los campos inválidos muestran un mensaje textual.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\" for=\"ds-email\">Email</label><input class=\"ds-input\" id=\"ds-email\" type=\"email\" placeholder=\"nombre@empresa.com\" aria-describedby=\"ds-email-help\"><p class=\"ds-help\" id=\"ds-email-help\">Datos de contacto.</p></div>",
+      "css": ".ds-field{max-width:360px;font-family:var(--font-inter,Inter,sans-serif);color:var(--foreground,oklch(0.249 0.008 240.2));}.ds-label{display:block;font-size:14px;line-height:1;font-weight:500;margin-bottom:4px;}.ds-input{height:40px;width:100%;min-width:0;padding:4px 10px;border:1px solid var(--input,oklch(0.86 0.008 250));border-radius:var(--radius-lg,10px);background:transparent;color:inherit;font:400 14px/20px var(--font-inter,Inter,sans-serif);outline:none;transition:color 150ms cubic-bezier(0.4,0,0.2,1),border-color 150ms cubic-bezier(0.4,0,0.2,1);}.ds-input::placeholder{color:var(--muted-foreground,oklch(0.544 0.035 265.1));}.ds-input:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}.ds-input:disabled{cursor:not-allowed;opacity:.5;background:color-mix(in oklab,var(--input,oklch(0.86 0.008 250)) 50%,transparent);}.ds-input[aria-invalid=true]{border-color:var(--destructive,oklch(0.577 0.245 27.325));box-shadow:0 0 0 3px color-mix(in oklab,var(--destructive,oklch(0.577 0.245 27.325)) 20%,transparent);}.ds-help{margin:4px 0 0;font-size:12px;line-height:16px;color:var(--muted-foreground,oklch(0.544 0.035 265.1));}@media(max-width:47.999rem){.ds-input{min-height:44px;font-size:16px;line-height:24px;}.ds-label{margin-bottom:6px;}}"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Filas con íconos de línea; activo teñido de índigo, sin bloque de color saturado.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Principal\"><a class=\"ds-nav-item\" href=\"#inicio\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z\"/></svg>Inicio</a><a class=\"ds-nav-item\" href=\"#clientes\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg>Clientes</a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:4px;width:216px;padding:12px;background:var(--sidebar,oklch(0.962 0.008 241.7));}.ds-nav-item{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:var(--radius-lg,10px);font:400 15px/1.5 var(--font-inter,Inter,sans-serif);color:var(--sidebar-foreground,oklch(0.249 0.008 240.2));text-decoration:none;transition:background-color 150ms cubic-bezier(0.4,0,0.2,1);}.ds-nav-item:hover{background:color-mix(in oklab,var(--sidebar-accent,oklch(0.917 0.031 271.7)) 50%,transparent);}.ds-nav-item[aria-current=page]{background:var(--sidebar-accent,oklch(0.917 0.031 271.7));color:var(--sidebar-accent-foreground,oklch(0.478 0.202 272.6));font-weight:500;}.ds-nav-item:focus-visible{outline:auto;outline-color:color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-success",
+      "description": "Estado textual con punto de color; familia de éxito, información, aviso, peligro y neutro.",
+      "html": "<span class=\"ds-status\"><span class=\"ds-status-dot\" aria-hidden=\"true\"></span>Activo</span>",
+      "css": ".ds-status{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;white-space:nowrap;border-radius:var(--radius-md,8px);background:var(--color-green-100,oklch(96.2% 0.044 156.743));color:var(--color-green-800,oklch(44.8% 0.119 151.328));font:500 13px/1.5 var(--font-inter,Inter,sans-serif);}.ds-status-dot{width:6px;height:6px;border-radius:9999px;background:currentColor;opacity:.8;}"
+    },
+    {
+      "name": "Grouping Card",
+      "kind": "card",
+      "refersTo": "card-group",
+      "description": "Tarjeta fuera de la hoja: borde fino y sombra suave; no se reutiliza como una tarjeta por tarea dentro del formulario.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">Contactos</h2><p class=\"ds-card-description\">Personas de contacto del cliente.</p></section>",
+      "css": ".ds-card{max-width:420px;padding:24px;border:1px solid var(--border,oklch(0.923 0.011 256.7));border-radius:var(--radius-xl,14px);background:var(--card,white);color:var(--card-foreground,oklch(0.249 0.008 240.2));box-shadow:0 2px 8px -2px rgb(15 23 42 / .12);font-family:var(--font-inter,Inter,sans-serif);}.ds-card-title{margin:0;font-size:18px;line-height:1.25;font-weight:500;}.ds-card-description{margin:6px 0 0;font-size:14px;line-height:20px;color:var(--muted-foreground,oklch(0.544 0.035 265.1));}@media(max-width:39.999rem){.ds-card{padding:20px;}}"
+    },
+    {
+      "name": "Task Form Sheet",
+      "kind": "card",
+      "refersTo": "form-sheet",
+      "description": "Firma de los formularios: hoja plana y secciones que pasan de apiladas a propósito lateral según su contenedor.",
+      "html": "<div class=\"ds-sheet\"><section class=\"ds-section\"><div class=\"ds-section-purpose\"><h2 class=\"ds-section-title\">Datos del cliente</h2><p class=\"ds-section-description\">Información que se usa en las cotizaciones.</p></div><div class=\"ds-section-fields\"><label class=\"ds-sheet-label\" for=\"ds-name\">Razón social</label><input class=\"ds-sheet-input\" id=\"ds-name\" type=\"text\"></div></section><section class=\"ds-section\"><div class=\"ds-section-purpose\"><h2 class=\"ds-section-title\">Contacto</h2></div><div class=\"ds-section-fields\"><label class=\"ds-sheet-label\" for=\"ds-phone\">Teléfono</label><input class=\"ds-sheet-input\" id=\"ds-phone\" type=\"tel\"></div></section></div>",
+      "css": ".ds-sheet{container:ds-sheet/inline-size;min-width:0;border:1px solid var(--border,oklch(0.923 0.011 256.7));border-radius:var(--radius-xl,14px);background:var(--card,white);color:var(--card-foreground,oklch(0.249 0.008 240.2));font-family:var(--font-inter,Inter,sans-serif);}.ds-section{display:grid;min-width:0;gap:20px;padding:16px;}.ds-section+.ds-section{border-top:1px solid var(--border,oklch(0.923 0.011 256.7));}.ds-section-title{margin:0;font-size:16px;line-height:24px;letter-spacing:-.025em;font-weight:600;}.ds-section-description{margin:6px 0 0;font-size:13px;line-height:20px;color:var(--muted-foreground,oklch(0.544 0.035 265.1));}.ds-section-fields{min-width:0;}.ds-sheet-label{display:block;margin-bottom:4px;font-size:14px;line-height:1;font-weight:500;}.ds-sheet-input{width:100%;min-width:0;height:40px;padding:4px 10px;border:1px solid var(--input,oklch(0.86 0.008 250));border-radius:var(--radius-lg,10px);background:transparent;color:inherit;font:400 14px/20px var(--font-inter,Inter,sans-serif);outline:none;transition:border-color 150ms cubic-bezier(0.4,0,0.2,1);}.ds-sheet-input:focus-visible{border-color:var(--ring,oklch(0.478 0.202 272.6));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.478 0.202 272.6)) 50%,transparent);}@media(min-width:40rem){.ds-section{padding:24px;}}@media(max-width:47.999rem){.ds-sheet-input{min-height:44px;font-size:16px;}}@container ds-sheet (min-width:48rem){.ds-section{grid-template-columns:11rem minmax(0,1fr);gap:28px;}.ds-section-fields{border-left:1px solid var(--border,oklch(0.923 0.011 256.7));padding-left:28px;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "SaaS premium",
+    "overview": "La dirección visual confirmada mantiene la marca de Equipos Patagónicos, Inter y una paleta fría con índigo como acento de acción. El logo y la trama de ganchos son activos de identidad existentes. La navegación lateral clara, los bordes finos y el texto secundario gris sostienen una interfaz sobria, de densidad controlada.\n\nLos formularios de negocio se organizan en una hoja continua, dividida por tareas. El propósito de cada sección acompaña a los campos cuando el contenedor tiene espacio y se apila cuando se estrecha. Las fichas y los encabezados de sección conservan su banda de marca; listas, altas y ediciones usan el encabezado que corresponde a su función.",
+    "keyCharacteristics": [
+      "Índigo para acciones principales, foco y navegación activa; amarillo como acento mínimo.",
+      "Inter con jerarquías compactas y texto secundario de menor contraste.",
+      "Una hoja plana para formularios; tarjetas con sombra suave donde el sistema existente las usa.",
+      "Respuesta al ancho real del contenedor, con controles táctiles más altos en móvil."
+    ],
+    "rules": [
+      {
+        "name": "The Brand Continuity Rule",
+        "body": "Conservar el logo, la trama de ganchos y la relación entre índigo, blanco y sidebar claro al extender la interfaz.",
+        "section": "colors"
+      },
+      {
+        "name": "The Form Sheet Rule",
+        "body": "Agrupar la edición de negocio en una hoja continua con divisores entre tareas; el encabezado de cada tarea explica su propósito y acompaña a sus campos.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Form Rule",
+        "body": "La hoja de formulario se delimita con borde y divisores, sin sombra. Las tarjetas y los recuadros superpuestos de las fichas conservan su profundidad existente.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** conservar la marca, Inter y el shell claro al añadir pantallas.",
+      "**Do** reutilizar el encabezado, la hoja, las secciones y la barra de acciones comunes para altas y ediciones de negocio.",
+      "**Do** decidir el apilado de las secciones por el ancho del contenedor y mantener apilados los editores compactos.",
+      "**Do** reservar espacio inferior para que las acciones fijas no tapen campos ni mensajes.",
+      "**Do** mantener etiquetas visibles, ayudas y errores asociados a cada campo; conservar el texto de estado junto al punto de color.",
+      "**Do** conservar la banda y las tarjetas de las fichas donde ya son parte de la identidad."
+    ],
+    "donts": [
+      "**Don't** reintroducir una pila de tarjetas con sombra como agrupación principal de los formularios que usan la hoja.",
+      "**Don't** trasladar la banda de portada a todos los encabezados: las listas y los formularios tienen una composición propia.",
+      "**Don't** convertir el amarillo de marca en el color de la acción principal.",
+      "**Don't** reducir los controles móviles por debajo del tamaño táctil establecido ni usar texto pequeño en sus campos.",
+      "**Don't** sustituir los íconos de línea por caracteres de texto ni agregar medallones de íconos a las secciones de la hoja."
+    ]
+  }
+}
