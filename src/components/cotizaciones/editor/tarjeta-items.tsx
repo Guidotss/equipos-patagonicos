@@ -51,19 +51,15 @@ import { formatMontoTabla, parsePrecio } from '@/lib/format/montos'
 import { UNIDADES, type Formato, type Unidad } from '@/lib/plantillas/contenido'
 import { cn } from '@/lib/utils'
 
-/**
- * Una línea por ítem cuando la tarjeta mide 44rem o más: agarre, descripción, cantidad, precio, unidad, total.
- * Precio y Total entran "39.000.000,00" (el precio de la mensual) en la cifra de 13 px de esa línea.
- */
-const COLUMNAS = '@min-[44rem]:grid-cols-[1.25rem_minmax(0,1fr)_3rem_7rem_6rem_6rem]'
-const COLUMNAS_PLANTILLA = '@min-[44rem]:grid-cols-[1.25rem_minmax(0,1fr)_4rem_7rem]'
+/** Una línea desde 44rem de ancho propio; Precio y Total admiten "39.000.000,00" sin recortar. */
+const COLUMNAS = '@min-[44rem]:grid-cols-[1.75rem_minmax(0,1fr)_4rem_8rem_6rem_7rem]'
+const COLUMNAS_PLANTILLA = '@min-[44rem]:grid-cols-[1.75rem_minmax(0,1fr)_4rem_6rem]'
 
 /** Cifras de la línea de un ítem desde 44rem: un punto más chicas que la descripción para que entren los montos. */
 const CIFRA = '@min-[44rem]:text-[13px]'
 
-/** Campo "fantasma": se ve como texto y muestra el borde al pasar o al enfocar (referencia 03). */
-const FANTASMA =
-  'border-transparent bg-transparent text-sm shadow-none hover:border-input focus-visible:border-ring md:text-sm dark:bg-transparent'
+/** Los campos siempre muestran su contorno; el ancho del contenedor define la densidad de la grilla. */
+const CAMPO = 'h-11 border-input bg-background shadow-none @min-[44rem]:h-10'
 
 /** Espacio toma y suelta; Enter queda para abrir el menú del agarre. */
 const TECLAS = { start: ['Space'], cancel: ['Escape'], end: ['Space'] }
@@ -124,7 +120,7 @@ function EncabezadoSeccion({
   }, [pendiente, fila.clave, alCambiarBorrador])
 
   return (
-    <div className="border-b bg-muted/60 py-1.5 pr-3 pl-9">
+    <div className="border-b bg-muted/60 p-3 @min-[44rem]:pl-12">
       <Input
         id={id}
         aria-label={`Nombre de la sección ${fila.numero}`}
@@ -142,7 +138,7 @@ function EncabezadoSeccion({
         }}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(FANTASMA, 'h-7 px-2.5 font-semibold')}
+        className={cn(CAMPO, 'max-w-md px-2.5 font-semibold')}
       />
       {error ? (
         <p id={`${id}-error`} className="px-2.5 text-sm text-destructive">
@@ -222,7 +218,7 @@ function FilaItem({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-x-1 gap-y-1.5 border-b bg-card px-3 py-2 md:grid-cols-[1.25rem_minmax(0,1fr)]',
+        'relative mx-3 my-3 grid grid-cols-2 items-start gap-x-3 gap-y-3 rounded-lg border bg-card px-3 pb-4 @min-[44rem]:m-0 @min-[44rem]:gap-x-2 @min-[44rem]:gap-y-2 @min-[44rem]:rounded-none @min-[44rem]:border-0 @min-[44rem]:border-b @min-[44rem]:py-3',
         editarPrecios ? COLUMNAS : COLUMNAS_PLANTILLA,
         isDragging && 'relative z-10 shadow-lg',
       )}
@@ -236,7 +232,7 @@ function FilaItem({
             size="icon-xs"
             aria-label={`Opciones del ítem ${numero}`}
             title="Arrastrá para mover; hacé clic para ver las opciones"
-            className="mt-1 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+            className="relative z-10 col-start-2 row-start-1 size-11 cursor-grab touch-none justify-self-end text-muted-foreground active:cursor-grabbing @min-[44rem]:col-start-1 @min-[44rem]:row-start-auto @min-[44rem]:mt-1.5 @min-[44rem]:size-7"
             {...attributes}
             onPointerDown={(evento) => {
               huboArrastre.current = false
@@ -310,82 +306,105 @@ function FilaItem({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Textarea
-        id={`${id}-descripcion`}
-        aria-label={`Descripción del ítem ${numero}`}
-        rows={1}
-        value={item.descripcion}
-        placeholder="Descripción"
-        onChange={(evento) => cambiar({ descripcion: evento.target.value })}
-        onKeyDown={alTeclear}
-        aria-invalid={Boolean(error('descripcion'))}
-        aria-describedby={describir('descripcion')}
-        className={cn(FANTASMA, 'min-h-8 resize-none px-2.5 py-1.5')}
-      />
-
-      {/* Angosta: cantidad, precio, unidad y total en una segunda línea. Desde 44rem, cada uno en su columna. */}
-      <div className="col-start-2 flex flex-wrap gap-2 @min-[44rem]:contents">
-        <Input
-          id={`${id}-cantidad`}
-          aria-label={`Cantidad del ítem ${numero}`}
-          inputMode="decimal"
-          value={item.cantidad}
-          onChange={(evento) => cambiar({ cantidad: evento.target.value })}
+      <div className="col-span-2 col-start-1 row-start-1 min-w-0 space-y-1.5 @min-[44rem]:col-span-1 @min-[44rem]:col-start-auto @min-[44rem]:row-start-auto @min-[44rem]:space-y-0">
+        <Label htmlFor={`${id}-descripcion`} className="flex h-11 items-center pr-12 @min-[44rem]:hidden">
+          Descripción
+        </Label>
+        <Textarea
+          id={`${id}-descripcion`}
+          aria-label={`Descripción del ítem ${numero}`}
+          rows={1}
+          value={item.descripcion}
+          placeholder="Descripción"
+          onChange={(evento) => cambiar({ descripcion: evento.target.value })}
           onKeyDown={alTeclear}
-          aria-invalid={Boolean(error('cantidad'))}
-          aria-describedby={describir('cantidad')}
-          className={cn('h-8 w-16 px-2 text-sm tabular-nums md:text-sm @min-[44rem]:w-full', CIFRA)}
+          aria-invalid={Boolean(error('descripcion'))}
+          aria-describedby={describir('descripcion')}
+          className="min-h-11 resize-none border-input bg-background px-2.5 py-2.5 shadow-none @min-[44rem]:min-h-10 @min-[44rem]:py-2"
         />
-        {editarPrecios ? <Input
-          id={`${id}-precio`}
-          aria-label={`Precio del ítem ${numero}`}
-          inputMode="decimal"
-          value={editandoPrecio ? item.precio : normalizarPrecio(item.precio)}
-          placeholder="Sin precio"
-          onChange={(evento) => {
-            setEditandoPrecio(true)
-            cambiar({ precio: evento.target.value })
-          }}
-          onBlur={() => {
-            setEditandoPrecio(false)
-            const normal = normalizarPrecio(item.precio)
-            if (normal !== item.precio) cambiar({ precio: normal })
-          }}
-          onKeyDown={alTeclear}
-          aria-invalid={Boolean(error('precio')) || precioMalEscrito}
-          aria-describedby={describir('precio')}
-          className={cn(
-            'h-8 min-w-28 flex-1 px-2.5 text-right text-sm tabular-nums md:text-sm @min-[44rem]:min-w-0 @min-[44rem]:px-1.5',
-            // Sin precio: borde visible y el amarillo de "falta completar" (decisión 17).
-            item.precio.trim() === '' ? 'border-brand-yellow/70 bg-brand-yellow/10' : FANTASMA,
-            CIFRA,
-          )}
-        /> : null}
-        <NativeSelect
-          id={`${id}-unidad`}
-          aria-label={`Unidad del ítem ${numero}`}
-          value={item.unidad}
-          onChange={(evento) => cambiar({ unidad: evento.target.value as Unidad })}
-          aria-invalid={Boolean(error('unidad'))}
-          aria-describedby={describir('unidad')}
-          // Padding y flecha más ajustados para que "JORNADA" entre entero en la columna de 6rem.
-          className="w-28 @min-[44rem]:w-full [&_[data-slot=native-select-icon]]:right-1.5 [&_select]:pr-6 [&_select]:pl-2 md:[&_select]:text-xs"
-        >
-          {UNIDADES.map((unidad) => (
-            <NativeSelectOption key={unidad} value={unidad}>
-              {unidad}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        {/* Angosta, en la misma línea si entra (si no, baja a la derecha); desde 44rem, la última columna. */}
-        {editarPrecios ? <p className="ml-auto self-center text-right text-[13px] text-muted-foreground tabular-nums @min-[44rem]:ml-0 @min-[44rem]:self-auto @min-[44rem]:pt-1.5 @min-[44rem]:text-foreground">
-          <span className="@min-[44rem]:sr-only">Total </span>
-          {total === null ? '—' : formatMontoTabla(total)}
-        </p> : null}
+      </div>
+
+      {/* Angosta: Cantidad/Unidad y Precio/Total forman dos filas. El orden de teclado conserva Cantidad/Precio/Unidad. */}
+      <div className="col-span-2 grid grid-cols-2 gap-3 @min-[44rem]:contents">
+        <div className="order-1 min-w-0 space-y-1.5 @min-[44rem]:order-none @min-[44rem]:space-y-0">
+          <Label htmlFor={`${id}-cantidad`} className="@min-[44rem]:hidden">Cantidad</Label>
+          <Input
+            id={`${id}-cantidad`}
+            aria-label={`Cantidad del ítem ${numero}`}
+            inputMode="decimal"
+            value={item.cantidad}
+            onChange={(evento) => cambiar({ cantidad: evento.target.value })}
+            onKeyDown={alTeclear}
+            aria-invalid={Boolean(error('cantidad'))}
+            aria-describedby={describir('cantidad')}
+            className={cn(CAMPO, 'px-2 tabular-nums', CIFRA)}
+          />
+        </div>
+        {editarPrecios ? (
+          <div className="order-3 min-w-0 space-y-1.5 @min-[44rem]:order-none @min-[44rem]:space-y-0">
+            <Label htmlFor={`${id}-precio`} className="@min-[44rem]:hidden">Precio unitario</Label>
+            <Input
+              id={`${id}-precio`}
+              aria-label={`Precio del ítem ${numero}`}
+              inputMode="decimal"
+              value={editandoPrecio ? item.precio : normalizarPrecio(item.precio)}
+              placeholder="Sin precio"
+              onChange={(evento) => {
+                setEditandoPrecio(true)
+                cambiar({ precio: evento.target.value })
+              }}
+              onBlur={() => {
+                setEditandoPrecio(false)
+                const normal = normalizarPrecio(item.precio)
+                if (normal !== item.precio) cambiar({ precio: normal })
+              }}
+              onKeyDown={alTeclear}
+              aria-invalid={Boolean(error('precio')) || precioMalEscrito}
+              aria-describedby={describir('precio')}
+              className={cn(
+                CAMPO,
+                'px-2 text-right tabular-nums',
+                item.precio.trim() === '' && 'border-brand-yellow/70 bg-brand-yellow/10',
+                CIFRA,
+              )}
+            />
+          </div>
+        ) : null}
+        <div className="order-2 min-w-0 space-y-1.5 @min-[44rem]:order-none @min-[44rem]:space-y-0">
+          <Label htmlFor={`${id}-unidad`} className="@min-[44rem]:hidden">Unidad</Label>
+          <NativeSelect
+            id={`${id}-unidad`}
+            aria-label={`Unidad del ítem ${numero}`}
+            value={item.unidad}
+            onChange={(evento) => cambiar({ unidad: evento.target.value as Unidad })}
+            aria-invalid={Boolean(error('unidad'))}
+            aria-describedby={describir('unidad')}
+            // La columna de 6rem mantiene "JORNADA" completa con su flecha.
+            className="w-full [&_[data-slot=native-select-icon]]:right-1.5 [&_select]:h-11 [&_select]:bg-background [&_select]:pr-6 [&_select]:pl-2 @min-[44rem]:[&_select]:h-10 @min-[44rem]:[&_select]:text-xs"
+          >
+            {UNIDADES.map((unidad) => (
+              <NativeSelectOption key={unidad} value={unidad}>
+                {unidad}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </div>
+        {editarPrecios ? (
+          <div className="order-4 min-w-0 space-y-1.5 @min-[44rem]:order-none @min-[44rem]:space-y-0">
+            <p className="text-sm font-medium @min-[44rem]:hidden">Total del ítem</p>
+            <output
+              htmlFor={`${id}-cantidad ${id}-precio`}
+              aria-label={`Total del ítem ${numero}`}
+              className={cn('flex min-h-11 items-center justify-end rounded-lg bg-muted/60 px-2 text-right text-sm font-semibold tabular-nums @min-[44rem]:min-h-10 @min-[44rem]:bg-transparent @min-[44rem]:px-0', CIFRA)}
+            >
+              {total === null ? '—' : formatMontoTabla(total)}
+            </output>
+          </div>
+        ) : null}
       </div>
 
       {mensajes.length ? (
-        <p id={`${id}-error`} className="col-start-2 -col-end-1 text-sm text-destructive">
+        <p id={`${id}-error`} className="col-span-2 text-sm text-destructive @min-[44rem]:col-span-full @min-[44rem]:col-start-2">
           {mensajes.join(' · ')}
         </p>
       ) : null}
@@ -500,9 +519,8 @@ export function TarjetaItems({
   }
 
   return (
-    <Tarjeta compacta titulo="Ítems" descripcion={editarPrecios ? undefined : 'Los precios se completan en cada cotización.'}>
-      {/* A sangre dentro de la tarjeta, como la tabla de ítems de la plantilla. */}
-      <div className={cn('border-t', !enHoja && '-mx-4 -mb-4')}>
+    <Tarjeta compacta titulo="Ítems" descripcion={editarPrecios ? 'Definí los conceptos, cantidades y precios del servicio.' : 'Los precios se completan en cada cotización.'}>
+      <div className={cn('overflow-hidden rounded-lg border', !enHoja && '-mx-1')}>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-[15px] text-muted-foreground">Todavía no hay ítems.</p>
         ) : (
@@ -510,14 +528,14 @@ export function TarjetaItems({
             <div
               aria-hidden
               className={cn(
-                'hidden h-10 items-center gap-x-1 border-b px-3 text-sm font-medium text-muted-foreground @min-[44rem]:grid',
+                'hidden h-11 items-center gap-x-2 border-b bg-muted/30 px-3 text-xs font-medium text-muted-foreground @min-[44rem]:grid',
                 editarPrecios ? COLUMNAS : COLUMNAS_PLANTILLA,
               )}
             >
               <span />
               <span className="pl-2.5">Descripción</span>
-              <span className="pl-2">Cant.</span>
-              {editarPrecios ? <span className="pr-1.5 text-right">Precio</span> : null}
+              <span className="pl-1">Cantidad</span>
+              {editarPrecios ? <span className="pr-2 text-right">Precio unitario</span> : null}
               <span className="pl-2">Unidad</span>
               {editarPrecios ? <span className="text-right">Total</span> : null}
             </div>
@@ -557,7 +575,7 @@ export function TarjetaItems({
               </SortableContext>
             </DndContext>
             {editarPrecios && mostrarTotal ? (
-              <div className="flex items-center justify-end gap-6 border-b px-3 py-2 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t bg-muted/30 px-3 py-3 text-sm @min-[44rem]:justify-end @min-[44rem]:border-t-0 @min-[44rem]:border-b">
                 <span className="font-medium">Total</span>
                 {total === null ? (
                   <span className="text-muted-foreground">
@@ -572,21 +590,21 @@ export function TarjetaItems({
             ) : null}
           </>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
-          <div className="flex flex-wrap gap-1">
-            <Button ref={botonAgregar} type="button" variant="ghost" size="sm" className="text-primary" onClick={agregarAlFinal}>
+        <div className="flex flex-col gap-2 border-t px-3 py-3 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:justify-between @min-[44rem]:border-t-0">
+          <div className="flex flex-wrap gap-x-2 gap-y-1">
+            <Button ref={botonAgregar} type="button" variant="ghost" size="sm" className="h-11 text-primary @min-[44rem]:h-9" onClick={agregarAlFinal}>
               <Plus aria-hidden />
               Agregar ítem
             </Button>
             {/* Las secciones solo se imprimen en el formato por jornada. */}
             {formato === 'jornada' ? (
-              <Button type="button" variant="ghost" size="sm" className="text-primary" onClick={agregarSeccion}>
+              <Button type="button" variant="ghost" size="sm" className="h-11 text-primary @min-[44rem]:h-9" onClick={agregarSeccion}>
                 <Plus aria-hidden />
                 Agregar sección
               </Button>
             ) : null}
           </div>
-          <div className="flex min-h-11 items-center gap-2 md:min-h-0">
+          <div className="flex min-h-11 shrink-0 items-center gap-2 @min-[44rem]:min-h-9">
             <Switch
               id="cotizacion-mostrar-total"
               checked={mostrarTotal}

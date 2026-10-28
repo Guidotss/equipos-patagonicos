@@ -233,7 +233,8 @@ test.describe('lista de cotizaciones', () => {
     )
     await page.keyboard.press('Escape')
 
-    await tabla.getByRole('button', { name: `Duplicar la ${aprobada.numero}` }).click()
+    await tabla.getByRole('button', { name: `Más acciones de la ${aprobada.numero}` }).click()
+    await page.getByRole('menuitem', { name: 'Duplicar', exact: true }).click()
     await expect(page.getByText(`Se creó un borrador a partir de la ${aprobada.numero}`)).toBeVisible()
     await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/)
     const copia = new URL(page.url()).pathname.split('/').pop()
@@ -839,6 +840,7 @@ function respuestaVistaPrevia(page: Page) {
 }
 
 test.describe('vista previa del editor', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
   const creadas: string[] = []
 
   test.afterAll(async () => {
@@ -965,7 +967,7 @@ test.describe('vista previa del editor', () => {
       await expect(page.getByRole('region', { name: 'Vista previa' })).toHaveCount(0)
 
       const respuesta = respuestaVistaPrevia(page)
-      await page.setViewportSize({ width: 1200, height: 805 })
+      await page.setViewportSize({ width: 1440, height: 900 })
       const pedido = await respuesta
       expect(pedido.status()).toBe(200)
       const cuerpo = JSON.parse(pedido.request().postData() ?? '{}') as { estado: { asunto: string } }
@@ -1451,6 +1453,7 @@ test.describe('acciones de estado del editor', () => {
 })
 
 test.describe('flujo completo de una cotización', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
   const sufijo = sufijoUnico()
   const contacto = `Contacto E2E ${sufijo}`
   let contactoId: string

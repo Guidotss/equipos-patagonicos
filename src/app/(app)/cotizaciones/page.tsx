@@ -7,6 +7,7 @@ import { FiltrosCotizaciones } from '@/components/cotizaciones/lista/filtros-cot
 import { ListaCotizacionesMovil } from '@/components/cotizaciones/lista/lista-cotizaciones-movil'
 import { Paginacion } from '@/components/cotizaciones/lista/paginacion'
 import { TablaCotizaciones } from '@/components/cotizaciones/lista/tabla-cotizaciones'
+import { MarcoListado } from '@/components/listados/marco-listado'
 import { Button } from '@/components/ui/button'
 import { Conteo } from '@/components/ui/conteo'
 import { hrefConFiltros, leerFiltros, POR_PAGINA } from '@/lib/cotizaciones/lista'
@@ -24,8 +25,8 @@ const COLUMNAS =
 
 function Vacio({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-12 text-center">
-      <FileText className="size-6 text-muted-foreground" aria-hidden />
+    <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
+      <FileText className="mb-1 size-6 text-muted-foreground" aria-hidden />
       {children}
     </div>
   )
@@ -79,31 +80,35 @@ export default async function CotizacionesPage({
         {/* El único heading con "Cotizaciones": tests/e2e/auth.spec.ts lo busca por substring. */}
         <EncabezadoPagina
           titulo="Cotizaciones"
+          compacto
           extra={<Conteo>{total}</Conteo>}
           acciones={
             <>
-            <Button asChild variant="outline"><Link href="/cotizaciones/cargar">Cargar existente</Link></Button>
-            <Button asChild variant="outline"><Link href="/cotizaciones/directo">Presupuesto directo</Link></Button>
-            <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
-              <Link href="/cotizaciones/nueva">
-                <Plus aria-hidden />
-                Nueva cotización
-              </Link>
-            </Button>
+              <Button asChild variant="outline" className="h-10 px-3"><Link href="/cotizaciones/cargar">Cargar existente</Link></Button>
+              <Button asChild variant="outline" className="h-10 px-3"><Link href="/cotizaciones/directo">Presupuesto directo</Link></Button>
+              <Button asChild className="h-10 px-3.5">
+                <Link href="/cotizaciones/nueva">
+                  <Plus aria-hidden />
+                  Nueva cotización
+                </Link>
+              </Button>
             </>
           }
         />
 
-        {total === 0 && !hayFiltros ? (
-          <Vacio>
-            <p className="text-muted-foreground">Todavía no hay cotizaciones.</p>
-            <p className="text-sm text-muted-foreground">Creá la primera con “Nueva cotización”.</p>
-          </Vacio>
-        ) : (
-          // group/lista: mientras los filtros navegan (data-pendiente) la tarjeta se atenúa.
-          <div className="group/lista space-y-6">
-            <FiltrosCotizaciones filtros={filtros} clientes={conCotizaciones.data} />
-            {total === 0 ? (
+        <MarcoListado
+          className="group/lista"
+          herramientas={<FiltrosCotizaciones filtros={filtros} clientes={conCotizaciones.data} />}
+          pie={<Paginacion filtros={filtros} total={total} />}
+        >
+          <div className="transition-opacity group-has-[[data-pendiente]]/lista:opacity-60">
+            {total === 0 && !hayFiltros ? (
+              <Vacio>
+                <p className="font-medium">Todavía no hay cotizaciones.</p>
+                <p className="text-sm text-muted-foreground">Creá la primera con “Nueva cotización”.</p>
+                <Button asChild className="mt-2"><Link href="/cotizaciones/nueva"><Plus aria-hidden />Nueva cotización</Link></Button>
+              </Vacio>
+            ) : total === 0 ? (
               <Vacio>
                 <p className="text-muted-foreground">
                   {filtros.q
@@ -115,18 +120,17 @@ export default async function CotizacionesPage({
                 </Button>
               </Vacio>
             ) : (
-              <div className="@container overflow-hidden rounded-xl border bg-card shadow-tarjeta transition-opacity group-has-[[data-pendiente]]/lista:opacity-60">
-                <div className="hidden @min-[40rem]:block">
+              <>
+                <div className="hidden @min-[44rem]/listado:block">
                   <TablaCotizaciones filas={filas} />
                 </div>
-                <div className="@min-[40rem]:hidden">
+                <div className="@min-[44rem]/listado:hidden">
                   <ListaCotizacionesMovil filas={filas} />
                 </div>
-                <Paginacion filtros={filtros} total={total} />
-              </div>
+              </>
             )}
           </div>
-        )}
+        </MarcoListado>
       </Contenido>
     </>
   )

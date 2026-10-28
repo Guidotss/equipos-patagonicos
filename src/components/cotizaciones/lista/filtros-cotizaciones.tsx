@@ -141,14 +141,14 @@ function SelectorFechas({
           type="button"
           variant="outline"
           aria-label={`Fechas: ${texto}`}
-          className={cn('h-9 w-full justify-between bg-background px-3 font-normal', className)}
+          className={cn('h-10 w-full justify-between bg-background px-3 font-normal', className)}
         >
           <span className={cn('truncate tabular-nums', !desde && !hasta && 'text-muted-foreground')}>{texto}</span>
           <CalendarDays className="text-muted-foreground" aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" aria-label="Rango de fechas" className="w-80 gap-3 p-3">
-        <CamposRango rango={rango} alCambiar={setRango} alto="h-9" />
+        <CamposRango rango={rango} alCambiar={setRango} alto="h-10" />
         <div className="flex flex-wrap gap-1.5">
           {atajos.map((atajo) => (
             <Button
@@ -211,7 +211,7 @@ function FiltrosMovil({
   return (
     <Sheet open={abierto} onOpenChange={alAbrir}>
       <SheetTrigger asChild>
-        <Button type="button" variant="outline" className="h-10 gap-1.5 px-3 text-[15px] @min-[40rem]:hidden">
+        <Button type="button" variant="outline" className="h-11 gap-1.5 px-3 text-sm @min-[44rem]/listado:hidden">
           <SlidersHorizontal aria-hidden />
           Filtros
           {activos > 0 ? (
@@ -312,26 +312,29 @@ export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLis
     })
   }
 
-  // Los filtros aplicados (menos el texto) como chips para quitarlos de a uno en el celular.
+  // Los chips siguen la selección optimista mientras llega la navegación.
   const chips: { clave: string; texto: string; quitar: Partial<FiltrosLista> }[] = []
-  if (filtros.estado) {
-    chips.push({ clave: 'estado', texto: ESTADOS_COTIZACION[filtros.estado].etiqueta, quitar: { estado: '' } })
+  if (vigentes.q) {
+    chips.push({ clave: 'busqueda', texto: `Búsqueda: ${vigentes.q}`, quitar: { q: '' } })
   }
-  if (filtros.cliente) {
-    const cliente = clientes.find((c) => c.id === filtros.cliente)
+  if (vigentes.estado) {
+    chips.push({ clave: 'estado', texto: ESTADOS_COTIZACION[vigentes.estado].etiqueta, quitar: { estado: '' } })
+  }
+  if (vigentes.cliente) {
+    const cliente = clientes.find((c) => c.id === vigentes.cliente)
     chips.push({ clave: 'cliente', texto: cliente?.razon_social ?? 'Cliente', quitar: { cliente: '' } })
   }
-  if (filtros.desde || filtros.hasta) {
-    const texto = textoRangoFechas(filtros.desde, filtros.hasta)
+  if (vigentes.desde || vigentes.hasta) {
+    const texto = textoRangoFechas(vigentes.desde, vigentes.hasta)
     chips.push({ clave: 'fechas', texto, quitar: { desde: '', hasta: '' } })
   }
 
   return (
-    <div data-pendiente={pendiente ? '' : undefined} className="@container space-y-2">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 @min-[40rem]:grid-cols-3 @min-[48rem]:grid-cols-[minmax(0,1fr)_10rem_11.5rem_13.5rem]">
+    <div data-pendiente={pendiente ? '' : undefined} aria-busy={pendiente} className="space-y-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 @min-[44rem]/listado:grid-cols-3 @min-[48rem]/listado:grid-cols-[minmax(0,1fr)_11rem_11.5rem_12.5rem]">
         <form
           role="search"
-          className="relative @min-[40rem]:col-span-3 @min-[48rem]:col-span-1"
+          className="relative @min-[44rem]/listado:col-span-3 @min-[48rem]/listado:col-span-1"
           onSubmit={(evento) => {
             evento.preventDefault()
             const q = new FormData(evento.currentTarget).get('q')
@@ -347,23 +350,23 @@ export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLis
             name="q"
             type="search"
             defaultValue={filtros.q}
-            placeholder="Buscar por N°, cliente, equipo o lugar"
+            placeholder="Buscar cotizaciones…"
             aria-label="Buscar cotizaciones"
-            className="h-10 bg-background pl-9 @min-[40rem]:h-9"
+            className="h-11 bg-background pl-9 @min-[44rem]/listado:h-10"
           />
           <button type="submit" className="sr-only">
             Buscar
           </button>
         </form>
 
-        <FiltrosMovil filtros={filtros} clientes={clientes} activos={chips.length} alAplicar={aplicar} />
+        <FiltrosMovil filtros={vigentes} clientes={clientes} activos={chips.length} alAplicar={aplicar} />
 
         {/* pr-7 y no el pr-8 del select: con 160 px, "Todos los estados" se cortaba antes de la flecha. */}
         <NativeSelect
           aria-label="Estado"
           value={vigentes.estado}
           onChange={(evento) => aplicar({ estado: aEstado(evento.target.value) })}
-          className="hidden w-full @min-[40rem]:block [&>select]:h-9 [&>select]:bg-background [&>select]:pr-7"
+          className="hidden min-w-0 w-full @min-[44rem]/listado:block [&>select]:h-10 [&>select]:truncate [&>select]:bg-background [&>select]:pr-7"
         >
           <OpcionesEstado />
         </NativeSelect>
@@ -371,34 +374,41 @@ export function FiltrosCotizaciones({ filtros, clientes }: { filtros: FiltrosLis
           aria-label="Cliente"
           value={vigentes.cliente}
           onChange={(evento) => aplicar({ cliente: evento.target.value })}
-          className="hidden w-full @min-[40rem]:block [&>select]:h-9 [&>select]:bg-background [&>select]:pr-7"
+          className="hidden min-w-0 w-full @min-[44rem]/listado:block [&>select]:h-10 [&>select]:truncate [&>select]:bg-background [&>select]:pr-7"
         >
           <OpcionesCliente clientes={clientes} />
         </NativeSelect>
         <SelectorFechas
-          desde={filtros.desde}
-          hasta={filtros.hasta}
+          desde={vigentes.desde}
+          hasta={vigentes.hasta}
           alAplicar={aplicar}
-          className="hidden @min-[40rem]:flex"
+          className="hidden @min-[44rem]/listado:flex"
         />
       </div>
 
       {chips.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 @min-[40rem]:hidden">
+        <div className="flex flex-wrap items-center gap-2">
           {chips.map((chip) => (
             <button
               key={chip.clave}
               type="button"
               aria-label={`Quitar filtro ${chip.texto}`}
+              title={chip.texto}
               onClick={() => aplicar(chip.quitar)}
-              className="inline-flex h-7 max-w-full items-center gap-1 rounded-md bg-accent px-2 text-[13px] text-primary"
+              className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[13px] text-primary transition-colors outline-none hover:bg-primary/15 focus-visible:ring-3 focus-visible:ring-ring/50 @min-[44rem]/listado:min-h-8 @min-[44rem]/listado:max-w-72"
             >
               <span className="truncate">{chip.texto}</span>
               <X className="size-3.5 shrink-0" aria-hidden />
             </button>
           ))}
+          {chips.length > 1 ? (
+            <Button type="button" variant="ghost" className="h-8 px-2 text-xs text-muted-foreground" onClick={() => aplicar({ q: '', estado: '', cliente: '', desde: '', hasta: '' })}>
+              Limpiar filtros
+            </Button>
+          ) : null}
         </div>
       ) : null}
+      <span role="status" className="sr-only">{pendiente ? 'Actualizando cotizaciones…' : ''}</span>
     </div>
   )
 }

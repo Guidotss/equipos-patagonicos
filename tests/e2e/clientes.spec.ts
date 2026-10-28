@@ -33,7 +33,7 @@ test('alta de cliente: valida el CUIT sin perder lo escrito, agrega un contacto 
   await expect(page.getByText('Yanina Colman')).toBeVisible()
 
   await page.goto(`/clientes?q=${encodeURIComponent(`gruas nandu ${sufijo}`)}`)
-  await expect(page.getByRole('link', { name: razonSocial })).toBeVisible()
+  await expect(page.getByRole('link', { name: razonSocial, exact: true })).toBeVisible()
 })
 
 test('el CUIT de un cliente existente no se puede repetir', async ({ page }) => {

@@ -110,7 +110,7 @@ export function EditorCotizacion({
     setEspera(modo === 'descartar' ? { modo } : { modo, ignorar: [inicial.version, versionLocal] })
   }
 
-  // Vista previa (Task 11): un solo estado para la columna fija (≥ 72rem) y el panel lateral (md a 72rem).
+  // Vista previa (Task 11): un solo estado para la columna fija (≥ 90rem) y el panel lateral (md a 90rem).
   const vista = useVistaPrevia(estado)
   const lineaVista = lineaVistaPrevia({
     modo: vista.modo,
@@ -333,7 +333,7 @@ export function EditorCotizacion({
 
   return (
     <div ref={raiz}>
-      <Contenido className="pb-28 min-[72rem]:pb-8">
+      <Contenido className="pb-28 min-[90rem]:pb-8">
         <EncabezadoEditor
           estado={estado}
           hoy={hoy}
@@ -375,7 +375,7 @@ export function EditorCotizacion({
             </AlertDescription>
           </Alert>
         ) : null}
-        <div className="grid items-start gap-5 min-[72rem]:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+        <div className="grid items-start gap-5 min-[90rem]:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
           {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). Mientras corre
               una transición, también: no se tipea sobre algo que se está enviando, aprobando o rechazando. */}
           <fieldset

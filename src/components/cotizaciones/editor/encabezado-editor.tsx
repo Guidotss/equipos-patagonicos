@@ -50,14 +50,14 @@ export function EncabezadoEditor({
       acciones={
         <>
           {editable ? (
-            // Debajo de 72rem Guardar está en la barra fija de abajo (BarraInferior).
+            // Debajo de 90rem Guardar está en la barra fija de abajo (BarraInferior).
             <Button
               type="button"
               variant="outline"
               size="lg"
               onClick={alGuardar}
               disabled={ocupado || (estado.id !== null && !cambios)}
-              className="hidden min-[72rem]:inline-flex"
+              className="hidden min-[90rem]:inline-flex"
             >
               {guardando ? 'Guardando…' : 'Guardar'}
             </Button>

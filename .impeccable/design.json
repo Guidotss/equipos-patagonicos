@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-28T21:22:28.081881Z",
+  "generatedAt": "2026-10-28T21:57:48.770762Z",
   "title": "Design System: Equipos Patagónicos",
   "extensions": {
     "colorMeta": {
@@ -485,7 +485,7 @@
       },
       {
         "name": "editor-preview-viewport",
-        "value": "72rem"
+        "value": "90rem"
       },
       {
         "name": "2xl-viewport",
@@ -502,6 +502,22 @@
     ]
   },
   "components": [
+    {
+      "name": "Operational List",
+      "kind": "custom",
+      "refersTo": "list-frame",
+      "description": "Marco plano de filtros, resultados y pie; la tabla conserva el encabezado al desplazar filas y se apila al estrecharse el contenedor. La apertura de fila respeta enlaces, controles y portales.",
+      "html": "<section class=\"ds-list\"><div class=\"ds-list-tools\"><label for=\"ds-list-search\">Buscar presupuestos</label><input id=\"ds-list-search\" type=\"search\" placeholder=\"Número, cliente o trabajo\"></div><div class=\"ds-list-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Resultados\"><table class=\"ds-list-table\"><thead><tr><th scope=\"col\">Presupuesto</th><th scope=\"col\">Cliente / trabajo</th><th scope=\"col\">Documentos</th></tr></thead><tbody><tr><td><a href=\"#ds-list-registro\">Abrir presupuesto</a></td><td id=\"ds-list-registro\">Cliente / trabajo</td><td><abbr title=\"Órdenes de compra\">OC</abbr> 0 · <abbr title=\"Órdenes de pago\">OP</abbr> 0</td></tr></tbody></table></div><ul class=\"ds-list-stacked\"><li><a href=\"#ds-list-registro\">Abrir presupuesto</a><p>Cliente / trabajo</p><p>Órdenes de compra 0 · Órdenes de pago 0</p></li></ul><footer class=\"ds-list-footer\">Mostrando 1–1 de 1</footer></section>",
+      "css": ".ds-list{container:ds-list/inline-size;min-width:0;border:1px solid var(--border);border-radius:var(--radius-xl,14px);background:var(--card,white);color:var(--foreground);font:400 14px/20px var(--font-inter,Inter,sans-serif);}.ds-list-tools{padding:16px;border-bottom:1px solid var(--border);}.ds-list-tools label{display:block;margin-bottom:6px;}.ds-list-tools input{width:100%;min-width:0;min-height:40px;padding:4px 10px;border:1px solid var(--input);border-radius:var(--radius-lg,10px);background:var(--background,white);color:inherit;font:inherit;}.ds-list-scroll{display:none;max-height:max(20rem,calc(100dvh - 21rem));overflow:auto;overscroll-behavior:contain;}.ds-list-table{width:100%;table-layout:fixed;border-collapse:collapse;}.ds-list-table thead{position:sticky;top:0;background:var(--muted);}.ds-list-table th{height:44px;text-align:left;font-size:13px;font-weight:500;color:var(--muted-foreground);}.ds-list-table th,.ds-list-table td{padding:12px 16px;overflow-wrap:anywhere;}.ds-list-table td{border-bottom:1px solid var(--border);}.ds-list-table tbody tr:hover,.ds-list-table tbody tr:focus-within{background:color-mix(in oklab,var(--accent) 30%,transparent);}.ds-list a{color:var(--primary);text-underline-offset:4px;}.ds-list a:hover{text-decoration:underline;}.ds-list a:focus-visible,.ds-list-scroll:focus-visible{outline:2px solid var(--ring);}.ds-list-tools input:focus-visible{outline:2px solid var(--ring);outline-offset:2px;}.ds-list abbr{text-decoration:none;}.ds-list-stacked{margin:0;padding:0;list-style:none;}.ds-list-stacked li{padding:16px;}.ds-list-stacked p{margin:12px 0 0;overflow-wrap:anywhere;}.ds-list-footer{padding:12px 16px;border-top:1px solid var(--border);color:var(--muted-foreground);font-variant-numeric:tabular-nums;}@container ds-list (min-width:44rem){.ds-list-scroll{display:block;}.ds-list-stacked{display:none;}}@media(max-width:47.999rem){.ds-list-tools input{min-height:44px;font-size:16px;}}"
+    },
+    {
+      "name": "Item Price and Calculated Total",
+      "kind": "custom",
+      "refersTo": "input-form",
+      "description": "Precio editable con borde de control y total calculado como output; cifras tabulares, campos de 40px en línea y 44px con etiquetas al apilarse.",
+      "html": "<div class=\"ds-item-values\"><div class=\"ds-item-values-grid\"><div><label for=\"ds-item-price\">Precio unitario</label><input id=\"ds-item-price\" inputmode=\"decimal\" value=\"1.950.000,00\"></div><div><p>Total del ítem</p><output for=\"ds-item-price\" aria-label=\"Total del ítem\">1.950.000,00</output></div></div></div>",
+      "css": ".ds-item-values{container:ds-item-values/inline-size;color:var(--foreground);font-family:var(--font-inter,Inter,sans-serif);}.ds-item-values-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}.ds-item-values label,.ds-item-values p{display:block;margin:0 0 6px;font-size:14px;font-weight:500;}.ds-item-values input{width:100%;min-width:0;height:44px;padding:4px 10px;border:1px solid var(--input);border-radius:var(--radius-lg,10px);background:var(--background,white);color:inherit;font:400 16px/24px var(--font-inter,Inter,sans-serif);text-align:right;font-variant-numeric:tabular-nums;}.ds-item-values input:focus-visible{border-color:var(--ring);outline:2px solid var(--ring);outline-offset:2px;}.ds-item-values output{display:flex;min-height:44px;align-items:center;justify-content:flex-end;padding:0 8px;border-radius:var(--radius-lg,10px);background:color-mix(in oklab,var(--muted) 60%,transparent);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;}@container ds-item-values (min-width:44rem){.ds-item-values-grid{grid-template-columns:8rem 7rem;justify-content:end;gap:8px;}.ds-item-values input{height:40px;font-size:14px;line-height:20px;}.ds-item-values output{min-height:40px;padding:0;background:transparent;}}"
+    },
     {
       "name": "Primary Button",
       "kind": "button",

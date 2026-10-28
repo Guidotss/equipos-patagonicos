@@ -17,6 +17,8 @@ Imágenes de referencia para el skill `frontend-from-generated-image`. Son el ob
 | `10-edicion.png` | Patrón de alta/edición en pantalla propia (sin modales), ejemplo Editar equipo: ficha + tarjetas + franja "Así sale en la cotización" | 2 (rediseño) |
 | `11-cierre-mvp.png` | Presupuesto, Inicio y carga móvil sobre el shell ya implementado | Cierre MVP |
 | `13-formularios-estructura.png` | Hoja de formularios dividida por tareas, con acciones persistentes | Reemplazo de formularios |
+| `14-listados.png` | Marco de listados, columnas agrupadas y acciones acotadas | Grillas |
+| `15-grilla-items.png` | Edición de ítems con campos visibles y etiquetas móviles | Grillas |
 
 La referencia 11 se generó con OpenAI ImageGen a partir de una captura de la app y las referencias 01 y 04. El panel de Inicio generado incluye algunos montos de cotizaciones: no se reproducen, porque Inicio sólo muestra montos de facturas y cobros.
 
@@ -97,3 +99,5 @@ No copiarlos al implementar:
 - `12-formularios.png`: refinamiento de la UI existente, con controles de 44 px y texto de 16 px en móvil; escritorio conserva la densidad actual. La carga de PDF usa una acción explícita en español.
 
 La referencia 13 reemplaza la composición de formularios de las referencias 09, 10 y 12: una hoja continua con secciones y encabezados compactos. El shell y las fichas generales conservan su dirección visual. Ver [validación del reemplazo](../2026-10-28-formularios-reemplazo.md).
+
+Las referencias 14 y 15 actualizan los listados y la grilla de ítems de 02/03, manteniendo las reglas comerciales. La vista previa lateral se reserva a ventanas de 90rem y continúa disponible en un panel por debajo. Ver [validación de grillas](../2026-10-28-grillas-validacion.md).

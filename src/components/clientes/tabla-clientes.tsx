@@ -1,55 +1,84 @@
+import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
+import { FilaListado } from '@/components/listados/fila-listado'
+import { TablaListado } from '@/components/listados/tabla-listado'
 import { Pastilla } from '@/components/ui/pastilla'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCuit } from '@/lib/cuit'
-import { iniciales } from '@/lib/format/texto'
-import { cn } from '@/lib/utils'
 
 type FilaCliente = { id: string; razon_social: string; cuit: string | null; localidad: string; activo: boolean }
 
 export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-tarjeta">
-      <Table>
-        <TableHeader className="bg-muted/50">
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="h-11 pl-5 text-muted-foreground">Razón social</TableHead>
-            <TableHead className="hidden h-11 text-muted-foreground md:table-cell">CUIT</TableHead>
-            <TableHead className="hidden h-11 text-muted-foreground sm:table-cell">Localidad</TableHead>
-            <TableHead className="h-11 pr-5 text-muted-foreground">Estado</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {clientes.map((cliente) => (
-            <TableRow key={cliente.id} className={cliente.activo ? undefined : 'text-muted-foreground'}>
-              <TableCell className="py-3 pl-5 whitespace-normal">
-                <div className="flex items-center gap-3">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'grid size-9 shrink-0 place-items-center rounded-lg text-sm font-semibold',
-                      cliente.activo ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {iniciales(cliente.razon_social, 1)}
-                  </span>
-                  <Link
-                    href={`/clientes/${cliente.id}`}
-                    className={cn('font-medium hover:text-primary hover:underline', cliente.activo ? 'text-foreground' : null)}
-                  >
+    <>
+      <div className="hidden @min-[44rem]/listado:block">
+        <TablaListado aria-label="Clientes">
+          <colgroup>
+            <col />
+            <col className="w-[22%]" />
+            <col className="w-28" />
+            <col className="w-28" />
+          </colgroup>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead scope="col">Cliente</TableHead>
+              <TableHead scope="col">Localidad</TableHead>
+              <TableHead scope="col">Estado</TableHead>
+              <TableHead scope="col"><span className="sr-only">Abrir cliente</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {clientes.map((cliente) => (
+              <FilaListado key={cliente.id} href={`/clientes/${cliente.id}`}>
+                <TableCell>
+                  <Link href={`/clientes/${cliente.id}`} className="font-medium leading-5 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
                     {cliente.razon_social}
                   </Link>
-                </div>
-              </TableCell>
-              <TableCell className="hidden tabular-nums md:table-cell">{cliente.cuit ? formatCuit(cliente.cuit) : '—'}</TableCell>
-              <TableCell className="hidden sm:table-cell">{cliente.localidad || '—'}</TableCell>
-              <TableCell className="pr-5">
-                {cliente.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                  <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                    {cliente.cuit ? `CUIT ${formatCuit(cliente.cuit)}` : 'Sin CUIT'}
+                  </p>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{cliente.localidad || 'Sin localidad'}</TableCell>
+                <TableCell><EstadoCliente activo={cliente.activo} /></TableCell>
+                <TableCell>
+                  <Link
+                    href={`/clientes/${cliente.id}`}
+                    aria-label={`Abrir cliente ${cliente.razon_social}`}
+                    className="inline-flex min-h-10 items-center gap-1 text-sm text-muted-foreground hover:text-primary focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    Abrir <ArrowUpRight className="size-3.5" aria-hidden />
+                  </Link>
+                </TableCell>
+              </FilaListado>
+            ))}
+          </TableBody>
+        </TablaListado>
+      </div>
+      <ul className="divide-y @min-[44rem]/listado:hidden">
+        {clientes.map((cliente) => (
+          <li key={cliente.id}>
+            <Link
+              href={`/clientes/${cliente.id}`}
+              aria-label={cliente.razon_social}
+              className="block space-y-3 p-4 hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="min-w-0 font-medium leading-6 [overflow-wrap:anywhere]">{cliente.razon_social}</span>
+                <EstadoCliente activo={cliente.activo} />
+              </div>
+              <dl className="space-y-1 text-sm text-muted-foreground">
+                <div className="flex gap-2"><dt className="w-16 shrink-0">CUIT</dt><dd className="tabular-nums">{cliente.cuit ? formatCuit(cliente.cuit) : 'Sin CUIT'}</dd></div>
+                <div className="flex gap-2"><dt className="w-16 shrink-0">Localidad</dt><dd className="min-w-0 [overflow-wrap:anywhere]">{cliente.localidad || 'Sin localidad'}</dd></div>
+              </dl>
+              <span className="inline-flex items-center gap-1 text-xs text-primary">Abrir cliente <ArrowUpRight className="size-3.5" aria-hidden /></span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
   )
+}
+
+function EstadoCliente({ activo }: { activo: boolean }) {
+  return activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>
 }

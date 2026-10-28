@@ -27,7 +27,7 @@ import {
 import { cn } from '@/lib/utils'
 
 /** Desde este ancho la vista previa es una columna fija (docs/diseno/referencias/03-editor-cotizacion.png). */
-const ESCRITORIO = '(min-width: 72rem)'
+const ESCRITORIO = '(min-width: 90rem)'
 
 function esEscritorio(): boolean {
   return window.matchMedia(ESCRITORIO).matches
@@ -289,7 +289,7 @@ export function PanelVistaPrevia({
 }
 
 /**
- * La columna fija del editor (≥ 72rem). Más angosta queda oculta (display: none), pero un <iframe> oculto igual se
+ * La columna fija del editor (≥ 90rem). Más angosta queda oculta (display: none), pero un <iframe> oculto igual se
  * carga: bajaría el PDF para nada (y, en un navegador sin visor embebido, como el de algunos celulares, lo
  * descargaría sin que nadie lo pida). Por eso el visor se dibuja recién cuando la columna se ve. El ancho se mira
  * acá y no en EditorCotizacion: el render extra al hidratar (en el servidor no se conoce) queda en esta columna.
@@ -299,14 +299,14 @@ export function ColumnaVistaPrevia({ vista, linea }: { vista: VistaPrevia; linea
   return (
     // 56 px de migas + 16: la columna acompaña el scroll debajo de la barra (relev-visual §3.8).
     // pt-5.5: el título "Vista previa" queda a la altura del de la tarjeta Cliente (borde + p-6).
-    <aside className="sticky top-18 hidden self-start min-[72rem]:block">
+    <aside className="sticky top-18 hidden self-start min-[90rem]:block">
       <PanelVistaPrevia vista={vista} linea={linea} mostrarVisor={seVe} className="pt-5.5" />
     </aside>
   )
 }
 
 /**
- * Entre md y 72rem no hay columna: la barra inferior abre el mismo panel en un Sheet lateral.
+ * Entre md y 90rem no hay columna: la barra inferior abre el mismo panel en un Sheet lateral.
  * Si todavía no se generó ninguna, se genera al abrirlo.
  */
 export function VistaPreviaLateral({ vista, linea }: { vista: VistaPrevia; linea: string }) {

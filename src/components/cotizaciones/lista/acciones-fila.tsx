@@ -19,7 +19,7 @@ import type { TransicionLista } from '@/lib/cotizaciones/acciones-estado'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /**
- * Acciones de una fila de la lista. En la tabla: PDF (salvo un presupuesto directo), Duplicar y ⋯; en el celular,
+ * Acciones de una fila de la lista. En la tabla: PDF (salvo un presupuesto directo) y ⋯; en el celular,
  * todo dentro del ⋯. Las transiciones del ⋯ llevan al editor con su confirmación abierta (`?accion=`).
  */
 export function AccionesFila({
@@ -41,7 +41,6 @@ export function AccionesFila({
   const pdf = `/cotizaciones/${id}/pdf`
   const [otroCliente, setOtroCliente] = useState(false)
 
-  // Un clic crea el borrador y abre el editor: el cliente se cambia ahí (decisión del diseño, §6).
   function duplicar() {
     iniciarDuplicado(async () => {
       try {
@@ -67,13 +66,15 @@ export function AccionesFila({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="text-muted-foreground"
+          className={variante === 'movil' ? 'size-11 text-muted-foreground' : 'text-muted-foreground'}
           aria-label={`Más acciones de la ${numero}`}
+          aria-busy={duplicando}
+          disabled={duplicando}
         >
-          <Ellipsis />
+          {duplicando ? <LoaderCircle className="animate-spin" /> : <Ellipsis />}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className={variante === 'movil' ? 'w-56 [&_[role=menuitem]]:min-h-11' : 'w-56'}>
         <DropdownMenuItem asChild>
           <Link href={`/cotizaciones/${id}`}>
             <SquarePen aria-hidden />
@@ -96,13 +97,11 @@ export function AccionesFila({
             </a>
           </DropdownMenuItem>
         ) : null}
-        {variante === 'movil' ? (
-          <DropdownMenuItem disabled={duplicando} onSelect={duplicar}>
-            <Copy aria-hidden />
-            Duplicar
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem onSelect={() => setOtroCliente(true)}><Copy aria-hidden />Duplicar a otro cliente</DropdownMenuItem>
+        <DropdownMenuItem disabled={duplicando} onSelect={duplicar}>
+          <Copy aria-hidden />
+          Duplicar
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={duplicando} onSelect={() => setOtroCliente(true)}><Copy aria-hidden />Duplicar a otro cliente</DropdownMenuItem>
         {transiciones.length > 0 ? <DropdownMenuSeparator /> : null}
         {transiciones.map(({ accion, etiqueta }) => (
           <DropdownMenuItem key={accion} asChild variant={accion === 'borrar' ? 'destructive' : 'default'}>
@@ -131,25 +130,9 @@ export function AccionesFila({
           <TooltipContent>Ver PDF</TooltipContent>
         </Tooltip>
       ) : (
-        // Un presupuesto directo no tiene PDF: el hueco mantiene alineados los otros dos íconos.
+        // Mantiene alineado el menú cuando el presupuesto directo no tiene PDF.
         <span aria-hidden className="size-7" />
       )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-muted-foreground"
-            aria-label={`Duplicar la ${numero}`}
-            disabled={duplicando}
-            onClick={duplicar}
-          >
-            {duplicando ? <LoaderCircle className="animate-spin" /> : <Copy />}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Duplicar</TooltipContent>
-      </Tooltip>
       {menu}
     </div>
   )

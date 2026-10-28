@@ -199,6 +199,10 @@
     "rounded": "{rounded.md}"
     "padding": "0 8px"
     "height": "24px"
+  "list-frame":
+    "backgroundColor": "{colors.background}"
+    "textColor": "{colors.foreground}"
+    "rounded": "{rounded.xl}"
 ---
 
 # Design System: Equipos Patagónicos
@@ -269,7 +273,7 @@ El índigo nítido se apoya en superficies blancas y grises fríos; el color adi
 
 El shell de escritorio comienza en el breakpoint de ventana `md` (48rem). La columna lateral ocupa 15rem y permanece fija en el flujo mientras su contenido puede desplazarse. La barra de migas mide 3.5rem y se pega arriba en escritorio; en móvil la sustituye como elemento persistente la barra de navegación con menú lateral. Las migas largas pueden truncarse dentro del ancho disponible, conservando el texto completo en su título accesible.
 
-El contenido general tiene un máximo de 90rem, con márgenes interiores de la escala `4` en móvil y `9` en escritorio. Las páginas de formulario habituales limitan su ancho a 72rem y dejan 7rem de espacio inferior para la barra fija. El editor comercial reserva una segunda columna para la vista previa desde 72rem de ventana; sus secciones compactas conservan el propósito encima de los campos.
+El contenido general tiene un máximo de 90rem, con márgenes interiores de la escala `4` en móvil y `9` en escritorio. Las páginas de formulario habituales limitan su ancho a 72rem y dejan 7rem de espacio inferior para la barra fija. El editor comercial reserva una segunda columna para la vista previa desde 90rem de ventana (1440px); sus secciones compactas conservan el propósito encima de los campos. Por debajo, la vista previa sigue accesible desde las acciones: panel lateral desde `md` y PDF en otra pestaña en móvil.
 
 La hoja es un contenedor de tamaño: al alcanzar 48rem de ancho propio, la sección no compacta forma una columna de propósito de 11rem y otra flexible para campos, con separación de la escala `7` y un divisor vertical. Por debajo de ese ancho, el propósito y el contenido se apilan. El relleno de sección pasa de la escala `4` a `6` en `sm` (40rem de ventana). La grilla de campos usa dos columnas desde 28rem del contenedor de campos; por debajo usa una. Campos largos y áreas de texto pueden ocupar ambas columnas.
 
@@ -326,6 +330,14 @@ El sidebar claro muestra íconos de línea y filas de navegación curvas. La fil
 ### Form Structure
 
 `EncabezadoFormulario` usa el rol `headline`, una descripción de ancho acotado y acciones o estado cuando corresponde; admite títulos largos con corte de palabra para evitar desbordes. `HojaFormulario` y `SeccionFormulario` controlan la agrupación y la adaptación al contenedor. `AccionesFormulario` mantiene cancelar y guardar en una barra inferior común; mientras guarda, la acción principal muestra su estado pendiente. Las acciones de negocio específicas conservan su ubicación y comportamiento propio.
+
+### Listados
+
+El registro operativo usa un marco plano (`list-frame`): filtros, tabla y pie comparten borde y curva, sin sombra. La tabla desplaza sus resultados con el encabezado adherido; filtros y paginación quedan fuera del desplazamiento. Los filtros activos se reconocen y se pueden limpiar; el pie comunica rangos reales. Las columnas agrupan metadatos según cada contexto y, al estrecharse el contenedor, se convierten en filas apiladas con la misma prioridad de lectura.
+
+La fila amplía el área de apertura, conserva enlaces reales para el teclado y no intercepta controles, acciones de menús o diálogos en portales, selección de texto ni clics modificados. Hover y foco dentro de la fila comparten un tinte suave. En Presupuestos, los conteos de documentos tienen etiquetas: la columna comparativa de escritorio admite `OC` y `OP` como abreviaturas con `title`; móvil y la presentación junto al cliente usan los nombres completos.
+
+La grilla editable de ítems mantiene contorno y bordes de campo visibles. El precio es un input; el total es un `output` calculado, alineado a la derecha con cifras tabulares. Desde 44rem de ancho propio, los ítems forman una línea; por debajo se apilan con etiquetas visibles. Los filtros y campos de ítem conservan la altura de escritorio (40px) y el mínimo táctil móvil (44px), con los estados de foco, error y falta de precio existentes.
 
 ## Do's and Don'ts
 

@@ -410,11 +410,11 @@ export function useAccionesEstado({
   }
 }
 
-/** Primario de cabecera; con la barra inferior a la vista (< 72rem) se ve como outline: el primario ahí es Guardar. */
+/** Primario de cabecera; con la barra inferior a la vista (< 90rem) se ve como outline: el primario ahí es Guardar. */
 const PRIMARIO = 'shadow-md shadow-primary/20'
 const PRIMARIO_CON_BARRA = cn(
   PRIMARIO,
-  'max-[72rem]:border-border max-[72rem]:bg-background max-[72rem]:text-foreground max-[72rem]:shadow-none max-[72rem]:hover:bg-muted',
+  'max-[90rem]:border-border max-[90rem]:bg-background max-[90rem]:text-foreground max-[90rem]:shadow-none max-[90rem]:hover:bg-muted',
 )
 
 function BotonDeAccion({
