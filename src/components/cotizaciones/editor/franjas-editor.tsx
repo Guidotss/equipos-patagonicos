@@ -277,7 +277,7 @@ function FranjaPendientes({ faltan, malEscritas }: { faltan: Pendiente[]; malEsc
                     <button
                       type="button"
                       onClick={() => enfocarCampo(destino)}
-                      className="font-semibold underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
+                      className="font-semibold underline underline-offset-4 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       {pendiente.texto}
                     </button>

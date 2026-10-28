@@ -1162,6 +1162,48 @@ test.describe('acciones de estado del editor', () => {
     await expect(aprobar).toBeEnabled()
   })
 
+  for (const width of [1280, 390]) {
+    test(`distingue un equipo seleccionado de su descripción pendiente (${width} px)`, async ({ page }, testInfo) => {
+      const { cotizacion, equipo } = await conBase(async (db) => {
+        const cotizacion = await crearCotizacionCompleta(db)
+        const { rows: [equipo] } = await db.query<{ id: string; nombre: string }>(
+          `insert into public.equipos (nombre, capacidad_tn, descripcion) values ($1, 60.5, '') returning id, nombre`,
+          [`Grúa sin descripción ${sufijoUnico()}`],
+        )
+        await db.query('update public.cotizaciones set equipo_id = $2 where id = $1', [cotizacion.id, equipo.id])
+        return { cotizacion, equipo }
+      })
+      try {
+        await page.setViewportSize({ width, height: 900 })
+        await iniciarSesion(page)
+        await page.goto(`/cotizaciones/${cotizacion.id}`)
+
+        const selector = page.getByLabel('Equipo', { exact: true })
+        const franja = page.getByText(/^Para enviar falta completar:/)
+        const enviar = page.getByRole('button', { name: 'Descargar y marcar enviada' })
+        await expect(selector).toHaveValue(equipo.id)
+        await expect(franja).toHaveText('Para enviar falta completar: Descripción del equipo')
+        await expect(enviar).toBeDisabled()
+        await franja.getByRole('button', { name: 'Descripción del equipo', exact: true }).click()
+        await expect(selector).toBeFocused()
+        await expect(selector).toHaveAccessibleDescription('Completá la descripción del equipo en Configuración › Equipos.')
+        await page.screenshot({ path: testInfo.outputPath('descripcion-pendiente.png') })
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+
+        await selector.selectOption('')
+        await expect(franja).toHaveText('Para enviar falta completar: Equipo')
+        await selector.selectOption({ label: 'Grúa telescópica XCMG 70 TN' })
+        await expect(franja).toBeHidden()
+        await expect(enviar).toBeEnabled()
+      } finally {
+        await conBase(async (db) => {
+          await borrarCotizaciones(db, [cotizacion.id])
+          await db.query('delete from public.equipos where id = $1', [equipo.id])
+        })
+      }
+    })
+  }
+
   test('el ⋯ de la lista abre el editor con la confirmación de la transición', async ({ page }) => {
     const { id, numero } = await conBase(async (db) => {
       const creada = await crearCotizacionCompleta(db)

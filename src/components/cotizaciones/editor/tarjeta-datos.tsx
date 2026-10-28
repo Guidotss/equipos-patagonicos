@@ -199,7 +199,7 @@ function CampoDato({
 function AyudaEquipo({ catalogos, estado, faltan }: { catalogos: CatalogosEditor; estado: EstadoEditor; faltan: Set<string> }) {
   if (catalogos.equipos.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground">
+      <p id={`${ID_CAMPO.equipo}-ayuda`} className="text-xs text-muted-foreground">
         No hay equipos activos.{' '}
         <Link href="/configuracion/equipos/nuevo" className="text-primary underline-offset-4 hover:underline">
           Cargar equipos en Configuración
@@ -209,11 +209,14 @@ function AyudaEquipo({ catalogos, estado, faltan }: { catalogos: CatalogosEditor
   }
   if (!faltan.has('capacidad') && !faltan.has('equipo_descripcion')) return null
   if (estado.equipoId === '') {
-    return <p className="text-xs text-muted-foreground">El texto usa la capacidad y la descripción del equipo.</p>
+    return <p id={`${ID_CAMPO.equipo}-ayuda`} className="text-xs text-muted-foreground">El texto usa la capacidad y la descripción del equipo.</p>
   }
+  const datos = faltan.has('capacidad') && faltan.has('equipo_descripcion')
+    ? 'la capacidad y la descripción'
+    : faltan.has('capacidad') ? 'la capacidad' : 'la descripción'
   return (
-    <p className="text-xs text-muted-foreground">
-      A este equipo le falta {faltan.has('capacidad') ? 'la capacidad' : 'la descripción'} (Configuración › Equipos).
+    <p id={`${ID_CAMPO.equipo}-ayuda`} className="text-xs text-muted-foreground">
+      Completá {datos} del equipo en Configuración › Equipos.
     </p>
   )
 }
@@ -299,7 +302,11 @@ export function TarjetaDatos({
             value={estado.equipoId}
             onChange={(evento) => despachar({ tipo: 'campo', campo: 'equipoId', valor: evento.target.value })}
             aria-invalid={Boolean(errores.equipoId)}
-            aria-describedby={errores.equipoId ? `${ID_CAMPO.equipo}-error` : undefined}
+            aria-describedby={errores.equipoId
+              ? `${ID_CAMPO.equipo}-error`
+              : catalogos.equipos.length === 0 || faltan.has('capacidad') || faltan.has('equipo_descripcion')
+                ? `${ID_CAMPO.equipo}-ayuda`
+                : undefined}
             // Menos lugar para la flecha: "Grúa telescópica XCMG 70 TN" no se corta contra ella a 1200 px.
             className={cn(
               'w-full [&_[data-slot=native-select-icon]]:right-2 [&_select]:pr-7',

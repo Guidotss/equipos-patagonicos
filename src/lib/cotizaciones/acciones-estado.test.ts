@@ -213,10 +213,23 @@ describe('franjasEstado', () => {
 })
 
 describe('pendientesVisibles', () => {
+  it.each([
+    { variables: ['equipo_descripcion'] as const, textos: ['Descripción del equipo'] },
+    { variables: ['capacidad'] as const, textos: ['Capacidad del equipo'] },
+    { variables: ['capacidad', 'equipo_descripcion'] as const, textos: ['Capacidad del equipo', 'Descripción del equipo'] },
+  ])('nombra los datos incompletos de un equipo ya seleccionado: $variables', ({ variables, textos }) => {
+    const { faltan } = pendientesVisibles(
+      { ...SIN_PENDIENTES, variables: [...variables] },
+      { items: [], equipoId: ID },
+    )
+    expect(faltan.map(({ texto }) => texto)).toEqual(textos)
+    expect(faltan.every(({ destino }) => destino === 'cotizacion-equipo')).toBe(true)
+  })
+
   it('lista cada campo una vez, con su etiqueta y el id al que va el foco', () => {
     const { faltan } = pendientesVisibles(
       { ...SIN_PENDIENTES, variables: ['capacidad', 'equipo_descripcion', 'ubicacion', 'validez_dias'] },
-      { items: [] },
+      { items: [], equipoId: '' },
     )
     expect(faltan).toEqual([
       { clave: 'variable-capacidad', texto: 'Equipo', destino: 'cotizacion-equipo' },
@@ -226,7 +239,7 @@ describe('pendientesVisibles', () => {
   })
 
   it('el número no tiene campo: se nombra sin llevar el foco', () => {
-    expect(pendientesVisibles({ ...SIN_PENDIENTES, variables: ['numero'] }, { items: [] }).faltan).toEqual([
+    expect(pendientesVisibles({ ...SIN_PENDIENTES, variables: ['numero'] }, { items: [], equipoId: '' }).faltan).toEqual([
       { clave: 'variable-numero', texto: 'Número de cotización', destino: null },
     ])
   })
@@ -234,20 +247,20 @@ describe('pendientesVisibles', () => {
   it('los ítems sin precio llevan al primer precio vacío o ilegible', () => {
     const { faltan } = pendientesVisibles(
       { ...SIN_PENDIENTES, itemsSinPrecio: 2 },
-      { items: [item('a', '1.950.000'), item('b', ''), item('c', ' ')] },
+      { items: [item('a', '1.950.000'), item('b', ''), item('c', ' ')], equipoId: '' },
     )
     expect(faltan).toEqual([{ clave: 'items-sin-precio', texto: '2 ítems sin precio', destino: idPrecioItem('b') }])
     expect(
-      pendientesVisibles({ ...SIN_PENDIENTES, itemsSinPrecio: 1 }, { items: [item('a', '1.950.000'), item('b', '19,5,0')] })
+      pendientesVisibles({ ...SIN_PENDIENTES, itemsSinPrecio: 1 }, { items: [item('a', '1.950.000'), item('b', '19,5,0')], equipoId: '' })
         .faltan[0].destino,
     ).toBe(idPrecioItem('b'))
-    expect(pendientesVisibles({ ...SIN_PENDIENTES, itemsSinPrecio: 1 }, { items: [item('b', '')] }).faltan[0].texto).toBe(
+    expect(pendientesVisibles({ ...SIN_PENDIENTES, itemsSinPrecio: 1 }, { items: [item('b', '')], equipoId: '' }).faltan[0].texto).toBe(
       '1 ítem sin precio',
     )
   })
 
   it('sin ítems y variables mal escritas', () => {
-    expect(pendientesVisibles({ ...SIN_PENDIENTES, sinItems: true, desconocidas: ['ubicación'] }, { items: [] })).toEqual({
+    expect(pendientesVisibles({ ...SIN_PENDIENTES, sinItems: true, desconocidas: ['ubicación'] }, { items: [], equipoId: '' })).toEqual({
       faltan: [{ clave: 'sin-items', texto: 'al menos un ítem', destino: null }],
       malEscritas: ['{{ubicación}}'],
     })

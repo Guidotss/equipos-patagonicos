@@ -246,14 +246,14 @@ export function franjasEstado(estado: Pick<EstadoEditor, 'estado'>, contexto: Co
 }
 
 /**
- * El nombre con que la franja amarilla menciona una variable: el de la etiqueta de su campo en el editor (Task 8:
- * los datos usan VARIABLES; capacidad y descripción salen del equipo elegido).
+ * Si ya hay equipo, se nombra el dato que le falta en su ficha; si no, se pide elegir uno.
  */
-export function etiquetaVariable(nombre: NombreVariable): string {
+export function etiquetaVariable(nombre: NombreVariable, equipoId: string): string {
   switch (nombre) {
     case 'capacidad':
+      return equipoId ? 'Capacidad del equipo' : 'Equipo'
     case 'equipo_descripcion':
-      return 'Equipo'
+      return equipoId ? 'Descripción del equipo' : 'Equipo'
     case 'validez_dias':
       return 'Validez (días)'
     case 'proxima_actualizacion':
@@ -277,14 +277,14 @@ export type Pendiente = { clave: string; texto: string; destino: string | null }
  */
 export function pendientesVisibles(
   pendientes: Pendientes,
-  estado: Pick<EstadoEditor, 'items'>,
+  estado: Pick<EstadoEditor, 'items' | 'equipoId'>,
 ): { faltan: Pendiente[]; malEscritas: string[] } {
   const faltan: Pendiente[] = []
   const vistos = new Set<string>()
   for (const variable of pendientes.variables) {
     const destino = idCampoVariable(variable)
-    const texto = etiquetaVariable(variable)
-    // Capacidad y descripción del equipo van al mismo campo: se nombra una vez.
+    const texto = etiquetaVariable(variable, estado.equipoId)
+    // Sin equipo elegido, capacidad y descripción se resuelven con una sola selección.
     if (vistos.has(texto)) continue
     vistos.add(texto)
     faltan.push({ clave: `variable-${variable}`, texto, destino })
