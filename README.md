@@ -34,6 +34,8 @@ Supabase Studio local: http://127.0.0.1:54323
 | `npm run test:int` | tests de integración contra Supabase local (RLS, triggers) |
 | `npm run test:e2e` | tests E2E con Playwright |
 | `npm run db:types` | regenera `src/lib/supabase/database.types.ts` |
+| `npm run db:backup -- /ruta/nueva` | exporta base y archivos privados con hashes |
+| `npm run db:restaurar -- /ruta/respaldo` | verifica la integridad sin modificar la base |
 | `npm run usuario:crear` | crea un usuario activo |
 
 ## Cotizaciones y PDF
@@ -56,6 +58,26 @@ Supabase Studio local: http://127.0.0.1:54323
 - Un presupuesto es una cotización aprobada. Se le cargan órdenes de compra, remitos, facturas y órdenes de pago, cada uno con uno o más archivos (PDF, JPG o PNG de hasta 10 MB). Un documento puede vincularse a varios presupuestos del mismo cliente (por ejemplo, una OC abierta o una OP que paga varias facturas).
 - La factura indica qué remitos cubre y la orden de pago qué facturas cancela y por cuánto. `v_facturas` calcula el saldo de cada factura y `v_presupuestos` los indicadores de cada presupuesto.
 - Los archivos se suben directo del navegador a Storage con una URL firmada; la base toma tamaño y tipo de Storage. Anular un documento es lógico: los archivos nunca se borran.
+
+## Flujos del MVP
+
+- **Cargar existente:** `/cotizaciones/cargar`, con número, cliente, fecha y PDF original de hasta 10 MB. Puede entrar enviada o aprobada; la base verifica que el archivo exista. `/cotizaciones/directo` registra un trabajo ya aprobado sin PDF.
+- **Reutilizar:** una nueva cotización permite basarse en la última del cliente. El menú de una fila también permite duplicar para otro cliente. "Guardar como plantilla" conserva ítems sin precios y textos; Configuración permite editar el contenido con las mismas tarjetas del editor. Al eliminar una plantilla usada se archiva y se conserva el histórico.
+- **Seguimiento:** las aprobadas y las cotizaciones cargadas/directas admiten notas internas y fecha de próxima actualización sin modificar su PDF. La ficha de cliente muestra su actividad comercial.
+- **Presupuestos:** `/presupuestos`, con búsqueda, estado, cliente y paginación. Cada ficha incluye OC, remitos, facturas y OP, sus archivos e indicadores. El cierre es manual y no equivale a cobro.
+- **Documentos:** `/documentos/nuevo`, con búsqueda de presupuesto y los en curso primero. Permite cámara móvil, varios archivos, compresión de fotos, previsualización y reintento. Facturas seleccionan remitos; las OP distribuyen montos entre facturas. Editar permite mover o compartir documentos entre presupuestos del mismo cliente, agregar/quitar archivos y cambiar datos. Anular y restaurar conserva el historial. Sobre una cotización enviada, "Aprobar y cargar orden de compra" guarda el editor y luego aprueba y registra la OC en una sola transacción.
+- **Inicio:** cinco colas reales (seguimiento, falta OC, para facturar, cobranzas y actualización de tarifa), con conteos, enlaces de acción y páginas con todos los pendientes. El total de cobranzas cuenta cada factura una vez, aunque esté vinculada a varios presupuestos.
+- **Búsqueda global:** en el lateral y en la cabecera móvil; `/buscar?q=` encuentra clientes/CUIT, cotizaciones y números de documentos, sin distinguir acentos. Sus resultados enlazan a cada ficha.
+
+## Build y operación
+
+`npm run build` genera un servidor standalone. El `Dockerfile` usa Node 24, ejecuta sin root e incluye fuentes y logo para PDF. Los argumentos `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` deben suministrarse durante el build. La secret key no se incorpora a la imagen. `railway.json` configura Docker y el healthcheck `/api/health`.
+
+El workflow `.github/workflows/check.yml` verifica lint, tipos, unitarios, build y el circuito completo con Supabase local. Para producción hay que aplicar las migraciones, deshabilitar el registro público, crear el usuario activo y fijar el último número real emitido antes de comenzar a cotizar. No se crean servicios remotos desde estos scripts.
+
+Los respaldos requieren PostgreSQL 17 o superior (`pg_dump`, `psql`) y las variables de `.env.local` o del entorno. `db:backup` crea un directorio nuevo con `base.sql` (datos de aplicación y cuentas de Auth), las migraciones exactas, los archivos del bucket privado y un manifiesto SHA-256. Ejecutarlo sin escrituras concurrentes y copiar todo a almacenamiento externo; un cron semanal debe usar un directorio distinto por fecha. El manifiesto no contiene claves. Las sesiones se regeneran al ingresar tras una recuperación; MFA no forma parte del MVP.
+
+`db:restaurar` verifica hashes y tamaños sin escribir. Para recuperar, crear un **Supabase nuevo** de la misma versión, aplicar primero las migraciones incluidas en el respaldo (sin `seed.sql`), y configurar URL, secret key y conexión PostgreSQL de ese mismo destino. Luego ejecutar `npm run db:restaurar -- /ruta/respaldo --aplicar --confirmar=host:puerto/base`. El destino debe estar vacío de usuarios, clientes, cotizaciones y archivos. Se conservan los schemas administrados de Auth/Storage y todos los permisos creados por las migraciones; sólo se reemplazan los datos iniciales de aplicación. La carga SQL es transaccional con triggers deshabilitados durante la importación; los archivos se recrean mediante la API de Storage. Si esa copia se interrumpe, usar `--archivos` para reanudarla sin volver a importar la base. Antes de habilitar usuarios, verificar ingreso, lectura/escritura, PDF y un saldo. El procedimiento sigue la [guía de recuperación de Supabase](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore).
 
 ## Seguridad
 

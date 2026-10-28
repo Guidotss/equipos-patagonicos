@@ -78,10 +78,12 @@ export function PlantillaForm({
   accion,
   plantilla,
   botonEstado,
+  editarHref,
 }: {
   accion: AccionFormulario
   plantilla: Plantilla
   botonEstado: React.ReactNode
+  editarHref?: string
 }) {
   const router = useRouter()
   const conSeccion = plantilla.items.some((item) => item.seccion)
@@ -117,9 +119,9 @@ export function PlantillaForm({
           {/* Arriba, cerca de Guardar: los errores generales no tienen un campo donde mostrarse. */}
           <MensajeFormulario estado={estado} />
           <p className="text-[15px] text-muted-foreground">
-            Desde acá solo se cambia el nombre. Los textos y los ítems se editan desde una cotización con “Guardar como
-            plantilla” (próxima etapa).
+            Podés renombrar la plantilla o abrir su editor para cambiar textos e ítems.
           </p>
+          {editarHref ? <Button asChild variant="outline"><Link href={editarHref}>Editar textos e ítems</Link></Button> : null}
           <div className="grid items-start gap-6 lg:grid-cols-2">
             <Tarjeta
               icono={Tag}

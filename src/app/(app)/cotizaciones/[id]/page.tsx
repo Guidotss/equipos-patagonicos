@@ -1,7 +1,11 @@
 // src/app/(app)/cotizaciones/[id]/page.tsx
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { BarraMigas } from '@/components/app-shell/encabezado'
+import Link from 'next/link'
+import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
+import { Button } from '@/components/ui/button'
+import { Seguimiento } from '@/components/cotizaciones/especiales/seguimiento'
+import { AccionesEspeciales } from '@/components/cotizaciones/especiales/acciones-especiales'
 import { CotizacionSoloLectura } from '@/components/cotizaciones/cotizacion-solo-lectura'
 import { EditorCotizacion } from '@/components/cotizaciones/editor/editor-cotizacion'
 import { accionDesdeParametro } from '@/lib/cotizaciones/acciones-estado'
@@ -15,7 +19,7 @@ import { esUuid } from '@/lib/validacion'
 export const metadata: Metadata = { title: 'Cotización' }
 
 /** FilaEditor (Task 3) más el id del cliente, para leer sus contactos. */
-const COLUMNAS = `${SELECT_EDITOR}, cliente_id` as const
+const COLUMNAS = `${SELECT_EDITOR}, cliente_id, notas` as const
 
 export default async function CotizacionPage({
   params,
@@ -33,6 +37,7 @@ export default async function CotizacionPage({
   if (!fila) notFound()
 
   const migas = [{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: `N° ${fila.numero}` }]
+  const accionInicial = accionDesdeParametro((await searchParams).accion)
 
   if (fila.origen !== 'app') {
     const hoy = hoyArgentina()
@@ -53,6 +58,12 @@ export default async function CotizacionPage({
             tienePdf: fila.archivo_original_path !== null,
           }}
         />
+        <Contenido className="max-w-5xl">
+          <AccionesEspeciales id={fila.id} version={fila.updated_at} estado={fila.estado} origen={fila.origen} hoy={hoy} accionInicial={accionInicial} />
+          {fila.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto</Link></Button> : null}
+          {fila.estado === 'enviada' ? <Button asChild variant="outline"><Link href={`/documentos/nuevo?cotizacion=${id}&tipo=orden_compra`}>Aprobar y cargar orden de compra</Link></Button> : null}
+          <Seguimiento key={fila.updated_at} id={id} version={fila.updated_at} notas={fila.notas} fecha={fila.fecha_proxima_actualizacion} />
+        </Contenido>
       </>
     )
   }
@@ -78,8 +89,12 @@ export default async function CotizacionPage({
         contactos={contactos}
         hoy={hoyArgentina()}
         contexto={contexto}
-        accionInicial={accionDesdeParametro((await searchParams).accion)}
+        accionInicial={accionInicial}
       />
+      <Contenido className="max-w-5xl">
+        {fila.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto y documentos</Link></Button> : null}
+        {fila.estado === 'aprobada' || fila.estado === 'rechazada' ? <Seguimiento key={fila.updated_at} id={id} version={fila.updated_at} notas={fila.notas} fecha={fila.fecha_proxima_actualizacion} /> : null}
+      </Contenido>
     </>
   )
 }

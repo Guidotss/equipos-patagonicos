@@ -10,6 +10,8 @@ import { VARIABLES } from '@/lib/plantillas/variables'
 import { nombreArchivoCotizacion } from '@/lib/pdf/nombre-archivo'
 import { renderizarCotizacion } from '@/lib/pdf/render'
 import type { Database, Json } from '@/lib/supabase/database.types'
+import type { DatosDocumento } from '@/lib/documentos/esquemas'
+import type { ArchivoSubido } from '@/lib/documentos/servicio'
 import { armarDocumento, type DocumentoCotizacion, type FuenteDocumento } from './documento'
 import {
   MENSAJE_CONFLICTO,
@@ -172,7 +174,7 @@ export async function guardarCotizacion(
   id?: string,
   version?: string,
 ): Promise<{ id: string; numero: number; version: string }> {
-  const { data: guardada, error } = await supabase.rpc('guardar_cotizacion', {
+  const { data: guardada, error } = await supabase.rpc('guardar_cotizacion_versionada', {
     p_datos: payload.p_datos as Json,
     p_items: payload.p_items as Json,
     p_id: id,
@@ -180,15 +182,29 @@ export async function guardarCotizacion(
   })
   if (error) throw errorDeRpc(error)
 
-  // La RPC devuelve solo el id. Si otro guardara justo entre las dos llamadas, acá se leería su versión y el
-  // próximo guardado lo pisaría sin aviso: es una ventana de milisegundos que se acepta.
-  const { data: fila, error: errorLectura } = await supabase
-    .from('cotizaciones')
-    .select('numero, updated_at')
-    .eq('id', guardada)
-    .single()
-  if (errorLectura) throw errorLectura
-  return { id: guardada, numero: fila.numero, version: fila.updated_at }
+  const fila = guardada[0]
+  if (!fila) throw new Error('El guardado no devolvió su versión')
+  return fila
+}
+
+/** El snapshot se sube antes; la aprobación y el alta de la OC se confirman juntas o se revierten juntas. */
+export async function aprobarConOrdenCompra(
+  supabase: Cliente, id: string, version: string, datos: DatosDocumento, archivos: ArchivoSubido[],
+): Promise<string> {
+  const { fila, fuente } = await cargarOFallar(supabase, id)
+  exigirVersion(fila, version)
+  exigirAprobable(fila, datos.fecha ?? hoyArgentina())
+  if (datos.tipo !== 'orden_compra') throw new ErrorCotizacion('Elegí una orden de compra')
+  let ruta: string | undefined
+  if (fila.origen === 'app') {
+    ruta = `cotizaciones/${id}/aprobada-${crypto.randomUUID()}.pdf`
+    await subirPdf(supabase, ruta, await renderizarCotizacion(documentoCompleto(fuente)))
+  }
+  const { data, error } = await supabase.rpc('aprobar_con_orden_compra', {
+    p_id: id, p_updated_at: version, p_pdf_path: ruta ?? '', p_documento: datos, p_archivos: archivos,
+  })
+  if (error) throw errorDeRpc(error)
+  return data
 }
 
 /**
@@ -291,8 +307,8 @@ export async function borrarCotizacion(supabase: Cliente, id: string): Promise<v
 }
 
 /** Copia como borrador nuevo del mismo cliente (queda como renegociación: reemplaza_a). */
-export async function duplicarCotizacion(supabase: Cliente, id: string): Promise<{ id: string }> {
-  const { data, error } = await supabase.rpc('duplicar_cotizacion', { p_id: id })
+export async function duplicarCotizacion(supabase: Cliente, id: string, clienteId?: string): Promise<{ id: string }> {
+  const { data, error } = await supabase.rpc('duplicar_cotizacion', { p_id: id, p_cliente_id: clienteId })
   if (error) throw errorDeRpc(error)
   return { id: data }
 }

@@ -2,7 +2,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
-  
+
   "graphql_public": {
           Tables: {
             [_ in never]: never
@@ -273,14 +273,14 @@ isOneToOne: false
                   ]
                 },"documentos": {
                   Row: {
-                    "cliente_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"equipo_id": string | null,"factura_id": string | null,"fecha": string,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"notas": string,"numero": string,"numero_normalizado": string | null,"numero_oc_ref": string,"periodo_desde": string | null,"periodo_hasta": string | null,"tipo": string,"tipo_comprobante": string | null,"updated_at": string
+                    "cliente_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"equipo_id": string | null,"factura_id": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"notas": string,"numero": string,"numero_normalizado": string | null,"numero_oc_ref": string,"periodo_desde": string | null,"periodo_hasta": string | null,"tipo": string,"tipo_comprobante": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cliente_id": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo": string,"tipo_comprobante"?: string | null,"updated_at"?: string
+                    "cliente_id": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo": string,"tipo_comprobante"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "cliente_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo"?: string,"tipo_comprobante"?: string | null,"updated_at"?: string
+                    "cliente_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo"?: string,"tipo_comprobante"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -333,7 +333,7 @@ isOneToOne: false
                     "ciudad"?: string,"cuit"?: string | null,"direccion"?: string,"email"?: string,"id"?: boolean,"indice_base"?: string,"provincia"?: string,"proxima_actualizacion"?: string,"razon_social"?: string,"telefono"?: string,"updated_at"?: string,"web"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 },"equipos": {
                   Row: {
@@ -347,7 +347,7 @@ isOneToOne: false
                     "activo"?: boolean,"capacidad_tn"?: number | null,"created_at"?: string,"descripcion"?: string,"id"?: string,"identificacion"?: string,"marca"?: string,"modelo"?: string,"nombre"?: string,"updated_at"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 },"firmantes": {
                   Row: {
@@ -361,7 +361,7 @@ isOneToOne: false
                     "activo"?: boolean,"cargo"?: string,"created_at"?: string,"email"?: string,"id"?: string,"nombre"?: string,"telefono"?: string,"updated_at"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 },"op_facturas": {
                   Row: {
@@ -413,7 +413,7 @@ isOneToOne: false
                     "activa"?: boolean,"asunto"?: string,"bloques"?: NonNullable<Json>,"created_at"?: string,"formato"?: string,"id"?: string,"intro"?: string,"items"?: NonNullable<Json>,"nombre"?: string,"updated_at"?: string,"validez_dias"?: number
                   }
                   Relationships: [
-                    
+
                   ]
                 },"profiles": {
                   Row: {
@@ -427,7 +427,7 @@ isOneToOne: false
                     "activo"?: boolean,"created_at"?: string,"id"?: string,"nombre"?: string,"rol"?: string,"updated_at"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 }
           }
@@ -496,7 +496,7 @@ isOneToOne: false
                   ]
                 },"v_facturas": {
                   Row: {
-                    "cliente_id": string,"cobrado": number | null,"estado_cobro": string | null,"fecha": string,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"numero": string,"saldo": number | null,"tipo_comprobante": string | null
+                    "cliente_id": string,"cobrado": number | null,"estado_cobro": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"numero": string,"saldo": number | null,"tipo_comprobante": string | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -507,6 +507,14 @@ isOneToOne: false
       referencedRelation: "clientes"
       referencedColumns: ["id"]
     }
+                  ]
+                },"v_inicio_colas": {
+                  Row: {
+                    "asunto": string | null,"cliente_id": string | null,"cliente_razon_social": string | null,"cola": string | null,"contacto_nombre": string | null,"dias": number | null,"email": string | null,"fecha": string | null,"fecha_referencia": string | null,"id": string | null,"importe": number | null,"numero": string | null,"presupuesto_id": string | null,"telefono": string | null,"vence_el": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+
                   ]
                 },"v_presupuestos": {
                   Row: {
@@ -528,11 +536,20 @@ isOneToOne: false
             "actualizar_documento":
 { Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
                            },
+"actualizar_documento_con_archivos":
+{ Args: { "p_aplicaciones": Json,"p_archivos"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos": (string)[],"p_quitar"?: (string)[],"p_remitos": (string)[] }; Returns: undefined
+                           },
+"actualizar_seguimiento_cotizacion":
+{ Args: { "p_fecha"?: string,"p_id": string,"p_notas": string,"p_updated_at": string }; Returns: undefined
+                           },
 "agregar_archivos":
 { Args: { "p_archivos": Json,"p_documento_id": string }; Returns: undefined
                            },
 "anular_documento":
 { Args: { "p_id": string }; Returns: undefined
+                           },
+"aprobar_con_orden_compra":
+{ Args: { "p_archivos": Json,"p_documento": Json,"p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: string
                            },
 "aprobar_cotizacion":
 { Args: { "p_fecha"?: string,"p_id": string,"p_pdf_path"?: string,"p_updated_at": string }; Returns: undefined
@@ -604,17 +621,93 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"buscar_global":
+{ Args: { "p_desde"?: number,"p_grupo"?: string,"p_limite"?: number,"texto": string }; Returns: {
+              "cantidad": number,"cliente_razon_social": string,"descripcion": string,"grupo": string,"href": string,"id": string,"numero": string
+            }[]
+                           },
+"buscar_presupuestos":
+{ Args: { "cliente"?: string,"estado"?: string,"texto"?: string }; Returns: {
+              "asunto": string,
+"cliente_id": string,
+"cliente_razon_social": string,
+"facturado": number | null,
+"facturas": number | null,
+"fecha": string,
+"fecha_aprobacion": string | null,
+"fecha_proxima_actualizacion": string | null,
+"formato": string,
+"id": string,
+"numero": number,
+"ordenes_compra": number | null,
+"ordenes_pago": number | null,
+"origen": string,
+"presupuesto_estado": string | null,
+"presupuesto_motivo": string,
+"remitos": number | null,
+"remitos_sin_factura": number | null,
+"saldo": number | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "v_presupuestos"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "cambiar_estado_presupuesto":
 { Args: { "p_estado": string,"p_id": string,"p_motivo"?: string }; Returns: undefined
+                           },
+"cargar_cotizacion_existente":
+{ Args: { "p_datos": Json }; Returns: string
                            },
 "duplicar_cotizacion":
 { Args: { "p_cliente_id"?: string,"p_id": string }; Returns: string
                            },
+"eliminar_plantilla":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
 "guardar_cotizacion":
 { Args: { "p_datos": Json,"p_id"?: string,"p_items": Json,"p_updated_at"?: string }; Returns: string
                            },
+"guardar_cotizacion_versionada":
+{ Args: { "p_datos": Json,"p_id"?: string,"p_items": Json,"p_updated_at"?: string }; Returns: {
+              "id": string,"numero": number,"version": string
+            }[]
+                           },
+"guardar_plantilla_editor":
+{ Args: { "p_contenido": Json,"p_id"?: string,"p_nombre": string }; Returns: string
+                           },
 "importar_cotizacion":
 { Args: { "p_datos": Json }; Returns: string
+                           },
+"inicio_pendientes":
+{ Args: { "p_cola"?: string,"p_desde"?: number,"p_limite"?: number }; Returns: {
+              "asunto": string | null,
+"cliente_id": string | null,
+"cliente_razon_social": string | null,
+"cola": string | null,
+"contacto_nombre": string | null,
+"dias": number | null,
+"email": string | null,
+"fecha": string | null,
+"fecha_referencia": string | null,
+"id": string | null,
+"importe": number | null,
+"numero": string | null,
+"presupuesto_id": string | null,
+"telefono": string | null,
+"vence_el": string | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "v_inicio_colas"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
+"inicio_resumen":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "cantidad": number,"cola": string,"importe": number
+            }[]
                            },
 "marcar_enviada":
 { Args: { "p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: undefined
@@ -758,11 +851,11 @@ export type CompositeTypes<
 export const Constants = {
   "graphql_public": {
           Enums: {
-            
+
           }
         },"public": {
           Enums: {
-            
+
           }
         }
 } as const

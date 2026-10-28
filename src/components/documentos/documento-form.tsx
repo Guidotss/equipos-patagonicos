@@ -66,6 +66,7 @@ export function DocumentoForm({
     documento?.cliente_id ?? opciones.find((opcion) => opcion.id === presupuestoId)?.cliente_id ?? '',
   )
   const [cargando, setCargando] = useState(false)
+  const [buscarPresupuesto, setBuscarPresupuesto] = useState('')
   const solicitudContexto = useRef(0)
   const [valores, setValores] = useState<Valores>(() => {
     const inicial = Object.fromEntries(
@@ -210,9 +211,14 @@ export function DocumentoForm({
   const remitosDisponibles = contexto.documentos.filter(
     (item) =>
       item.tipo === 'remito' &&
-      !item.deleted_at &&
-      (!item.factura_id || item.factura_id === documento?.id || !facturasActivas.has(item.factura_id)),
+      (remitos.includes(item.id) || (!item.deleted_at &&
+      (!item.factura_id || item.factura_id === documento?.id || !facturasActivas.has(item.factura_id)))),
   )
+  const facturasAnuladas = contexto.documentos.filter((item) => item.tipo === 'factura' && item.deleted_at && aplicaciones[item.id] !== undefined)
+  const normalizarBusqueda = (valor: string) => valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-AR')
+  const opcionesVisibles = opciones.filter((item) => item.presupuesto_estado !== 'anulado')
+    .filter((item) => item.id === seleccionados[0] || normalizarBusqueda(`${item.numero} ${item.cliente_razon_social} ${item.asunto}`).includes(normalizarBusqueda(buscarPresupuesto)))
+    .toSorted((a, b) => Number(b.presupuesto_estado === 'en_curso') - Number(a.presupuesto_estado === 'en_curso') || b.numero - a.numero)
   const volver = presupuestoId ? `/presupuestos/${presupuestoId}` : '/presupuestos'
 
   return (
@@ -233,6 +239,8 @@ export function DocumentoForm({
         <Tarjeta titulo={documento ? 'Editar documento' : 'Subir documento'} icono={FileText} compacta>
           <div className="flex flex-col gap-4">
             {!documento && !cotizacion ? (
+              <div className="flex flex-col gap-3">
+              <Campo id="buscar-presupuesto" etiqueta="Buscar presupuesto"><Input id="buscar-presupuesto" placeholder="Número, cliente o trabajo" value={buscarPresupuesto} onChange={(evento) => setBuscarPresupuesto(evento.target.value)} /></Campo>
               <Campo id="presupuesto" etiqueta="Presupuesto" error={errores.presupuestos}>
                 <NativeSelect
                   id="presupuesto"
@@ -242,15 +250,15 @@ export function DocumentoForm({
                   required
                 >
                   <NativeSelectOption value="">Elegí un presupuesto</NativeSelectOption>
-                  {opciones
-                    .filter((item) => item.presupuesto_estado !== 'anulado')
-                    .map((item) => (
+                  {opcionesVisibles.map((item) => (
                       <NativeSelectOption key={item.id} value={item.id}>
-                        {item.numero} · {item.cliente_razon_social} · {item.asunto}
+                        {item.numero} · {item.cliente_razon_social} · {item.asunto}{item.presupuesto_estado === 'finalizado' ? ' · Finalizado' : ''}
                       </NativeSelectOption>
                     ))}
                 </NativeSelect>
               </Campo>
+              {opcionesVisibles.length === 0 ? <p className="text-sm text-muted-foreground">No hay presupuestos con esa búsqueda.</p> : null}
+              </div>
             ) : null}
             <Campo id="tipo-documento" etiqueta="Tipo de documento" error={errores['datos.tipo']}>
               <ToggleGroup
@@ -427,7 +435,7 @@ export function DocumentoForm({
                       checked={remitos.includes(item.id)}
                       onChange={(evento) => setRemitos((lista) => cambiarLista(lista, item.id, evento.target.checked))}
                     />
-                    Remito {item.numero || 'sin número'}
+                    <span>Remito {item.numero || 'sin número'}{item.deleted_at ? <span className="block text-xs text-destructive">Anulado: desmarcalo para desvincularlo o <Link href={`/documentos/${item.id}`} className="underline">abrilo para restaurarlo</Link>.</span> : null}</span>
                   </label>
                 ))
               ) : (
@@ -444,6 +452,7 @@ export function DocumentoForm({
           >
             <fieldset className="flex flex-col gap-3">
               <legend className="sr-only">Facturas que cancela</legend>
+              {facturasAnuladas.map((item) => <Alert key={item.id} variant="destructive"><AlertDescription><p>La factura {item.numero || 'sin número'} está anulada. <Link href={`/documentos/${item.id}`} className="underline">Abrila para restaurarla</Link> o quitá esta aplicación antes de guardar.</p><Button type="button" variant="outline" size="sm" onClick={() => cambiarAplicacion(item.id, null)}>Desvincular factura {item.numero || 'sin número'}</Button></AlertDescription></Alert>)}
               {contexto.facturas
                 .filter(
                   (item) =>

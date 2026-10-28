@@ -157,10 +157,11 @@ export async function borrarCotizacion(id: string): Promise<Resultado> {
 }
 
 /** Copia como borrador nuevo (renegociación del mismo cliente) y devuelve su id para abrirla. */
-export async function duplicarCotizacion(id: string): Promise<Resultado<{ id: string }>> {
+export async function duplicarCotizacion(id: string, clienteId?: string): Promise<Resultado<{ id: string }>> {
   await requireUsuario()
   if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
-  const resultado = await ejecutar((supabase) => servicio.duplicarCotizacion(supabase, id), 'Cotización duplicada')
+  if (clienteId !== undefined && !esUuid(clienteId)) return fallo('Cliente inválido')
+  const resultado = await ejecutar((supabase) => servicio.duplicarCotizacion(supabase, id, clienteId), 'Cotización duplicada')
   if (resultado.ok) revalidar(id, resultado.datos.id)
   return resultado
 }

@@ -328,7 +328,7 @@ test.describe('editor de cotizaciones', () => {
 
     // Sin cliente no se guarda: el error queda en el combo y el foco va ahí.
     const cliente = page.getByRole('combobox', { name: 'Cliente', exact: true })
-    await page.getByRole('button', { name: 'Guardar' }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(cliente).toHaveAttribute('aria-invalid', 'true')
     await expect(cliente).toBeFocused()
 
@@ -367,11 +367,11 @@ test.describe('editor de cotizaciones', () => {
     await lugar.fill('Añelo, Neuquén')
     await expect(marca).toBeHidden()
 
-    await page.getByRole('button', { name: 'Guardar' }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/)
     creadas.push(idDeLaUrl(page.url()))
     await expect(page.getByRole('heading', { name: /^Cotización N° \d+$/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeDisabled()
 
     // Lo guardado vuelve igual al recargar; el formato ya no se elige.
     await page.reload()
@@ -384,10 +384,10 @@ test.describe('editor de cotizaciones', () => {
 
     // Ctrl/⌘+S guarda.
     await lugar.fill('Añelo, Neuquén (yacimiento)')
-    await expect(page.getByRole('button', { name: 'Guardar' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeEnabled()
     await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByText('Cotización guardada')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeDisabled()
   })
 
   test('Enter elige el cliente del texto escrito, no uno de la búsqueda anterior', async ({ page }) => {
@@ -462,7 +462,7 @@ test.describe('editor de cotizaciones', () => {
     await expect(page.getByRole('heading', { name: `Cotización N° ${numero}` })).toBeVisible()
     await expect(page.getByText('Cargada desde un PDF.')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Ver el PDF original' })).toHaveAttribute('href', `/cotizaciones/${id}/pdf`)
-    await expect(page.getByRole('button', { name: 'Guardar' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toHaveCount(0)
   })
 })
 
@@ -552,7 +552,7 @@ test('los errores de guardado siguen en su ítem cuando se agregan o mueven otro
 
   // El ítem 3 sin descripción no se guarda: queda marcado con el motivo.
   await descripcion(3).fill('')
-  await page.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect(descripcion(3)).toHaveAttribute('aria-invalid', 'true')
   await expect(descripcion(3)).toHaveAccessibleDescription('Falta la descripción')
 
@@ -671,7 +671,7 @@ test.describe('grilla de ítems de una cotización guardada', () => {
     await seccion.fill('Precios Jornada (equipo de 70 TN)')
     await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByText('Cotización guardada')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeDisabled()
     await expect(seccion).toHaveValue('Precios Jornada (equipo de 70 TN)')
 
     await page.reload()
@@ -683,7 +683,7 @@ test.describe('grilla de ítems de una cotización guardada', () => {
     await iniciarSesion(page)
     await page.goto(`/cotizaciones/${id}`)
     const seccion = page.getByLabel('Nombre de la sección 2', { exact: true })
-    const guardar = page.getByRole('button', { name: 'Guardar' })
+    const guardar = page.getByRole('button', { name: 'Guardar', exact: true })
     await expect(seccion).toHaveValue('Precios Jornada Adicional')
     await expect(guardar).toBeDisabled()
 
@@ -709,7 +709,7 @@ test.describe('grilla de ítems de una cotización guardada', () => {
 
     // Un click sin mousedown: no hay blur antes (lo que no está asegurado en Safari ni en iOS).
     await seccion.fill('Jornadas de grúa')
-    await page.getByRole('button', { name: 'Guardar' }).dispatchEvent('click')
+    await page.getByRole('button', { name: 'Guardar', exact: true }).dispatchEvent('click')
     await expect(page.getByText('Cotización guardada')).toBeVisible()
     await expect(seccion).toHaveValue('Jornadas de grúa')
 
@@ -819,7 +819,7 @@ test.describe('textos del editor', () => {
     await cliente.click()
     await page.getByRole('combobox', { name: 'Buscar cliente' }).fill('vertice')
     await page.getByRole('option', { name: /VERTICE SERVICIOS INTEGRALES/ }).click()
-    await page.getByRole('button', { name: 'Guardar' }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/)
     creadas.push(idDeLaUrl(page.url()))
     await expect(page.getByRole('heading', { name: /^Cotización N° \d+$/ })).toBeVisible()

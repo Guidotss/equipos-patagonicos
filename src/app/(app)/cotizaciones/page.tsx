@@ -81,12 +81,16 @@ export default async function CotizacionesPage({
           titulo="Cotizaciones"
           extra={<Conteo>{total}</Conteo>}
           acciones={
+            <>
+            <Button asChild variant="outline"><Link href="/cotizaciones/cargar">Cargar existente</Link></Button>
+            <Button asChild variant="outline"><Link href="/cotizaciones/directo">Presupuesto directo</Link></Button>
             <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
               <Link href="/cotizaciones/nueva">
                 <Plus aria-hidden />
                 Nueva cotización
               </Link>
             </Button>
+            </>
           }
         />
 

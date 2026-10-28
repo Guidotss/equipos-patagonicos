@@ -7,7 +7,9 @@ import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
 import { guardarCotizacion } from '@/app/(app)/cotizaciones/actions'
 import { Contenido } from '@/components/app-shell/encabezado'
+import { GuardarPlantilla } from '@/components/cotizaciones/especiales/guardar-plantilla'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { esConflicto, type AccionConfirmable } from '@/lib/cotizaciones/acciones-estado'
 import { CONTEXTO_NUEVA, type ContextoEstado } from '@/lib/cotizaciones/contexto-estado'
 import {
@@ -43,7 +45,7 @@ export type VersionGuardada = { id: string; version: string; numero: number }
 
 export function EditorCotizacion({
   inicial,
-  catalogos,
+  catalogos: catalogosIniciales,
   contactos: contactosIniciales,
   hoy,
   contexto = CONTEXTO_NUEVA,
@@ -61,6 +63,9 @@ export function EditorCotizacion({
   accionInicial?: AccionConfirmable | null
 }) {
   const router = useRouter()
+  const [catalogosBase, setCatalogosBase] = useState<CatalogosEditor | null>(null)
+  const catalogos = catalogosBase ?? catalogosIniciales
+  const [preparandoOc, setPreparandoOc] = useState(false)
   const [estado, despachar] = useReducer(reducirEditor, inicial)
   /** Lo último guardado (o lo que vino de la página): contra esto se calculan los cambios. */
   const [guardado, setGuardado] = useState(inicial)
@@ -249,14 +254,14 @@ export function EditorCotizacion({
     pendientes,
     hayCambiosSinGuardar: sinGuardar,
     guardar,
-    accion,
+    accion: preparandoOc ? 'preparar_oc' : accion,
     setAccion,
     conflicto,
     setConflicto,
     esperarServidor,
     accionInicial,
   })
-  const ocupado = acciones.ocupado
+  const ocupado = acciones.ocupado || preparandoOc
 
   // Después de una transición (o de "Recargar") el servidor manda otra versión en `inicial`: el editor la toma. Se
   // ajusta durante el render (como recomienda React para un estado que depende de una prop), no en un efecto.
@@ -336,7 +341,7 @@ export function EditorCotizacion({
           guardando={accion === 'guardar'}
           ocupado={ocupado}
           alGuardar={() => void guardar()}
-          acciones={<AccionesEncabezado estado={estado} contexto={contexto} pendientes={pendientes} acciones={acciones} />}
+          acciones={<><GuardarPlantilla estado={estado} disabled={ocupado} antesDeAbrir={aplicarBorradoresSeccion} /><AccionesEncabezado estado={estado} contexto={contexto} pendientes={pendientes} acciones={acciones} /></>}
         />
         <FranjasEditor
           estado={estado}
@@ -346,6 +351,15 @@ export function EditorCotizacion({
           hayCambiosSinGuardar={cambios}
           hoy={hoy}
         />
+        {estado.id && estado.estado === 'enviada' ? <div className="mb-4"><Button type="button" variant="outline" disabled={ocupado} onClick={async () => {
+          if (preparandoOc) return
+          setPreparandoOc(true)
+          try {
+            const guardada = await guardar({ navegar: false, avisar: false })
+            if (guardada) router.push(`/documentos/nuevo?cotizacion=${guardada.id}&tipo=orden_compra&version=${encodeURIComponent(guardada.version)}`)
+            else setPreparandoOc(false)
+          } catch (error) { setPreparandoOc(false); unstable_rethrow(error); toast.error('No se pudo preparar la orden de compra') }
+        }}>Aprobar y cargar orden de compra</Button></div> : null}
         {aviso ? (
           <Alert variant="destructive">
             <AlertDescription>
@@ -364,7 +378,7 @@ export function EditorCotizacion({
           {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). Mientras corre
               una transición, también: no se tipea sobre algo que se está enviando, aprobando o rechazando. */}
           <fieldset
-            disabled={!editable || acciones.enTransicion}
+            disabled={!editable || acciones.enTransicion || preparandoOc}
             className="min-w-0 space-y-3 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
           >
             <legend className="sr-only">Contenido de la cotización</legend>
@@ -374,6 +388,7 @@ export function EditorCotizacion({
               errores={errores}
               despachar={despachar}
               alCambiarContactos={setContactos}
+              alCambiarCatalogos={setCatalogosBase}
             />
             <TarjetaDatos
               estado={estado}

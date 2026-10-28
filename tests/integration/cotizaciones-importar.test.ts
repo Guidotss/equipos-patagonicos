@@ -1,19 +1,23 @@
 // tests/integration/cotizaciones-importar.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ITEMS_JORNADA, idsDeEjemplo } from './cotizaciones-helpers'
-import { borrarUsuario, crearUsuario, sql } from './helpers'
+import { adminClient, borrarUsuario, crearUsuario, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 let activo: Awaited<ReturnType<typeof crearUsuario>>
 let ids: Awaited<ReturnType<typeof idsDeEjemplo>>
+const ruta = `importadas/${crypto.randomUUID()}.pdf`
 
 beforeAll(async () => {
   activo = await crearUsuario({ activo: true, rol: 'operador' })
   ids = await idsDeEjemplo()
+  const { error } = await activo.client.storage.from('documentos').upload(ruta, new Blob(['%PDF-1.4 prueba'], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+  if (error) throw error
 })
 
 afterAll(async () => {
   await sql('delete from public.cotizaciones where notas = $1', [MARCA])
+  await adminClient().storage.from('documentos').remove([ruta])
   await borrarUsuario(activo.id)
 })
 
@@ -33,7 +37,7 @@ function importar(datos: Record<string, unknown>) {
       cliente_id: ids.cliente_id,
       formato: 'jornada',
       fecha: '2026-10-22',
-      archivo_original_path: `importadas/${crypto.randomUUID()}.pdf`,
+      archivo_original_path: ruta,
       notas: MARCA,
       ...datos,
     },

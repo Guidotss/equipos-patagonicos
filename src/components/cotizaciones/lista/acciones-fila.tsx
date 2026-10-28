@@ -3,7 +3,8 @@
 import { Copy, Ellipsis, FileDown, FileText, LoaderCircle, SquarePen } from 'lucide-react'
 import Link from 'next/link'
 import { unstable_rethrow, useRouter } from 'next/navigation'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
+import { DuplicarCliente } from '@/components/cotizaciones/especiales/duplicar-cliente'
 import { toast } from 'sonner'
 import { duplicarCotizacion } from '@/app/(app)/cotizaciones/actions'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,7 @@ export function AccionesFila({
   const router = useRouter()
   const [duplicando, iniciarDuplicado] = useTransition()
   const pdf = `/cotizaciones/${id}/pdf`
+  const [otroCliente, setOtroCliente] = useState(false)
 
   // Un clic crea el borrador y abre el editor: el cliente se cambia ahí (decisión del diseño, §6).
   function duplicar() {
@@ -58,6 +60,7 @@ export function AccionesFila({
   }
 
   const menu = (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -99,6 +102,7 @@ export function AccionesFila({
             Duplicar
           </DropdownMenuItem>
         ) : null}
+        <DropdownMenuItem onSelect={() => setOtroCliente(true)}><Copy aria-hidden />Duplicar a otro cliente</DropdownMenuItem>
         {transiciones.length > 0 ? <DropdownMenuSeparator /> : null}
         {transiciones.map(({ accion, etiqueta }) => (
           <DropdownMenuItem key={accion} asChild variant={accion === 'borrar' ? 'destructive' : 'default'}>
@@ -107,6 +111,8 @@ export function AccionesFila({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+    <DuplicarCliente id={id} abierto={otroCliente} alCerrar={() => setOtroCliente(false)} />
+    </>
   )
 
   if (variante === 'movil') return menu

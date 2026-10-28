@@ -44,7 +44,7 @@ join public.clientes cl on cl.id = d.cliente_id
 left join lateral (
   select c.id, c.asunto from public.documento_presupuestos dp
   join public.cotizaciones c on c.id = dp.cotizacion_id
-  where dp.documento_id = d.id and c.estado = 'aprobada'
+  where dp.documento_id = d.id and c.estado = 'aprobada' and c.presupuesto_estado <> 'anulado'
   order by (c.presupuesto_estado = 'en_curso') desc, c.numero desc limit 1
 ) p on true
 cross join reloj r
@@ -60,7 +60,7 @@ join public.clientes cl on cl.id = f.cliente_id
 left join lateral (
   select c.id, c.asunto from public.documento_presupuestos dp
   join public.cotizaciones c on c.id = dp.cotizacion_id
-  where dp.documento_id = f.id and c.estado = 'aprobada'
+  where dp.documento_id = f.id and c.estado = 'aprobada' and c.presupuesto_estado <> 'anulado'
   order by (c.presupuesto_estado = 'en_curso') desc, c.numero desc limit 1
 ) p on true
 cross join reloj r

@@ -35,4 +35,8 @@ export default async function globalSetup() {
 
   const { error } = await admin.from('profiles').update({ activo: true, rol: 'admin', nombre: E2E_NOMBRE }).eq('id', id)
   if (error) throw error
+
+  // Compila el login antes de abrir varios navegadores contra next dev en frío.
+  const login = await fetch('http://localhost:3000/login')
+  if (!login.ok) throw new Error(`No se pudo preparar el login (${login.status})`)
 }

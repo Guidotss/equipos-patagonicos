@@ -29,6 +29,7 @@ export default async function PlantillaPage({ params }: { params: Promise<{ id: 
         ]}
       />
       <PlantillaForm
+        editarHref={`/configuracion/plantillas/${id}/editar`}
         accion={renombrarPlantilla.bind(null, id)}
         plantilla={{
           nombre: plantilla.nombre,

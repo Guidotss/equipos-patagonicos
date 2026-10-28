@@ -35,7 +35,7 @@ export default async function PlantillasPage() {
       <Contenido>
         <EncabezadoPagina
           titulo="Plantillas"
-          descripcion="Los textos se editan desde una cotización con “Guardar como plantilla” (próxima etapa)."
+          descripcion="Creá plantillas desde una cotización o abrí una para editar sus textos e ítems."
         />
         <Plantillas plantillas={plantillas} />
       </Contenido>

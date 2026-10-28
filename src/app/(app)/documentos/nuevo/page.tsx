@@ -44,7 +44,7 @@ export default async function NuevoDocumentoPage({
       presupuesto_estado: 'en_curso',
     }
     opciones.unshift(presupuesto)
-    cotizacion = { id: original.id, version: original.updated_at }
+    cotizacion = { id: original.id, version: typeof consulta.version === 'string' ? consulta.version : original.updated_at }
   }
   const tipo = cotizacion
     ? 'orden_compra'

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { BarraMigas, Contenido, EncabezadoFicha } from '@/components/app-shell/encabezado'
 import { ClienteForm } from '@/components/clientes/cliente-form'
 import { Contactos } from '@/components/clientes/contactos'
+import { HistorialComercial } from '@/components/clientes/historial-comercial'
 import { BotonEstado } from '@/components/formulario/boton-estado'
 import { Pastilla } from '@/components/ui/pastilla'
 import { CONDICIONES_IVA } from '@/lib/clientes/esquemas'
@@ -62,6 +63,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         </section>
 
         <Contactos clienteId={id} contactos={cliente.contactos} />
+        <section className="min-w-0 lg:col-span-2"><HistorialComercial clienteId={id} /></section>
       </Contenido>
     </>
   )

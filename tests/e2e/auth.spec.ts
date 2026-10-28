@@ -30,9 +30,10 @@ test('navega por las secciones y cierra sesión', async ({ page }) => {
   await page.getByRole('button', { name: 'Ingresar' }).click()
 
   await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible()
-  await expect(page.getByText(`Hola, ${E2E_NOMBRE}`)).toBeVisible()
+  await expect(page.getByRole('button', { name: `${E2E_NOMBRE}, menú de usuario`, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Seguimiento', exact: true })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Cotizaciones' }).click()
+  await page.getByRole('link', { name: 'Cotizaciones', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Cotizaciones' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Menú de usuario' }).click()

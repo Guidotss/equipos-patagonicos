@@ -149,6 +149,19 @@ describe('Inicio: límites, unicidad y seguridad', () => {
     expect((await pendientesPropios('cobranzas')).find((f) => f.id === factura)).toMatchObject({ importe: 1000, dias: 45 })
   })
 
+  it('las acciones de remitos y cobros eligen un presupuesto no anulado o vuelven al documento', async () => {
+    const finalizado = await cotizacion({ aprobada: true, finalizada: true })
+    const anulado = await cotizacion({ aprobada: true })
+    await sql("update public.cotizaciones set presupuesto_estado='anulado' where id=$1", [anulado.id])
+    const remito = await documento('remito', [finalizado.id, anulado.id], 'R-DESTINO')
+    const factura = await documento('factura', [finalizado.id, anulado.id], 'F-DESTINO')
+    expect((await pendientesPropios('para_facturar')).find((f) => f.id === remito)?.presupuesto_id).toBe(finalizado.id)
+    expect((await pendientesPropios('cobranzas')).find((f) => f.id === factura)?.presupuesto_id).toBe(finalizado.id)
+    await sql("update public.cotizaciones set presupuesto_estado='anulado' where id=$1", [finalizado.id])
+    expect((await pendientesPropios('para_facturar')).find((f) => f.id === remito)?.presupuesto_id).toBeNull()
+    expect((await pendientesPropios('cobranzas')).find((f) => f.id === factura)?.presupuesto_id).toBeNull()
+  })
+
   it('pagina cada cola sin duplicar ni perder filas y limita el tamaño de respuesta', async () => {
     const primera = await activo.client.rpc('inicio_pendientes', { p_cola: 'seguimiento', p_limite: 1 })
     const segunda = await activo.client.rpc('inicio_pendientes', { p_cola: 'seguimiento', p_limite: 1, p_desde: 1 })

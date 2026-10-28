@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   /* config options here */
   // react-pdf usa módulos de Node (fontkit, yoga): se carga sin empaquetar.
   serverExternalPackages: ['@react-pdf/renderer'],

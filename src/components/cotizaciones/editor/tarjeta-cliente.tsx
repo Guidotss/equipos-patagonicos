@@ -5,10 +5,13 @@ import { unstable_rethrow } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { contactosDeCliente } from '@/app/(app)/cotizaciones/actions'
+import { basarEnUltima } from '@/app/(app)/cotizaciones/especiales-actions'
+import { ConfirmacionEnLugar } from '@/components/formulario/confirmacion-en-lugar'
+import { Button } from '@/components/ui/button'
 import { Tarjeta } from '@/components/formulario/tarjeta'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import type { EstadoEditor } from '@/lib/cotizaciones/editor'
+import type { CatalogosEditor, EstadoEditor } from '@/lib/cotizaciones/editor'
 import { ID_CAMPO, contactoInicial, type ContactoEditor, type Despachar } from '@/lib/cotizaciones/editor-pantalla'
 import { SelectorCliente, type ClienteBuscado } from './selector-cliente'
 
@@ -18,15 +21,31 @@ export function TarjetaCliente({
   errores,
   despachar,
   alCambiarContactos,
+  alCambiarCatalogos,
 }: {
   estado: EstadoEditor
   contactos: ContactoEditor[]
   errores: Record<string, string>
   despachar: Despachar
   alCambiarContactos: (contactos: ContactoEditor[]) => void
+  alCambiarCatalogos: (catalogos: CatalogosEditor) => void
 }) {
   const [cargando, setCargando] = useState(false)
   const ultimoPedido = useRef(0)
+  const [confirmarBase, setConfirmarBase] = useState(false)
+  async function basar() {
+    if (!estado.cliente || cargando) return
+    const clienteId = estado.cliente.id
+    const pedido = ++ultimoPedido.current
+    setCargando(true)
+    try {
+      const r = await basarEnUltima(clienteId)
+      if (pedido !== ultimoPedido.current) return
+      if (r.ok) { alCambiarCatalogos(r.datos.catalogos); despachar({ tipo: 'reemplazar', estado: r.datos.estado }); setConfirmarBase(false); toast.success('Se copió la última cotización sin crear una renegociación') }
+      else toast.error(r.mensaje)
+    } catch { toast.error('No se pudo leer la última cotización') }
+    finally { if (pedido === ultimoPedido.current) setCargando(false) }
+  }
 
   async function elegir(cliente: ClienteBuscado) {
     if (!cliente.activo) {
@@ -74,6 +93,8 @@ export function TarjetaCliente({
 
   return (
     <Tarjeta compacta titulo="Cliente">
+      {estado.id === null && estado.cliente ? <div className="mb-2"><Button type="button" variant="ghost" size="sm" onClick={() => setConfirmarBase(true)} disabled={cargando}>Basar en la última cotización</Button></div> : null}
+      {confirmarBase ? <ConfirmacionEnLugar pregunta="¿Usar la última cotización de este cliente?" detalle="Se reemplazará lo escrito en esta nueva cotización." textoConfirmar="Usar última cotización" pendiente={cargando} alConfirmar={() => void basar()} alCancelar={() => setConfirmarBase(false)} /> : null}
       {/* 5fr | 3fr: a 1200 px "VERTICE SERVICIOS INTEGRALES S.R.L." entra entera en el combobox. En una columna,
           grid-cols-1 (minmax(0,1fr)): una razón social más larga se corta con "…" en vez de desbordar la tarjeta. */}
       <div className="grid grid-cols-1 gap-2.5 @md:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]">
