@@ -55,6 +55,7 @@ import { cn } from '@/lib/utils'
  * Precio y Total entran "39.000.000,00" (el precio de la mensual) en la cifra de 13 px de esa línea.
  */
 const COLUMNAS = '@min-[44rem]:grid-cols-[1.25rem_minmax(0,1fr)_3rem_7rem_6rem_6rem]'
+const COLUMNAS_PLANTILLA = '@min-[44rem]:grid-cols-[1.25rem_minmax(0,1fr)_4rem_7rem]'
 
 /** Cifras de la línea de un ítem desde 44rem: un punto más chicas que la descripción para que entren los montos. */
 const CIFRA = '@min-[44rem]:text-[13px]'
@@ -163,6 +164,7 @@ function FilaItem({
   alMover,
   alDuplicar,
   alQuitar,
+  editarPrecios,
 }: {
   item: ItemEditor
   indice: number
@@ -174,6 +176,7 @@ function FilaItem({
   alMover: (paso: -1 | 1) => void
   alDuplicar: () => void
   alQuitar: () => void
+  editarPrecios: boolean
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: item.clave,
@@ -218,8 +221,8 @@ function FilaItem({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-1 gap-y-1.5 border-b bg-card px-3 py-2',
-        COLUMNAS,
+        'grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-x-1 gap-y-1.5 border-b bg-card px-3 py-2 md:grid-cols-[1.25rem_minmax(0,1fr)]',
+        editarPrecios ? COLUMNAS : COLUMNAS_PLANTILLA,
         isDragging && 'relative z-10 shadow-lg',
       )}
     >
@@ -332,7 +335,7 @@ function FilaItem({
           aria-describedby={describir('cantidad')}
           className={cn('h-8 w-16 px-2 text-sm tabular-nums md:text-sm @min-[44rem]:w-full', CIFRA)}
         />
-        <Input
+        {editarPrecios ? <Input
           id={`${id}-precio`}
           aria-label={`Precio del ítem ${numero}`}
           inputMode="decimal"
@@ -356,7 +359,7 @@ function FilaItem({
             item.precio.trim() === '' ? 'border-brand-yellow/70 bg-brand-yellow/10' : FANTASMA,
             CIFRA,
           )}
-        />
+        /> : null}
         <NativeSelect
           id={`${id}-unidad`}
           aria-label={`Unidad del ítem ${numero}`}
@@ -365,7 +368,7 @@ function FilaItem({
           aria-invalid={Boolean(error('unidad'))}
           aria-describedby={describir('unidad')}
           // Padding y flecha más ajustados para que "JORNADA" entre entero en la columna de 6rem.
-          className="w-28 @min-[44rem]:w-full [&_[data-slot=native-select-icon]]:right-1.5 [&_select]:pr-6 [&_select]:pl-2 [&_select]:text-xs"
+          className="w-28 @min-[44rem]:w-full [&_[data-slot=native-select-icon]]:right-1.5 [&_select]:pr-6 [&_select]:pl-2 md:[&_select]:text-xs"
         >
           {UNIDADES.map((unidad) => (
             <NativeSelectOption key={unidad} value={unidad}>
@@ -374,14 +377,14 @@ function FilaItem({
           ))}
         </NativeSelect>
         {/* Angosta, en la misma línea si entra (si no, baja a la derecha); desde 44rem, la última columna. */}
-        <p className="ml-auto self-center text-right text-[13px] text-muted-foreground tabular-nums @min-[44rem]:ml-0 @min-[44rem]:self-auto @min-[44rem]:pt-1.5 @min-[44rem]:text-foreground">
+        {editarPrecios ? <p className="ml-auto self-center text-right text-[13px] text-muted-foreground tabular-nums @min-[44rem]:ml-0 @min-[44rem]:self-auto @min-[44rem]:pt-1.5 @min-[44rem]:text-foreground">
           <span className="@min-[44rem]:sr-only">Total </span>
           {total === null ? '—' : formatMontoTabla(total)}
-        </p>
+        </p> : null}
       </div>
 
       {mensajes.length ? (
-        <p id={`${id}-error`} className="col-start-2 text-sm text-destructive @min-[44rem]:col-span-5">
+        <p id={`${id}-error`} className="col-start-2 -col-end-1 text-sm text-destructive">
           {mensajes.join(' · ')}
         </p>
       ) : null}
@@ -396,6 +399,7 @@ export function TarjetaItems({
   errores,
   despachar,
   alCambiarBorradorSeccion,
+  editarPrecios = true,
 }: {
   items: ItemEditor[]
   formato: Formato
@@ -409,6 +413,8 @@ export function TarjetaItems({
   despachar: Despachar
   /** Un nombre de sección escrito y todavía no aplicado: el editor lo cuenta como cambio sin guardar. */
   alCambiarBorradorSeccion: AlCambiarBorradorSeccion
+  /** Las plantillas guardan descripciones, cantidades y unidades; los precios se definen al cotizar. */
+  editarPrecios?: boolean
 }) {
   const idDnd = useId()
   const foco = useRef<PedidoFoco | 'agregar' | null>(null)
@@ -492,7 +498,7 @@ export function TarjetaItems({
   }
 
   return (
-    <Tarjeta compacta titulo="Ítems">
+    <Tarjeta compacta titulo="Ítems" descripcion={editarPrecios ? undefined : 'Los precios se completan en cada cotización.'}>
       {/* A sangre dentro de la tarjeta, como la tabla de ítems de la plantilla. */}
       <div className="-mx-4 -mb-4 border-t">
         {items.length === 0 ? (
@@ -503,15 +509,15 @@ export function TarjetaItems({
               aria-hidden
               className={cn(
                 'hidden h-10 items-center gap-x-1 border-b px-3 text-sm font-medium text-muted-foreground @min-[44rem]:grid',
-                COLUMNAS,
+                editarPrecios ? COLUMNAS : COLUMNAS_PLANTILLA,
               )}
             >
               <span />
               <span className="pl-2.5">Descripción</span>
               <span className="pl-2">Cant.</span>
-              <span className="pr-1.5 text-right">Precio</span>
+              {editarPrecios ? <span className="pr-1.5 text-right">Precio</span> : null}
               <span className="pl-2">Unidad</span>
-              <span className="text-right">Total</span>
+              {editarPrecios ? <span className="text-right">Total</span> : null}
             </div>
             <DndContext
               id={idDnd}
@@ -542,12 +548,13 @@ export function TarjetaItems({
                       alMover={(paso) => mover(fila.indice, fila.indice + paso)}
                       alDuplicar={() => duplicar(items[fila.indice])}
                       alQuitar={() => quitar(items[fila.indice])}
+                      editarPrecios={editarPrecios}
                     />
                   ),
                 )}
               </SortableContext>
             </DndContext>
-            {mostrarTotal ? (
+            {editarPrecios && mostrarTotal ? (
               <div className="flex items-center justify-end gap-6 border-b px-3 py-2 text-sm">
                 <span className="font-medium">Total</span>
                 {total === null ? (
@@ -577,7 +584,7 @@ export function TarjetaItems({
               </Button>
             ) : null}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-h-11 items-center gap-2 md:min-h-0">
             <Switch
               id="cotizacion-mostrar-total"
               checked={mostrarTotal}

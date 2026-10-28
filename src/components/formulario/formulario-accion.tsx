@@ -64,7 +64,7 @@ export function FormularioAccion({
         {/* Sin botón propio, el formulario muestra el mensaje donde ubica su botón. */}
         {boton ? <MensajeFormulario estado={estado} /> : null}
         {soloLectura || !boton ? null : (
-          <Button type="submit" disabled={pendiente}>
+          <Button type="submit" disabled={pendiente} className="w-full md:w-auto">
             {pendiente ? 'Guardando…' : textoBoton}
           </Button>
         )}

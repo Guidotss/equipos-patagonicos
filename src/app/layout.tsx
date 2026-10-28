@@ -16,7 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="es-AR">
       <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
         {children}
-        <Toaster richColors position="top-center" />
+        <Toaster richColors position="bottom-right" offset={{ bottom: 96, right: 24 }} mobileOffset={{ bottom: 96, left: 16, right: 16 }} />
       </body>
     </html>
   )

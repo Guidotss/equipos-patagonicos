@@ -30,7 +30,7 @@ const CAMPOS_VISTA = ['nombre', 'email'] as const
 /** Como CamposGrilla, pero con los id "contacto-…" de siempre. */
 function CamposContacto({ estado, inicial }: { estado: EstadoFormulario; inicial?: Contacto }) {
   return (
-    <div className="grid gap-x-4 gap-y-3 @md:grid-cols-2">
+    <div className="grid gap-4 md:gap-y-3 @md:grid-cols-2">
       {CAMPOS.map(({ campo, etiqueta, props }) => {
         const id = `contacto-${campo}`
         const error = estado.errores[campo]

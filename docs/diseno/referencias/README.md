@@ -90,3 +90,7 @@ No copiarlos al implementar:
 - 03: el bloque de Textos repite el ícono de ocultar.
 - 06: cada contacto repite los íconos de editar y borrar (van una sola vez, arriba a la derecha).
 - 05: el porcentaje de subida sale en amarillo (usar texto común).
+
+## Revisión de formularios
+
+- `12-formularios.png`: refinamiento de la UI existente, con controles de 44 px y texto de 16 px en móvil; escritorio conserva la densidad actual. La carga de PDF usa una acción explícita en español.

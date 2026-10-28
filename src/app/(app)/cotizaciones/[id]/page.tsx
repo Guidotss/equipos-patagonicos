@@ -58,7 +58,7 @@ export default async function CotizacionPage({
             tienePdf: fila.archivo_original_path !== null,
           }}
         />
-        <Contenido className="max-w-5xl">
+        <Contenido className="max-w-5xl pt-0">
           <AccionesEspeciales id={fila.id} version={fila.updated_at} estado={fila.estado} origen={fila.origen} hoy={hoy} accionInicial={accionInicial} />
           {fila.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto</Link></Button> : null}
           {fila.estado === 'enviada' ? <Button asChild variant="outline"><Link href={`/documentos/nuevo?cotizacion=${id}&tipo=orden_compra`}>Aprobar y cargar orden de compra</Link></Button> : null}
@@ -91,10 +91,10 @@ export default async function CotizacionPage({
         contexto={contexto}
         accionInicial={accionInicial}
       />
-      <Contenido className="max-w-5xl">
+      {fila.estado === 'aprobada' || fila.estado === 'rechazada' ? <Contenido className="max-w-5xl pt-0">
         {fila.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto y documentos</Link></Button> : null}
         {fila.estado === 'aprobada' || fila.estado === 'rechazada' ? <Seguimiento key={fila.updated_at} id={id} version={fila.updated_at} notas={fila.notas} fecha={fila.fecha_proxima_actualizacion} /> : null}
-      </Contenido>
+      </Contenido> : null}
     </>
   )
 }

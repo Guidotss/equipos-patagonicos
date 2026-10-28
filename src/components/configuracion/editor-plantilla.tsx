@@ -44,13 +44,12 @@ export function EditorPlantilla({ id, nombre: inicialNombre, inicial, plantilla 
     <form onSubmit={guardar} className="max-w-4xl"><fieldset disabled={ocupado} className="flex min-w-0 flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
         <Campo id="plantilla-nombre" etiqueta="Nombre"><Input id="plantilla-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={100} required /></Campo>
-        <Campo id="plantilla-formato" etiqueta="Formato"><NativeSelect id="plantilla-formato" value={estado.formato} onChange={(e) => despachar({ tipo: 'reemplazar', estado: { ...estado, formato: e.target.value as 'jornada' | 'mensual' } })}><NativeSelectOption value="jornada">Por jornada</NativeSelectOption><NativeSelectOption value="mensual">Mensual</NativeSelectOption></NativeSelect></Campo>
+        <Campo id="plantilla-formato" etiqueta="Formato"><NativeSelect id="plantilla-formato" className="w-full" value={estado.formato} onChange={(e) => despachar({ tipo: 'reemplazar', estado: { ...estado, formato: e.target.value as 'jornada' | 'mensual' } })}><NativeSelectOption value="jornada">Por jornada</NativeSelectOption><NativeSelectOption value="mensual">Mensual</NativeSelectOption></NativeSelect></Campo>
         <Campo id="plantilla-validez" etiqueta="Validez (días)"><Input id="plantilla-validez" type="number" min={1} max={365} value={estado.validezDias} onChange={(e) => despachar({ tipo: 'campo', campo: 'validezDias', valor: e.target.value })} /></Campo>
       </div>
       <TarjetaAsunto estado={estado} errores={{}} despachar={despachar} />
-      <TarjetaItems items={estado.items} formato={estado.formato} mostrarTotal={estado.mostrarTotal} errores={{}} despachar={despachar} alCambiarBorradorSeccion={(clave, aplicar) => { if (aplicar) borradores.current.set(clave, aplicar); else borradores.current.delete(clave) }} />
+      <TarjetaItems items={estado.items} formato={estado.formato} mostrarTotal={estado.mostrarTotal} editarPrecios={false} errores={{}} despachar={despachar} alCambiarBorradorSeccion={(clave, aplicar) => { if (aplicar) borradores.current.set(clave, aplicar); else borradores.current.delete(clave) }} />
       <TarjetaTextos bloques={estado.bloques} plantilla={plantilla} errores={{}} despachar={despachar} />
-      <p className="text-sm text-muted-foreground">Los precios que se escriban aquí no se guardan en la plantilla.</p>
       {mensaje ? <p role="alert" className="text-sm text-destructive">{mensaje}</p> : null}
       <div className="flex flex-wrap gap-2"><Button type="submit">{ocupado ? 'Guardando…' : 'Guardar plantilla'}</Button><Button asChild variant="outline"><Link href="/configuracion/plantillas">Volver</Link></Button><Button type="button" variant="ghost" onClick={() => setConfirmando(true)}>Eliminar plantilla</Button></div>
     </fieldset></form>

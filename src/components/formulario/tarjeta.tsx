@@ -83,7 +83,7 @@ export function CamposGrilla({
   prefijo?: string
 }) {
   return (
-    <div className="grid gap-x-4 gap-y-3 @md:grid-cols-2">
+    <div className="grid gap-4 md:gap-y-3 @md:grid-cols-2">
       {campos.map(({ campo, etiqueta, placeholder, ayuda, ancho, filas, props }) => {
         const id = prefijo ? `${prefijo}-${campo}` : campo
         return (
