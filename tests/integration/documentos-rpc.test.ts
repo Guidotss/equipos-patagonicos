@@ -438,7 +438,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     })
   })
 
-  it('una fecha o un equipo vacío cuenta como que no vino', async () => {
+  it('permite conservar la fecha vacía y descarta los otros campos opcionales vacíos', async () => {
     const id = await registrarOk({ tipo: 'remito', fecha: '', periodo_desde: '', periodo_hasta: '', equipo_id: '' })
     const campos = async () =>
       (
@@ -448,7 +448,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
           [id],
         )
       )[0]
-    const vacios = { con_fecha: true, fecha_vencimiento: null, periodo_desde: null, periodo_hasta: null, equipo_id: null }
+    const vacios = { con_fecha: false, fecha_vencimiento: null, periodo_desde: null, periodo_hasta: null, equipo_id: null }
     expect(await campos()).toEqual(vacios)
 
     const { error } = await activo.client.rpc('actualizar_documento', {

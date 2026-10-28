@@ -22,14 +22,14 @@ function errorDeRpc(error: { code?: string; message: string }) {
 export async function prepararSubida(
   supabase: Cliente,
   archivo: { clienteId: string; mime: string; tamano: number },
-): Promise<{ path: string; token: string }> {
+): Promise<{ path: string; token: string; signedUrl: string }> {
   if (!esUuid(archivo.clienteId)) throw new ErrorDocumento('Cliente inválido')
   const problema = validarArchivo(archivo)
   if (problema) throw new ErrorDocumento(problema)
   const ruta = rutaArchivo(archivo.clienteId, archivo.mime as MimePermitido)
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(ruta)
   if (error) throw error
-  return { path: data.path, token: data.token }
+  return { path: data.path, token: data.token, signedUrl: data.signedUrl }
 }
 
 export type ArchivoSubido = { path: string; nombre_original: string }

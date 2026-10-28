@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { parsePrecio } from '@/lib/format/montos'
 import { esUuid } from '@/lib/validacion'
+import { esFecha } from '@/lib/format/fechas'
 
 export const TIPOS_DOCUMENTO = {
   orden_compra: 'Orden de compra',
@@ -26,7 +27,7 @@ function esTipoComprobante(valor: string): valor is TipoComprobante {
 const fechaOpcional = z
   .string()
   .trim()
-  .refine((valor) => valor === '' || z.iso.date().safeParse(valor).success, 'Fecha inválida')
+  .refine((valor) => valor === '' || esFecha(valor), 'Fecha inválida')
   .transform((valor) => (valor === '' ? null : valor))
 
 const montoOpcional = z
