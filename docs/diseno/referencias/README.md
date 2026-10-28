@@ -16,6 +16,7 @@ Imágenes de referencia para el skill `frontend-from-generated-image`. Son el ob
 | `09-empresa.png` | Configuración › Empresa como ficha (banda con el gancho del logo): campos agrupados por uso, con franjas "Así sale…" en vivo | 2 (rediseño) |
 | `10-edicion.png` | Patrón de alta/edición en pantalla propia (sin modales), ejemplo Editar equipo: ficha + tarjetas + franja "Así sale en la cotización" | 2 (rediseño) |
 | `11-cierre-mvp.png` | Presupuesto, Inicio y carga móvil sobre el shell ya implementado | Cierre MVP |
+| `13-formularios-estructura.png` | Hoja de formularios dividida por tareas, con acciones persistentes | Reemplazo de formularios |
 
 La referencia 11 se generó con OpenAI ImageGen a partir de una captura de la app y las referencias 01 y 04. El panel de Inicio generado incluye algunos montos de cotizaciones: no se reproducen, porque Inicio sólo muestra montos de facturas y cobros.
 
@@ -94,3 +95,5 @@ No copiarlos al implementar:
 ## Revisión de formularios
 
 - `12-formularios.png`: refinamiento de la UI existente, con controles de 44 px y texto de 16 px en móvil; escritorio conserva la densidad actual. La carga de PDF usa una acción explícita en español.
+
+La referencia 13 reemplaza la composición de formularios de las referencias 09, 10 y 12: una hoja continua con secciones y encabezados compactos. El shell y las fichas generales conservan su dirección visual. Ver [validación del reemplazo](../2026-10-28-formularios-reemplazo.md).

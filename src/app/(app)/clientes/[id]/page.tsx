@@ -52,9 +52,8 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         }
       />
 
-      <Contenido className="grid items-start gap-x-9 gap-y-10 space-y-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold tracking-tight">Datos</h2>
+      <Contenido className="grid max-w-6xl items-start gap-6 space-y-0 pb-28 lg:grid-cols-2">
+        <section aria-label="Datos del cliente" className="min-w-0 lg:col-span-2">
           <ClienteForm
             accion={actualizarCliente.bind(null, id)}
             inicial={{ ...cliente, cuit: cliente.cuit ? formatCuit(cliente.cuit) : '' }}
@@ -63,7 +62,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         </section>
 
         <Contactos clienteId={id} contactos={cliente.contactos} />
-        <section className="min-w-0 lg:col-span-2"><HistorialComercial clienteId={id} /></section>
+        <section className="min-w-0"><HistorialComercial clienteId={id} /></section>
       </Contenido>
     </>
   )

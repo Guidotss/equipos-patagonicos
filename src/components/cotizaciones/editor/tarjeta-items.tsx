@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Tarjeta } from '@/components/formulario/tarjeta'
+import { useHojaFormulario } from '@/components/formulario/estructura-formulario'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -417,6 +418,7 @@ export function TarjetaItems({
   editarPrecios?: boolean
 }) {
   const idDnd = useId()
+  const enHoja = useHojaFormulario()
   const foco = useRef<PedidoFoco | 'agregar' | null>(null)
   const botonAgregar = useRef<HTMLButtonElement>(null)
   const sensores = useSensors(
@@ -500,7 +502,7 @@ export function TarjetaItems({
   return (
     <Tarjeta compacta titulo="Ítems" descripcion={editarPrecios ? undefined : 'Los precios se completan en cada cotización.'}>
       {/* A sangre dentro de la tarjeta, como la tabla de ítems de la plantilla. */}
-      <div className="-mx-4 -mb-4 border-t">
+      <div className={cn('border-t', !enHoja && '-mx-4 -mb-4')}>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-[15px] text-muted-foreground">Todavía no hay ítems.</p>
         ) : (

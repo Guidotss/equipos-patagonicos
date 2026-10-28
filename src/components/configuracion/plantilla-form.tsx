@@ -1,10 +1,11 @@
 'use client'
 
-import { AlignLeft, ArrowLeft, FileText, ListOrdered, ScrollText, Tag } from 'lucide-react'
+import { AlignLeft, ListOrdered, ScrollText, Tag } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Contenido, EncabezadoFicha } from '@/components/app-shell/encabezado'
+import { Contenido } from '@/components/app-shell/encabezado'
 import { Campo } from '@/components/formulario/campo'
+import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
 import { FormularioAccion } from '@/components/formulario/formulario-accion'
 import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
 import { Tarjeta } from '@/components/formulario/tarjeta'
@@ -31,37 +32,6 @@ export type Plantilla = {
   bloques: Bloque[]
 }
 
-function Chip({ activa, children }: { activa: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex h-6 items-center rounded-md bg-slate-200/70 px-2 text-[15px]',
-        activa ? 'text-foreground' : 'text-muted-foreground',
-      )}
-    >
-      {children}
-    </span>
-  )
-}
-
-function BotonGuardar({
-  pendiente,
-  className,
-  ...props
-}: React.ComponentProps<typeof Button> & { pendiente: boolean }) {
-  return (
-    <Button
-      type="submit"
-      size="lg"
-      disabled={pendiente}
-      className={cn('h-10 px-3.5 text-[15px] shadow-md shadow-primary/20', className)}
-      {...props}
-    >
-      {pendiente ? 'Guardando…' : 'Guardar cambios'}
-    </Button>
-  )
-}
-
 function TextoLibre({ etiqueta, texto }: { etiqueta: string; texto: string }) {
   return (
     <div className="space-y-1">
@@ -73,7 +43,7 @@ function TextoLibre({ etiqueta, texto }: { etiqueta: string; texto: string }) {
   )
 }
 
-/** Edición de una plantilla: por ahora solo el nombre; el resto se muestra como referencia. */
+/** Nombre editable y contenido de referencia, con acceso al editor completo. */
 export function PlantillaForm({
   accion,
   plantilla,
@@ -94,39 +64,26 @@ export function PlantillaForm({
       textoBoton="Guardar cambios"
       boton={false}
       alGuardar={() => router.push(LISTA)}
-      encabezado={({ pendiente, formulario }) => (
-        <EncabezadoFicha
-          titulo={plantilla.nombre}
-          recuadro={<FileText className={cn('size-12 stroke-[1.5]', plantilla.activa ? 'text-primary' : null)} />}
-          estado={plantilla.activa ? <Pastilla tono="exito">Activa</Pastilla> : <Pastilla>Inactiva</Pastilla>}
-          datos={
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              <Chip activa={plantilla.activa}>{plantilla.formato}</Chip>
-              <Chip activa={plantilla.activa}>Validez {plantilla.validez_dias} días</Chip>
-            </div>
-          }
-          acciones={
-            <>
-              {botonEstado}
-              <BotonGuardar pendiente={pendiente} form={formulario} />
-            </>
-          }
-        />
+      encabezado={() => (
+        <Contenido className="max-w-6xl pb-0">
+          <EncabezadoFormulario
+            titulo={plantilla.nombre}
+            estado={plantilla.activa ? <Pastilla tono="exito">Activa</Pastilla> : <Pastilla>Inactiva</Pastilla>}
+            descripcion={`${plantilla.formato} · Validez ${plantilla.validez_dias} días`}
+            acciones={botonEstado}
+          />
+        </Contenido>
       )}
     >
       {(estado, pendiente) => (
-        <Contenido>
-          {/* Arriba, cerca de Guardar: los errores generales no tienen un campo donde mostrarse. */}
+        <Contenido className="max-w-6xl pt-6 pb-28">
           <MensajeFormulario estado={estado} />
-          <p className="text-[15px] text-muted-foreground">
-            Podés renombrar la plantilla o abrir su editor para cambiar textos e ítems.
-          </p>
-          {editarHref ? <Button asChild variant="outline"><Link href={editarHref}>Editar textos e ítems</Link></Button> : null}
-          <div className="grid items-start gap-6 lg:grid-cols-2">
+          <HojaFormulario>
             <Tarjeta
               icono={Tag}
               titulo="Datos de la plantilla"
-              descripcion="El nombre la identifica al armar una cotización; no se imprime."
+              descripcion="El nombre la identifica al armar una cotización; no se imprime. Los textos e ítems se cambian desde el editor."
+              acciones={editarHref ? <Button asChild variant="outline"><Link href={editarHref}>Editar textos e ítems</Link></Button> : null}
             >
               <Campo id="plantilla-nombre" etiqueta="Nombre" error={estado.errores.nombre}>
                 <Input
@@ -149,76 +106,67 @@ export function PlantillaForm({
               </dl>
             </Tarjeta>
 
-            <div className="lg:col-span-2">
-              <Tarjeta
-                icono={ListOrdered}
-                titulo="Ítems precargados"
-                descripcion="Se cargan sin precio en cada cotización nueva."
-              >
-                {plantilla.items.length === 0 ? (
-                  <p className="text-[15px] text-muted-foreground">No tiene ítems precargados.</p>
-                ) : (
-                  <div className="-mx-5 -mb-5 border-t sm:-mx-6 sm:-mb-6">
-                    <Table>
-                      <TableHeader className="bg-muted/50">
-                        <TableRow className="hover:bg-transparent">
+            <Tarjeta
+              icono={ListOrdered}
+              titulo="Ítems precargados"
+              descripcion="Se cargan sin precio en cada cotización nueva."
+            >
+              {plantilla.items.length === 0 ? (
+                <p className="text-[15px] text-muted-foreground">No tiene ítems precargados.</p>
+              ) : (
+                <div className="overflow-hidden rounded-lg border">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow className="hover:bg-transparent">
+                        {conSeccion ? (
+                          <TableHead className="h-11 px-3 text-muted-foreground">Sección</TableHead>
+                        ) : null}
+                        <TableHead className="h-11 px-3 text-muted-foreground">
+                          Descripción
+                        </TableHead>
+                        <TableHead className="h-11 px-3 text-muted-foreground">Unidad</TableHead>
+                        <TableHead className="h-11 px-3 text-right text-muted-foreground">Cantidad</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {plantilla.items.map((item, indice) => (
+                        <TableRow key={indice}>
                           {conSeccion ? (
-                            <TableHead className="h-11 pl-5 text-muted-foreground sm:pl-6">Sección</TableHead>
+                            <TableCell className="px-3 py-3">{item.seccion || '—'}</TableCell>
                           ) : null}
-                          <TableHead className={cn('h-11 text-muted-foreground', conSeccion ? null : 'pl-5 sm:pl-6')}>
-                            Descripción
-                          </TableHead>
-                          <TableHead className="h-11 text-muted-foreground">Unidad</TableHead>
-                          <TableHead className="h-11 pr-5 text-right text-muted-foreground sm:pr-6">Cantidad</TableHead>
+                          <TableCell className="px-3 py-3 whitespace-normal">
+                            <ConVariables texto={item.descripcion} />
+                          </TableCell>
+                          <TableCell className="px-3 py-3">{item.unidad}</TableCell>
+                          <TableCell className="px-3 py-3 text-right tabular-nums">{item.cantidad}</TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {plantilla.items.map((item, indice) => (
-                          <TableRow key={indice}>
-                            {conSeccion ? (
-                              <TableCell className="py-3 pl-5 sm:pl-6">{item.seccion || '—'}</TableCell>
-                            ) : null}
-                            <TableCell className={cn('py-3 whitespace-normal', conSeccion ? null : 'pl-5 sm:pl-6')}>
-                              <ConVariables texto={item.descripcion} />
-                            </TableCell>
-                            <TableCell className="py-3">{item.unidad}</TableCell>
-                            <TableCell className="py-3 pr-5 text-right tabular-nums sm:pr-6">{item.cantidad}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </Tarjeta>
-            </div>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </Tarjeta>
 
-            <div className="lg:col-span-2">
-              <Tarjeta
-                icono={ScrollText}
-                titulo="Textos de la cotización"
-                descripcion="Condiciones que se imprimen en cada cotización hecha con esta plantilla."
-              >
-                {plantilla.bloques.length === 0 ? (
-                  <p className="text-[15px] text-muted-foreground">No tiene textos.</p>
-                ) : (
-                  <div className="-mx-5 -mb-5 divide-y border-t sm:-mx-6 sm:-mb-6">
-                    {plantilla.bloques.map((bloque, indice) => (
-                      <article key={indice} className="space-y-2 px-5 py-4 sm:px-6">
-                        {bloque.titulo ? <h3 className="font-medium">{bloque.titulo}</h3> : null}
-                        <TextoBloque contenido={bloque.contenido} />
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </Tarjeta>
-            </div>
-          </div>
-          {/* En celular el botón de arriba queda lejos del campo. */}
-          <BotonGuardar pendiente={pendiente} className="w-full lg:hidden" />
-          <Link href={LISTA} className="inline-flex items-center gap-1.5 text-[15px] text-primary hover:underline">
-            <ArrowLeft className="size-4" aria-hidden />
-            Volver a Plantillas
-          </Link>
+            <Tarjeta
+              icono={ScrollText}
+              titulo="Textos de la cotización"
+              descripcion="Condiciones que se imprimen en cada cotización hecha con esta plantilla."
+            >
+              {plantilla.bloques.length === 0 ? (
+                <p className="text-[15px] text-muted-foreground">No tiene textos.</p>
+              ) : (
+                <div className="divide-y rounded-lg border">
+                  {plantilla.bloques.map((bloque, indice) => (
+                    <article key={indice} className="space-y-2 px-4 py-4">
+                      {bloque.titulo ? <h3 className="font-medium">{bloque.titulo}</h3> : null}
+                      <TextoBloque contenido={bloque.contenido} />
+                    </article>
+                  ))}
+                </div>
+              )}
+            </Tarjeta>
+          </HojaFormulario>
+          <AccionesFormulario volver={LISTA} textoBoton="Guardar cambios" pendiente={pendiente} />
         </Contenido>
       )}
     </FormularioAccion>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
+import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
+import { EncabezadoFormulario } from '@/components/formulario/estructura-formulario'
 import { DocumentoForm } from '@/components/documentos/documento-form'
 import { TIPOS_DOCUMENTO, type TipoDocumento } from '@/lib/documentos/esquemas'
 import { contextoDocumento } from '@/lib/documentos/lecturas'
@@ -55,8 +56,8 @@ export default async function NuevoDocumentoPage({
   return (
     <>
       <BarraMigas migas={[{ texto: 'Presupuestos', href: '/presupuestos' }, { texto: 'Subir documento' }]} />
-      <Contenido>
-        <EncabezadoPagina
+      <Contenido className="max-w-6xl">
+        <EncabezadoFormulario
           titulo="Subir documento"
           descripcion={
             cotizacion

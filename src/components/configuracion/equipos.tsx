@@ -1,10 +1,11 @@
 'use client'
 
-import { ArrowLeft, PanelsLeftBottom, Pencil, Plus, Printer, StickyNote } from 'lucide-react'
+import { PanelsLeftBottom, Pencil, Plus, Printer, StickyNote } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Contenido, EncabezadoFicha } from '@/components/app-shell/encabezado'
+import { Contenido } from '@/components/app-shell/encabezado'
 import { Campo } from '@/components/formulario/campo'
+import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
 import { FormularioAccion } from '@/components/formulario/formulario-accion'
 import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
 import { FranjaVista, FrasesResueltas, Tarjeta, useVistaEnVivo } from '@/components/formulario/tarjeta'
@@ -73,7 +74,6 @@ function datosClave(equipo: Equipo): string[] {
 
 function CamposDatos({ estado, inicial }: { estado: EstadoFormulario; inicial: Inicial }) {
   return (
-    // Dos columnas según el ancho de la tarjeta, no de la ventana: a 1200 px la tarjeta mide ~430 px.
     <div className="grid gap-x-4 gap-y-3 @sm:grid-cols-2">
       {CAMPOS_DATOS.map(({ campo, etiqueta, ancho, props }) => (
         <Campo
@@ -96,26 +96,7 @@ function CamposDatos({ estado, inicial }: { estado: EstadoFormulario; inicial: I
   )
 }
 
-function BotonGuardar({
-  texto,
-  pendiente,
-  className,
-  ...props
-}: React.ComponentProps<typeof Button> & { texto: string; pendiente: boolean }) {
-  return (
-    <Button
-      type="submit"
-      size="lg"
-      disabled={pendiente}
-      className={cn('h-10 px-3.5 text-[15px] shadow-md shadow-primary/20', className)}
-      {...props}
-    >
-      {pendiente ? 'Guardando…' : texto}
-    </Button>
-  )
-}
-
-/** Alta (sin equipo) o edición de un equipo en pantalla propia (docs/diseno/referencias/10-edicion.png). */
+/** Alta (sin equipo) o edición de un equipo en pantalla propia. */
 export function FormularioEquipo({
   accion,
   equipo,
@@ -141,38 +122,21 @@ export function FormularioEquipo({
       textoBoton={textoGuardar}
       boton={false}
       alGuardar={() => router.push(LISTA)}
-      encabezado={({ pendiente, formulario }) => (
-        <EncabezadoFicha
-          titulo={equipo?.nombre || 'Nuevo equipo'}
-          recuadro={
-            <IconoGrua className={cn('size-14 stroke-[1.5]', equipo && !equipo.activo ? null : 'text-primary')} />
-          }
-          estado={equipo ? <PastillaEstado activo={equipo.activo} /> : null}
-          datos={
-            equipo && chips.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {chips.map((chip, indice) => (
-                  <Dato key={indice} activo={equipo.activo} className="text-[15px]">
-                    {chip}
-                  </Dato>
-                ))}
-              </div>
-            ) : null
-          }
-          acciones={
-            <>
-              {botonEstado}
-              <BotonGuardar texto={textoGuardar} pendiente={pendiente} form={formulario} />
-            </>
-          }
-        />
+      encabezado={() => (
+        <Contenido className="max-w-6xl pb-0">
+          <EncabezadoFormulario
+            titulo={equipo?.nombre || 'Nuevo equipo'}
+            estado={equipo ? <PastillaEstado activo={equipo.activo} /> : null}
+            descripcion={chips.length > 0 ? chips.join(' · ') : 'Datos del equipo y descripción que se usa al cotizar.'}
+            acciones={botonEstado}
+          />
+        </Contenido>
       )}
     >
       {(estado, pendiente) => (
-        <Contenido>
-          {/* Arriba, cerca de Guardar: los errores generales no tienen un campo donde mostrarse. */}
+        <Contenido className="max-w-6xl pt-6 pb-28">
           <MensajeFormulario estado={estado} />
-          <div ref={sincronizar} onInput={alEscribir} className="grid items-start gap-6 lg:grid-cols-2">
+          <HojaFormulario ref={sincronizar} onInput={alEscribir}>
             <Tarjeta
               icono={PanelsLeftBottom}
               titulo="Datos del equipo"
@@ -205,13 +169,8 @@ export function FormularioEquipo({
                 />
               </Campo>
             </Tarjeta>
-          </div>
-          {/* En celular el botón de arriba queda lejos después de editar el último campo. */}
-          <BotonGuardar texto={textoGuardar} pendiente={pendiente} className="w-full lg:hidden" />
-          <Link href={LISTA} className="inline-flex items-center gap-1.5 text-[15px] text-primary hover:underline">
-            <ArrowLeft className="size-4" aria-hidden />
-            Volver a Equipos
-          </Link>
+          </HojaFormulario>
+          <AccionesFormulario volver={LISTA} textoBoton={textoGuardar} pendiente={pendiente} />
         </Contenido>
       )}
     </FormularioAccion>

@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { guardarCotizacion } from '@/app/(app)/cotizaciones/actions'
 import { Contenido } from '@/components/app-shell/encabezado'
 import { GuardarPlantilla } from '@/components/cotizaciones/especiales/guardar-plantilla'
+import { HojaFormulario } from '@/components/formulario/estructura-formulario'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { esConflicto, type AccionConfirmable } from '@/lib/cotizaciones/acciones-estado'
@@ -379,39 +380,41 @@ export function EditorCotizacion({
               una transición, también: no se tipea sobre algo que se está enviando, aprobando o rechazando. */}
           <fieldset
             disabled={!editable || acciones.enTransicion || preparandoOc}
-            className="min-w-0 space-y-3 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
+            className="min-w-0 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
           >
             <legend className="sr-only">Contenido de la cotización</legend>
-            <TarjetaCliente
-              estado={estado}
-              contactos={contactos}
-              errores={errores}
-              despachar={despachar}
-              alCambiarContactos={setContactos}
-              alCambiarCatalogos={setCatalogosBase}
-            />
-            <TarjetaDatos
-              estado={estado}
-              catalogos={catalogos}
-              pendientes={pendientes}
-              errores={errores}
-              despachar={despachar}
-            />
-            <TarjetaAsunto estado={estado} errores={errores} despachar={despachar} />
-            <TarjetaItems
-              items={estado.items}
-              formato={estado.formato}
-              mostrarTotal={estado.mostrarTotal}
-              errores={erroresItems}
-              despachar={despachar}
-              alCambiarBorradorSeccion={alCambiarBorradorSeccion}
-            />
-            <TarjetaTextos
-              bloques={estado.bloques}
-              plantilla={catalogos.plantillas.find((plantilla) => plantilla.id === estado.plantillaId) ?? null}
-              errores={erroresBloques}
-              despachar={despachar}
-            />
+            <HojaFormulario>
+              <TarjetaCliente
+                estado={estado}
+                contactos={contactos}
+                errores={errores}
+                despachar={despachar}
+                alCambiarContactos={setContactos}
+                alCambiarCatalogos={setCatalogosBase}
+              />
+              <TarjetaDatos
+                estado={estado}
+                catalogos={catalogos}
+                pendientes={pendientes}
+                errores={errores}
+                despachar={despachar}
+              />
+              <TarjetaAsunto estado={estado} errores={errores} despachar={despachar} />
+              <TarjetaItems
+                items={estado.items}
+                formato={estado.formato}
+                mostrarTotal={estado.mostrarTotal}
+                errores={erroresItems}
+                despachar={despachar}
+                alCambiarBorradorSeccion={alCambiarBorradorSeccion}
+              />
+              <TarjetaTextos
+                bloques={estado.bloques}
+                plantilla={catalogos.plantillas.find((plantilla) => plantilla.id === estado.plantillaId) ?? null}
+                errores={erroresBloques}
+                despachar={despachar}
+              />
+            </HojaFormulario>
           </fieldset>
           <ColumnaVistaPrevia vista={vista} linea={lineaVista} />
         </div>

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
+import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
+import { EncabezadoFormulario } from '@/components/formulario/estructura-formulario'
 import { AccionesDocumento } from '@/components/documentos/acciones-documento'
 import { DocumentoForm } from '@/components/documentos/documento-form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -45,8 +46,8 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
           { texto: numeroDocumento(documento) },
         ]}
       />
-      <Contenido>
-        <EncabezadoPagina
+      <Contenido className="max-w-6xl">
+        <EncabezadoFormulario
           titulo={`${TIPOS_DOCUMENTO[documento.tipo as TipoDocumento]} · ${numeroDocumento(documento)}`}
         />
         {documento.deleted_at ? (

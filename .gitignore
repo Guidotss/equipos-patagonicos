@@ -51,3 +51,7 @@ supabase/.branches
 /blob-report
 /playwright/.cache
 /backups/
+
+# Evidencia y caché local de revisión visual
+/.impeccable/review/
+/.impeccable/hook.cache.json

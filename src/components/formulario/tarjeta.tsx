@@ -3,6 +3,7 @@
 import type { LucideIcon } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Campo } from '@/components/formulario/campo'
+import { SeccionFormulario, useHojaFormulario } from '@/components/formulario/estructura-formulario'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { valorCampo, type EstadoFormulario } from '@/lib/formularios'
@@ -47,6 +48,14 @@ export function Tarjeta({
   compacta?: boolean
   children: React.ReactNode
 }) {
+  const enHoja = useHojaFormulario()
+  if (enHoja) {
+    return (
+      <SeccionFormulario titulo={titulo} descripcion={descripcion} acciones={acciones} franja={franja} apilada={compacta}>
+        {children}
+      </SeccionFormulario>
+    )
+  }
   return (
     <section className="@container overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       <div className={compacta ? 'space-y-3 p-4' : 'space-y-4 p-5 sm:p-6'}>

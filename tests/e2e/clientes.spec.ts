@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { iniciarSesion, sufijoUnico } from './helpers'
+import { conBase } from './base-datos'
 
 test('alta de cliente: valida el CUIT sin perder lo escrito, agrega un contacto y se encuentra sin acentos', async ({ page }) => {
   const sufijo = sufijoUnico()
@@ -56,4 +57,27 @@ test('un cliente se puede desactivar y volver a activar', async ({ page }) => {
   await expect(page.getByText('Inactivo')).toBeVisible()
   await page.getByRole('button', { name: `Activar ${razonSocial}` }).click()
   await expect(page.getByText('Inactivo')).toBeHidden()
+})
+
+test('la navegación de formularios admite razones sociales largas en móvil', async ({ page }) => {
+  const nombre = `Ingeniería, Servicios y Montajes Industriales de la Patagonia ${sufijoUnico()} S.R.L.`
+  const id = await conBase(async (db) => (
+    await db.query('insert into public.clientes(razon_social) values($1) returning id', [nombre])
+  ).rows[0].id as string)
+  try {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await iniciarSesion(page)
+    await page.goto(`/clientes/${id}/contactos/nuevo`)
+    await expect(page.getByRole('heading', { name: 'Nuevo contacto', exact: true })).toBeVisible()
+    const medidas = await page.evaluate(() => ({
+      disponible: window.innerWidth,
+      contenido: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    }))
+    expect(medidas.contenido).toBeLessThanOrEqual(medidas.disponible)
+    const guardar = await page.getByRole('button', { name: 'Guardar contacto', exact: true }).boundingBox()
+    expect(guardar).not.toBeNull()
+    expect(guardar!.x + guardar!.width).toBeLessThanOrEqual(medidas.disponible)
+  } finally {
+    await conBase(async (db) => { await db.query('delete from public.clientes where id=$1', [id]) })
+  }
 })

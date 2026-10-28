@@ -1,9 +1,10 @@
 'use client'
 
-import { ArrowLeft, Pencil, PenLine, Plus, Printer, UserRound } from 'lucide-react'
+import { Pencil, Plus, Printer, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Contenido, EncabezadoFicha } from '@/components/app-shell/encabezado'
+import { Contenido } from '@/components/app-shell/encabezado'
+import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
 import { FormularioAccion } from '@/components/formulario/formulario-accion'
 import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
 import { CamposGrilla, FranjaVista, Resaltado, Tarjeta, useVistaEnVivo, type DefinicionCampo } from '@/components/formulario/tarjeta'
@@ -84,34 +85,21 @@ export function FirmanteForm({
       textoBoton={textoGuardar}
       boton={false}
       alGuardar={() => router.push(LISTA)}
-      encabezado={({ pendiente, formulario }) => (
-        <EncabezadoFicha
-          titulo={inicial?.nombre || 'Nuevo firmante'}
-          recuadro={inicial ? iniciales(inicial.nombre) : <PenLine className="size-10" strokeWidth={1.5} />}
-          estado={pastilla}
-          datos={datosClave || null}
-          acciones={
-            <>
-              {botonEstado}
-              <Button
-                type="submit"
-                form={formulario}
-                size="lg"
-                className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20"
-                disabled={pendiente}
-              >
-                {pendiente ? 'Guardando…' : textoGuardar}
-              </Button>
-            </>
-          }
-        />
+      encabezado={() => (
+        <Contenido className="max-w-6xl pb-0">
+          <EncabezadoFormulario
+            titulo={inicial?.nombre || 'Nuevo firmante'}
+            estado={pastilla}
+            descripcion={datosClave || 'Datos de la persona que firma las cotizaciones.'}
+            acciones={botonEstado}
+          />
+        </Contenido>
       )}
     >
       {(estado, pendiente) => (
-        <Contenido>
-          <div ref={sincronizar} onInput={alEscribir} className="max-w-2xl space-y-6">
-            {/* Arriba, cerca de Guardar: los errores generales no tienen un campo donde mostrarse. */}
-            <MensajeFormulario estado={estado} />
+        <Contenido className="max-w-6xl pt-6 pb-28">
+          <MensajeFormulario estado={estado} />
+          <HojaFormulario ref={sincronizar} onInput={alEscribir}>
             <Tarjeta
               icono={UserRound}
               titulo="Datos del firmante"
@@ -120,18 +108,8 @@ export function FirmanteForm({
             >
               <CamposGrilla estado={estado} inicial={valores} campos={CAMPOS} prefijo="firmante" />
             </Tarjeta>
-            {/* En celular el botón de arriba queda lejos después de completar el último campo. */}
-            <Button type="submit" size="lg" className="h-10 w-full text-[15px] md:hidden" disabled={pendiente}>
-              {pendiente ? 'Guardando…' : textoGuardar}
-            </Button>
-          </div>
-          <Link
-            href={LISTA}
-            className="inline-flex items-center gap-1.5 text-[15px] text-primary underline-offset-4 hover:underline"
-          >
-            <ArrowLeft className="size-4" aria-hidden />
-            Volver a Firmantes
-          </Link>
+          </HojaFormulario>
+          <AccionesFormulario volver={LISTA} textoBoton={textoGuardar} pendiente={pendiente} />
         </Contenido>
       )}
     </FormularioAccion>

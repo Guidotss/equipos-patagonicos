@@ -1,11 +1,11 @@
 'use client'
 
-import { ArrowLeft, Printer, Trash2, UserRound } from 'lucide-react'
-import Link from 'next/link'
+import { Printer, Trash2 } from 'lucide-react'
 import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useCallback, useId, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Contenido, EncabezadoFicha } from '@/components/app-shell/encabezado'
+import { Contenido } from '@/components/app-shell/encabezado'
+import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
 import { Campo } from '@/components/formulario/campo'
 import { FormularioAccion } from '@/components/formulario/formulario-accion'
 import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
@@ -13,7 +13,6 @@ import { FranjaVista, Resaltado, Tarjeta, useVistaEnVivo } from '@/components/fo
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CampoContacto } from '@/lib/clientes/esquemas'
-import { iniciales } from '@/lib/format/texto'
 import { valorCampo, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
 
 export type Contacto = { nombre: string; cargo: string; email: string; telefono: string }
@@ -173,58 +172,34 @@ export function ContactoForm({
   const { vista, alEscribir, sincronizar } = useVistaEnVivo(CAMPOS_VISTA, inicial ?? {})
   const textoGuardar = inicial ? 'Guardar cambios' : 'Guardar contacto'
 
-  const guardar = (pendiente: boolean, props: React.ComponentProps<typeof Button>) => (
-    <Button type="submit" size="lg" disabled={pendiente} {...props}>
-      {pendiente ? 'Guardando…' : textoGuardar}
-    </Button>
-  )
-
   return (
-    <FormularioAccion
-      accion={accion}
-      textoBoton={textoGuardar}
-      boton={false}
-      alGuardar={() => router.push(volver)}
-      encabezado={({ pendiente, formulario }) => (
-        <EncabezadoFicha
-          titulo={inicial?.nombre || 'Nuevo contacto'}
-          recuadro={inicial ? iniciales(inicial.nombre) : <UserRound className="size-10" strokeWidth={1.5} />}
-          datos={razonSocial}
-          acciones={guardar(pendiente, {
-            form: formulario,
-            className: 'h-10 px-3.5 text-[15px] shadow-md shadow-primary/20',
-          })}
-        />
-      )}
-    >
-      {(estado, pendiente) => (
-        <Contenido>
-          {/* Arriba, cerca de Guardar: los errores generales no tienen un campo donde mostrarse. */}
-          <div ref={sincronizar} onInput={alEscribir} className="max-w-2xl space-y-6">
-            <MensajeFormulario estado={estado} />
-            <Tarjeta
-              icono={UserRound}
-              titulo="Datos del contacto"
-              descripcion="El nombre y el email encabezan la cotización; el cargo y el teléfono no se imprimen."
-              franja={<FranjaDestinatario razonSocial={razonSocial} vista={vista} />}
-            >
-              <CamposContacto estado={estado} inicial={inicial} />
-            </Tarjeta>
-            {/* En celular el botón de arriba queda lejos después de completar el último campo. */}
-            {guardar(pendiente, { className: 'h-10 w-full text-[15px] md:hidden' })}
-          </div>
-          <div className="flex max-w-2xl flex-wrap items-center justify-between gap-x-6 gap-y-4">
-            <Link
-              href={volver}
-              className="inline-flex items-center gap-1.5 text-[15px] text-primary underline-offset-4 hover:underline"
-            >
-              <ArrowLeft className="size-4 shrink-0" aria-hidden />
-              Volver a {razonSocial}
-            </Link>
-            {inicial && borrar ? <BorrarContacto nombre={inicial.nombre} borrar={borrar} volver={volver} /> : null}
-          </div>
-        </Contenido>
-      )}
-    </FormularioAccion>
+    <Contenido className="max-w-6xl pb-28">
+      <EncabezadoFormulario titulo={inicial?.nombre || 'Nuevo contacto'} descripcion={razonSocial} />
+      <FormularioAccion
+        accion={accion}
+        textoBoton={textoGuardar}
+        boton={false}
+        alGuardar={() => router.push(volver)}
+      >
+        {(estado, pendiente) => (
+          <>
+            <div ref={sincronizar} onInput={alEscribir} className="space-y-6">
+              <MensajeFormulario estado={estado} />
+              <HojaFormulario>
+                <Tarjeta
+                  titulo="Datos del contacto"
+                  descripcion="El nombre y el email encabezan la cotización; el cargo y el teléfono no se imprimen."
+                  franja={<FranjaDestinatario razonSocial={razonSocial} vista={vista} />}
+                >
+                  <CamposContacto estado={estado} inicial={inicial} />
+                </Tarjeta>
+              </HojaFormulario>
+            </div>
+            <AccionesFormulario volver={volver} textoBoton={textoGuardar} pendiente={pendiente} />
+          </>
+        )}
+      </FormularioAccion>
+      {inicial && borrar ? <div className="flex justify-end"><BorrarContacto nombre={inicial.nombre} borrar={borrar} volver={volver} /></div> : null}
+    </Contenido>
   )
 }

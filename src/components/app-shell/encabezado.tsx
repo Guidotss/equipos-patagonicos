@@ -7,20 +7,20 @@ export type Miga = { texto: string; href?: string }
 export function BarraMigas({ migas }: { migas: Miga[] }) {
   return (
     <div className="z-10 flex h-14 items-center border-b bg-background/90 px-4 backdrop-blur md:sticky md:top-0 md:px-9">
-      <nav aria-label="Ubicación" className="min-w-0">
+      <nav aria-label="Ubicación" className="min-w-0 flex-1">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
           {migas.map((miga, indice) => (
             <li
               key={`${indice}-${miga.texto}`}
-              className={cn('flex items-center gap-1.5', miga.href ? 'shrink-0' : 'min-w-0')}
+              className={cn('flex min-w-0 items-center gap-1.5', indice === 0 && 'shrink-0')}
             >
-              {indice > 0 ? <span aria-hidden>/</span> : null}
+              {indice > 0 ? <span aria-hidden className="shrink-0">/</span> : null}
               {miga.href ? (
-                <Link href={miga.href} className="transition-colors hover:text-foreground">
+                <Link href={miga.href} title={miga.texto} className="min-w-0 truncate transition-colors hover:text-foreground">
                   {miga.texto}
                 </Link>
               ) : (
-                <span aria-current="page" className="truncate text-foreground">
+                <span aria-current="page" title={miga.texto} className="min-w-0 truncate text-foreground">
                   {miga.texto}
                 </span>
               )}
