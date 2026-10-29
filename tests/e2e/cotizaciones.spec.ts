@@ -288,17 +288,6 @@ test.describe('lista de cotizaciones', () => {
 
 const MARCA_EDITOR = 'e2e-editor'
 
-async function conBaseEditor<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
-  process.loadEnvFile('.env.local')
-  const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
-  await db.connect()
-  try {
-    return await fn(db)
-  } finally {
-    await db.end()
-  }
-}
-
 /** La opción del Atte. de un cliente sin contactos (ya leídos): reemplaza la línea "Este cliente no tiene contactos". */
 function opcionSinContactos(page: Page) {
   return page.getByLabel('Atte.', { exact: true }).getByRole('option', { name: 'Sin contactos', exact: true })
@@ -314,7 +303,7 @@ test.describe('editor de cotizaciones', () => {
   const clientesCreados: string[] = []
 
   test.afterAll(async () => {
-    await conBaseEditor(async (db) => {
+    await conBase(async (db) => {
       await db.query('delete from public.cotizaciones where id = any($1::uuid[]) or notas = $2', [creadas, MARCA_EDITOR])
       await db.query('delete from public.clientes where razon_social = any($1::text[])', [clientesCreados])
     })
@@ -447,7 +436,7 @@ test.describe('editor de cotizaciones', () => {
   })
 
   test('una cotización cargada se muestra en solo lectura', async ({ page }) => {
-    const { id, numero } = await conBaseEditor(async (db) => {
+    const { id, numero } = await conBase(async (db) => {
       const { rows } = await db.query<{ id: string; numero: string }>(
         `insert into public.cotizaciones (cliente_id, formato, origen, estado, archivo_original_path, asunto, notas)
          select id, 'jornada', 'importada', 'enviada', 'importadas/e2e-editor.pdf', 'Montaje de tanque', $1
@@ -616,12 +605,12 @@ test.describe('grilla de ítems de una cotización guardada', () => {
   const creadas: string[] = []
 
   test.afterAll(async () => {
-    await conBaseEditor((db) => db.query('delete from public.cotizaciones where id = any($1::uuid[])', [creadas]))
+    await conBase((db) => db.query('delete from public.cotizaciones where id = any($1::uuid[])', [creadas]))
   })
 
   /** Un borrador por jornada con dos ítems con precio, cada uno en su sección (los precios llegan como "195.000"). */
   async function cotizacionGuardada(): Promise<string> {
-    return conBaseEditor(async (db) => {
+    return conBase(async (db) => {
       const {
         rows: [{ id }],
       } = await db.query<{ id: string }>(
@@ -725,7 +714,7 @@ test.describe('textos del editor', () => {
   const creadas: string[] = []
 
   test.afterAll(async () => {
-    await conBaseEditor((db) => db.query('delete from public.cotizaciones where id = any($1::uuid[])', [creadas]))
+    await conBase((db) => db.query('delete from public.cotizaciones where id = any($1::uuid[])', [creadas]))
   })
 
   test('textos: formato sobre la selección, pegar desde Word, ocultar y restaurar desde la plantilla', async ({ page }) => {
@@ -1524,7 +1513,8 @@ test.describe('flujo completo de una cotización', () => {
   test('de nueva a aprobada, y renegociada con el presupuesto anterior finalizado', async ({ page }) => {
     await iniciarSesion(page)
     await page.goto('/cotizaciones')
-    await page.getByRole('link', { name: 'Nueva cotización' }).click()
+    // En una base nueva, la acción se repite en el encabezado y en el estado vacío.
+    await page.getByRole('link', { name: 'Nueva cotización' }).first().click()
     await expect(page).toHaveURL(/\/cotizaciones\/nueva$/)
 
     // Formato (la nueva arranca con la primera plantilla por nombre: la mensual), cliente y Atte.

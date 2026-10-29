@@ -2,10 +2,14 @@
 import { createClient } from '@supabase/supabase-js'
 import pg from 'pg'
 import type { Database } from '@/lib/supabase/database.types'
+import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
+
+validarEntornoPruebas()
 
 const opcionesSinSesion = { auth: { persistSession: false, autoRefreshToken: false } }
 
 function url(): string {
+  validarEntornoPruebas()
   const valor = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!valor) throw new Error('Falta NEXT_PUBLIC_SUPABASE_URL')
   return valor
@@ -56,6 +60,7 @@ export async function borrarUsuario(id: string) {
 
 /** Abre una conexión directa a la base local (como postgres) y la cierra al terminar. */
 export async function conConexion<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
+  validarEntornoPruebas()
   const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
   await client.connect()
   try {

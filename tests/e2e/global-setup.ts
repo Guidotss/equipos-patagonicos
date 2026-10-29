@@ -1,15 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { E2E_EMAIL, E2E_NOMBRE, E2E_PASSWORD } from './credenciales'
+import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
 
 /** Deja un usuario admin activo con contraseña conocida (idempotente). */
 export default async function globalSetup() {
-  process.loadEnvFile('.env.local')
-  // loadEnvFile no pisa lo que ya está exportado en la terminal: sin este control,
-  // un entorno apuntando a Supabase Cloud terminaría con un admin de contraseña pública.
-  const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '')
-  if (!['localhost', '127.0.0.1'].includes(url.hostname)) {
-    throw new Error(`Los E2E solo corren contra Supabase local (${url.host})`)
-  }
+  const { baseURL } = validarEntornoPruebas()
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -37,6 +32,6 @@ export default async function globalSetup() {
   if (error) throw error
 
   // Compila el login antes de abrir varios navegadores contra next dev en frío.
-  const login = await fetch('http://localhost:3000/login')
+  const login = await fetch(`${baseURL}/login`)
   if (!login.ok) throw new Error(`No se pudo preparar el login (${login.status})`)
 }

@@ -2,24 +2,13 @@
 // Las rutas de PDF del editor: POST /cotizaciones/vista-previa (estado sin guardar) y GET …/pdf?actual=1.
 // Las Server Actions se prueban desde la pantalla (tests/e2e/cotizaciones.spec.ts).
 import { expect, test } from '@playwright/test'
-import pg from 'pg'
+import { conBase } from './base-datos'
 import { extractText, getDocumentProxy } from 'unpdf'
 import type { EstadoEditor } from '@/lib/cotizaciones/editor'
 import { iniciarSesion } from './helpers'
 
 const MARCA = 'e2e-vista-previa'
 let base: { cliente: string; equipo: string; firmante: string; enviada: string }
-
-async function conBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
-  process.loadEnvFile('.env.local')
-  const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
-  await db.connect()
-  try {
-    return await fn(db)
-  } finally {
-    await db.end()
-  }
-}
 
 test.beforeAll(async () => {
   base = await conBase(async (db) => {
@@ -106,8 +95,8 @@ function estado(cambios: Partial<EstadoEditor> = {}): EstadoEditor {
   }
 }
 
-test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo válido', async ({ page, playwright }) => {
-  const anonimo = await playwright.request.newContext({ baseURL: 'http://localhost:3000' })
+test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo válido', async ({ page, playwright, baseURL }) => {
+  const anonimo = await playwright.request.newContext({ baseURL })
   const sinSesion = await anonimo.post('/cotizaciones/vista-previa', { data: { estado: estado() }, maxRedirects: 0 })
   expect(sinSesion.status()).toBe(307)
   await anonimo.dispose()

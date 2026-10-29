@@ -2,6 +2,8 @@ import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  // Vite también carga .env.local por defecto; todas las suites reciben su entorno explícitamente.
+  envDir: false,
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },

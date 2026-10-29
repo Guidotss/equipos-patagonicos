@@ -1,8 +1,22 @@
 import { expect, test } from '@playwright/test'
 import { iniciarSesion, sufijoUnico } from './helpers'
+import { conBase } from './base-datos'
+
+const firmantesCreados: string[] = []
+const equiposCreados: string[] = []
+
+test.afterEach(async () => {
+  await conBase(async (db) => {
+    await db.query('delete from public.firmantes where nombre = any($1::text[])', [firmantesCreados])
+    await db.query('delete from public.equipos where nombre = any($1::text[])', [equiposCreados])
+  })
+  firmantesCreados.length = 0
+  equiposCreados.length = 0
+})
 
 test('firmantes: alta y edición', async ({ page }) => {
   const nombre = `Firmante ${sufijoUnico()}`
+  firmantesCreados.push(nombre)
   await iniciarSesion(page)
   await page.goto('/configuracion/firmantes')
 
@@ -20,12 +34,13 @@ test('firmantes: alta y edición', async ({ page }) => {
   await page.getByLabel('Teléfono').fill('299 000 0000')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(page).toHaveURL(/\/configuracion\/firmantes$/)
-  // Acotado a la fila: corridas anteriores dejan otros firmantes con el mismo teléfono.
+  // Acotado al firmante creado por esta prueba.
   await expect(page.getByRole('listitem').filter({ hasText: nombre }).getByText('299 000 0000')).toBeVisible()
 })
 
 test('equipos: valida la capacidad y acepta decimales con coma', async ({ page }) => {
   const nombre = `Grúa prueba ${sufijoUnico()}`
+  equiposCreados.push(nombre)
   await iniciarSesion(page)
   await page.goto('/configuracion/equipos')
 
@@ -42,7 +57,7 @@ test('equipos: valida la capacidad y acepta decimales con coma', async ({ page }
   await page.getByRole('button', { name: 'Guardar equipo' }).click()
   await expect(page).toHaveURL(/\/configuracion\/equipos$/)
   await expect(page.getByText(nombre)).toBeVisible()
-  // Acotado a la fila: corridas anteriores dejan otros equipos de 60,5 TN.
+  // Acotado al equipo creado por esta prueba.
   await expect(page.getByRole('listitem').filter({ hasText: nombre }).getByText('60,5 TN')).toBeVisible()
 })
 

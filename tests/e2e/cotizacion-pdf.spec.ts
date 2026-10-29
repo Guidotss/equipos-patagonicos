@@ -1,20 +1,9 @@
 // tests/e2e/cotizacion-pdf.spec.ts
 import { expect, test } from '@playwright/test'
-import pg from 'pg'
+import { conBase } from './base-datos'
 import { iniciarSesion } from './helpers'
 
 let cotizacionId: string
-
-async function conBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
-  process.loadEnvFile('.env.local')
-  const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
-  await db.connect()
-  try {
-    return await fn(db)
-  } finally {
-    await db.end()
-  }
-}
 
 test.beforeAll(async () => {
   cotizacionId = await conBase(async (db) => {
@@ -38,8 +27,8 @@ test.afterAll(async () => {
   await conBase((db) => db.query(`delete from public.cotizaciones where notas = 'e2e-pdf'`))
 })
 
-test('el PDF de una cotización se sirve con su nombre de archivo y solo con sesión', async ({ page, playwright }) => {
-  const anonimo = await playwright.request.newContext({ baseURL: 'http://localhost:3000' })
+test('el PDF de una cotización se sirve con su nombre de archivo y solo con sesión', async ({ page, playwright, baseURL }) => {
+  const anonimo = await playwright.request.newContext({ baseURL })
   const sinSesion = await anonimo.get(`/cotizaciones/${cotizacionId}/pdf`, { maxRedirects: 0 })
   expect(sinSesion.status()).toBe(307)
   await anonimo.dispose()

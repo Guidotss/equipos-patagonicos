@@ -2,9 +2,19 @@ import { expect, test } from '@playwright/test'
 import { iniciarSesion, sufijoUnico } from './helpers'
 import { conBase } from './base-datos'
 
+const clientesCreados: string[] = []
+
+test.afterEach(async () => {
+  await conBase(async (db) => {
+    await db.query('delete from public.clientes where razon_social = any($1::text[])', [clientesCreados])
+  })
+  clientesCreados.length = 0
+})
+
 test('alta de cliente: valida el CUIT sin perder lo escrito, agrega un contacto y se encuentra sin acentos', async ({ page }) => {
   const sufijo = sufijoUnico()
   const razonSocial = `Grúas Ñandú ${sufijo} S.A.`
+  clientesCreados.push(razonSocial)
 
   await iniciarSesion(page)
   await page.getByRole('link', { name: 'Clientes' }).click()
@@ -39,7 +49,9 @@ test('alta de cliente: valida el CUIT sin perder lo escrito, agrega un contacto 
 test('el CUIT de un cliente existente no se puede repetir', async ({ page }) => {
   await iniciarSesion(page)
   await page.goto('/clientes/nuevo')
-  await page.getByLabel('Razón social').fill(`Duplicado ${sufijoUnico()}`)
+  const razonSocial = `Duplicado ${sufijoUnico()}`
+  clientesCreados.push(razonSocial)
+  await page.getByLabel('Razón social').fill(razonSocial)
   await page.getByLabel('CUIT').fill('30-71952967-0')
   await page.getByRole('button', { name: 'Crear cliente' }).click()
   await expect(page.getByText('Ya existe un cliente con ese CUIT').first()).toBeVisible()
@@ -47,6 +59,7 @@ test('el CUIT de un cliente existente no se puede repetir', async ({ page }) => 
 
 test('un cliente se puede desactivar y volver a activar', async ({ page }) => {
   const razonSocial = `Para desactivar ${sufijoUnico()}`
+  clientesCreados.push(razonSocial)
   await iniciarSesion(page)
   await page.goto('/clientes/nuevo')
   await page.getByLabel('Razón social').fill(razonSocial)

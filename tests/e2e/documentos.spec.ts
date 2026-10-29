@@ -1,3 +1,4 @@
+import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test, type Page } from '@playwright/test'
 import { conBase } from './base-datos'
@@ -20,7 +21,7 @@ test.beforeAll(async () => {
   )
 })
 test.afterAll(async () => {
-  process.loadEnvFile('.env.local')
+  validarEntornoPruebas()
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
     auth: { persistSession: false },
   })

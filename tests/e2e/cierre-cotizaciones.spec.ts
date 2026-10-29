@@ -1,3 +1,4 @@
+import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
 import { createElement } from 'react'
 import { Document, Page, Text, renderToBuffer } from '@react-pdf/renderer'
 import { createClient } from '@supabase/supabase-js'
@@ -24,7 +25,7 @@ test.afterAll(async () => {
   await conBase(async (db) => {
     const { rows } = await db.query('select archivo_original_path from public.cotizaciones where cliente_id=any($1::uuid[]) and archivo_original_path is not null', [[cliente, otro]])
     if (rows.length) {
-      process.loadEnvFile('.env.local')
+      validarEntornoPruebas()
       const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
       await admin.storage.from('documentos').remove(rows.map((r) => r.archivo_original_path))
     }

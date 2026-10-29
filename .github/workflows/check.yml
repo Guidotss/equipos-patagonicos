@@ -26,8 +26,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run db:start
-      - run: npm run env:local
+      - run: npm run test:runner
       - run: npm run test:int
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

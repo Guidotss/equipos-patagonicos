@@ -31,12 +31,33 @@ Supabase Studio local: http://127.0.0.1:54323
 | Script | Qué hace |
 |---|---|
 | `npm run check` | lint + typecheck + tests unitarios |
-| `npm run test:int` | tests de integración contra Supabase local (RLS, triggers) |
-| `npm run test:e2e` | tests E2E con Playwright |
+| `npm run test:int` | integración (RLS, triggers) en un Supabase descartable |
+| `npm run test:e2e` | Playwright con Supabase y Next descartables |
+| `npm run test:runner` | verifica guardas, configuración y limpieza sin Docker |
 | `npm run db:types` | regenera `src/lib/supabase/database.types.ts` |
 | `npm run db:backup -- /ruta/nueva` | exporta base y archivos privados con hashes |
 | `npm run db:restaurar -- /ruta/respaldo` | verifica la integridad sin modificar la base |
 | `npm run usuario:crear` | crea un usuario activo |
+
+## Pruebas aisladas
+
+Integración y E2E requieren Docker en ejecución y las dependencias instaladas con `npm ci`. Para E2E, instalar también Chromium con `npx playwright install chromium` (en Linux/CI: `--with-deps`). No hace falta iniciar Supabase de desarrollo ni generar `.env.local`.
+
+```bash
+npm run test:int
+npm run test:e2e
+npm run test:int -- clientes          # filtros y opciones se pasan a Vitest
+npm run test:e2e -- clientes.spec.ts  # filtros y opciones se pasan a Playwright
+npm run test:runner                  # regresiones del aislamiento, sin servicios
+```
+
+Cada comando crea un proyecto `equipos-patagonicos-test-<id>` con una copia de `supabase/config.toml`, las migraciones y el seed. El ID usa 15 dígitos hexadecimales de un UUID nuevo para respetar el límite de 40 caracteres de Supabase y conservar idénticos los nombres/labels usados en la destrucción. Usa API **55321**, PostgreSQL **55322** y shadow **55320**; E2E usa Next en **127.0.0.1:3001**. Rechaza puertos ocupados y otra corrida simultánea. Realtime, Studio, correo, Edge y Analytics están deshabilitados; Auth y Storage pertenecen al proyecto temporal. Las claves se obtienen de `supabase status -o json` en memoria y se pasan explícitamente a los procesos.
+
+Los tests no leen ni modifican `.env.local`, ni toman conexiones de Supabase/PostgreSQL heredadas del shell. Playwright e integración rechazan invocaciones directas sin el runner y URLs de desarrollo/remotas antes de preparar datos. E2E copia la aplicación, sin `.env*`, dentro de una carpeta privada `.pruebas-*`; usa `distDir: .next-e2e` y `reuseExistingServer: false`. El servidor, la caché, `next-env.d.ts` y los tipos generados quedan en esa copia, sin tocar el Next de desarrollo en 3000.
+
+El runner elimina únicamente su propio proyecto, contenedores, volúmenes y red al terminar, fallar o recibir **SIGINT/SIGTERM**. Detiene por separado su proceso de Next; el código de salida conserva el fallo de la suite (o 130/143 por interrupción). Como toda limpieza de procesos, no puede ejecutarse frente a SIGKILL, caída de Docker o apagado del equipo. Si falla la preparación o la destrucción, informa un error y conserva una carpeta privada `.pruebas-*` con `ejecucion.json` y `diagnostico.log`; pueden contener información sensible y no se versionan. Consultar allí el `projectId` para recuperar exclusivamente esa corrida con `npx supabase stop --project-id equipos-patagonicos-test-<id> --no-backup --workdir /ruta/a/.pruebas-...`; nunca usar `--all` ni resetear desarrollo. El bloqueo `/tmp/equipos-patagonicos-pruebas.lock` (o el directorio temporal del sistema) solo se debe retirar manualmente tras verificar que su PID ya no está ejecutándose y limpiar el proyecto indicado.
+
+Los fixtures de clientes, equipos y firmantes se eliminan también en hooks aunque falle una aserción; las limpiezas existentes se mantienen. La garantía de dejar intactos datos de desarrollo, cuentas, Storage y secuencias proviene del proyecto descartable completo. Los tests unitarios (`npm test`) y `npm run test:runner` siguen siendo independientes de Supabase.
 
 ## Cotizaciones y PDF
 

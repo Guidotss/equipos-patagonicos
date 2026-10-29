@@ -1,20 +1,32 @@
 import { defineConfig, devices } from '@playwright/test'
+import path from 'node:path'
+import { validarEntornoPruebas } from './scripts/pruebas-entorno.mjs'
+
+const { baseURL } = validarEntornoPruebas()
+const appDir = process.env.EP_PRUEBAS_APP_DIR
+if (!appDir || !path.isAbsolute(appDir)) throw new Error('El runner debe preparar la copia temporal de Next')
+const comandoNext = [process.execPath, path.resolve('scripts/pruebas-app.mjs')]
 
 export default defineConfig({
   testDir: 'tests/e2e',
   globalSetup: './tests/e2e/global-setup.ts',
   fullyParallel: false,
+  // Cada corrida compila una copia nueva de Next, sin la caché del servidor de desarrollo.
+  workers: 2,
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'retain-on-failure',
     locale: 'es-AR',
     timezoneId: 'America/Argentina/Buenos_Aires',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000/api/health',
-    reuseExistingServer: true,
+    command: `exec ${comandoNext.map((arg) => `'${arg.replaceAll("'", "'\\''")}'`).join(' ')}`,
+    url: `${baseURL}/api/health`,
+    reuseExistingServer: false,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
     timeout: 120_000,
   },
 })

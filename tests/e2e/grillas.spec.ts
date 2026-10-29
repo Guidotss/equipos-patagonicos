@@ -33,7 +33,7 @@ test.afterAll(async () => {
   })
 })
 
-test('Clientes conserva la búsqueda al paginar y abre el registro desde el espacio de la fila', async ({ page }) => {
+test('Clientes conserva la búsqueda al paginar y abre el registro desde el espacio de la fila', async ({ page, baseURL }) => {
   await iniciarSesion(page)
   await page.goto(`/clientes?q=${marca}`)
   await expect(page.getByText('Mostrando 1–25 de 26')).toBeVisible()
@@ -44,7 +44,7 @@ test('Clientes conserva la búsqueda al paginar y abre el registro desde el espa
   const enlace = fila.getByRole('link').first()
   const href = await enlace.getAttribute('href')
   await fila.getByRole('cell').first().click({ position: { x: 3, y: 3 } })
-  await expect(page).toHaveURL(`http://localhost:3000${href}`)
+  await expect(page).toHaveURL(new URL(href!, baseURL).href)
 })
 
 test('el encabezado de la grilla permanece visible al recorrer los resultados', async ({ page }) => {
@@ -98,14 +98,14 @@ test('en móvil cada precio tiene contexto y sigue calculando su total al editar
   await expect(page.getByText('39.000.000,00', { exact: true }).first()).toBeVisible()
 })
 
-test('Presupuestos sincroniza los controles al limpiar filtros y al volver', async ({ page }) => {
+test('Presupuestos sincroniza los controles al limpiar filtros y al volver', async ({ page, baseURL }) => {
   await iniciarSesion(page)
   await page.goto(`/presupuestos?q=${marca}`)
   const estado = page.getByRole('combobox', { name: 'Estado', exact: true })
   await estado.selectOption('finalizado')
   await expect(page).toHaveURL(/estado=finalizado/)
   await page.getByRole('link', { name: 'Limpiar filtros', exact: true }).first().click()
-  await expect(page).toHaveURL('http://localhost:3000/presupuestos')
+  await expect(page).toHaveURL(`${baseURL}/presupuestos`)
   await expect(estado).toHaveValue('')
   await expect(page.getByRole('searchbox', { name: 'Buscar presupuestos' })).toHaveValue('')
   await page.goBack()

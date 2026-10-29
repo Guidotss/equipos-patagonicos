@@ -1,9 +1,12 @@
 // tests/e2e/base-datos.ts
-// Acceso directo a la base local para preparar y limpiar datos de los E2E (SUPABASE_DB_URL de .env.local).
+// Acceso exclusivo al proyecto descartable preparado por el runner.
 import pg from 'pg'
+import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
+
+validarEntornoPruebas()
 
 export async function conBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
-  process.loadEnvFile('.env.local')
+  validarEntornoPruebas()
   const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
   await db.connect()
   try {
