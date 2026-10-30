@@ -1,9 +1,25 @@
 'use client'
 
-import Link from 'next/link'
+import { LoaderCircle, type LucideIcon } from 'lucide-react'
+import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { NAV_ITEMS, estaActivo } from './nav-items'
+
+function ContenidoEnlace({ label, icon: Icon, activo }: { label: string; icon: LucideIcon; activo: boolean }) {
+  const { pending } = useLinkStatus()
+  return (
+    <>
+      <Icon className={cn('size-[18px] shrink-0', activo ? null : 'text-slate-500')} aria-hidden />
+      <span className="min-w-0 flex-1">{label}</span>
+      {pending ? (
+        <span role="status" aria-label={`Abriendo ${label}`}>
+          <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden />
+        </span>
+      ) : null}
+    </>
+  )
+}
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
@@ -25,8 +41,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 : 'text-sidebar-foreground hover:bg-sidebar-accent/50',
             )}
           >
-            <Icon className={cn('size-[18px]', activo ? null : 'text-slate-500')} aria-hidden />
-            {label}
+            <ContenidoEnlace label={label} icon={Icon} activo={activo} />
           </Link>
         )
       })}

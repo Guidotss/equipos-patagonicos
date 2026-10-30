@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { BarraMigas, Contenido, Portada } from '@/components/app-shell/encabezado'
 import { ColaInicio } from '@/components/inicio/cola-inicio'
 import { Button } from '@/components/ui/button'
-import { requireUsuario } from '@/lib/auth'
 import { hoyArgentina, ZONA_ARGENTINA } from '@/lib/format/fechas'
 import { leerInicio, PENDIENTES_POR_PAGINA } from '@/lib/inicio/lecturas'
 import { COLAS_INICIO, esColaInicio, paginaValida, type ColaInicio as NombreColaInicio } from '@/lib/inicio/modelo'
@@ -13,7 +12,7 @@ export const metadata: Metadata = { title: 'Inicio' }
 
 export default async function InicioPage({ searchParams }: { searchParams: Promise<{ cola?: string; pagina?: string }> }) {
   const parametros = await searchParams
-  await requireUsuario()
+  // El layout valida la sesión en paralelo; las consultas de Inicio también están protegidas por RLS.
   const cola = esColaInicio(parametros.cola) ? parametros.cola : undefined
   const pagina = paginaValida(parametros.pagina)
   const { resumen, pendientes } = await leerInicio(cola, pagina)
