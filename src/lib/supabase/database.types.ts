@@ -23,6 +23,79 @@ export type Database = {
           }
         },"public": {
           Tables: {
+            facturas_historicas: {
+        Row: {
+          clave_origen: string
+          cobrado: number
+          confirmacion_cobro: string
+          cotizacion_id: string
+          entrada: Json
+          factura_id: string
+          lote: string
+          registrado_at: string
+          sha256: string
+        }
+        Insert: {
+          clave_origen?: string
+          cobrado: number
+          confirmacion_cobro: string
+          cotizacion_id: string
+          entrada: Json
+          factura_id: string
+          lote: string
+          registrado_at?: string
+          sha256: string
+        }
+        Update: {
+          clave_origen?: string
+          cobrado?: number
+          confirmacion_cobro?: string
+          cotizacion_id?: string
+          entrada?: Json
+          factura_id?: string
+          lote?: string
+          registrado_at?: string
+          sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
+            columns: ["cotizacion_id"]
+            isOneToOne: true
+            referencedRelation: "cotizaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
+            columns: ["cotizacion_id"]
+            isOneToOne: true
+            referencedRelation: "v_cotizaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
+            columns: ["cotizacion_id"]
+            isOneToOne: true
+            referencedRelation: "v_presupuestos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facturas_historicas_factura_id_fkey"
+            columns: ["factura_id"]
+            isOneToOne: true
+            referencedRelation: "documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facturas_historicas_factura_id_fkey"
+            columns: ["factura_id"]
+            isOneToOne: true
+            referencedRelation: "v_facturas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+
             "clientes": {
                   Row: {
                     "activo": boolean,"condicion_iva": string | null,"condicion_pago": string,"created_at": string,"created_by": string | null,"cuit": string | null,"direccion": string,"email": string,"id": string,"localidad": string,"notas": string,"provincia": string,"razon_social": string,"telefono": string,"updated_at": string
@@ -533,6 +606,8 @@ isOneToOne: false
                 }
           }
           Functions: {
+            importar_factura_historica: { Args: { p_datos: Json }; Returns: Json }
+
             "actualizar_documento":
 { Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
                            },
