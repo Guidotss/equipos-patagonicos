@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { limpiarArchivosSubidos, nuevoPresupuesto, subirArchivo, subirArchivoEn } from './documentos-helpers'
-import { borrarUsuario, crearUsuario, sql } from './helpers'
+import { borrarUsuario, conConexion, contraTransaccionEnCurso, crearUsuario, sql } from './helpers'
 import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
 
 validarEntornoPruebas()
@@ -101,6 +101,30 @@ async function documentoNormal(tipo: 'factura' | 'orden_pago', extra: Record<str
 
 async function saldos(facturaId: string) {
   return (await sql('select monto, cobrado, saldo, estado_cobro from public.v_facturas where id = $1', [facturaId]))[0]
+}
+
+async function contraImportacionEnCurso<T>(entrada: Entrada, llamada: () => PromiseLike<T>): Promise<T> {
+  return conConexion(async (conexion) => {
+    await conexion.query('begin')
+    await conexion.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ role: 'service_role' })])
+    await conexion.query('set local role service_role')
+    await conexion.query('select public.importar_factura_historica($1::jsonb)', [JSON.stringify(entrada)])
+    const [{ pid }] = (await conexion.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
+    let terminada = false
+    const pendiente = Promise.resolve(llamada())
+    pendiente.then(() => { terminada = true }, () => { terminada = true })
+    for (let intento = 0; intento < 100; intento++) {
+      const [{ bloqueada }] = await sql<{ bloqueada: boolean }>(
+        'select exists (select 1 from pg_stat_activity where $1 = any(pg_blocking_pids(pid))) as bloqueada', [pid])
+      if (bloqueada) {
+        await conexion.query('commit')
+        return pendiente
+      }
+      if (terminada) throw new Error('El registro normal terminó sin esperar a la importación histórica en curso')
+      await new Promise((resolver) => setTimeout(resolver, 50))
+    }
+    throw new Error('El registro normal no quedó esperando a la importación histórica')
+  })
 }
 
 describe('importación histórica con evidencia y cobro confirmado', () => {
@@ -252,6 +276,54 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
     expect((await saldos(factura.data!)).saldo).toBe('1277.50')
     expect((await activo.client.rpc('anular_documento', { p_id: op.data! })).error).toBeNull()
     expect((await saldos(factura.data!)).saldo).toBe('1500.00')
+  })
+})
+
+describe('duplicados entre importación y registro habitual', () => {
+  it.each([false, true])('el registro habitual no duplica una histórica (anulada: %s)', async (anulada) => {
+    const entrada = await entradaNueva()
+    const { factura_id } = await importarOk(entrada)
+    if (anulada) expect((await activo.client.rpc('anular_documento', { p_id: factura_id })).error).toBeNull()
+    const duplicada = await documentoNormal('factura', { numero: entrada.numero.replace('-', '/') })
+    expect(duplicada.error?.message).toMatch(/Ya existe una factura histórica FA/)
+  })
+
+  it('tampoco permite editar una factura habitual para duplicar el número de una histórica', async () => {
+    const entrada = await entradaNueva()
+    await importarOk(entrada)
+    const normal = await documentoNormal('factura')
+    expect(normal.error).toBeNull()
+    expect((await activo.client.rpc('actualizar_documento', { p_id: normal.data!,
+      p_datos: { tipo: 'factura', tipo_comprobante: 'FA', monto: 1222.5, numero: entrada.numero, notas: MARCA },
+    })).error?.message).toMatch(/Ya existe una factura histórica FA/)
+  })
+
+  it('la importación espera al registro normal y luego rechaza el número que este guardó', async () => {
+    const entrada = await entradaNueva()
+    const archivo = await subirArchivo(activo.client, clienteId)
+    const importada = await contraTransaccionEnCurso(activo.id,
+      'select public.registrar_documento($1::jsonb, $2::uuid[], $3::jsonb)',
+      [JSON.stringify({ cliente_id: clienteId, tipo: 'factura', tipo_comprobante: 'FA', monto: 1222.5,
+        numero: entrada.numero.replace('-', '/'), notas: MARCA }), [presupuestoNormal], JSON.stringify([archivo])],
+      () => importar(entrada))
+    expect(importada.error?.message).toMatch(/ya existe una factura FA/)
+    expect(await sql('select count(*) from public.documentos where numero_normalizado = $1',
+      [entrada.numero.replace('-', '').replace(/^0+/, '')])).toEqual([{ count: '1' }])
+  })
+
+  it('el registro normal espera a la importación y luego rechaza la histórica que esta guardó', async () => {
+    const entrada = await entradaNueva()
+    const normal = await contraImportacionEnCurso(entrada,
+      () => documentoNormal('factura', { numero: entrada.numero.replace('-', '/') }))
+    expect(normal.error?.message).toMatch(/Ya existe una factura histórica FA/)
+    expect(await sql('select count(*) from public.documentos where numero_normalizado = $1',
+      [entrada.numero.replace('-', '').replace(/^0+/, '')])).toEqual([{ count: '1' }])
+  })
+
+  it('conserva el comportamiento de dos facturas habituales con el mismo número', async () => {
+    const numero = `compartido-${crypto.randomUUID()}`
+    expect((await documentoNormal('factura', { numero })).error).toBeNull()
+    expect((await documentoNormal('factura', { numero })).error).toBeNull()
   })
 })
 

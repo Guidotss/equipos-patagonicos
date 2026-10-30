@@ -90,6 +90,39 @@ $$;
 create trigger documentos_proteger_historica before update on public.documentos
   for each row execute function private.proteger_factura_historica();
 
+-- La numeración normal sigue admitiendo sus duplicados existentes. Solo se reserva una FA histórica,
+-- compartiendo el bloqueo con la importación para cubrir también transacciones todavía sin confirmar.
+create or replace function private.evitar_duplicado_factura_historica()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_numero text := ltrim(regexp_replace(lower(new.numero), '[^a-z0-9]', '', 'g'), '0');
+begin
+  if new.tipo <> 'factura' or new.tipo_comprobante is distinct from 'FA' then return new; end if;
+  if tg_op = 'UPDATE' and (new.tipo, new.tipo_comprobante, v_numero) is not distinct from
+     (old.tipo, old.tipo_comprobante, ltrim(regexp_replace(lower(old.numero), '[^a-z0-9]', '', 'g'), '0')) then
+    -- Las ediciones de notas ya tienen la fila bloqueada: no tomar otro bloqueo en orden inverso.
+    return new;
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('factura-historica:FA:' || v_numero, 0));
+  if exists (
+    select 1 from public.facturas_historicas h
+    join public.documentos d on d.id = h.factura_id
+    where d.numero_normalizado = v_numero and d.id <> new.id
+  ) then
+    raise exception 'Ya existe una factura histórica FA con ese número, incluso si está anulada'
+      using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger documentos_evitar_duplicado_historico
+  before insert or update of tipo, tipo_comprobante, numero on public.documentos
+  for each row execute function private.evitar_duplicado_factura_historica();
+
 create or replace function public.importar_factura_historica(p_datos jsonb)
 returns jsonb
 language plpgsql
@@ -123,6 +156,8 @@ begin
   end if;
   v_clave := (p_datos ->> 'emisor_cuit') || ':FA:' || (p_datos ->> 'numero');
   perform pg_advisory_xact_lock(hashtextextended(v_clave, 0));
+  perform pg_advisory_xact_lock(hashtextextended('factura-historica:FA:' ||
+    ltrim(regexp_replace(lower(p_datos ->> 'numero'), '[^a-z0-9]', '', 'g'), '0'), 0));
 
   select * into v_existente from public.facturas_historicas where clave_origen = v_clave;
   if found then
