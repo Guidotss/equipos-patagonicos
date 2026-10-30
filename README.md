@@ -90,6 +90,29 @@ Los fixtures de clientes, equipos y firmantes se eliminan también en hooks aunq
 - **Inicio:** cinco colas reales (seguimiento, falta OC, para facturar, cobranzas y actualización de tarifa), con conteos, enlaces de acción y páginas con todos los pendientes. El total de cobranzas cuenta cada factura una vez, aunque esté vinculada a varios presupuestos.
 - **Búsqueda global:** en el lateral y en la cabecera móvil; `/buscar?q=` encuentra clientes/CUIT, cotizaciones y números de documentos, sin distinguir acentos. Sus resultados enlazan a cada ficha.
 
+## Carga histórica administrativa
+
+`scripts/importar-historicos.mjs` carga una revisión previamente aprobada: reutiliza clientes por CUIT sin sobrescribirlos y reconstruye un presupuesto directo finalizado por factura sin pendientes. Conserva el PDF original y la evidencia en `facturas_historicas`. El cobro histórico es una confirmación separada de las órdenes de pago; la fecha de registro de la carga no representa una fecha de cobro. Las facturas con observaciones pendientes o intereses quedan excluidas.
+
+Aplicar primero la migración `20261029100000_facturas_historicas.sql` y respaldar la base y Storage. El comando exige la secret key administrativa en un archivo de entorno explícito, comprueba la referencia del proyecto y nunca carga `.env.local` por su cuenta. Los manifiestos, PDFs y resultados reales deben permanecer fuera del repositorio.
+
+```bash
+# Simular: valida fuentes, hashes, importes, clientes y conflictos; no escribe en Supabase.
+node --env-file=/ruta/privada/.env scripts/importar-historicos.mjs \
+  --revision /ruta/privada/revision-historica.json --project-ref REFERENCIA_SUPABASE \
+  --lote facturas-historicas-2026 --informe /ruta/privada/simulacion.json
+
+# Cargar las cantidades exactas revisadas en la simulación: clientes,facturas,excluidas.
+node --env-file=/ruta/privada/.env scripts/importar-historicos.mjs \
+  --revision /ruta/privada/revision-historica.json --project-ref REFERENCIA_SUPABASE \
+  --lote facturas-historicas-2026 --informe /ruta/privada/carga.json \
+  --esperados 39,78,7 --apply
+```
+
+La entrada de revisión contiene `clientes` fiscales y `facturas` con fecha, período, importes decimales exactos como cadenas, ítems, CUIT, archivo local, SHA-256, confirmación de cobro y `observaciones`. El preparador valida precios bonificados y utiliza `UNIDAD` conservando la unidad original en la evidencia. Ver `scripts/historicos/preparar.mjs` y sus pruebas sintéticas para el contrato completo.
+
+El informe se guarda tras cada operación. Ante una interrupción, repetir exactamente el mismo comando y lote: las claves de comprobante y las rutas de PDF son estables y una entrada idéntica devuelve los mismos IDs. Una fuente distinta, una factura ya existente o un registro importado alterado producen un conflicto, sin reemplazar datos. Los campos fiscales de las facturas históricas quedan protegidos; se pueden conservar notas y anular/restaurar según las reglas del circuito. `npm run test:historicos` verifica la preparación sin acceder a ninguna base; la RPC se prueba con `npm run test:int -- tests/integration/facturas-historicas.test.ts` en el entorno desechable.
+
 ## Build y operación
 
 `npm run build` genera un servidor standalone. El `Dockerfile` usa Node 24, ejecuta sin root e incluye fuentes y logo para PDF. Los argumentos `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` deben suministrarse durante el build. La secret key no se incorpora a la imagen. `railway.json` configura Docker y el healthcheck `/api/health`.
