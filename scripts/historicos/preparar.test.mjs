@@ -52,7 +52,29 @@ describe('preparación de carga histórica', () => {
   it('rechaza importes que no concilian y valores con más de dos decimales', () => {
     assert.throws(() => preparar([factura({ total: '3412201.00' })]), /total no concilia/)
     assert.throws(() => centavos('1.001'), /decimal inválido/)
-    assert.throws(() => preparar([factura({ items: [{ ...factura().items[0], neto: '2819999.99' }] })]), /precio bonificado no concilia/)
+    assert.throws(() => preparar([factura({ items: [{ ...factura().items[0], neto: '2819999.99' }] })]), /importe original del ítem no concilia/)
+  })
+  it('rechaza límites que la base no admite antes de subir archivos o crear clientes', () => {
+    const item = factura().items[0]
+    assert.throws(() => preparar([factura({ neto: '100000000.00', iva: '21000000.00', total: '121000000.00',
+      items: [{ ...item, cantidad: '10000000000.00', precio_unitario: '0.01', bonificacion_pct: '0.00', neto: '100000000.00' }] })]), /Cantidad/)
+    assert.throws(() => preparar([factura({ neto: '0.00', iva: '1.00', total: '1.00',
+      items: [{ ...item, precio_unitario: '0.00', neto: '0.00' }] })]), /total no concilia/)
+    assert.throws(() => preparar([factura({ neto: '2.01', iva: '0.00', total: '2.01',
+      items: Array.from({ length: 201 }, () => ({ ...item, cantidad: '1.00', precio_unitario: '0.01', bonificacion_pct: '0.00', neto: '0.01' })) })]), /200 ítems/)
+    assert.throws(() => preparar([factura({ neto: '10000000000.00', iva: '0.00', total: '10000000000.00',
+      items: [{ ...item, cantidad: '0.01', precio_unitario: '1000000000000.00', bonificacion_pct: '0.00', neto: '10000000000.00' }] })]), /Precio bonificado fuera/)
+  })
+  it('redondea medio centavo al alza y rechaza cambios por redondear un precio bonificado', () => {
+    const resultado = preparar([factura({ neto: '0.02', iva: '0.00', total: '0.02',
+      items: [{ cantidad: '0.50', precio_unitario: '0.03', bonificacion_pct: '0.00', neto: '0.02', descripcion: 'Fracción de servicio' }] })])
+    assert.equal(resultado.facturas[0].datos.items[0].precio_unitario, '0.03')
+    assert.equal(resultado.facturas[0].datos.items[0].cantidad, '0.50')
+    const bonificado = preparar([factura({ neto: '0.51', iva: '0.00', total: '0.51',
+      items: [{ cantidad: '1.00', precio_unitario: '1.01', bonificacion_pct: '50.00', neto: '0.51', descripcion: 'Servicio bonificado' }] })])
+    assert.equal(bonificado.facturas[0].datos.items[0].precio_unitario, '0.51')
+    assert.throws(() => preparar([factura({ neto: '0.05', iva: '0.00', total: '0.05',
+      items: [{ cantidad: '2.00', precio_unitario: '0.05', bonificacion_pct: '50.00', neto: '0.05', descripcion: 'No representable' }] })]), /precio bonificado no concilia/)
   })
   it('crea identificadores estables sin depender del orden ni la ejecución', () => {
     assert.equal(uuidEstable('cliente:30000000007'), uuidEstable('cliente:30000000007'))

@@ -63,8 +63,11 @@ function prepararItem(item, numero) {
   const cantidad = centavos(item.cantidad, 'cantidad')
   const precio = centavos(item.precio_unitario, 'precio unitario')
   const bonificacion = centavos(item.bonificacion_pct, 'bonificación')
-  exigir(cantidad > 0n && bonificacion <= 10000n, `Cantidad o bonificación inválida en ${numero}`)
+  exigir(cantidad > 0n && cantidad <= 999999999999n && bonificacion <= 10000n, `Cantidad o bonificación inválida en ${numero}`)
+  const netoOriginal = (cantidad * precio * (10000n - bonificacion) + 500000n) / 1000000n
+  exigir(netoOriginal === centavos(item.neto), `El importe original del ítem no concilia en ${numero}`)
   const precioNeto = (precio * (10000n - bonificacion) + 5000n) / 10000n
+  exigir(precioNeto > 0n && precioNeto <= 99999999999999n, `Precio bonificado fuera de rango en ${numero}`)
   const neto = (cantidad * precioNeto + 50n) / 100n
   exigir(neto === centavos(item.neto), `El precio bonificado no concilia en ${numero}`)
   const descripcion = item.descripcion_para_carga ?? item.descripcion
@@ -111,8 +114,8 @@ function prepararFactura(factura, archivos, lote) {
   const iva = centavos(factura.iva)
   const tributos = centavos(factura.otros_tributos)
   const monto = centavos(factura.total)
-  exigir(monto > 0n && monto <= 99999999999999n && neto + iva + tributos === monto, `El total no concilia en ${factura.numero}`)
-  exigir(Array.isArray(factura.items) && factura.items.length > 0, `Faltan ítems en ${factura.numero}`)
+  exigir(neto > 0n && monto > 0n && monto <= 99999999999999n && neto + iva + tributos === monto, `El total no concilia en ${factura.numero}`)
+  exigir(Array.isArray(factura.items) && factura.items.length > 0 && factura.items.length <= 200, `Se requieren entre 1 y 200 ítems en ${factura.numero}`)
   const items = factura.items.map(item => prepararItem(item, factura.numero))
   exigir(factura.items.reduce((suma, item) => suma + centavos(item.neto), 0n) === neto, `Los ítems no concilian en ${factura.numero}`)
   const numero = `${factura.punto_venta}-${factura.numero}`

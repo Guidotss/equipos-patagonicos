@@ -3,6 +3,7 @@ import path from 'node:path'
 import { isDeepStrictEqual, parseArgs } from 'node:util'
 import { createClient } from '@supabase/supabase-js'
 import { claveFactura, completarFactura, hash, planificarClientes, prepararRevision } from './historicos/preparar.mjs'
+import { registrarFactura } from './historicos/ejecutar.mjs'
 
 const { values: opciones } = parseArgs({ options: {
   revision: { type: 'string' }, 'project-ref': { type: 'string' }, informe: { type: 'string' },
@@ -67,20 +68,6 @@ async function crearCliente(supabase, cliente) {
   return cliente
 }
 
-async function subirYVerificar(supabase, factura) {
-  const bucket = supabase.storage.from('documentos')
-  const ruta = factura.datos.archivo.path
-  const bytes = await readFile(factura.ruta_local)
-  verificar(hash(bytes) === factura.datos.sha256, `El PDF cambió antes de subir: ${factura.datos.numero}`)
-  const existe = resultado(await bucket.exists(ruta), 'Verificar PDF existente')
-  if (!existe) {
-    const subida = await bucket.upload(ruta, bytes, { contentType: 'application/pdf', upsert: false })
-    if (subida.error && !['409', 'Duplicate'].includes(String(subida.error.statusCode))) resultado(subida, 'Subir PDF')
-  }
-  const archivo = resultado(await bucket.download(ruta), 'Verificar PDF subido')
-  verificar(hash(Buffer.from(await archivo.arrayBuffer())) === factura.datos.sha256, `El PDF almacenado no coincide: ${factura.datos.numero}`)
-}
-
 async function ejecutar() {
   const supabase = conectar()
   const rutaRevision = path.resolve(opciones.revision)
@@ -102,7 +89,7 @@ async function ejecutar() {
     revision_sha256: hash(bytesRevision), iniciado_at: new Date().toISOString(),
     control: { clientes: preparadosCantidad(previstos), facturas: facturas.length, excluidas: preparado.excluidas.length, total_ars: preparado.total, ...conflictos },
     clientes: previstos.map(cliente => ({ id: cliente.id, cuit: cliente.datos.cuit, estado: cliente.existente ? 'existente' : 'previsto' })),
-    excluidas: preparado.excluidas, facturas: [], estado: 'preparado',
+    excluidas: preparado.excluidas, archivos: [], facturas: [], estado: 'preparado',
   }
   await guardarInforme(rutaInforme, informe)
   console.log(JSON.stringify(informe.control))
@@ -119,10 +106,7 @@ async function ejecutar() {
     facturas = preparado.facturas.map(factura => completarFactura(factura, clientes))
     await validarConflictos(supabase, facturas)
     for (const [indice, factura] of facturas.entries()) {
-      await subirYVerificar(supabase, factura)
-      const registro = resultado(await supabase.rpc('importar_factura_historica', { p_datos: factura.datos }), `Importar ${factura.datos.numero}`)
-      informe.facturas.push({ numero: factura.datos.numero, clave: factura.clave, sha256: factura.datos.sha256, archivo_path: factura.datos.archivo.path, ...registro })
-      await guardarInforme(rutaInforme, informe)
+      const registro = await registrarFactura({ supabase, factura, informe, guardar: () => guardarInforme(rutaInforme, informe) })
       console.log(`${indice + 1}/${facturas.length}: ${factura.datos.numero} ${registro.ya_importada ? 'reutilizada' : 'importada'}`)
     }
     informe.estado = 'completo'
