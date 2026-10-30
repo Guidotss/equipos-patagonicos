@@ -6,12 +6,19 @@ function resultado(respuesta, contexto) {
   return respuesta.data
 }
 
+async function existeArchivo(bucket, ruta) {
+  const respuesta = await bucket.exists(ruta)
+  const status = Number(respuesta.error?.status ?? respuesta.error?.originalError?.status ?? respuesta.error?.statusCode)
+  if (respuesta.data === false && [400, 404].includes(status)) return false
+  return resultado(respuesta, 'Verificar PDF existente')
+}
+
 async function subirYVerificar(supabase, factura) {
   const bucket = supabase.storage.from('documentos')
   const ruta = factura.datos.archivo.path
   const bytes = await readFile(factura.ruta_local)
   if (hash(bytes) !== factura.datos.sha256) throw new Error(`El PDF cambió antes de subir: ${factura.datos.numero}`)
-  const existe = resultado(await bucket.exists(ruta), 'Verificar PDF existente')
+  const existe = await existeArchivo(bucket, ruta)
   if (!existe) {
     const subida = await bucket.upload(ruta, bytes, { contentType: 'application/pdf', upsert: false })
     if (subida.error && !['409', 'Duplicate'].includes(String(subida.error.statusCode))) resultado(subida, 'Subir PDF')

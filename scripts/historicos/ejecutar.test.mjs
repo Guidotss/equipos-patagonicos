@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { hash } from './preparar.mjs'
 import { registrarFactura } from './ejecutar.mjs'
+import { createClient } from '@supabase/supabase-js'
 
 async function conFactura(prueba) {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'historico-unidad-'))
@@ -41,4 +42,40 @@ it('no registra una factura si el PDF almacenado tiene otro hash', async () => c
   assert.equal(llamadas, 0)
   assert.equal(informe.archivos[0].estado, 'previsto')
   assert.match(informe.archivos[0].ultimo_error, /no coincide/)
+}))
+
+it('sube un PDF ausente con el contrato 404 del SDK real y verifica antes de registrar', async () => conFactura(async (factura, bytes) => {
+  const metodos = []
+  const cliente = createClient('https://ejemplo.supabase.co', 'clave-sintetica', {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: async (_url, opciones) => {
+      const metodo = opciones?.method ?? 'GET'
+      metodos.push(metodo)
+      if (metodo === 'HEAD') return new Response(null, { status: 404 })
+      if (metodo === 'POST') return new Response(JSON.stringify({ Key: factura.datos.archivo.path, Id: 'archivo-sintetico' }), { status: 200 })
+      if (metodo === 'GET') return new Response(bytes, { status: 200, headers: { 'Content-Type': 'application/pdf' } })
+      throw new Error(`Método inesperado: ${metodo}`)
+    } },
+  })
+  const informe = { archivos: [], facturas: [] }
+  const supabase = { storage: cliente.storage, rpc: async () => {
+    assert.equal(informe.archivos[0].estado, 'verificado')
+    metodos.push('RPC')
+    return { data: { factura_id: 'factura-sintetica', presupuesto_id: 'presupuesto-sintetico', ya_importada: false } }
+  } }
+  await registrarFactura({ supabase, factura, informe, guardar: async () => {} })
+  assert.deepEqual(metodos, ['HEAD', 'POST', 'GET', 'RPC'])
+  assert.equal(informe.archivos[0].estado, 'registrado')
+  assert.equal(informe.facturas.length, 1)
+}))
+
+it('mantiene el bloqueo ante errores de autorización al consultar el archivo', async () => conFactura(async (factura) => {
+  let subidas = 0
+  const supabase = { storage: { from: () => ({
+    exists: async () => ({ data: false, error: { status: 403, message: 'Sin permiso' } }),
+    upload: async () => { subidas++; return { data: {} } },
+  }) } }
+  const informe = { archivos: [], facturas: [] }
+  await assert.rejects(registrarFactura({ supabase, factura, informe, guardar: async () => {} }), /Sin permiso/)
+  assert.equal(subidas, 0)
 }))
