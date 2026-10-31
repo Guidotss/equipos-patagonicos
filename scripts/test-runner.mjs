@@ -19,7 +19,7 @@ import {
   projectTests,
 } from './test-env.mjs';
 import {
-  checkPorts,
+  checkPorts as checkTestPorts,
   stopAplicacion,
   runProcess,
 } from './test-processes.mjs';
@@ -138,7 +138,7 @@ export async function runTests(
     root = RAIZ,
     env = process.env,
     run = runProcess,
-    checkPorts = checkPorts,
+    checkPorts = checkTestPorts,
     signals = process,
     log = console.error,
     lockPath = path.join(os.tmpdir(), "equipos-patagonicos-test-runner.lock"),

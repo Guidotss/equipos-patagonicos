@@ -29,6 +29,14 @@ const testEnv = () =>
     DATABASE_URL: "ajena",
   });
 
+test("an invalid suite reports usage with default process dependencies", async (t) => {
+  const log = t.mock.method(console, "error", () => {});
+
+  assert.equal(await runTests("invalid"), 1);
+  assert.equal(log.mock.callCount(), 1);
+  assert.match(log.mock.calls[0].arguments[0], /^Uso: .*<int\|e2e>/);
+});
+
 test("el guard rechaza ejecución directa, desarrollo y destinos remotos antes de conectar", () => {
   assert.throws(() => validateEnvTests({}), /runner/);
   for (const [variable, value] of [
