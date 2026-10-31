@@ -4,46 +4,46 @@ import { Printer, Trash2 } from 'lucide-react'
 import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useCallback, useId, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Contenido } from '@/components/app-shell/encabezado'
-import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
-import { Campo } from '@/components/formulario/campo'
-import { FormularioAccion } from '@/components/formulario/formulario-accion'
-import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
-import { FranjaVista, Resaltado, Tarjeta, useVistaEnVivo } from '@/components/formulario/tarjeta'
+import { Content } from '@/components/app-shell/header'
+import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import { Field } from '@/components/form/field'
+import { FormAction } from '@/components/form/form-action'
+import { MessageForm } from '@/components/form/message-form'
+import { BandView, Highlight, Card, useViewInLive } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { CampoContacto } from '@/lib/clientes/esquemas'
-import { valorCampo, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
+import type { FieldContact } from '@/lib/clients/schemas'
+import { valueField, type ActionForm, type StatusForm } from '@/lib/forms'
 
-export type Contacto = { nombre: string; cargo: string; email: string; telefono: string }
+export type Contact = { nombre: string; cargo: string; email: string; telefono: string }
 
-const CAMPOS: { campo: CampoContacto; etiqueta: string; props?: React.ComponentProps<typeof Input> }[] = [
-  { campo: 'nombre', etiqueta: 'Nombre' },
-  { campo: 'cargo', etiqueta: 'Cargo' },
-  { campo: 'email', etiqueta: 'Email', props: { type: 'email' } },
-  { campo: 'telefono', etiqueta: 'Teléfono', props: { type: 'tel' } },
+const CAMPOS: { campo: FieldContact; label: string; props?: React.ComponentProps<typeof Input> }[] = [
+  { campo: 'nombre', label: 'Nombre' },
+  { campo: 'cargo', label: 'Cargo' },
+  { campo: 'email', label: 'Email', props: { type: 'email' } },
+  { campo: 'telefono', label: 'Teléfono', props: { type: 'tel' } },
 ]
 
-const CAMPOS_VISTA = ['nombre', 'email'] as const
+const FIELDS_VIEW = ['nombre', 'email'] as const
 
 /** Como CamposGrilla, pero con los id "contacto-…" de siempre. */
-function CamposContacto({ estado, inicial }: { estado: EstadoFormulario; inicial?: Contacto }) {
+function FieldsContact({ estado, initial }: { estado: StatusForm; initial?: Contact }) {
   return (
     <div className="grid gap-4 md:gap-y-3 @md:grid-cols-2">
-      {CAMPOS.map(({ campo, etiqueta, props }) => {
-        const id = `contacto-${campo}`
-        const error = estado.errores[campo]
+      {CAMPOS.map(({ campo: field, label, props }) => {
+        const id = `contacto-${field}`
+        const error = estado.errors[field]
         return (
-          <Campo key={campo} id={id} etiqueta={etiqueta} error={error}>
+          <Field key={field} id={id} label={label} error={error}>
             <Input
               id={id}
-              name={campo}
-              defaultValue={valorCampo(estado, inicial, campo)}
+              name={field}
+              defaultValue={valueField(estado, initial, field)}
               aria-invalid={Boolean(error)}
               aria-describedby={error ? `${id}-error` : undefined}
               {...props}
             />
-          </Campo>
+          </Field>
         )
       })}
     </div>
@@ -51,46 +51,46 @@ function CamposContacto({ estado, inicial }: { estado: EstadoFormulario; inicial
 }
 
 /** El destinatario como lo arma el PDF (src/lib/pdf/cotizacion-mensual.tsx): el email solo si hay. */
-function FranjaDestinatario({
+function BandDestinatario({
   razonSocial,
-  vista,
+  view,
 }: {
   razonSocial: string
-  vista: Record<(typeof CAMPOS_VISTA)[number], string>
+  view: Record<(typeof FIELDS_VIEW)[number], string>
 }) {
   return (
-    <FranjaVista icono={Printer} titulo="Así sale en la cotización">
+    <BandView icon={Printer} titulo="Así sale en la cotización">
       <div className="[overflow-wrap:anywhere]">
         <p>{razonSocial}</p>
         <p>
-          Atte. <Resaltado>{vista.nombre || '—'}</Resaltado>
+          Atte. <Highlight>{view.nombre || '—'}</Highlight>
         </p>
-        {vista.email ? (
+        {view.email ? (
           <p>
-            <Resaltado>{vista.email}</Resaltado>
+            <Highlight>{view.email}</Highlight>
           </p>
         ) : null}
       </div>
-      {vista.email ? (
+      {view.email ? (
         <p className="pt-1 text-[13px] text-muted-foreground">La cotización por jornada no lleva el email.</p>
       ) : null}
-    </FranjaVista>
+    </BandView>
   )
 }
 
 /** Borrar sin modal: el botón pide confirmar en el mismo lugar. */
-function BorrarContacto({ nombre, borrar, volver }: { nombre: string; borrar: () => Promise<void>; volver: string }) {
+function RemoveContact({ nombre, borrar: remove, back }: { nombre: string; borrar: () => Promise<void>; back: string }) {
   const router = useRouter()
   const pregunta = useId()
   const [confirmando, setConfirmando] = useState(false)
   const [borrando, iniciarBorrado] = useTransition()
   // El foco va a "Cancelar" al abrir la confirmación y vuelve al botón al cerrarla.
   const devolverFoco = useRef(false)
-  const enfocar = useCallback((boton: HTMLButtonElement | null) => boton?.focus(), [])
-  const alMontarBoton = useCallback((boton: HTMLButtonElement | null) => {
-    if (boton && devolverFoco.current) {
+  const enfocar = useCallback((button: HTMLButtonElement | null) => button?.focus(), [])
+  const onMontarButton = useCallback((button: HTMLButtonElement | null) => {
+    if (button && devolverFoco.current) {
       devolverFoco.current = false
-      boton.focus()
+      button.focus()
     }
   }, [])
 
@@ -99,10 +99,10 @@ function BorrarContacto({ nombre, borrar, volver }: { nombre: string; borrar: ()
     setConfirmando(false)
   }
 
-  function confirmar() {
+  function confirm() {
     iniciarBorrado(async () => {
       try {
-        await borrar()
+        await remove()
       } catch (error) {
         unstable_rethrow(error)
         toast.error('No se pudo borrar el contacto. Probá de nuevo.')
@@ -110,13 +110,13 @@ function BorrarContacto({ nombre, borrar, volver }: { nombre: string; borrar: ()
       }
       toast.success('Contacto borrado')
       // Navegar mientras la acción sigue en curso descarta la re-renderización de esta página (el contacto ya no existe).
-      router.push(volver)
+      router.push(back)
     })
   }
 
   if (!confirmando) {
     return (
-      <Button ref={alMontarBoton} type="button" variant="destructive" onClick={() => setConfirmando(true)}>
+      <Button ref={onMontarButton} type="button" variant="destructive" onClick={() => setConfirmando(true)}>
         <Trash2 aria-hidden />
         Borrar contacto
       </Button>
@@ -141,7 +141,7 @@ function BorrarContacto({ nombre, borrar, volver }: { nombre: string; borrar: ()
         </Button>
         <Button
           type="button"
-          onClick={confirmar}
+          onClick={confirm}
           disabled={borrando}
           className="bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/30"
         >
@@ -153,53 +153,53 @@ function BorrarContacto({ nombre, borrar, volver }: { nombre: string; borrar: ()
 }
 
 /** Alta y edición de un contacto del cliente en pantalla propia. Sin `inicial` es un alta. */
-export function ContactoForm({
+export function ContactForm({
   accion,
-  clienteId,
+  clientId,
   razonSocial,
-  inicial,
-  borrar,
+  initial,
+  borrar: remove,
 }: {
-  accion: AccionFormulario
-  clienteId: string
+  accion: ActionForm
+  clientId: string
   razonSocial: string
-  inicial?: Contacto
+  initial?: Contact
   /** borrarContacto ligado al registro (solo edición). */
   borrar?: () => Promise<void>
 }) {
   const router = useRouter()
-  const volver = `/clientes/${clienteId}`
-  const { vista, alEscribir, sincronizar } = useVistaEnVivo(CAMPOS_VISTA, inicial ?? {})
-  const textoGuardar = inicial ? 'Guardar cambios' : 'Guardar contacto'
+  const back = `/clientes/${clientId}`
+  const { view, onEscribir, sincronizar } = useViewInLive(FIELDS_VIEW, initial ?? {})
+  const textSave = initial ? 'Guardar cambios' : 'Guardar contacto'
 
   return (
-    <Contenido className="max-w-6xl pb-28">
-      <EncabezadoFormulario titulo={inicial?.nombre || 'Nuevo contacto'} descripcion={razonSocial} />
-      <FormularioAccion
+    <Content className="max-w-6xl pb-28">
+      <HeaderForm titulo={initial?.nombre || 'Nuevo contacto'} descripcion={razonSocial} />
+      <FormAction
         accion={accion}
-        textoBoton={textoGuardar}
-        boton={false}
-        alGuardar={() => router.push(volver)}
+        textButton={textSave}
+        button={false}
+        onSave={() => router.push(back)}
       >
-        {(estado, pendiente) => (
+        {(estado, pending) => (
           <>
-            <div ref={sincronizar} onInput={alEscribir} className="space-y-6">
-              <MensajeFormulario estado={estado} />
-              <HojaFormulario>
-                <Tarjeta
+            <div ref={sincronizar} onInput={onEscribir} className="space-y-6">
+              <MessageForm estado={estado} />
+              <SheetForm>
+                <Card
                   titulo="Datos del contacto"
                   descripcion="El nombre y el email encabezan la cotización; el cargo y el teléfono no se imprimen."
-                  franja={<FranjaDestinatario razonSocial={razonSocial} vista={vista} />}
+                  band={<BandDestinatario razonSocial={razonSocial} view={view} />}
                 >
-                  <CamposContacto estado={estado} inicial={inicial} />
-                </Tarjeta>
-              </HojaFormulario>
+                  <FieldsContact estado={estado} initial={initial} />
+                </Card>
+              </SheetForm>
             </div>
-            <AccionesFormulario volver={volver} textoBoton={textoGuardar} pendiente={pendiente} />
+            <ActionsForm back={back} textButton={textSave} pendiente={pending} />
           </>
         )}
-      </FormularioAccion>
-      {inicial && borrar ? <div className="flex justify-end"><BorrarContacto nombre={inicial.nombre} borrar={borrar} volver={volver} /></div> : null}
-    </Contenido>
+      </FormAction>
+      {initial && remove ? <div className="flex justify-end"><RemoveContact nombre={initial.nombre} borrar={remove} back={back} /></div> : null}
+    </Content>
   )
 }

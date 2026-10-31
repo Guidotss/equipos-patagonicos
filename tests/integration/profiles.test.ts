@@ -1,16 +1,16 @@
 // tests/integration/profiles.test.ts
 import { afterAll, describe, expect, it } from 'vitest'
-import { adminClient, borrarUsuario, conConexion, crearUsuario, sql } from './helpers'
+import { adminClient, removeUser, withConexion, crearUser, sql } from './helpers'
 
 const creados: string[] = []
 
 afterAll(async () => {
-  for (const id of creados) await borrarUsuario(id)
+  for (const id of creados) await removeUser(id)
 })
 
 describe('perfiles', () => {
   it('un admin no puede tocar columnas que no sean nombre, rol o activo', async () => {
-    const admin = await crearUsuario({ activo: true, rol: 'admin' })
+    const admin = await crearUser({ activo: true, rol: 'admin' })
     creados.push(admin.id)
 
     const { error } = await admin.client
@@ -21,7 +21,7 @@ describe('perfiles', () => {
   })
 
   it('un admin no puede desactivarse ni quitarse el rol a sí mismo', async () => {
-    const admin = await crearUsuario({ activo: true, rol: 'admin' })
+    const admin = await crearUser({ activo: true, rol: 'admin' })
     creados.push(admin.id)
 
     const desactivar = await admin.client.from('profiles').update({ activo: false }).eq('id', admin.id)
@@ -38,7 +38,7 @@ describe('perfiles', () => {
   })
 
   it('un admin sí puede cambiar su propio nombre', async () => {
-    const admin = await crearUsuario({ activo: true, rol: 'admin' })
+    const admin = await crearUser({ activo: true, rol: 'admin' })
     creados.push(admin.id)
 
     const { error } = await admin.client.from('profiles').update({ nombre: 'Nombre nuevo' }).eq('id', admin.id)
@@ -58,12 +58,12 @@ describe('perfiles', () => {
   })
 
   it('una función nueva en public o private no la ejecutan anon ni authenticated sin GRANT', async () => {
-    const permisos = await conConexion(async (client) => {
+    const permisos = await withConexion(async (client) => {
       await client.query('begin')
       try {
         await client.query(`create function public.tmp_regresion() returns int language sql as 'select 1'`)
         await client.query(`create function private.tmp_regresion() returns int language sql as 'select 1'`)
-        const { rows } = await client.query<{ rol: string; esquema: string; puede: boolean }>(`
+        const { rows } = await client.query<{ rol: string; schema: string; can: boolean }>(`
           select r.rol, e.esquema, has_function_privilege(r.rol, e.esquema || '.tmp_regresion()', 'execute') as puede
           from (values ('anon'), ('authenticated')) as r(rol)
           cross join (values ('public'), ('private')) as e(esquema)
@@ -73,6 +73,6 @@ describe('perfiles', () => {
         await client.query('rollback')
       }
     })
-    expect(permisos.filter((p) => p.puede)).toEqual([])
+    expect(permisos.filter((p) => p.can)).toEqual([])
   })
 })

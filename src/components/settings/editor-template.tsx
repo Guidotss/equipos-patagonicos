@@ -4,136 +4,136 @@ import { useRouter } from 'next/navigation'
 import { useLayoutEffect, useReducer, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
-import { eliminarPlantilla, guardarPlantillaEditor } from '@/app/(app)/cotizaciones/especiales-actions'
-import { Contenido } from '@/components/app-shell/encabezado'
-import { TarjetaAsunto } from '@/components/cotizaciones/editor/tarjeta-asunto'
-import { TarjetaItems } from '@/components/cotizaciones/editor/tarjeta-items'
-import { TarjetaTextos } from '@/components/cotizaciones/editor/tarjeta-textos'
-import { Campo } from '@/components/formulario/campo'
-import { ConfirmacionEnLugar } from '@/components/formulario/confirmacion-en-lugar'
-import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
-import { Tarjeta } from '@/components/formulario/tarjeta'
+import { eliminarTemplate, saveTemplateEditor } from '@/app/(app)/cotizaciones/specials-actions'
+import { Content } from '@/components/app-shell/header'
+import { CardSubject } from '@/components/quotes/editor/card-subject'
+import { CardItems } from '@/components/quotes/editor/card-items'
+import { CardTexts } from '@/components/quotes/editor/card-texts'
+import { Field } from '@/components/form/field'
+import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { reducirEditor, type EstadoEditor, type PlantillaEditor } from '@/lib/cotizaciones/editor'
+import { reduceEditor, type StatusEditor, type TemplateEditor } from '@/lib/quotes/editor'
 
 const LISTA = '/configuracion/plantillas'
 
-export function EditorPlantilla({
+export function EditorTemplate({
   id,
-  nombre: inicialNombre,
-  inicial,
-  plantilla,
+  nombre: initialName,
+  initial,
+  plantilla: template,
 }: {
   id: string
   nombre: string
-  inicial: EstadoEditor
-  plantilla: PlantillaEditor
+  initial: StatusEditor
+  plantilla: TemplateEditor
 }) {
   const router = useRouter()
-  const [estado, despachar] = useReducer(reducirEditor, inicial)
-  const [nombre, setNombre] = useState(inicialNombre)
-  const [ocupado, setOcupado] = useState(false)
-  const [mensaje, setMensaje] = useState('')
+  const [estado, despachar] = useReducer(reduceEditor, initial)
+  const [nombre, setName] = useState(initialName)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
   const [confirmando, setConfirmando] = useState(false)
   const borradores = useRef(new Map<string, () => void>())
   const actual = useRef(estado)
-  const enCurso = useRef(false)
+  const inCurso = useRef(false)
 
   useLayoutEffect(() => {
     actual.current = estado
   }, [estado])
 
-  function registrarBorrador(clave: string, aplicar: (() => void) | null) {
-    if (aplicar) borradores.current.set(clave, aplicar)
+  function registerDraft(clave: string, apply: (() => void) | null) {
+    if (apply) borradores.current.set(clave, apply)
     else borradores.current.delete(clave)
   }
 
-  async function guardar(evento: React.FormEvent<HTMLFormElement>) {
+  async function save(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    if (enCurso.current) return
+    if (inCurso.current) return
     flushSync(() => {
-      for (const aplicar of borradores.current.values()) aplicar()
+      for (const apply of borradores.current.values()) apply()
     })
-    enCurso.current = true
-    setOcupado(true)
-    setMensaje('')
+    inCurso.current = true
+    setBusy(true)
+    setMessage('')
     try {
-      const resultado = await guardarPlantillaEditor(actual.current, nombre, id)
-      if (!resultado.ok) setMensaje(resultado.mensaje)
+      const result = await saveTemplateEditor(actual.current, nombre, id)
+      if (!result.ok) setMessage(result.message)
       else {
         toast.success('Plantilla guardada')
         router.push(LISTA)
       }
     } catch {
-      setMensaje('No se pudo guardar. Probá nuevamente.')
+      setMessage('No se pudo guardar. Probá nuevamente.')
     } finally {
-      enCurso.current = false
-      setOcupado(false)
+      inCurso.current = false
+      setBusy(false)
     }
   }
 
   async function eliminar() {
-    if (enCurso.current) return
-    enCurso.current = true
-    setOcupado(true)
-    setMensaje('')
+    if (inCurso.current) return
+    inCurso.current = true
+    setBusy(true)
+    setMessage('')
     try {
-      const resultado = await eliminarPlantilla(id)
-      if (resultado.ok) {
-        toast.success(resultado.mensaje)
+      const result = await eliminarTemplate(id)
+      if (result.ok) {
+        toast.success(result.message)
         router.push(LISTA)
-      } else setMensaje(resultado.mensaje)
+      } else setMessage(result.message)
     } catch {
-      setMensaje('No se pudo eliminar. Probá nuevamente.')
+      setMessage('No se pudo eliminar. Probá nuevamente.')
     } finally {
-      enCurso.current = false
-      setOcupado(false)
+      inCurso.current = false
+      setBusy(false)
     }
   }
 
   return (
-    <Contenido className="max-w-6xl pb-28">
-      <EncabezadoFormulario
-        titulo={`Editar plantilla: ${inicialNombre}`}
+    <Content className="max-w-6xl pb-28">
+      <HeaderForm
+        titulo={`Editar plantilla: ${initialName}`}
         descripcion="Los cambios se aplican a futuras cotizaciones. Las existentes conservan su contenido."
-        acciones={
-          <Button type="button" variant="outline" disabled={ocupado} onClick={() => setConfirmando(true)}>
+        actions={
+          <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirmando(true)}>
             Eliminar plantilla
           </Button>
         }
       />
       {confirmando ? (
-        <ConfirmacionEnLugar
+        <ConfirmationInLugar
           pregunta="¿Eliminar esta plantilla?"
-          detalle="Si ya fue usada, se archiva para conservar el histórico."
-          textoConfirmar="Eliminar"
-          tono="peligro"
-          pendiente={ocupado}
-          alCancelar={() => setConfirmando(false)}
-          alConfirmar={eliminar}
+          detail="Si ya fue usada, se archiva para conservar el histórico."
+          textConfirm="Eliminar"
+          tone="peligro"
+          pendiente={busy}
+          onCancelar={() => setConfirmando(false)}
+          onConfirm={eliminar}
         />
       ) : null}
-      <form onSubmit={guardar}>
-        <fieldset disabled={ocupado} className="min-w-0 space-y-6">
-          {mensaje ? <p role="alert" className="text-sm text-destructive">{mensaje}</p> : null}
-          <HojaFormulario>
-            <Tarjeta
+      <form onSubmit={save}>
+        <fieldset disabled={busy} className="min-w-0 space-y-6">
+          {message ? <p role="alert" className="text-sm text-destructive">{message}</p> : null}
+          <SheetForm>
+            <Card
               titulo="Datos de la plantilla"
               descripcion="Nombre, formato y validez de las cotizaciones nuevas."
             >
               <div className="grid gap-4 @md:grid-cols-2">
-                <Campo id="plantilla-nombre" etiqueta="Nombre" className="@md:col-span-2">
+                <Field id="plantilla-nombre" label="Nombre" className="@md:col-span-2">
                   <Input
                     id="plantilla-nombre"
                     value={nombre}
-                    onChange={(evento) => setNombre(evento.target.value)}
+                    onChange={(evento) => setName(evento.target.value)}
                     maxLength={100}
                     required
                   />
-                </Campo>
-                <Campo id="plantilla-formato" etiqueta="Formato">
+                </Field>
+                <Field id="plantilla-formato" label="Formato">
                   <NativeSelect
                     id="plantilla-formato"
                     className="w-full"
@@ -146,34 +146,34 @@ export function EditorPlantilla({
                     <NativeSelectOption value="jornada">Por jornada</NativeSelectOption>
                     <NativeSelectOption value="mensual">Mensual</NativeSelectOption>
                   </NativeSelect>
-                </Campo>
-                <Campo id="plantilla-validez" etiqueta="Validez (días)">
+                </Field>
+                <Field id="plantilla-validez" label="Validez (días)">
                   <Input
                     id="plantilla-validez"
                     type="number"
                     min={1}
                     max={365}
                     value={estado.validezDias}
-                    onChange={(evento) => despachar({ tipo: 'campo', campo: 'validezDias', valor: evento.target.value })}
+                    onChange={(evento) => despachar({ tipo: 'campo', campo: 'validezDias', value: evento.target.value })}
                   />
-                </Campo>
+                </Field>
               </div>
-            </Tarjeta>
-            <TarjetaAsunto estado={estado} errores={{}} despachar={despachar} />
-            <TarjetaItems
+            </Card>
+            <CardSubject estado={estado} errors={{}} despachar={despachar} />
+            <CardItems
               items={estado.items}
               formato={estado.formato}
               mostrarTotal={estado.mostrarTotal}
-              editarPrecios={false}
-              errores={{}}
+              editPrices={false}
+              errors={{}}
               despachar={despachar}
-              alCambiarBorradorSeccion={registrarBorrador}
+              onChangeDraftSection={registerDraft}
             />
-            <TarjetaTextos bloques={estado.bloques} plantilla={plantilla} errores={{}} despachar={despachar} />
-          </HojaFormulario>
-          <AccionesFormulario volver={LISTA} textoBoton="Guardar plantilla" pendiente={ocupado} />
+            <CardTexts bloques={estado.bloques} plantilla={template} errors={{}} despachar={despachar} />
+          </SheetForm>
+          <ActionsForm back={LISTA} textButton="Guardar plantilla" pendiente={busy} />
         </fieldset>
       </form>
-    </Contenido>
+    </Content>
   )
 }

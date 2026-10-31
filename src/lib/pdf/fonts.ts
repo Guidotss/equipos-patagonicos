@@ -3,11 +3,11 @@ import { Font } from '@react-pdf/renderer'
 
 export const FAMILIA = 'Carlito'
 const DIRECTORIO = path.join(process.cwd(), 'assets', 'fonts')
-let registradas = false
+let registered = false
 
 /** Carlito es métricamente compatible con Calibri (la fuente de los originales) y cubre á, ñ, °, –, •. */
-export function registrarFuentes() {
-  if (registradas) return
+export function registerFonts() {
+  if (registered) return
   Font.register({
     family: FAMILIA,
     fonts: [
@@ -19,7 +19,7 @@ export function registrarFuentes() {
   })
   // Sin guiones de corte: react-pdf divide palabras con reglas del inglés.
   Font.registerHyphenationCallback((palabra) => [palabra])
-  registradas = true
+  registered = true
 }
 
-export const RUTA_LOGO = path.join(process.cwd(), 'assets', 'logo-equipos-patagonicos.jpg')
+export const PATH_LOGO = path.join(process.cwd(), 'assets', 'logo-equipos-patagonicos.jpg')

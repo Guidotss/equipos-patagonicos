@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
  * Envuelve los layouts de primer nivel ((app), /sin-acceso), que no cubre (app)/error.tsx:
  * por ejemplo, cuando Auth no responde al validar la sesión.
  */
-export default function ErrorPagina({ error, retry }: { error: unknown; retry: () => void }) {
+export default function ErrorPage({ error, retry }: { error: unknown; retry: () => void }) {
   const digest = error instanceof Error ? (error as Error & { digest?: string }).digest : undefined
 
   return (

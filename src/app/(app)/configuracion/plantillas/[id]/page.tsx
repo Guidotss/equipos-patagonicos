@@ -1,52 +1,52 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { BarraMigas } from '@/components/app-shell/encabezado'
-import { PlantillaForm } from '@/components/configuracion/plantilla-form'
-import { BotonEstado } from '@/components/formulario/boton-estado'
-import { FORMATOS, leerBloques, leerItemsPlantilla, type Formato } from '@/lib/plantillas/contenido'
+import { BarCrumbs } from '@/components/app-shell/header'
+import { TemplateForm } from '@/components/settings/template-form'
+import { ButtonStatus } from '@/components/form/button-status'
+import { FORMATOS, readBlocks, readItemsTemplate, type Format } from '@/lib/templates/content'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
-import { cambiarEstadoPlantilla, renombrarPlantilla } from '../../actions'
+import { isUuid } from '@/lib/validation'
+import { changeStatusTemplate, renameTemplate } from '../../actions'
 
 export const metadata: Metadata = { title: 'Plantilla' }
 
-export default async function PlantillaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TemplatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!esUuid(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
-  const { data: plantilla, error } = await supabase.from('plantillas').select('*').eq('id', id).maybeSingle()
+  const { data: template, error } = await supabase.from('plantillas').select('*').eq('id', id).maybeSingle()
   if (error) throw error
-  if (!plantilla) notFound()
+  if (!template) notFound()
 
   return (
     <>
-      <BarraMigas
-        migas={[
+      <BarCrumbs
+        crumbs={[
           { texto: 'Configuración', href: '/configuracion' },
           { texto: 'Plantillas', href: '/configuracion/plantillas' },
-          { texto: plantilla.nombre },
+          { texto: template.nombre },
         ]}
       />
-      <PlantillaForm
-        editarHref={`/configuracion/plantillas/${id}/editar`}
-        accion={renombrarPlantilla.bind(null, id)}
+      <TemplateForm
+        editHref={`/configuracion/plantillas/${id}/editar`}
+        accion={renameTemplate.bind(null, id)}
         plantilla={{
-          nombre: plantilla.nombre,
-          formato: FORMATOS[plantilla.formato as Formato] ?? plantilla.formato,
-          activa: plantilla.activa,
-          validez_dias: plantilla.validez_dias,
-          asunto: plantilla.asunto,
-          intro: plantilla.intro,
-          items: leerItemsPlantilla(plantilla.items),
-          bloques: leerBloques(plantilla.bloques),
+          nombre: template.nombre,
+          formato: FORMATOS[template.formato as Format] ?? template.formato,
+          activa: template.activa,
+          validez_dias: template.validez_dias,
+          asunto: template.asunto,
+          intro: template.intro,
+          items: readItemsTemplate(template.items),
+          bloques: readBlocks(template.bloques),
         }}
-        botonEstado={
-          <BotonEstado
+        buttonStatus={
+          <ButtonStatus
             grande
-            activo={plantilla.activa}
-            etiqueta={plantilla.nombre}
-            accion={cambiarEstadoPlantilla.bind(null, id, !plantilla.activa)}
+            activo={template.activa}
+            label={template.nombre}
+            accion={changeStatusTemplate.bind(null, id, !template.activa)}
           />
         }
       />

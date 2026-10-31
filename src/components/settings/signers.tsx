@@ -3,21 +3,21 @@
 import { Pencil, Plus, Printer, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Contenido } from '@/components/app-shell/encabezado'
-import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
-import { FormularioAccion } from '@/components/formulario/formulario-accion'
-import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
-import { CamposGrilla, FranjaVista, Resaltado, Tarjeta, useVistaEnVivo, type DefinicionCampo } from '@/components/formulario/tarjeta'
+import { Content } from '@/components/app-shell/header'
+import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import { FormAction } from '@/components/form/form-action'
+import { MessageForm } from '@/components/form/message-form'
+import { FieldsGrid, BandView, Highlight, Card, useViewInLive, type DefinitionField } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
-import { Pastilla } from '@/components/ui/pastilla'
-import type { CampoFirmante } from '@/lib/catalogos/esquemas'
-import { iniciales } from '@/lib/format/texto'
-import type { AccionFormulario } from '@/lib/formularios'
+import { Pill } from '@/components/ui/pill'
+import type { FieldSigner } from '@/lib/catalogs/schemas'
+import { iniciales } from '@/lib/format/text'
+import type { ActionForm } from '@/lib/forms'
 import { cn } from '@/lib/utils'
 
 const LISTA = '/configuracion/firmantes'
 
-export type Firmante = {
+export type Signer = {
   id: string
   nombre: string
   cargo: string
@@ -26,97 +26,97 @@ export type Firmante = {
   activo: boolean
 }
 
-export type FirmanteConAcciones = Firmante & { boton: React.ReactNode }
+export type SignerWithActions = Signer & { button: React.ReactNode }
 
 // En el orden en que los imprime Firma (src/lib/pdf/comunes.tsx); el email va último porque no se imprime.
-const CAMPOS: (DefinicionCampo & { campo: CampoFirmante })[] = [
-  { campo: 'nombre', etiqueta: 'Nombre', ancho: true },
-  { campo: 'cargo', etiqueta: 'Cargo' },
-  { campo: 'telefono', etiqueta: 'Teléfono', props: { type: 'tel' } },
-  { campo: 'email', etiqueta: 'Email', ancho: true, props: { type: 'email' } },
+const CAMPOS: (DefinitionField & { campo: FieldSigner })[] = [
+  { campo: 'nombre', label: 'Nombre', ancho: true },
+  { campo: 'cargo', label: 'Cargo' },
+  { campo: 'telefono', label: 'Teléfono', props: { type: 'tel' } },
+  { campo: 'email', label: 'Email', ancho: true, props: { type: 'email' } },
 ]
 
-const CAMPOS_VISTA = ['nombre', 'cargo', 'telefono'] as const
+const FIELDS_VIEW = ['nombre', 'cargo', 'telefono'] as const
 
 /** La firma como la arma el PDF: una línea por dato y sin las vacías, salvo el nombre. */
-function FranjaFirma({ vista }: { vista: Record<(typeof CAMPOS_VISTA)[number], string> }) {
+function BandSignature({ view }: { view: Record<(typeof FIELDS_VIEW)[number], string> }) {
   return (
-    <FranjaVista icono={Printer} titulo="Así firma la cotización">
+    <BandView icon={Printer} titulo="Así firma la cotización">
       <div className="[overflow-wrap:anywhere]">
         <p>
-          <Resaltado>{vista.nombre || '—'}</Resaltado>
+          <Highlight>{view.nombre || '—'}</Highlight>
         </p>
-        {vista.cargo ? (
+        {view.cargo ? (
           <p>
-            <Resaltado>{vista.cargo}</Resaltado>
+            <Highlight>{view.cargo}</Highlight>
           </p>
         ) : null}
-        {vista.telefono ? (
+        {view.telefono ? (
           <p>
-            <Resaltado>{vista.telefono}</Resaltado>
+            <Highlight>{view.telefono}</Highlight>
           </p>
         ) : null}
       </div>
-    </FranjaVista>
+    </BandView>
   )
 }
 
 /** Alta y edición de un firmante en pantalla propia. Sin `inicial` es un alta. */
-export function FirmanteForm({
+export function SignerForm({
   accion,
-  inicial,
-  botonEstado,
+  initial,
+  buttonStatus,
 }: {
-  accion: AccionFormulario
-  inicial?: Firmante
+  accion: ActionForm
+  initial?: Signer
   /** Activar/Desactivar, ligado al registro en el servidor (solo edición). */
-  botonEstado?: React.ReactNode
+  buttonStatus?: React.ReactNode
 }) {
   const router = useRouter()
-  const valores = inicial ? { nombre: inicial.nombre, cargo: inicial.cargo, telefono: inicial.telefono, email: inicial.email } : {}
-  const { vista, alEscribir, sincronizar } = useVistaEnVivo(CAMPOS_VISTA, valores)
-  const textoGuardar = inicial ? 'Guardar cambios' : 'Guardar firmante'
-  const datosClave = inicial ? [inicial.cargo, inicial.telefono, inicial.email].filter(Boolean).join(' · ') : ''
-  const pastilla = !inicial ? null : inicial.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>
+  const values = initial ? { nombre: initial.nombre, cargo: initial.cargo, telefono: initial.telefono, email: initial.email } : {}
+  const { view, onEscribir, sincronizar } = useViewInLive(FIELDS_VIEW, values)
+  const textSave = initial ? 'Guardar cambios' : 'Guardar firmante'
+  const dataKey = initial ? [initial.cargo, initial.telefono, initial.email].filter(Boolean).join(' · ') : ''
+  const pill = !initial ? null : initial.activo ? <Pill tone="exito">Activo</Pill> : <Pill>Inactivo</Pill>
 
   return (
-    <FormularioAccion
+    <FormAction
       accion={accion}
-      textoBoton={textoGuardar}
-      boton={false}
-      alGuardar={() => router.push(LISTA)}
-      encabezado={() => (
-        <Contenido className="max-w-6xl pb-0">
-          <EncabezadoFormulario
-            titulo={inicial?.nombre || 'Nuevo firmante'}
-            estado={pastilla}
-            descripcion={datosClave || 'Datos de la persona que firma las cotizaciones.'}
-            acciones={botonEstado}
+      textButton={textSave}
+      button={false}
+      onSave={() => router.push(LISTA)}
+      header={() => (
+        <Content className="max-w-6xl pb-0">
+          <HeaderForm
+            titulo={initial?.nombre || 'Nuevo firmante'}
+            estado={pill}
+            descripcion={dataKey || 'Datos de la persona que firma las cotizaciones.'}
+            actions={buttonStatus}
           />
-        </Contenido>
+        </Content>
       )}
     >
-      {(estado, pendiente) => (
-        <Contenido className="max-w-6xl pt-6 pb-28">
-          <MensajeFormulario estado={estado} />
-          <HojaFormulario ref={sincronizar} onInput={alEscribir}>
-            <Tarjeta
-              icono={UserRound}
+      {(estado, pending) => (
+        <Content className="max-w-6xl pt-6 pb-28">
+          <MessageForm estado={estado} />
+          <SheetForm ref={sincronizar} onInput={onEscribir}>
+            <Card
+              icon={UserRound}
               titulo="Datos del firmante"
               descripcion="El nombre, el cargo y el teléfono cierran cada cotización; el email no se imprime."
-              franja={<FranjaFirma vista={vista} />}
+              band={<BandSignature view={view} />}
             >
-              <CamposGrilla estado={estado} inicial={valores} campos={CAMPOS} prefijo="firmante" />
-            </Tarjeta>
-          </HojaFormulario>
-          <AccionesFormulario volver={LISTA} textoBoton={textoGuardar} pendiente={pendiente} />
-        </Contenido>
+              <FieldsGrid estado={estado} initial={values} fields={CAMPOS} prefix="firmante" />
+            </Card>
+          </SheetForm>
+          <ActionsForm back={LISTA} textButton={textSave} pendiente={pending} />
+        </Content>
       )}
-    </FormularioAccion>
+    </FormAction>
   )
 }
 
-export function NuevoFirmante() {
+export function NewSigner() {
   return (
     <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
       <Link href={`${LISTA}/nuevo`}>
@@ -127,7 +127,7 @@ export function NuevoFirmante() {
   )
 }
 
-export function Firmantes({ firmantes }: { firmantes: FirmanteConAcciones[] }) {
+export function Signers({ firmantes }: { firmantes: SignerWithActions[] }) {
   if (firmantes.length === 0) {
     return (
       <p className="rounded-xl border border-dashed px-6 py-12 text-center text-muted-foreground">
@@ -164,13 +164,13 @@ export function Firmantes({ firmantes }: { firmantes: FirmanteConAcciones[] }) {
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              {firmante.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>}
+              {firmante.activo ? <Pill tone="exito">Activo</Pill> : <Pill>Inactivo</Pill>}
               <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
                 <Link href={`${LISTA}/${firmante.id}`} aria-label={`Editar a ${firmante.nombre}`}>
                   <Pencil />
                 </Link>
               </Button>
-              {firmante.boton}
+              {firmante.button}
             </div>
           </div>
         </li>

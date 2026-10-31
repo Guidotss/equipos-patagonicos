@@ -1,3 +1,3 @@
-import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
+import { validateEnvTests } from '../../scripts/test-env.mjs'
 
-validarEntornoPruebas()
+validateEnvTests()

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { contentDisposition, nombreArchivoCotizacion } from './nombre-archivo'
+import { contentDisposition, nameFileQuote } from './file-name'
 
 describe('nombreArchivoCotizacion', () => {
   it('usa el patrón de los archivos actuales con la primera palabra del cliente', () => {
-    expect(nombreArchivoCotizacion(112711, 'VERTICE SERVICIOS INTEGRALES S.R.L.')).toBe('COTIZACION N° 112711 VERTICE.pdf')
-    expect(nombreArchivoCotizacion(112523, 'Milicic S.A.')).toBe('COTIZACION N° 112523 MILICIC.pdf')
+    expect(nameFileQuote(112711, 'VERTICE SERVICIOS INTEGRALES S.R.L.')).toBe('COTIZACION N° 112711 VERTICE.pdf')
+    expect(nameFileQuote(112523, 'Milicic S.A.')).toBe('COTIZACION N° 112523 MILICIC.pdf')
   })
 
   it('saca acentos y símbolos', () => {
-    expect(nombreArchivoCotizacion(1, 'Ñandú & Cía.')).toBe('COTIZACION N° 1 NANDU.pdf')
-    expect(nombreArchivoCotizacion(1, '')).toBe('COTIZACION N° 1.pdf')
+    expect(nameFileQuote(1, 'Ñandú & Cía.')).toBe('COTIZACION N° 1 NANDU.pdf')
+    expect(nameFileQuote(1, '')).toBe('COTIZACION N° 1.pdf')
   })
 })
 

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
-export default function NoEncontrado() {
+export default function NoFound() {
   return (
     <main className="flex min-h-svh items-center justify-center p-4">
       <div className="max-w-sm space-y-4 text-center">

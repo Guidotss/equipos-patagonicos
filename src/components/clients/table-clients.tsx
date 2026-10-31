@@ -1,18 +1,18 @@
 import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
-import { FilaListado } from '@/components/listados/fila-listado'
-import { TablaListado } from '@/components/listados/tabla-listado'
-import { Pastilla } from '@/components/ui/pastilla'
+import { RowListing } from '@/components/listings/row-listing'
+import { TableListing } from '@/components/listings/table-listing'
+import { Pill } from '@/components/ui/pill'
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCuit } from '@/lib/cuit'
 
-type FilaCliente = { id: string; razon_social: string; cuit: string | null; localidad: string; activo: boolean }
+type RowClient = { id: string; razon_social: string; cuit: string | null; localidad: string; activo: boolean }
 
-export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
+export function TableClients({ clientes }: { clientes: RowClient[] }) {
   return (
     <>
       <div className="hidden @min-[44rem]/listado:block">
-        <TablaListado aria-label="Clientes">
+        <TableListing aria-label="Clientes">
           <colgroup>
             <col />
             <col className="w-[22%]" />
@@ -29,7 +29,7 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
           </TableHeader>
           <TableBody>
             {clientes.map((cliente) => (
-              <FilaListado key={cliente.id} href={`/clientes/${cliente.id}`}>
+              <RowListing key={cliente.id} href={`/clientes/${cliente.id}`}>
                 <TableCell>
                   <Link href={`/clientes/${cliente.id}`} className="font-medium leading-5 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
                     {cliente.razon_social}
@@ -39,7 +39,7 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
                   </p>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{cliente.localidad || 'Sin localidad'}</TableCell>
-                <TableCell><EstadoCliente activo={cliente.activo} /></TableCell>
+                <TableCell><StatusClient activo={cliente.activo} /></TableCell>
                 <TableCell>
                   <Link
                     href={`/clientes/${cliente.id}`}
@@ -49,10 +49,10 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
                     Abrir <ArrowUpRight className="size-3.5" aria-hidden />
                   </Link>
                 </TableCell>
-              </FilaListado>
+              </RowListing>
             ))}
           </TableBody>
-        </TablaListado>
+        </TableListing>
       </div>
       <ul className="divide-y @min-[44rem]/listado:hidden">
         {clientes.map((cliente) => (
@@ -64,7 +64,7 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
             >
               <div className="flex items-start justify-between gap-3">
                 <span className="min-w-0 font-medium leading-6 [overflow-wrap:anywhere]">{cliente.razon_social}</span>
-                <EstadoCliente activo={cliente.activo} />
+                <StatusClient activo={cliente.activo} />
               </div>
               <dl className="space-y-1 text-sm text-muted-foreground">
                 <div className="flex gap-2"><dt className="w-16 shrink-0">CUIT</dt><dd className="tabular-nums">{cliente.cuit ? formatCuit(cliente.cuit) : 'Sin CUIT'}</dd></div>
@@ -79,6 +79,6 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
   )
 }
 
-function EstadoCliente({ activo }: { activo: boolean }) {
-  return activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>
+function StatusClient({ activo }: { activo: boolean }) {
+  return activo ? <Pill tone="exito">Activo</Pill> : <Pill>Inactivo</Pill>
 }

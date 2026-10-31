@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { UNIDADES } from '@/lib/plantillas/contenido'
+import { UNIDADES } from '@/lib/templates/content'
 
 /** Variables que se cargan por cotización (jsonb `datos`). El resto sale del equipo, la empresa o la cotización. */
-export const CAMPOS_DATOS = [
+export const FIELDS_DATA = [
   'ubicacion',
   'horario',
   'plazo_entrega',
@@ -12,11 +12,11 @@ export const CAMPOS_DATOS = [
   'indice_base',
   'proxima_actualizacion',
 ] as const
-export type CampoDatos = (typeof CAMPOS_DATOS)[number]
+export type FieldData = (typeof FIELDS_DATA)[number]
 
 const texto = z.string().trim().max(500, 'Máximo 500 caracteres').default('')
 
-export const esquemaDatos = z.object({
+export const schemaData = z.object({
   ubicacion: texto,
   horario: texto,
   plazo_entrega: texto,
@@ -26,18 +26,18 @@ export const esquemaDatos = z.object({
   indice_base: texto,
   proxima_actualizacion: texto,
 })
-export type DatosCotizacion = z.infer<typeof esquemaDatos>
+export type DataQuote = z.infer<typeof schemaData>
 
 /** Lee el jsonb `datos` sin fallar: lo que no sea texto queda en "". El largo se valida al guardar (esquemaDatos). */
-export function leerDatos(valor: unknown): DatosCotizacion {
-  const objeto = valor && typeof valor === 'object' ? (valor as Record<string, unknown>) : {}
+export function readData(value: unknown): DataQuote {
+  const object = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
   return Object.fromEntries(
-    CAMPOS_DATOS.map((campo) => [campo, typeof objeto[campo] === 'string' ? (objeto[campo] as string).trim() : '']),
-  ) as DatosCotizacion
+    FIELDS_DATA.map((field) => [field, typeof object[field] === 'string' ? (object[field] as string).trim() : '']),
+  ) as DataQuote
 }
 
 // Todos los mensajes en castellano: el editor los muestra junto a cada celda de la grilla.
-export const esquemaItem = z.object({
+export const schemaItem = z.object({
   seccion: z.string().trim().max(100, 'Máximo 100 caracteres').default(''),
   descripcion: z.string().trim().min(1, 'Falta la descripción').max(500, 'Máximo 500 caracteres'),
   cantidad: z.number().positive('La cantidad tiene que ser mayor a 0').max(999_999, 'La cantidad es demasiado grande'),
@@ -48,4 +48,4 @@ export const esquemaItem = z.object({
     .nullable(),
   unidad: z.enum(UNIDADES, { error: 'Elegí la unidad' }),
 })
-export type ItemCotizacion = z.infer<typeof esquemaItem>
+export type ItemQuote = z.infer<typeof schemaItem>

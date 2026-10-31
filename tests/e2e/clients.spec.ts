@@ -1,22 +1,22 @@
 import { expect, test } from '@playwright/test'
-import { iniciarSesion, sufijoUnico } from './helpers'
-import { conBase } from './base-datos'
+import { iniciarSession, sufijoUnico } from './helpers'
+import { withBase } from './database'
 
-const clientesCreados: string[] = []
+const clientsCreados: string[] = []
 
 test.afterEach(async () => {
-  await conBase(async (db) => {
-    await db.query('delete from public.clientes where razon_social = any($1::text[])', [clientesCreados])
+  await withBase(async (db) => {
+    await db.query('delete from public.clientes where razon_social = any($1::text[])', [clientsCreados])
   })
-  clientesCreados.length = 0
+  clientsCreados.length = 0
 })
 
 test('alta de cliente: acepta el CUIT informado, conserva errores de email y permite editarlo', async ({ page }) => {
   const sufijo = sufijoUnico()
   const razonSocial = `Grúas Ñandú ${sufijo} S.A.`
-  clientesCreados.push(razonSocial)
+  clientsCreados.push(razonSocial)
 
-  await iniciarSesion(page)
+  await iniciarSession(page)
   await page.getByRole('link', { name: 'Clientes' }).click()
   await page.getByRole('link', { name: 'Nuevo cliente' }).click()
 
@@ -37,9 +37,9 @@ test('alta de cliente: acepta el CUIT informado, conserva errores de email y per
   const informado = 'Identificación informada por el cliente'
   await page.getByLabel('CUIT').fill(informado)
   await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
-  const clienteId = ficha.split('/').at(-1)!
-  await expect.poll(() => conBase(async (db) => (
-    await db.query<{ cuit: string }>('select cuit from public.clientes where id=$1', [clienteId])
+  const clientId = ficha.split('/').at(-1)!
+  await expect.poll(() => withBase(async (db) => (
+    await db.query<{ cuit: string }>('select cuit from public.clientes where id=$1', [clientId])
   ).rows[0].cuit)).toBe(informado)
   await page.reload()
   await expect(page.getByLabel('CUIT')).toHaveValue(informado)
@@ -59,10 +59,10 @@ test('alta de cliente: acepta el CUIT informado, conserva errores de email y per
 })
 
 test('el CUIT de un cliente existente no se puede repetir', async ({ page }) => {
-  await iniciarSesion(page)
+  await iniciarSession(page)
   await page.goto('/clientes/nuevo')
   const razonSocial = `Duplicado ${sufijoUnico()}`
-  clientesCreados.push(razonSocial)
+  clientsCreados.push(razonSocial)
   await page.getByLabel('Razón social').fill(razonSocial)
   await page.getByLabel('CUIT').fill('30-71952967-0')
   await page.getByRole('button', { name: 'Crear cliente' }).click()
@@ -71,8 +71,8 @@ test('el CUIT de un cliente existente no se puede repetir', async ({ page }) => 
 
 test('un cliente se puede desactivar y volver a activar', async ({ page }) => {
   const razonSocial = `Para desactivar ${sufijoUnico()}`
-  clientesCreados.push(razonSocial)
-  await iniciarSesion(page)
+  clientsCreados.push(razonSocial)
+  await iniciarSession(page)
   await page.goto('/clientes/nuevo')
   await page.getByLabel('Razón social').fill(razonSocial)
   await page.getByRole('button', { name: 'Crear cliente' }).click()
@@ -86,12 +86,12 @@ test('un cliente se puede desactivar y volver a activar', async ({ page }) => {
 
 test('la navegación de formularios admite razones sociales largas en móvil', async ({ page }) => {
   const nombre = `Ingeniería, Servicios y Montajes Industriales de la Patagonia ${sufijoUnico()} S.R.L.`
-  const id = await conBase(async (db) => (
+  const id = await withBase(async (db) => (
     await db.query('insert into public.clientes(razon_social) values($1) returning id', [nombre])
   ).rows[0].id as string)
   try {
     await page.setViewportSize({ width: 390, height: 844 })
-    await iniciarSesion(page)
+    await iniciarSession(page)
     await page.goto(`/clientes/${id}/contactos/nuevo`)
     await expect(page.getByRole('heading', { name: 'Nuevo contacto', exact: true })).toBeVisible()
     const medidas = await page.evaluate(() => ({
@@ -99,10 +99,10 @@ test('la navegación de formularios admite razones sociales largas en móvil', a
       contenido: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
     }))
     expect(medidas.contenido).toBeLessThanOrEqual(medidas.disponible)
-    const guardar = await page.getByRole('button', { name: 'Guardar contacto', exact: true }).boundingBox()
-    expect(guardar).not.toBeNull()
-    expect(guardar!.x + guardar!.width).toBeLessThanOrEqual(medidas.disponible)
+    const save = await page.getByRole('button', { name: 'Guardar contacto', exact: true }).boundingBox()
+    expect(save).not.toBeNull()
+    expect(save!.x + save!.width).toBeLessThanOrEqual(medidas.disponible)
   } finally {
-    await conBase(async (db) => { await db.query('delete from public.clientes where id=$1', [id]) })
+    await withBase(async (db) => { await db.query('delete from public.clientes where id=$1', [id]) })
   }
 })

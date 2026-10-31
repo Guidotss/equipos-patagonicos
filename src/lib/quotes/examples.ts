@@ -1,6 +1,6 @@
 // Las cotizaciones reales 112523 (mensual) y 112711 (por jornada), como filas de la base.
 // Se usan en los tests de documento y de PDF.
-import type { FuenteDocumento } from './documento'
+import type { SourceDocument } from './document'
 
 const EMPRESA = {
   razon_social: 'Equipos Patagónicos',
@@ -13,7 +13,7 @@ const EMPRESA = {
   proxima_actualizacion: 'noviembre de 2026',
 }
 
-export const EJEMPLO_MENSUAL: FuenteDocumento = {
+export const EXAMPLE_MONTHLY: SourceDocument = {
   cotizacion: {
     numero: 112523,
     fecha: '2026-07-15',
@@ -68,7 +68,7 @@ export const EJEMPLO_MENSUAL: FuenteDocumento = {
   empresa: EMPRESA,
 }
 
-export const EJEMPLO_JORNADA: FuenteDocumento = {
+export const EXAMPLE_DAILY: SourceDocument = {
   cotizacion: {
     numero: 112711,
     fecha: '2026-10-22',

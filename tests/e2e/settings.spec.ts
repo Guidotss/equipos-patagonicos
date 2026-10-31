@@ -1,23 +1,23 @@
 import { expect, test } from '@playwright/test'
-import { iniciarSesion, sufijoUnico } from './helpers'
-import { conBase } from './base-datos'
+import { iniciarSession, sufijoUnico } from './helpers'
+import { withBase } from './database'
 
-const firmantesCreados: string[] = []
-const equiposCreados: string[] = []
+const signersCreados: string[] = []
+const equipmentCreados: string[] = []
 
 test.afterEach(async () => {
-  await conBase(async (db) => {
-    await db.query('delete from public.firmantes where nombre = any($1::text[])', [firmantesCreados])
-    await db.query('delete from public.equipos where nombre = any($1::text[])', [equiposCreados])
+  await withBase(async (db) => {
+    await db.query('delete from public.firmantes where nombre = any($1::text[])', [signersCreados])
+    await db.query('delete from public.equipos where nombre = any($1::text[])', [equipmentCreados])
   })
-  firmantesCreados.length = 0
-  equiposCreados.length = 0
+  signersCreados.length = 0
+  equipmentCreados.length = 0
 })
 
 test('firmantes: alta y edición', async ({ page }) => {
   const nombre = `Firmante ${sufijoUnico()}`
-  firmantesCreados.push(nombre)
-  await iniciarSesion(page)
+  signersCreados.push(nombre)
+  await iniciarSession(page)
   await page.goto('/configuracion/firmantes')
 
   await page.getByRole('link', { name: 'Nuevo firmante' }).click()
@@ -40,8 +40,8 @@ test('firmantes: alta y edición', async ({ page }) => {
 
 test('equipos: valida la capacidad y acepta decimales con coma', async ({ page }) => {
   const nombre = `Grúa prueba ${sufijoUnico()}`
-  equiposCreados.push(nombre)
-  await iniciarSesion(page)
+  equipmentCreados.push(nombre)
+  await iniciarSession(page)
   await page.goto('/configuracion/equipos')
 
   await page.getByRole('link', { name: 'Nuevo equipo' }).click()
@@ -62,7 +62,7 @@ test('equipos: valida la capacidad y acepta decimales con coma', async ({ page }
 })
 
 test('plantillas iniciales: mensual y por jornada con sus textos', async ({ page }) => {
-  await iniciarSesion(page)
+  await iniciarSession(page)
   await page.goto('/configuracion/plantillas')
   await expect(page.getByRole('link', { name: 'Por jornada - Grúa con operador' })).toBeVisible()
 
@@ -72,7 +72,7 @@ test('plantillas iniciales: mensual y por jornada con sus textos', async ({ page
 })
 
 test('empresa: muestra los datos reales', async ({ page }) => {
-  await iniciarSesion(page)
+  await iniciarSession(page)
   await page.goto('/configuracion/empresa')
   await expect(page.getByLabel('Razón social')).toHaveValue('Equipos Patagónicos')
   await expect(page.getByLabel('Ciudad')).toHaveValue('Neuquén')

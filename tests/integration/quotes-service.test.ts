@@ -1,19 +1,19 @@
 // tests/integration/cotizaciones-servicio.test.ts
 import { extractText, getDocumentProxy } from 'unpdf'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ErrorCotizacion, aprobarCotizacion, enviarCotizacion, pdfParaMostrar } from '@/lib/cotizaciones/servicio'
+import { ErrorQuote, approveQuote, sendQuote, pdfForShow } from '@/lib/quotes/service'
 import type { Json } from '@/lib/supabase/database.types'
-import { ITEMS_JORNADA, idsDeEjemplo, versionDe } from './cotizaciones-helpers'
-import { adminClient, borrarUsuario, crearUsuario, sql } from './helpers'
+import { ITEMS_DAILY, idsOfExample, versionOf } from './quotes-helpers'
+import { adminClient, removeUser, crearUser, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
-let activo: Awaited<ReturnType<typeof crearUsuario>>
-let ids: Awaited<ReturnType<typeof idsDeEjemplo>>
-const rutas: string[] = []
+let activo: Awaited<ReturnType<typeof crearUser>>
+let ids: Awaited<ReturnType<typeof idsOfExample>>
+const paths: string[] = []
 
 beforeAll(async () => {
-  activo = await crearUsuario({ activo: true, rol: 'operador' })
-  ids = await idsDeEjemplo()
+  activo = await crearUser({ activo: true, rol: 'operador' })
+  ids = await idsOfExample()
 })
 
 afterAll(async () => {
@@ -22,14 +22,14 @@ afterAll(async () => {
      where o.bucket_id = 'documentos'
        and (o.name = any($1) or exists (
          select 1 from public.cotizaciones c where c.notas = $2 and o.name like 'cotizaciones/' || c.id || '/%'))`,
-    [rutas, MARCA],
+    [paths, MARCA],
   )
   if (archivos.length) await adminClient().storage.from('documentos').remove(archivos.map((a) => a.name))
   await sql('delete from public.cotizaciones where notas = $1', [MARCA])
-  await borrarUsuario(activo.id)
+  await removeUser(activo.id)
 })
 
-async function nueva(datos: Record<string, unknown> = {}, items: Json[] = ITEMS_JORNADA): Promise<string> {
+async function nueva(datos: Record<string, unknown> = {}, items: Json[] = ITEMS_DAILY): Promise<string> {
   const { data, error } = await activo.client.rpc('guardar_cotizacion', {
     p_datos: {
       cliente_id: ids.cliente_id,
@@ -51,11 +51,11 @@ async function nueva(datos: Record<string, unknown> = {}, items: Json[] = ITEMS_
 }
 
 /** Guarda la cotización con otra introducción (sigue en el estado en que estaba). */
-async function editar(id: string, intro: string) {
-  const [fila] = await sql<{ datos: Json }>('select datos from public.cotizaciones where id = $1', [id])
+async function edit(id: string, intro: string) {
+  const [row] = await sql<{ datos: Json }>('select datos from public.cotizaciones where id = $1', [id])
   const { error } = await activo.client.rpc('guardar_cotizacion', {
     p_id: id,
-    p_updated_at: await versionDe(activo.client, id),
+    p_updated_at: await versionOf(activo.client, id),
     p_datos: {
       cliente_id: ids.cliente_id,
       formato: 'jornada',
@@ -63,24 +63,24 @@ async function editar(id: string, intro: string) {
       firmante_id: ids.firmante_id,
       asunto: 'Cotización N° {{numero}} capacidad {{capacidad}} TN',
       intro,
-      datos: fila.datos,
+      datos: row.datos,
       bloques: [{ titulo: 'Alcance', contenido: '- Horario de 8 a 17 hs.' }],
       notas: MARCA,
     },
-    p_items: ITEMS_JORNADA,
+    p_items: ITEMS_DAILY,
   })
   if (error) throw error
 }
 
-async function textoDelPdf(pdf: Buffer): Promise<string> {
-  const documento = await getDocumentProxy(new Uint8Array(pdf))
-  const { text } = await extractText(documento, { mergePages: true })
+async function textOfPdf(pdf: Buffer): Promise<string> {
+  const document = await getDocumentProxy(new Uint8Array(pdf))
+  const { text } = await extractText(document, { mergePages: true })
   return text.replace(/\s+/g, ' ')
 }
 
 async function numero(id: string) {
-  const [fila] = await sql<{ numero: string }>('select numero from public.cotizaciones where id = $1', [id])
-  return fila.numero
+  const [row] = await sql<{ numero: string }>('select numero from public.cotizaciones where id = $1', [id])
+  return row.numero
 }
 
 async function subidos(id: string) {
@@ -88,19 +88,19 @@ async function subidos(id: string) {
 }
 
 /** Exige que la operación se rechace con un ErrorCotizacion (mensaje para el usuario) con ese texto. */
-async function rechazaCon(operacion: Promise<unknown>, mensaje: string) {
+async function rechazaWith(operacion: Promise<unknown>, message: string) {
   const error = await operacion.then(
     () => undefined,
     (e: unknown) => e,
   )
-  expect(error).toBeInstanceOf(ErrorCotizacion)
-  expect((error as Error).message).toBe(mensaje)
+  expect(error).toBeInstanceOf(ErrorQuote)
+  expect((error as Error).message).toBe(message)
 }
 
 describe('servicio de cotizaciones', () => {
   it('enviar sube el PDF y registra el envío', async () => {
     const id = await nueva()
-    await enviarCotizacion(activo.client, id)
+    await sendQuote(activo.client, id)
 
     const [envio] = await sql<{ pdf_path: string }>('select pdf_path from public.cotizacion_envios where cotizacion_id = $1', [id])
     expect(envio.pdf_path).toMatch(new RegExp(`^cotizaciones/${id}/enviada-\\d+\\.pdf$`))
@@ -111,8 +111,8 @@ describe('servicio de cotizaciones', () => {
 
   it('no envía si faltan variables, dice cuáles y no sube nada', async () => {
     const id = await nueva({ datos: {} })
-    await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(ErrorCotizacion)
-    await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(/Lugar del servicio/)
+    await expect(sendQuote(activo.client, id)).rejects.toThrow(ErrorQuote)
+    await expect(sendQuote(activo.client, id)).rejects.toThrow(/Lugar del servicio/)
     const subidos = await sql(`select 1 from storage.objects where name like $1`, [`cotizaciones/${id}/%`])
     expect(subidos).toEqual([])
   })
@@ -122,85 +122,85 @@ describe('servicio de cotizaciones', () => {
       intro: 'Servicios de izaje en {{ubicación}}.',
       bloques: [{ titulo: 'Alcance', contenido: '- Pago: {{forma**_pago}}' }],
     })
-    await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(ErrorCotizacion)
-    await expect(enviarCotizacion(activo.client, id)).rejects.toThrow(
+    await expect(sendQuote(activo.client, id)).rejects.toThrow(ErrorQuote)
+    await expect(sendQuote(activo.client, id)).rejects.toThrow(
       'Hay variables mal escritas: {{ubicación}}, {{forma**_pago}}',
     )
-    await expect(aprobarCotizacion(activo.client, id, '2026-10-23')).rejects.toThrow('{{ubicación}}')
+    await expect(approveQuote(activo.client, id, '2026-10-23')).rejects.toThrow('{{ubicación}}')
 
-    const [fila] = await sql<{ estado: string }>('select estado from public.cotizaciones where id = $1', [id])
-    expect(fila.estado).toBe('borrador')
+    const [row] = await sql<{ estado: string }>('select estado from public.cotizaciones where id = $1', [id])
+    expect(row.estado).toBe('borrador')
     const subidos = await sql(`select 1 from storage.objects where name like $1`, [`cotizaciones/${id}/%`])
     expect(subidos).toEqual([])
   })
 
   // Lo que la base rechazaría se frena antes de generar el PDF: un PDF subido no se puede borrar desde la app.
   it('no envía ni aprueba sin ítems o con ítems sin precio, y no sube nada', async () => {
-    const sinItems = await nueva({}, [])
-    const sinPrecio = await nueva({}, [ITEMS_JORNADA[0], { ...ITEMS_JORNADA[1], precio_unitario: null }])
+    const withoutItems = await nueva({}, [])
+    const withoutPrice = await nueva({}, [ITEMS_DAILY[0], { ...ITEMS_DAILY[1], precio_unitario: null }])
 
-    await rechazaCon(enviarCotizacion(activo.client, sinItems), 'La cotización no tiene ítems')
-    await rechazaCon(aprobarCotizacion(activo.client, sinItems, '2026-10-23'), 'La cotización no tiene ítems')
-    await rechazaCon(enviarCotizacion(activo.client, sinPrecio), 'Hay ítems sin precio')
-    await rechazaCon(aprobarCotizacion(activo.client, sinPrecio, '2026-10-23'), 'Hay ítems sin precio')
+    await rechazaWith(sendQuote(activo.client, withoutItems), 'La cotización no tiene ítems')
+    await rechazaWith(approveQuote(activo.client, withoutItems, '2026-10-23'), 'La cotización no tiene ítems')
+    await rechazaWith(sendQuote(activo.client, withoutPrice), 'Hay ítems sin precio')
+    await rechazaWith(approveQuote(activo.client, withoutPrice, '2026-10-23'), 'Hay ítems sin precio')
 
-    expect(await subidos(sinItems)).toEqual([])
-    expect(await subidos(sinPrecio)).toEqual([])
+    expect(await subidos(withoutItems)).toEqual([])
+    expect(await subidos(withoutPrice)).toEqual([])
   })
 
   it('no aprueba con una fecha inválida o anterior a la de la cotización, y no sube nada', async () => {
     const id = await nueva()
 
-    await rechazaCon(aprobarCotizacion(activo.client, id, '2026-10-21'), 'La fecha de aprobación no puede ser anterior a la cotización')
-    await rechazaCon(aprobarCotizacion(activo.client, id, ''), 'La fecha de aprobación no es válida')
-    await rechazaCon(aprobarCotizacion(activo.client, id, '2026-11-31'), 'La fecha de aprobación no es válida')
+    await rechazaWith(approveQuote(activo.client, id, '2026-10-21'), 'La fecha de aprobación no puede ser anterior a la cotización')
+    await rechazaWith(approveQuote(activo.client, id, ''), 'La fecha de aprobación no es válida')
+    await rechazaWith(approveQuote(activo.client, id, '2026-11-31'), 'La fecha de aprobación no es válida')
 
-    const [fila] = await sql<{ estado: string }>('select estado from public.cotizaciones where id = $1', [id])
-    expect(fila.estado).toBe('borrador')
+    const [row] = await sql<{ estado: string }>('select estado from public.cotizaciones where id = $1', [id])
+    expect(row.estado).toBe('borrador')
     expect(await subidos(id)).toEqual([])
   })
 
   it('no envía ni vuelve a aprobar una aprobada, no envía un presupuesto directo, y no sube nada más', async () => {
     const id = await nueva()
-    await aprobarCotizacion(activo.client, id, '2026-10-23')
+    await approveQuote(activo.client, id, '2026-10-23')
     const antes = await subidos(id)
     expect(antes).toHaveLength(1)
 
-    await rechazaCon(enviarCotizacion(activo.client, id), 'Solo se puede enviar una cotización en borrador o ya enviada')
-    await rechazaCon(aprobarCotizacion(activo.client, id, '2026-10-23'), 'Solo se puede aprobar una cotización en borrador o enviada')
+    await rechazaWith(sendQuote(activo.client, id), 'Solo se puede enviar una cotización en borrador o ya enviada')
+    await rechazaWith(approveQuote(activo.client, id, '2026-10-23'), 'Solo se puede aprobar una cotización en borrador o enviada')
     expect(await subidos(id)).toEqual(antes)
 
     const { data: directo, error } = await activo.client.rpc('presupuesto_directo', {
       p_datos: { cliente_id: ids.cliente_id, asunto: 'Izaje urgente acordado por teléfono', notas: MARCA },
-      p_items: [ITEMS_JORNADA[0]],
+      p_items: [ITEMS_DAILY[0]],
     })
     expect(error).toBeNull()
-    await rechazaCon(enviarCotizacion(activo.client, directo!), 'Solo se puede enviar una cotización en borrador o ya enviada')
+    await rechazaWith(sendQuote(activo.client, directo!), 'Solo se puede enviar una cotización en borrador o ya enviada')
     expect(await subidos(directo!)).toEqual([])
   })
 
   it('aprobar congela el PDF y después se sirve ese mismo archivo', async () => {
     const id = await nueva()
-    await aprobarCotizacion(activo.client, id, '2026-10-23')
+    await approveQuote(activo.client, id, '2026-10-23')
 
-    const [fila] = await sql<{ estado: string; pdf_aprobado_path: string }>(
+    const [row] = await sql<{ estado: string; pdf_aprobado_path: string }>(
       'select estado, pdf_aprobado_path from public.cotizaciones where id = $1',
       [id],
     )
-    expect(fila.estado).toBe('aprobada')
+    expect(row.estado).toBe('aprobada')
 
-    const guardado = await activo.client.storage.from('documentos').download(fila.pdf_aprobado_path)
-    const mostrado = await pdfParaMostrar(activo.client, id)
-    expect(mostrado?.nombreArchivo).toBe(`COTIZACION N° ${await numero(id)} VERTICE.pdf`)
-    expect(Buffer.compare(mostrado!.pdf, Buffer.from(await guardado.data!.arrayBuffer()))).toBe(0)
+    const saved = await activo.client.storage.from('documentos').download(row.pdf_aprobado_path)
+    const mostrado = await pdfForShow(activo.client, id)
+    expect(mostrado?.nameFile).toBe(`COTIZACION N° ${await numero(id)} VERTICE.pdf`)
+    expect(Buffer.compare(mostrado!.pdf, Buffer.from(await saved.data!.arrayBuffer()))).toBe(0)
   })
 
   it('una cotización cargada se aprueba sin generar PDF y se sigue mostrando su original', async () => {
-    const ruta = `importadas/${crypto.randomUUID()}.pdf`
-    rutas.push(ruta)
+    const path = `importadas/${crypto.randomUUID()}.pdf`
+    paths.push(path)
     const original = Buffer.from('%PDF-1.4 original cargado')
-    const subida = await activo.client.storage.from('documentos').upload(ruta, original, { contentType: 'application/pdf' })
-    expect(subida.error).toBeNull()
+    const upload = await activo.client.storage.from('documentos').upload(path, original, { contentType: 'application/pdf' })
+    expect(upload.error).toBeNull()
 
     const { data: id, error } = await activo.client.rpc('importar_cotizacion', {
       p_datos: {
@@ -209,60 +209,60 @@ describe('servicio de cotizaciones', () => {
         formato: 'jornada',
         fecha: '2026-10-01',
         estado: 'enviada',
-        archivo_original_path: ruta,
+        archivo_original_path: path,
         notas: MARCA,
       },
     })
     expect(error).toBeNull()
 
-    await expect(enviarCotizacion(activo.client, id!)).rejects.toThrow(/cargada/)
-    await aprobarCotizacion(activo.client, id!, '2026-10-02')
+    await expect(sendQuote(activo.client, id!)).rejects.toThrow(/cargada/)
+    await approveQuote(activo.client, id!, '2026-10-02')
 
-    const [fila] = await sql<{ estado: string; pdf_aprobado_path: string | null }>(
+    const [row] = await sql<{ estado: string; pdf_aprobado_path: string | null }>(
       'select estado, pdf_aprobado_path from public.cotizaciones where id = $1',
       [id],
     )
-    expect(fila).toEqual({ estado: 'aprobada', pdf_aprobado_path: null })
-    const mostrado = await pdfParaMostrar(activo.client, id!)
+    expect(row).toEqual({ estado: 'aprobada', pdf_aprobado_path: null })
+    const mostrado = await pdfForShow(activo.client, id!)
     expect(Buffer.compare(mostrado!.pdf, original)).toBe(0)
   })
 
   it('un borrador se genera en el momento; una cotización inexistente devuelve null', async () => {
     const id = await nueva()
-    const mostrado = await pdfParaMostrar(activo.client, id)
+    const mostrado = await pdfForShow(activo.client, id)
     expect(mostrado?.pdf.subarray(0, 5).toString()).toBe('%PDF-')
-    expect(await pdfParaMostrar(activo.client, crypto.randomUUID())).toBeNull()
+    expect(await pdfForShow(activo.client, crypto.randomUUID())).toBeNull()
   })
 
   // Una enviada se puede seguir editando sin que cambie de estado: se muestra lo que recibió el cliente.
   it('una enviada o rechazada muestra su último envío aunque se edite después; reabierta se genera en el momento', async () => {
     const id = await nueva()
-    await enviarCotizacion(activo.client, id)
-    await editar(id, 'Segunda versión enviada.')
-    await enviarCotizacion(activo.client, id)
-    await editar(id, 'Cambio sin enviar.')
+    await sendQuote(activo.client, id)
+    await edit(id, 'Segunda versión enviada.')
+    await sendQuote(activo.client, id)
+    await edit(id, 'Cambio sin enviar.')
 
-    const envios = await sql<{ pdf_path: string }>(
+    const sends = await sql<{ pdf_path: string }>(
       'select pdf_path from public.cotizacion_envios where cotizacion_id = $1 order by enviada_at desc',
       [id],
     )
-    expect(envios).toHaveLength(2)
-    const ultimo = await activo.client.storage.from('documentos').download(envios[0].pdf_path)
-    const ultimoEnviado = Buffer.from(await ultimo.data!.arrayBuffer())
-    expect(await textoDelPdf(ultimoEnviado)).toContain('Segunda versión enviada.')
+    expect(sends).toHaveLength(2)
+    const last = await activo.client.storage.from('documentos').download(sends[0].pdf_path)
+    const lastSent = Buffer.from(await last.data!.arrayBuffer())
+    expect(await textOfPdf(lastSent)).toContain('Segunda versión enviada.')
 
-    const enviada = await pdfParaMostrar(activo.client, id)
-    expect(Buffer.compare(enviada!.pdf, ultimoEnviado)).toBe(0)
+    const sent = await pdfForShow(activo.client, id)
+    expect(Buffer.compare(sent!.pdf, lastSent)).toBe(0)
 
     const { error: errorRechazo } = await activo.client.rpc('rechazar_cotizacion', { p_id: id })
     expect(errorRechazo).toBeNull()
-    const rechazada = await pdfParaMostrar(activo.client, id)
-    expect(Buffer.compare(rechazada!.pdf, ultimoEnviado)).toBe(0)
+    const rejected = await pdfForShow(activo.client, id)
+    expect(Buffer.compare(rejected!.pdf, lastSent)).toBe(0)
 
     const { error: errorReapertura } = await activo.client.rpc('reabrir_cotizacion', { p_id: id })
     expect(errorReapertura).toBeNull()
-    const reabierta = await pdfParaMostrar(activo.client, id)
-    expect(await textoDelPdf(reabierta!.pdf)).toContain('Cambio sin enviar.')
+    const reabierta = await pdfForShow(activo.client, id)
+    expect(await textOfPdf(reabierta!.pdf)).toContain('Cambio sin enviar.')
   })
 
   it('un presupuesto directo no tiene PDF', async () => {
@@ -271,14 +271,14 @@ describe('servicio de cotizaciones', () => {
       p_items: [],
     })
     expect(error).toBeNull()
-    expect(await pdfParaMostrar(activo.client, id!)).toBeNull()
+    expect(await pdfForShow(activo.client, id!)).toBeNull()
   })
 
   it('se puede ver el PDF de un envío anterior', async () => {
     const id = await nueva()
-    await enviarCotizacion(activo.client, id)
+    await sendQuote(activo.client, id)
     const [envio] = await sql<{ id: string }>('select id from public.cotizacion_envios where cotizacion_id = $1', [id])
-    const mostrado = await pdfParaMostrar(activo.client, id, envio.id)
+    const mostrado = await pdfForShow(activo.client, id, envio.id)
     expect(mostrado?.pdf.subarray(0, 5).toString()).toBe('%PDF-')
   })
 })

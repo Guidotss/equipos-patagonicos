@@ -2,7 +2,7 @@
 
 import { ChevronDown, LogOut } from 'lucide-react'
 import { useId } from 'react'
-import { cerrarSesion } from '@/app/login/actions'
+import { cerrarSession } from '@/app/login/actions'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,16 +12,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { iniciales } from '@/lib/format/texto'
+import { iniciales } from '@/lib/format/text'
 
 /** Menú del usuario: al pie del sidebar (lateral) o como avatar en la barra del celular. */
 export function UserMenu({ nombre, email, lateral = false }: { nombre: string; email: string; lateral?: boolean }) {
   // El shell monta dos menús (sidebar y barra del celular): cada uno necesita su propio form.
-  const formCerrarSesion = useId()
+  const formCerrarSession = useId()
 
   return (
     <>
-      <form id={formCerrarSesion} action={cerrarSesion} className="hidden" />
+      <form id={formCerrarSession} action={cerrarSession} className="hidden" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           {lateral ? (
@@ -51,7 +51,7 @@ export function UserMenu({ nombre, email, lateral = false }: { nombre: string; e
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild onSelect={(evento) => evento.preventDefault()}>
-            <button type="submit" form={formCerrarSesion} className="w-full">
+            <button type="submit" form={formCerrarSession} className="w-full">
               <LogOut className="size-4" aria-hidden />
               Cerrar sesión
             </button>

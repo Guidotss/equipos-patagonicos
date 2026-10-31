@@ -1,11 +1,11 @@
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
-import { validarEntornoPruebas } from './scripts/pruebas-entorno.mjs'
+import { validateEnvTests } from './scripts/test-env.mjs'
 
-const { baseURL } = validarEntornoPruebas()
-const appDir = process.env.EP_PRUEBAS_APP_DIR
+const { baseURL } = validateEnvTests()
+const appDir = process.env.EP_TESTS_APP_DIR
 if (!appDir || !path.isAbsolute(appDir)) throw new Error('El runner debe preparar la copia temporal de Next')
-const comandoNext = [process.execPath, path.resolve('scripts/pruebas-app.mjs')]
+const commandNext = [process.execPath, path.resolve('scripts/test-app.mjs')]
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -23,7 +23,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `exec ${comandoNext.map((arg) => `'${arg.replaceAll("'", "'\\''")}'`).join(' ')}`,
+    command: `exec ${commandNext.map((arg) => `'${arg.replaceAll("'", "'\\''")}'`).join(' ')}`,
     url: `${baseURL}/api/health`,
     reuseExistingServer: false,
     gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },

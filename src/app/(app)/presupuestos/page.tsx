@@ -2,54 +2,54 @@ import { Plus, Upload } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
-import { MarcoListado } from '@/components/listados/marco-listado'
-import { PaginacionListado } from '@/components/listados/paginacion-listado'
-import { FiltrosPresupuestos } from '@/components/presupuestos/filtros-presupuestos'
-import { TablaPresupuestos } from '@/components/presupuestos/tabla-presupuestos'
+import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
+import { FrameListing } from '@/components/listings/frame-listing'
+import { PaginationListing } from '@/components/listings/pagination-listing'
+import { FiltersBudgets } from '@/components/budgets/filters-budgets'
+import { TableBudgets } from '@/components/budgets/table-budgets'
 import { Button } from '@/components/ui/button'
-import { Conteo } from '@/components/ui/conteo'
-import { hrefPresupuestos, leerFiltrosPresupuestos, POR_PAGINA } from '@/lib/presupuestos/lista'
+import { Count } from '@/components/ui/count'
+import { hrefBudgets, readFiltersBudgets, PER_PAGE } from '@/lib/budgets/list'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Presupuestos' }
 
-export default async function PresupuestosPage({
+export default async function BudgetsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const filtros = leerFiltrosPresupuestos(await searchParams)
+  const filters = readFiltersBudgets(await searchParams)
   const supabase = await createClient()
-  const inicio = (filtros.pagina - 1) * POR_PAGINA
-  const [busqueda, clientes] = await Promise.all([
+  const home = (filters.pagina - 1) * PER_PAGE
+  const [search, clientes] = await Promise.all([
     supabase
       .rpc(
         'buscar_presupuestos',
-        { texto: filtros.q, estado: filtros.estado, cliente: filtros.cliente || undefined },
+        { texto: filters.q, estado: filters.estado, cliente: filters.cliente || undefined },
         { count: 'exact' },
       )
       .select('*')
       .order('numero', { ascending: false })
-      .range(inicio, inicio + POR_PAGINA - 1),
+      .range(home, home + PER_PAGE - 1),
     supabase.from('clientes').select('id, razon_social').order('razon_social'),
   ])
-  if (busqueda.error?.code === 'PGRST103') redirect(hrefPresupuestos(filtros))
-  if (busqueda.error) throw busqueda.error
+  if (search.error?.code === 'PGRST103') redirect(hrefBudgets(filters))
+  if (search.error) throw search.error
   if (clientes.error) throw clientes.error
-  const total = busqueda.count ?? 0
-  const paginas = Math.ceil(total / POR_PAGINA)
-  if (total > 0 && filtros.pagina > paginas) redirect(hrefPresupuestos(filtros, paginas))
+  const total = search.count ?? 0
+  const pages = Math.ceil(total / PER_PAGE)
+  if (total > 0 && filters.pagina > pages) redirect(hrefBudgets(filters, pages))
   return (
     <>
-      <BarraMigas migas={[{ texto: 'Presupuestos' }]} />
-      <Contenido>
-        <EncabezadoPagina
-          compacto
+      <BarCrumbs crumbs={[{ texto: 'Presupuestos' }]} />
+      <Content>
+        <HeaderPage
+          compact
           titulo="Presupuestos"
-          extra={<Conteo>{total}</Conteo>}
+          extra={<Count>{total}</Count>}
           descripcion="Cotizaciones aprobadas y sus documentos comerciales."
-          acciones={
+          actions={
             <>
               <Button variant="outline" asChild>
                 <Link href="/documentos/nuevo">
@@ -66,26 +66,26 @@ export default async function PresupuestosPage({
             </>
           }
         />
-        <MarcoListado
-          herramientas={<FiltrosPresupuestos filtros={filtros} clientes={clientes.data} />}
-          pie={<PaginacionListado total={total} pagina={filtros.pagina} tamano={POR_PAGINA} href={(pagina) => hrefPresupuestos(filtros, pagina)} />}
+        <FrameListing
+          tools={<FiltersBudgets filters={filters} clientes={clientes.data} />}
+          pie={<PaginationListing total={total} pagina={filters.pagina} tamano={PER_PAGE} href={(pagina) => hrefBudgets(filters, pagina)} />}
         >
-          {busqueda.data.length ? (
-            <TablaPresupuestos presupuestos={busqueda.data} />
+          {search.data.length ? (
+            <TableBudgets budgets={search.data} />
           ) : (
             <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
               <p className="text-muted-foreground">
-                No hay presupuestos {filtros.q || filtros.estado || filtros.cliente ? 'con estos filtros.' : 'todavía.'}
+                No hay presupuestos {filters.q || filters.estado || filters.cliente ? 'con estos filtros.' : 'todavía.'}
               </p>
               <Button variant="link" asChild>
-                <Link href={filtros.q || filtros.estado || filtros.cliente ? '/presupuestos' : '/cotizaciones/directo'}>
-                  {filtros.q || filtros.estado || filtros.cliente ? 'Limpiar filtros' : 'Crear presupuesto directo'}
+                <Link href={filters.q || filters.estado || filters.cliente ? '/presupuestos' : '/cotizaciones/directo'}>
+                  {filters.q || filters.estado || filters.cliente ? 'Limpiar filtros' : 'Crear presupuesto directo'}
                 </Link>
               </Button>
             </div>
           )}
-        </MarcoListado>
-      </Contenido>
+        </FrameListing>
+      </Content>
     </>
   )
 }

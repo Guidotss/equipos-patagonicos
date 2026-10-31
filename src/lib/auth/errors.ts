@@ -5,7 +5,7 @@ import { type AuthError, isAuthApiError, isAuthSessionMissingError } from '@supa
  * revocado: 4xx de Auth) como si Auth no respondió (red caída, 5xx, 429). Lo primero equivale
  * a no tener sesión; lo segundo no dice nada de la sesión.
  */
-export function esSesionInvalida(error: AuthError): boolean {
+export function isSessionInvalid(error: AuthError): boolean {
   return (
     isAuthSessionMissingError(error) ||
     error.name === 'AuthInvalidJwtError' ||
@@ -14,7 +14,7 @@ export function esSesionInvalida(error: AuthError): boolean {
 }
 
 /** Mensaje para el formulario de login según el error de signInWithPassword. */
-export function mensajeErrorLogin(error: AuthError): string {
+export function messageErrorLogin(error: AuthError): string {
   if (error.status === 429 || error.code === 'over_request_rate_limit') {
     return 'Demasiados intentos seguidos. Esperá unos minutos y volvé a probar.'
   }

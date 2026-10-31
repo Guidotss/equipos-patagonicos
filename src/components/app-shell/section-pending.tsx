@@ -1,12 +1,12 @@
-import { BarraMigas, Contenido, EncabezadoPagina } from './encabezado'
+import { BarCrumbs, Content, HeaderPage } from './header'
 
-export function SeccionPendiente({ titulo, descripcion }: { titulo: string; descripcion: string }) {
+export function SectionPending({ titulo: title, descripcion }: { titulo: string; descripcion: string }) {
   return (
     <>
-      <BarraMigas migas={[{ texto: titulo }]} />
-      <Contenido>
-        <EncabezadoPagina titulo={titulo} descripcion={descripcion} />
-      </Contenido>
+      <BarCrumbs crumbs={[{ texto: title }]} />
+      <Content>
+        <HeaderPage titulo={title} descripcion={descripcion} />
+      </Content>
     </>
   )
 }

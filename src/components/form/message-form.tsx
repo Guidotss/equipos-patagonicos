@@ -1,12 +1,12 @@
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import type { EstadoFormulario } from '@/lib/formularios'
+import type { StatusForm } from '@/lib/forms'
 
 /** Muestra el error general del formulario. Los éxitos se avisan con un toast. */
-export function MensajeFormulario({ estado }: { estado: EstadoFormulario }) {
-  if (estado.ok || !estado.mensaje) return null
+export function MessageForm({ estado }: { estado: StatusForm }) {
+  if (estado.ok || !estado.message) return null
   return (
     <Alert variant="destructive">
-      <AlertDescription>{estado.mensaje}</AlertDescription>
+      <AlertDescription>{estado.message}</AlertDescription>
     </Alert>
   )
 }

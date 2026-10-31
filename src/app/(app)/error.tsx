@@ -1,13 +1,13 @@
 'use client'
 
-import { Contenido } from '@/components/app-shell/encabezado'
+import { Content } from '@/components/app-shell/header'
 import { Button } from '@/components/ui/button'
 
-export default function ErrorSeccion({ error, retry }: { error: unknown; retry: () => void }) {
+export default function ErrorSection({ error, retry }: { error: unknown; retry: () => void }) {
   const digest = error instanceof Error ? (error as Error & { digest?: string }).digest : undefined
 
   return (
-    <Contenido>
+    <Content>
       <section className="max-w-lg space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight">Algo salió mal</h1>
         <p className="text-muted-foreground">
@@ -16,6 +16,6 @@ export default function ErrorSeccion({ error, retry }: { error: unknown; retry: 
         {digest ? <p className="text-xs text-muted-foreground">Código: {digest}</p> : null}
         <Button onClick={() => retry()}>Reintentar</Button>
       </section>
-    </Contenido>
+    </Content>
   )
 }

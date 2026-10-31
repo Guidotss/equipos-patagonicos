@@ -4,7 +4,7 @@ import { open, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
-export function entorno() {
+export function env() {
   try {
     process.loadEnvFile(".env.local");
   } catch {
@@ -21,11 +21,11 @@ export function storageAdmin() {
     { auth: { persistSession: false, autoRefreshToken: false } },
   ).storage.from("documentos");
 }
-export function baseDestino() {
+export function baseDestination() {
   if (!process.env.SUPABASE_DB_URL) throw new Error("Falta SUPABASE_DB_URL");
   const url = new URL(process.env.SUPABASE_DB_URL);
   return {
-    identidad: `${url.hostname}:${url.port || "5432"}${url.pathname}`,
+    identity: `${url.hostname}:${url.port || "5432"}${url.pathname}`,
     env: {
       ...process.env,
       PGHOST: url.hostname,
@@ -41,42 +41,42 @@ export function baseDestino() {
     },
   };
 }
-export async function ejecutar(binario, argumentos, env, archivoSalida) {
-  const salida = archivoSalida ? await open(archivoSalida, "wx", 0o600) : null;
+export async function run(binary, args, env, fileOutput) {
+  const output = fileOutput ? await open(fileOutput, "wx", 0o600) : null;
   try {
     await new Promise((resolve, reject) => {
-      const proceso = spawn(binario, argumentos, {
+      const process = spawn(binary, args, {
         env,
-        stdio: ["ignore", salida?.fd ?? "inherit", "pipe"],
+        stdio: ["ignore", output?.fd ?? "inherit", "pipe"],
       });
-      let diagnostico = "";
-      proceso.stderr.on("data", (data) => {
-        diagnostico += data.toString();
+      let diagnostic = "";
+      process.stderr.on("data", (data) => {
+        diagnostic += data.toString();
       });
-      proceso.on("error", () =>
+      process.on("error", () =>
         reject(
           new Error(
-            `No se pudo ejecutar ${binario}. Instalá las herramientas de PostgreSQL o configurá PG_DUMP_BIN/PSQL_BIN.`,
+            `No se pudo ejecutar ${binary}. Instalá las herramientas de PostgreSQL o configurá PG_DUMP_BIN/PSQL_BIN.`,
           ),
         ),
       );
-      proceso.on("exit", (codigo) =>
-        codigo === 0
+      process.on("exit", (code) =>
+        code === 0
           ? resolve()
           : reject(
               new Error(
-                `${path.basename(binario)} terminó con código ${codigo}: ${diagnostico.replace(/postgres(?:ql)?:\/\/\S+/g, "[conexión]")}`,
+                `${path.basename(binary)} terminó con código ${code}: ${diagnostic.replace(/postgres(?:ql)?:\/\/\S+/g, "[conexión]")}`,
               ),
             ),
       );
     });
   } finally {
-    await salida?.close();
+    await output?.close();
   }
 }
-export async function verificar(directorio) {
+export async function verify(directory) {
   const m = JSON.parse(
-    await readFile(path.join(directorio, "manifest.json"), "utf8"),
+    await readFile(path.join(directory, "manifest.json"), "utf8"),
   );
   if (
     m.version !== 2 ||
@@ -87,39 +87,39 @@ export async function verificar(directorio) {
     !/^[a-f0-9]{64}$/.test(m.base_sha256)
   )
     throw new Error("Manifiesto inválido o formato de respaldo no compatible");
-  if (hash(await readFile(path.join(directorio, "base.sql"))) !== m.base_sha256)
+  if (hash(await readFile(path.join(directory, "base.sql"))) !== m.base_sha256)
     throw new Error("El dump no coincide con su hash");
-  const nombres = new Set();
-  for (const migracion of m.migraciones) {
+  const names = new Set();
+  for (const migration of m.migraciones) {
     if (
-      !/^\d{14}_[a-z0-9_]+\.sql$/.test(migracion.nombre) ||
-      nombres.has(migracion.nombre) ||
-      !/^[a-f0-9]{64}$/.test(migracion.sha256)
+      !/^\d{14}_[a-z0-9_]+\.sql$/.test(migration.nombre) ||
+      names.has(migration.nombre) ||
+      !/^[a-f0-9]{64}$/.test(migration.sha256)
     )
       throw new Error("Migración inválida en el manifiesto");
-    nombres.add(migracion.nombre);
+    names.add(migration.nombre);
     if (
       hash(
-        await readFile(path.join(directorio, "migraciones", migracion.nombre)),
-      ) !== migracion.sha256
+        await readFile(path.join(directory, "migraciones", migration.nombre)),
+      ) !== migration.sha256
     )
-      throw new Error(`Migración incompleta: ${migracion.nombre}`);
+      throw new Error(`Migración incompleta: ${migration.nombre}`);
   }
-  const rutas = new Set();
+  const paths = new Set();
   for (const a of m.archivos) {
     if (
       typeof a.path !== "string" ||
-      rutas.has(a.path) ||
+      paths.has(a.path) ||
       !/^[a-f0-9]{64}$/.test(a.sha256) ||
       !Number.isSafeInteger(a.tamano) ||
       a.tamano <= 0
     )
       throw new Error("Archivo inválido en el manifiesto");
-    rutas.add(a.path);
-    const fichero = path.join(directorio, "archivos", a.sha256);
-    if (!(await stat(fichero)).isFile())
+    paths.add(a.path);
+    const file = path.join(directory, "archivos", a.sha256);
+    if (!(await stat(file)).isFile())
       throw new Error("Falta un archivo del respaldo");
-    const bytes = await readFile(fichero);
+    const bytes = await readFile(file);
     if (bytes.length !== a.tamano || hash(bytes) !== a.sha256)
       throw new Error(`Archivo incompleto: ${a.path}`);
   }

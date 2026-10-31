@@ -2,113 +2,113 @@
 // Edición del formato mínimo de los bloques de texto, el que entiende parsearFormato y dibuja el PDF (decisión 5):
 // negrita con **, viñeta con "- ", subviñeta con "  - " y quitar sangría. Funciones puras sobre el texto y la
 // selección de un textarea, más la limpieza de lo que se pega desde Word.
-import type { Bloque } from './contenido'
+import type { Block } from './content'
 
 /** Selección de un textarea (selectionStart / selectionEnd). Vacía = cursor. */
 export type Seleccion = { inicio: number; fin: number }
 /** Texto nuevo y la selección que tiene que quedar marcada. */
-export type Edicion = { texto: string; seleccion: Seleccion }
+export type Editing = { texto: string; seleccion: Seleccion }
 
 // Las mismas marcas que parsearFormato (formato.ts): nivel 2 con dos o más espacios o tabs antes.
-const MARCA_NIVEL_2 = /^[ \t]{2,}[-•] /
-const MARCA_NIVEL_1 = /^[-•] /
+const MARK_NIVEL_2 = /^[ \t]{2,}[-•] /
+const MARK_NIVEL_1 = /^[-•] /
 const MARCAS = { 0: '', 1: '- ', 2: '  - ' } as const
 
 /** 0 = párrafo, 1 = viñeta, 2 = subviñeta. */
-export function nivelDeLinea(linea: string): 0 | 1 | 2 {
-  if (MARCA_NIVEL_2.test(linea)) return 2
-  if (MARCA_NIVEL_1.test(linea)) return 1
+export function nivelOfLine(line: string): 0 | 1 | 2 {
+  if (MARK_NIVEL_2.test(line)) return 2
+  if (MARK_NIVEL_1.test(line)) return 1
   return 0
 }
 
 /** La línea sin su marca de viñeta ni la sangría del principio. */
-function sinMarca(linea: string): string {
-  return linea.replace(MARCA_NIVEL_2, '').replace(MARCA_NIVEL_1, '').replace(/^[ \t]+/, '')
+function withoutMark(line: string): string {
+  return line.replace(MARK_NIVEL_2, '').replace(MARK_NIVEL_1, '').replace(/^[ \t]+/, '')
 }
 
-function largoMarca(linea: string): number {
-  return linea.length - sinMarca(linea).length
+function largoMark(line: string): number {
+  return line.length - withoutMark(line).length
 }
 
-function conNivel(linea: string, nivel: 0 | 1 | 2): string {
-  return `${MARCAS[nivel]}${sinMarca(linea)}`
+function withNivel(line: string, nivel: 0 | 1 | 2): string {
+  return `${MARCAS[nivel]}${withoutMark(line)}`
 }
 
 /** Las líneas que toca la selección (con un cursor, la del cursor). Si termina al principio de una línea, esa no. */
-function lineasTocadas(texto: string, seleccion: Seleccion) {
-  const inicio = Math.min(seleccion.inicio, seleccion.fin)
+function linesTocadas(texto: string, seleccion: Seleccion) {
+  const home = Math.min(seleccion.inicio, seleccion.fin)
   const fin = Math.max(seleccion.inicio, seleccion.fin)
-  const lineas = texto.split('\n')
-  const lineaDe = (posicion: number) => texto.slice(0, posicion).split('\n').length - 1
-  const primera = lineaDe(inicio)
-  let ultima = lineaDe(fin)
-  if (fin > inicio && ultima > primera && texto[fin - 1] === '\n') ultima -= 1
-  const desde = lineas.slice(0, primera).reduce((suma, linea) => suma + linea.length + 1, 0)
-  return { lineas, primera, ultima, inicio, fin, desde }
+  const lines = texto.split('\n')
+  const lineOf = (position: number) => texto.slice(0, position).split('\n').length - 1
+  const primera = lineOf(home)
+  let last = lineOf(fin)
+  if (fin > home && last > primera && texto[fin - 1] === '\n') last -= 1
+  const desde = lines.slice(0, primera).reduce((sum, line) => sum + line.length + 1, 0)
+  return { lines, primera, last, inicio: home, fin, desde }
 }
 
 /**
  * Reemplaza cada línea tocada por `transformar(linea)`. Con selección, quedan marcadas las líneas enteras; con un
  * cursor, el cursor queda en el mismo lugar del texto de la línea (después de la marca nueva).
  */
-function editarLineas(texto: string, seleccion: Seleccion, transformar: (linea: string) => string): Edicion {
-  const { lineas, primera, ultima, inicio, fin, desde } = lineasTocadas(texto, seleccion)
-  const viejas = lineas.slice(primera, ultima + 1)
+function editLines(texto: string, seleccion: Seleccion, transformar: (line: string) => string): Editing {
+  const { lines, primera, last, inicio: home, fin, desde } = linesTocadas(texto, seleccion)
+  const viejas = lines.slice(primera, last + 1)
   const nuevas = viejas.map(transformar)
-  const resultado = [...lineas.slice(0, primera), ...nuevas, ...lineas.slice(ultima + 1)].join('\n')
-  if (inicio === fin) {
+  const result = [...lines.slice(0, primera), ...nuevas, ...lines.slice(last + 1)].join('\n')
+  if (home === fin) {
     const [vieja] = viejas
     const [nueva] = nuevas
-    const enLinea = Math.max(largoMarca(nueva), inicio - desde - largoMarca(vieja) + largoMarca(nueva))
-    const cursor = desde + Math.min(enLinea, nueva.length)
-    return { texto: resultado, seleccion: { inicio: cursor, fin: cursor } }
+    const inLine = Math.max(largoMark(nueva), home - desde - largoMark(vieja) + largoMark(nueva))
+    const cursor = desde + Math.min(inLine, nueva.length)
+    return { texto: result, seleccion: { inicio: cursor, fin: cursor } }
   }
-  return { texto: resultado, seleccion: { inicio: desde, fin: desde + nuevas.join('\n').length } }
+  return { texto: result, seleccion: { inicio: desde, fin: desde + nuevas.join('\n').length } }
 }
 
-const tieneTexto = (linea: string) => sinMarca(linea).trim() !== ''
+const tieneText = (line: string) => withoutMark(line).trim() !== ''
 
 /** Viñeta (nivel 1) o subviñeta (nivel 2) en las líneas tocadas; si ya lo son todas, vuelven a ser párrafo. */
-export function alternarVineta(texto: string, seleccion: Seleccion, nivel: 1 | 2): Edicion {
-  const { lineas, primera, ultima } = lineasTocadas(texto, seleccion)
-  const conTexto = lineas.slice(primera, ultima + 1).filter(tieneTexto)
+export function alternarVineta(texto: string, seleccion: Seleccion, nivel: 1 | 2): Editing {
+  const { lines, primera, last } = linesTocadas(texto, seleccion)
+  const withText = lines.slice(primera, last + 1).filter(tieneText)
   // En una línea vacía pone la marca, para empezar a escribir la viñeta.
-  if (conTexto.length === 0) return editarLineas(texto, seleccion, () => MARCAS[nivel])
-  const quitar = conTexto.every((linea) => nivelDeLinea(linea) === nivel)
-  return editarLineas(texto, seleccion, (linea) => (tieneTexto(linea) ? conNivel(linea, quitar ? 0 : nivel) : linea))
+  if (withText.length === 0) return editLines(texto, seleccion, () => MARCAS[nivel])
+  const quitar = withText.every((line) => nivelOfLine(line) === nivel)
+  return editLines(texto, seleccion, (line) => (tieneText(line) ? withNivel(line, quitar ? 0 : nivel) : line))
 }
 
 /** Quitar sangría: subviñeta → viñeta → párrafo. */
-export function quitarSangria(texto: string, seleccion: Seleccion): Edicion {
-  return editarLineas(texto, seleccion, (linea) => {
-    const nivel = nivelDeLinea(linea)
-    return nivel === 0 ? linea : conNivel(linea, nivel === 2 ? 1 : 0)
+export function quitarSangria(texto: string, seleccion: Seleccion): Editing {
+  return editLines(texto, seleccion, (line) => {
+    const nivel = nivelOfLine(line)
+    return nivel === 0 ? line : withNivel(line, nivel === 2 ? 1 : 0)
   })
 }
 
 // Una línea (o pedazo de línea) toda en negrita, con su marca de viñeta y espacios afuera: "- **texto** ".
-const EN_NEGRITA = /^(\s*(?:[-•] )?)\*\*((?:(?!\*\*).)+)\*\*(\s*)$/
-const PARTES_LINEA = /^(\s*(?:[-•] )?)(.*?)(\s*)$/
+const IN_NEGRITA = /^(\s*(?:[-•] )?)\*\*((?:(?!\*\*).)+)\*\*(\s*)$/
+const PARTES_LINE = /^(\s*(?:[-•] )?)(.*?)(\s*)$/
 
 function envolver(pieza: string): string {
-  if (EN_NEGRITA.test(pieza)) return pieza
-  const [, marca = '', contenido = '', espacios = ''] = PARTES_LINEA.exec(pieza) ?? []
+  if (IN_NEGRITA.test(pieza)) return pieza
+  const [, marca = '', content = '', espacios = ''] = PARTES_LINE.exec(pieza) ?? []
   // Sin asteriscos adentro: "**a** b" en negrita queda "**a b**", no "****a** b**".
-  return contenido === '' ? pieza : `${marca}**${contenido.replaceAll('**', '')}**${espacios}`
+  return content === '' ? pieza : `${marca}**${content.replaceAll('**', '')}**${espacios}`
 }
 
 function desenvolver(pieza: string): string {
-  const partes = EN_NEGRITA.exec(pieza)
+  const partes = IN_NEGRITA.exec(pieza)
   return partes ? `${partes[1]}${partes[2]}${partes[3]}` : pieza
 }
 
 /** Los tramos en negrita de una línea, [apertura, cierre + 2), con los ** emparejados como en parsearNegritas. */
-function tramosEnNegrita(linea: string): Array<[number, number]> {
+function tramosInNegrita(line: string): Array<[number, number]> {
   const marcas: number[] = []
-  for (let marca = linea.indexOf('**'); marca !== -1; marca = linea.indexOf('**', marca + 2)) marcas.push(marca)
+  for (let marca = line.indexOf('**'); marca !== -1; marca = line.indexOf('**', marca + 2)) marcas.push(marca)
   const tramos: Array<[number, number]> = []
   // Un ** sin pareja al final es texto, no abre nada.
-  for (let indice = 0; indice + 1 < marcas.length; indice += 2) tramos.push([marcas[indice], marcas[indice + 1] + 2])
+  for (let index = 0; index + 1 < marcas.length; index += 2) tramos.push([marcas[index], marcas[index + 1] + 2])
   return tramos
 }
 
@@ -117,15 +117,15 @@ function tramosEnNegrita(linea: string): Array<[number, number]> {
  * apertura de ese tramo (borde de inicio) o después de su cierre (borde de fin). Si no, los ** que quedan afuera de
  * la selección se desparejan y salen literales en el PDF.
  */
-function bordeFueraDeNegrita(texto: string, posicion: number, borde: 'inicio' | 'fin'): number {
+function bordeFueraOfNegrita(texto: string, position: number, borde: 'inicio' | 'fin'): number {
   // El borde ya no es un espacio ni un salto, así que la línea es la del carácter en `posicion` (inicio) o el de
   // antes (fin): en los dos casos, la que empieza después del último salto anterior a `posicion`.
-  const comienzo = texto.lastIndexOf('\n', posicion - 1) + 1
-  const salto = texto.indexOf('\n', posicion)
-  const linea = texto.slice(comienzo, salto === -1 ? texto.length : salto)
-  const enLinea = posicion - comienzo
-  const tramo = tramosEnNegrita(linea).find(([apertura, cierre]) => apertura < enLinea && enLinea < cierre)
-  if (!tramo) return posicion
+  const comienzo = texto.lastIndexOf('\n', position - 1) + 1
+  const salto = texto.indexOf('\n', position)
+  const line = texto.slice(comienzo, salto === -1 ? texto.length : salto)
+  const inLine = position - comienzo
+  const tramo = tramosInNegrita(line).find(([apertura, closing]) => apertura < inLine && inLine < closing)
+  if (!tramo) return position
   return comienzo + (borde === 'inicio' ? tramo[0] : tramo[1])
 }
 
@@ -137,15 +137,15 @@ const VARIABLE = /\{\{[^{}\n]*\}\}/g
  * la variable: el de inicio a su "{{" y el de fin después de su "}}". Con el cursor adentro, queda toda elegida.
  */
 export function extenderAVariables(texto: string, seleccion: Seleccion): Seleccion {
-  let inicio = Math.min(seleccion.inicio, seleccion.fin)
+  let home = Math.min(seleccion.inicio, seleccion.fin)
   let fin = Math.max(seleccion.inicio, seleccion.fin)
   for (const variable of texto.matchAll(VARIABLE)) {
     const apertura = variable.index
-    const cierre = apertura + variable[0].length
-    if (apertura < inicio && inicio < cierre) inicio = apertura
-    if (apertura < fin && fin < cierre) fin = cierre
+    const closing = apertura + variable[0].length
+    if (apertura < home && home < closing) home = apertura
+    if (apertura < fin && fin < closing) fin = closing
   }
-  return { inicio, fin }
+  return { inicio: home, fin }
 }
 
 /**
@@ -156,43 +156,43 @@ export function extenderAVariables(texto: string, seleccion: Seleccion): Selecci
  * dentro de una toma la variable entera (extenderAVariables). Sin selección, inserta "****" con el cursor en el medio
  * (o los saca si el cursor está justo entre "**" y "**"); con el cursor dentro de una variable, la pone en negrita.
  */
-export function alternarNegrita(texto: string, seleccion: Seleccion): Edicion {
-  let inicio = Math.min(seleccion.inicio, seleccion.fin)
+export function alternarNegrita(texto: string, seleccion: Seleccion): Editing {
+  let home = Math.min(seleccion.inicio, seleccion.fin)
   let fin = Math.max(seleccion.inicio, seleccion.fin)
-  const antes = (posicion: number) => (posicion >= 2 ? texto.slice(posicion - 2, posicion) : '')
-  const despues = (posicion: number) => texto.slice(posicion, posicion + 2)
+  const antes = (position: number) => (position >= 2 ? texto.slice(position - 2, position) : '')
+  const despues = (position: number) => texto.slice(position, position + 2)
 
-  if (inicio !== fin) {
+  if (home !== fin) {
     // Los espacios y saltos de los bordes quedan afuera de la negrita.
-    while (inicio < fin && /\s/.test(texto[inicio])) inicio += 1
-    while (fin > inicio && /\s/.test(texto[fin - 1])) fin -= 1
-    if (inicio === fin) return { texto, seleccion }
+    while (home < fin && /\s/.test(texto[home])) home += 1
+    while (fin > home && /\s/.test(texto[fin - 1])) fin -= 1
+    if (home === fin) return { texto, seleccion }
   }
 
   // Los ** nunca cortan una variable: un borde (o el cursor) dentro de {{…}} toma la variable entera.
-  const sinCortar = extenderAVariables(texto, { inicio, fin })
-  inicio = sinCortar.inicio
-  fin = sinCortar.fin
+  const withoutCortar = extenderAVariables(texto, { inicio: home, fin })
+  home = withoutCortar.inicio
+  fin = withoutCortar.fin
 
-  if (inicio === fin) {
-    if (antes(inicio) === '**' && despues(fin) === '**') {
-      return { texto: texto.slice(0, inicio - 2) + texto.slice(fin + 2), seleccion: { inicio: inicio - 2, fin: inicio - 2 } }
+  if (home === fin) {
+    if (antes(home) === '**' && despues(fin) === '**') {
+      return { texto: texto.slice(0, home - 2) + texto.slice(fin + 2), seleccion: { inicio: home - 2, fin: home - 2 } }
     }
-    return { texto: `${texto.slice(0, inicio)}****${texto.slice(fin)}`, seleccion: { inicio: inicio + 2, fin: inicio + 2 } }
+    return { texto: `${texto.slice(0, home)}****${texto.slice(fin)}`, seleccion: { inicio: home + 2, fin: home + 2 } }
   }
 
   // Solo el borde de la primera línea y el de la última pueden caer dentro de una negrita. También cubre la negrita
   // seleccionada sin sus asteriscos: "**[hola]**" pasa a "[**hola**]" y se quita.
-  inicio = bordeFueraDeNegrita(texto, inicio, 'inicio')
-  fin = bordeFueraDeNegrita(texto, fin, 'fin')
+  home = bordeFueraOfNegrita(texto, home, 'inicio')
+  fin = bordeFueraOfNegrita(texto, fin, 'fin')
 
-  const elegido = texto.slice(inicio, fin)
-  const piezas = elegido.split('\n')
-  const quitar = piezas.filter((pieza) => pieza.trim() !== '').every((pieza) => EN_NEGRITA.test(pieza))
+  const chosen = texto.slice(home, fin)
+  const piezas = chosen.split('\n')
+  const quitar = piezas.filter((pieza) => pieza.trim() !== '').every((pieza) => IN_NEGRITA.test(pieza))
   const nuevo = piezas
     .map((pieza) => (pieza.trim() === '' ? pieza : quitar ? desenvolver(pieza) : envolver(pieza)))
     .join('\n')
-  return { texto: texto.slice(0, inicio) + nuevo + texto.slice(fin), seleccion: { inicio, fin: inicio + nuevo.length } }
+  return { texto: texto.slice(0, home) + nuevo + texto.slice(fin), seleccion: { inicio: home, fin: home + nuevo.length } }
 }
 
 // Viñetas de Word o de un mail pegadas como texto: "•\t", "·  " (nivel 1) y "o\t", "◦\t" (nivel 2).
@@ -205,16 +205,16 @@ const VINETA_PEGADA_3 = /^[ \t]*§[ \t]+/
 const ESPACIOS_DUROS = /[\u00a0\u2007\u202f]/g
 
 /** La línea pegada con su viñeta de Word llevada a la marca del formato mínimo (o tal cual, si no tiene). */
-function conMarcaDelFormato(linea: string, variasLineas: boolean, anterior: string | undefined): string {
-  if (MARCA_NIVEL_2.test(linea)) return linea.replace(/\t/g, ' ')
-  if (VINETA_PEGADA_2.test(linea)) return `${MARCAS[2]}${linea.replace(VINETA_PEGADA_2, '')}`
-  if (VINETA_PEGADA_1.test(linea)) return `${MARCAS[1]}${linea.replace(VINETA_PEGADA_1, '')}`
-  if (variasLineas && VINETA_PEGADA_3.test(linea)) {
+function withMarkOfFormat(line: string, variasLines: boolean, previous: string | undefined): string {
+  if (MARK_NIVEL_2.test(line)) return line.replace(/\t/g, ' ')
+  if (VINETA_PEGADA_2.test(line)) return `${MARCAS[2]}${line.replace(VINETA_PEGADA_2, '')}`
+  if (VINETA_PEGADA_1.test(line)) return `${MARCAS[1]}${line.replace(VINETA_PEGADA_1, '')}`
+  if (variasLines && VINETA_PEGADA_3.test(line)) {
     // El formato tiene dos niveles: debajo de una subviñeta, el tercer nivel de Word sigue siendo subviñeta.
-    const nivel = anterior !== undefined && nivelDeLinea(anterior) === 2 ? 2 : 1
-    return `${MARCAS[nivel]}${linea.replace(VINETA_PEGADA_3, '')}`
+    const nivel = previous !== undefined && nivelOfLine(previous) === 2 ? 2 : 1
+    return `${MARCAS[nivel]}${line.replace(VINETA_PEGADA_3, '')}`
   }
-  return linea
+  return line
 }
 
 /**
@@ -223,12 +223,12 @@ function conMarcaDelFormato(linea: string, variasLineas: boolean, anterior: stri
  * espacio).
  */
 export function limpiarPegado(texto: string): string {
-  const lineas = texto.replace(/\r\n?/g, '\n').replace(ESPACIOS_DUROS, ' ').split('\n')
-  const variasLineas = lineas.length > 1
+  const lines = texto.replace(/\r\n?/g, '\n').replace(ESPACIOS_DUROS, ' ').split('\n')
+  const variasLines = lines.length > 1
   const limpias: string[] = []
-  for (const linea of lineas) {
-    const limpia = conMarcaDelFormato(linea, variasLineas, limpias.at(-1)).replace(/(?<=\S)\t+/g, ' ')
-    limpias.push(variasLineas || nivelDeLinea(limpia) !== 0 ? limpia.trimEnd() : limpia)
+  for (const line of lines) {
+    const limpia = withMarkOfFormat(line, variasLines, limpias.at(-1)).replace(/(?<=\S)\t+/g, ' ')
+    limpias.push(variasLines || nivelOfLine(limpia) !== 0 ? limpia.trimEnd() : limpia)
   }
   return limpias.join('\n')
 }
@@ -240,23 +240,23 @@ export function limpiarPegado(texto: string): string {
  */
 export function tramoCambiado(viejo: string, nuevo: string): { inicio: number; fin: number; reemplazo: string } {
   const maximo = Math.min(viejo.length, nuevo.length)
-  let prefijo = 0
-  while (prefijo < maximo && viejo[prefijo] === nuevo[prefijo]) prefijo += 1
+  let prefix = 0
+  while (prefix < maximo && viejo[prefix] === nuevo[prefix]) prefix += 1
   let sufijo = 0
   // El final en común no se superpone con el principio ("aa" → "aaa" agrega una "a" al final, no antes de empezar).
-  while (sufijo < maximo - prefijo && viejo[viejo.length - 1 - sufijo] === nuevo[nuevo.length - 1 - sufijo]) {
+  while (sufijo < maximo - prefix && viejo[viejo.length - 1 - sufijo] === nuevo[nuevo.length - 1 - sufijo]) {
     sufijo += 1
   }
-  return { inicio: prefijo, fin: viejo.length - sufijo, reemplazo: nuevo.slice(prefijo, nuevo.length - sufijo) }
+  return { inicio: prefix, fin: viejo.length - sufijo, reemplazo: nuevo.slice(prefix, nuevo.length - sufijo) }
 }
 
 /** Reemplaza la selección por lo pegado (ya limpio) y deja el cursor al final de lo pegado. */
-export function pegar(texto: string, seleccion: Seleccion, pegado: string): Edicion {
-  const inicio = Math.min(seleccion.inicio, seleccion.fin)
+export function pegar(texto: string, seleccion: Seleccion, pegado: string): Editing {
+  const home = Math.min(seleccion.inicio, seleccion.fin)
   const fin = Math.max(seleccion.inicio, seleccion.fin)
   const limpio = limpiarPegado(pegado)
-  const cursor = inicio + limpio.length
-  return { texto: texto.slice(0, inicio) + limpio + texto.slice(fin), seleccion: { inicio: cursor, fin: cursor } }
+  const cursor = home + limpio.length
+  return { texto: texto.slice(0, home) + limpio + texto.slice(fin), seleccion: { inicio: cursor, fin: cursor } }
 }
 
 /**
@@ -264,26 +264,26 @@ export function pegar(texto: string, seleccion: Seleccion, pegado: string): Edic
  * el de mismo título y mismo número de aparición de ese título, así el segundo "Sin título" se restaura con el segundo
  * de la plantilla.
  */
-export function bloqueDePlantilla(
-  plantilla: Bloque[],
-  bloques: Pick<Bloque, 'titulo'>[],
-  indice: number,
-): Bloque | null {
-  const titulo = bloques[indice]?.titulo.trim()
-  if (titulo === undefined) return null
-  const aparicion = bloques.slice(0, indice).filter((bloque) => bloque.titulo.trim() === titulo).length
-  return plantilla.filter((bloque) => bloque.titulo.trim() === titulo)[aparicion] ?? null
+export function blockOfTemplate(
+  template: Block[],
+  bloques: Pick<Block, 'titulo'>[],
+  index: number,
+): Block | null {
+  const title = bloques[index]?.titulo.trim()
+  if (title === undefined) return null
+  const aparicion = bloques.slice(0, index).filter((block) => block.titulo.trim() === title).length
+  return template.filter((block) => block.titulo.trim() === title)[aparicion] ?? null
 }
 
 /** true si los bloques son los de la plantilla, en el mismo orden y visibles: no hay nada que restaurar. */
-export function mismosBloques(bloques: Bloque[], plantilla: Bloque[]): boolean {
+export function mismosBlocks(bloques: Block[], template: Block[]): boolean {
   return (
-    bloques.length === plantilla.length &&
+    bloques.length === template.length &&
     bloques.every(
-      (bloque, indice) =>
-        bloque.titulo === plantilla[indice].titulo &&
-        bloque.contenido === plantilla[indice].contenido &&
-        bloque.oculto === plantilla[indice].oculto,
+      (block, index) =>
+        block.titulo === template[index].titulo &&
+        block.contenido === template[index].contenido &&
+        block.hidden === template[index].hidden,
     )
   )
 }

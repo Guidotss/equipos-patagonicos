@@ -6,8 +6,8 @@
 
 @theme inline {
   --color-background: var(--background);
-  --color-portada-desde: var(--portada-desde);
-  --color-portada-hasta: var(--portada-hasta);
+  --color-cover-from: var(--cover-from);
+  --color-cover-to: var(--cover-to);
   --color-brand-yellow: var(--brand-yellow);
   --shadow-tarjeta: 0 2px 8px -2px rgb(15 23 42 / 0.12);
   --color-foreground: var(--foreground);
@@ -87,8 +87,8 @@
   --sidebar-ring: oklch(0.478 0.202 272.6);
   --brand-yellow: oklch(0.875 0.181 106.2);
   /* Banda de portada: azul de marca a índigo, como en docs/diseno/referencias. */
-  --portada-desde: oklch(0.485 0.184 267.8);
-  --portada-hasta: oklch(0.441 0.169 282.4);
+  --cover-from: oklch(0.485 0.184 267.8);
+  --cover-to: oklch(0.441 0.169 282.4);
 }
 
 .dark {

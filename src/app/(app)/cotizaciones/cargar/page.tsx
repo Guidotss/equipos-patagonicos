@@ -1,6 +1,6 @@
-import { BarraMigas } from '@/components/app-shell/encabezado'
-import { FormularioEspecial } from '@/components/cotizaciones/especiales/formulario-especial'
-import { hoyArgentina } from '@/lib/format/fechas'
-export default function CargarCotizacionPage() {
-  return <><BarraMigas migas={[{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: 'Cargar existente' }]} /><FormularioEspecial origen="importada" hoy={hoyArgentina()} /></>
+import { BarCrumbs } from '@/components/app-shell/header'
+import { FormSpecial } from '@/components/quotes/specials/form-special'
+import { todayArgentina } from '@/lib/format/dates'
+export default function CargarQuotePage() {
+  return <><BarCrumbs crumbs={[{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: 'Cargar existente' }]} /><FormSpecial origen="importada" today={todayArgentina()} /></>
 }

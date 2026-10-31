@@ -3,12 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
 import { adminClient, sql } from './helpers'
 
-type Cliente = SupabaseClient<Database>
+type Client = SupabaseClient<Database>
 
 /** Crea un presupuesto (presupuesto directo, ya aprobado) del cliente dado. */
-export async function nuevoPresupuesto(cliente: Cliente, clienteId: string, marca: string): Promise<string> {
+export async function newBudget(cliente: Client, clientId: string, marca: string): Promise<string> {
   const { data, error } = await cliente.rpc('presupuesto_directo', {
-    p_datos: { cliente_id: clienteId, asunto: `Presupuesto de prueba ${marca}`, notas: marca },
+    p_datos: { cliente_id: clientId, asunto: `Presupuesto de prueba ${marca}`, notas: marca },
     p_items: [],
   })
   if (error) throw new Error('No se pudo crear el presupuesto: ' + error.message)
@@ -19,27 +19,27 @@ export async function nuevoPresupuesto(cliente: Cliente, clienteId: string, marc
 const subidos = new Set<string>()
 
 /** Sube un PDF chico a documentos/<clienteId>/ con la sesión del usuario y devuelve lo que espera registrar_documento. */
-export async function subirArchivo(cliente: Cliente, clienteId: string, nombre = 'Remito Neuquén N° 1.pdf') {
-  return subirArchivoEn(cliente, `documentos/${clienteId}/${crypto.randomUUID()}.pdf`, nombre)
+export async function uploadFile(cliente: Client, clientId: string, nombre = 'Remito Neuquén N° 1.pdf') {
+  return uploadFileIn(cliente, `documentos/${clientId}/${crypto.randomUUID()}.pdf`, nombre)
 }
 
 /** Sube un PDF a una ruta cualquiera del bucket (para probar rutas que no arma rutaArchivo). */
-export async function subirArchivoEn(
-  cliente: Cliente,
+export async function uploadFileIn(
+  cliente: Client,
   path: string,
   nombre = 'Remito Neuquén N° 1.pdf',
-  contenido = '%PDF-1.4 prueba',
+  content = '%PDF-1.4 prueba',
 ) {
   subidos.add(path)
   const { error } = await cliente.storage
     .from('documentos')
-    .upload(path, new Blob([contenido], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+    .upload(path, new Blob([content], { type: 'application/pdf' }), { contentType: 'application/pdf' })
   if (error) throw error
   return { path, nombre_original: nombre }
 }
 
 /** Borra los documentos de prueba (por notas) y sus archivos en Storage. */
-export async function limpiarDocumentos(marca: string) {
+export async function limpiarDocuments(marca: string) {
   const archivos = await sql<{ path: string }>(
     `select a.path from public.documento_archivos a join public.documentos d on d.id = a.documento_id where d.notas = $1`,
     [marca],
@@ -59,7 +59,7 @@ export async function limpiarDocumentos(marca: string) {
  * Borra de Storage todo lo que subieron los helpers en este archivo de test: lo registrado, lo que se subió
  * para llamadas que fallan a propósito y lo desvinculado con quitar_archivo. Va en el afterAll, junto a limpiarDocumentos.
  */
-export async function limpiarArchivosSubidos() {
+export async function limpiarFilesSubidos() {
   const paths = [...subidos]
   for (let desde = 0; desde < paths.length; desde += 100) {
     const tanda = paths.slice(desde, desde + 100)

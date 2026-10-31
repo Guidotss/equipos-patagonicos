@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { cuitOpcional, emailOpcional, numeroPositivoOpcional, textoOpcional, textoRequerido } from '@/lib/validacion'
+import { cuitOptional, emailOptional, numberPositiveOptional, textOptional, textRequired } from '@/lib/validation'
 
-export const CAMPOS_EMPRESA = [
+export const FIELDS_COMPANY = [
   'razon_social',
   'cuit',
   'direccion',
@@ -13,46 +13,46 @@ export const CAMPOS_EMPRESA = [
   'indice_base',
   'proxima_actualizacion',
 ] as const
-export type CampoEmpresa = (typeof CAMPOS_EMPRESA)[number]
+export type FieldCompany = (typeof FIELDS_COMPANY)[number]
 
-export const esquemaEmpresa = z.object({
-  razon_social: textoRequerido('Ingresá la razón social'),
-  cuit: cuitOpcional,
-  direccion: textoOpcional(),
-  ciudad: textoOpcional(100),
-  provincia: textoOpcional(100),
-  telefono: textoOpcional(100),
-  email: emailOpcional,
-  web: textoOpcional(),
-  indice_base: textoOpcional(100),
-  proxima_actualizacion: textoOpcional(100),
+export const schemaCompany = z.object({
+  razon_social: textRequired('Ingresá la razón social'),
+  cuit: cuitOptional,
+  direccion: textOptional(),
+  ciudad: textOptional(100),
+  provincia: textOptional(100),
+  telefono: textOptional(100),
+  email: emailOptional,
+  web: textOptional(),
+  indice_base: textOptional(100),
+  proxima_actualizacion: textOptional(100),
 })
 
-export const CAMPOS_FIRMANTE = ['nombre', 'cargo', 'telefono', 'email'] as const
-export type CampoFirmante = (typeof CAMPOS_FIRMANTE)[number]
+export const FIELDS_SIGNER = ['nombre', 'cargo', 'telefono', 'email'] as const
+export type FieldSigner = (typeof FIELDS_SIGNER)[number]
 
-export const esquemaFirmante = z.object({
-  nombre: textoRequerido('Ingresá el nombre', 150),
-  cargo: textoOpcional(150),
-  telefono: textoOpcional(100),
-  email: emailOpcional,
+export const schemaSigner = z.object({
+  nombre: textRequired('Ingresá el nombre', 150),
+  cargo: textOptional(150),
+  telefono: textOptional(100),
+  email: emailOptional,
 })
 
-export const CAMPOS_EQUIPO = ['nombre', 'capacidad_tn', 'marca', 'modelo', 'identificacion', 'descripcion'] as const
-export type CampoEquipo = (typeof CAMPOS_EQUIPO)[number]
+export const FIELDS_EQUIPMENT = ['nombre', 'capacidad_tn', 'marca', 'modelo', 'identificacion', 'descripcion'] as const
+export type FieldEquipment = (typeof FIELDS_EQUIPMENT)[number]
 
-export const esquemaEquipo = z.object({
-  nombre: textoRequerido('Ingresá el nombre del equipo', 150),
-  capacidad_tn: numeroPositivoOpcional('Ingresá una capacidad en toneladas mayor a 0').refine(
-    (capacidad) => capacidad === null || capacidad < 100_000,
+export const schemaEquipment = z.object({
+  nombre: textRequired('Ingresá el nombre del equipo', 150),
+  capacidad_tn: numberPositiveOptional('Ingresá una capacidad en toneladas mayor a 0').refine(
+    (capacity) => capacity === null || capacity < 100_000,
     'La capacidad tiene que ser menor a 100.000 TN',
   ),
-  marca: textoOpcional(100),
-  modelo: textoOpcional(100),
-  identificacion: textoOpcional(100),
-  descripcion: textoOpcional(2000),
+  marca: textOptional(100),
+  modelo: textOptional(100),
+  identificacion: textOptional(100),
+  descripcion: textOptional(2000),
 })
 
-export const esquemaNombrePlantilla = z.object({
-  nombre: textoRequerido('Ingresá el nombre de la plantilla', 100),
+export const schemaNameTemplate = z.object({
+  nombre: textRequired('Ingresá el nombre de la plantilla', 100),
 })

@@ -2,13 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { requireUsuario } from '@/lib/auth'
-import { mensajeErrorBase } from '@/lib/formularios'
-import type { Resultado } from '@/lib/resultado'
+import { requireUser } from '@/lib/auth'
+import { messageErrorBase } from '@/lib/forms'
+import type { Result } from '@/lib/result'
 import { createClient } from '@/lib/supabase/server'
 
-export async function cambiarEstadoPresupuesto(entrada: unknown): Promise<Resultado> {
-  await requireUsuario()
+export async function changeStatusBudget(entrada: unknown): Promise<Result> {
+  await requireUser()
   const datos = z
     .object({
       id: z.uuid(),
@@ -16,11 +16,11 @@ export async function cambiarEstadoPresupuesto(entrada: unknown): Promise<Result
       motivo: z.string().trim().max(2000),
     })
     .safeParse(entrada)
-  if (!datos.success) return { ok: false, mensaje: 'Revisá el estado y el motivo (máximo 2000 caracteres).' }
+  if (!datos.success) return { ok: false, message: 'Revisá el estado y el motivo (máximo 2000 caracteres).' }
   const { error } = await (
     await createClient()
   ).rpc('cambiar_estado_presupuesto', { p_id: datos.data.id, p_estado: datos.data.estado, p_motivo: datos.data.motivo })
-  if (error) return { ok: false, mensaje: mensajeErrorBase(error) }
+  if (error) return { ok: false, message: messageErrorBase(error) }
   revalidatePath('/presupuestos', 'layout')
   revalidatePath('/')
   return { ok: true, datos: null }

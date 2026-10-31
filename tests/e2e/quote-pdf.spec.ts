@@ -1,12 +1,12 @@
 // tests/e2e/cotizacion-pdf.spec.ts
 import { expect, test } from '@playwright/test'
-import { conBase } from './base-datos'
-import { iniciarSesion } from './helpers'
+import { withBase } from './database'
+import { iniciarSession } from './helpers'
 
-let cotizacionId: string
+let quoteId: string
 
 test.beforeAll(async () => {
-  cotizacionId = await conBase(async (db) => {
+  quoteId = await withBase(async (db) => {
     const { rows } = await db.query<{ id: string }>(
       `insert into public.cotizaciones (cliente_id, formato, equipo_id, asunto, datos, notas)
        select c.id, 'jornada', e.id, 'Cotización N° {{numero}}', '{"ubicacion": "Neuquén"}', 'e2e-pdf'
@@ -24,22 +24,22 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await conBase((db) => db.query(`delete from public.cotizaciones where notas = 'e2e-pdf'`))
+  await withBase((db) => db.query(`delete from public.cotizaciones where notas = 'e2e-pdf'`))
 })
 
 test('el PDF de una cotización se sirve con su nombre de archivo y solo con sesión', async ({ page, playwright, baseURL }) => {
-  const anonimo = await playwright.request.newContext({ baseURL })
-  const sinSesion = await anonimo.get(`/cotizaciones/${cotizacionId}/pdf`, { maxRedirects: 0 })
-  expect(sinSesion.status()).toBe(307)
-  await anonimo.dispose()
+  const anonymous = await playwright.request.newContext({ baseURL })
+  const withoutSession = await anonymous.get(`/cotizaciones/${quoteId}/pdf`, { maxRedirects: 0 })
+  expect(withoutSession.status()).toBe(307)
+  await anonymous.dispose()
 
-  await iniciarSesion(page)
-  const respuesta = await page.request.get(`/cotizaciones/${cotizacionId}/pdf`)
-  expect(respuesta.status()).toBe(200)
-  expect(respuesta.headers()['content-type']).toBe('application/pdf')
-  expect(respuesta.headers()['content-disposition']).toContain('VERTICE.pdf')
-  expect((await respuesta.body()).subarray(0, 5).toString()).toBe('%PDF-')
+  await iniciarSession(page)
+  const response = await page.request.get(`/cotizaciones/${quoteId}/pdf`)
+  expect(response.status()).toBe(200)
+  expect(response.headers()['content-type']).toBe('application/pdf')
+  expect(response.headers()['content-disposition']).toContain('VERTICE.pdf')
+  expect((await response.body()).subarray(0, 5).toString()).toBe('%PDF-')
 
-  const inexistente = await page.request.get(`/cotizaciones/${crypto.randomUUID()}/pdf`)
-  expect(inexistente.status()).toBe(404)
+  const missing = await page.request.get(`/cotizaciones/${crypto.randomUUID()}/pdf`)
+  expect(missing.status()).toBe(404)
 })

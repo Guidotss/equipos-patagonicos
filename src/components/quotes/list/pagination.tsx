@@ -1,13 +1,13 @@
-import { PaginacionListado } from '@/components/listados/paginacion-listado'
-import { hrefConFiltros, POR_PAGINA, type FiltrosLista } from '@/lib/cotizaciones/lista'
+import { PaginationListing } from '@/components/listings/pagination-listing'
+import { hrefWithFilters, PER_PAGE, type FiltersList } from '@/lib/quotes/list'
 
-export function Paginacion({ filtros, total }: { filtros: FiltrosLista; total: number }) {
+export function Pagination({ filters, total }: { filters: FiltersList; total: number }) {
   return (
-    <PaginacionListado
+    <PaginationListing
       total={total}
-      pagina={filtros.pagina}
-      tamano={POR_PAGINA}
-      href={(pagina) => hrefConFiltros(filtros, { pagina })}
+      pagina={filters.pagina}
+      tamano={PER_PAGE}
+      href={(pagina) => hrefWithFilters(filters, { pagina })}
     />
   )
 }

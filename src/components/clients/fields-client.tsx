@@ -1,71 +1,71 @@
-import { Campo } from '@/components/formulario/campo'
-import { SeccionFormulario } from '@/components/formulario/estructura-formulario'
+import { Field } from '@/components/form/field'
+import { SectionForm } from '@/components/form/structure-form'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
-import { CONDICIONES_IVA, type CampoCliente } from '@/lib/clientes/esquemas'
-import { valorCampo, type EstadoFormulario } from '@/lib/formularios'
+import { CONDICIONES_IVA, type FieldClient } from '@/lib/clients/schemas'
+import { valueField, type StatusForm } from '@/lib/forms'
 
-export type ValoresCliente = Partial<Record<CampoCliente, string | null>>
+export type ValuesClient = Partial<Record<FieldClient, string | null>>
 
-export function CamposCliente({ estado, inicial }: { estado: EstadoFormulario; inicial?: ValoresCliente }) {
-  const valor = (campo: CampoCliente) => valorCampo(estado, inicial, campo)
-  const error = (campo: CampoCliente) => estado.errores[campo]
+export function FieldsClient({ estado, initial }: { estado: StatusForm; initial?: ValuesClient }) {
+  const value = (field: FieldClient) => valueField(estado, initial, field)
+  const error = (field: FieldClient) => estado.errors[field]
   const texto = (
-    campo: CampoCliente,
-    etiqueta: string,
+    field: FieldClient,
+    label: string,
     props: React.ComponentProps<typeof Input> = {},
     className?: string,
   ) => (
-    <Campo id={campo} etiqueta={etiqueta} error={error(campo)} className={className}>
-      <Input id={campo} name={campo} defaultValue={valor(campo)} aria-invalid={Boolean(error(campo))} {...props} />
-    </Campo>
+    <Field id={field} label={label} error={error(field)} className={className}>
+      <Input id={field} name={field} defaultValue={value(field)} aria-invalid={Boolean(error(field))} {...props} />
+    </Field>
   )
 
   return (
     <>
-      <SeccionFormulario titulo="Identificación" descripcion="Nombre y datos fiscales del cliente.">
+      <SectionForm titulo="Identificación" descripcion="Nombre y datos fiscales del cliente.">
         <div className="grid gap-4 @md:grid-cols-2">
-          <Campo id="razon_social" etiqueta="Razón social" error={error('razon_social')} className="@md:col-span-2">
+          <Field id="razon_social" label="Razón social" error={error('razon_social')} className="@md:col-span-2">
             <Input
               id="razon_social"
               name="razon_social"
-              defaultValue={valor('razon_social')}
+              defaultValue={value('razon_social')}
               aria-invalid={Boolean(error('razon_social'))}
               autoComplete="organization"
             />
-          </Campo>
-          <Campo id="cuit" etiqueta="CUIT" error={error('cuit')}>
+          </Field>
+          <Field id="cuit" label="CUIT" error={error('cuit')}>
             <Input
               id="cuit"
               name="cuit"
               inputMode="numeric"
               placeholder="Opcional para cotizar"
-              defaultValue={valor('cuit')}
+              defaultValue={value('cuit')}
               aria-invalid={Boolean(error('cuit'))}
             />
-          </Campo>
-          <Campo id="condicion_iva" etiqueta="Condición frente al IVA" error={error('condicion_iva')}>
+          </Field>
+          <Field id="condicion_iva" label="Condición frente al IVA" error={error('condicion_iva')}>
             {/* React no actualiza el defaultValue de un <select> ya montado y el reset del form tras la acción
                 volvería al valor del montaje: la key lo remonta cuando cambia (lo enviado o lo guardado). */}
             <NativeSelect
-              key={valor('condicion_iva')}
+              key={value('condicion_iva')}
               id="condicion_iva"
               name="condicion_iva"
-              defaultValue={valor('condicion_iva')}
+              defaultValue={value('condicion_iva')}
               className="w-full"
             >
               <NativeSelectOption value="">Sin especificar</NativeSelectOption>
-              {Object.entries(CONDICIONES_IVA).map(([clave, etiqueta]) => (
+              {Object.entries(CONDICIONES_IVA).map(([clave, label]) => (
                 <NativeSelectOption key={clave} value={clave}>
-                  {etiqueta}
+                  {label}
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-          </Campo>
+          </Field>
         </div>
-      </SeccionFormulario>
-      <SeccionFormulario titulo="Contacto y domicilio" descripcion="Datos para comunicarte con el cliente.">
+      </SectionForm>
+      <SectionForm titulo="Contacto y domicilio" descripcion="Datos para comunicarte con el cliente.">
         <div className="grid gap-4 @md:grid-cols-2">
           {texto('email', 'Email', { type: 'email', autoComplete: 'email' })}
           {texto('telefono', 'Teléfono', { type: 'tel' })}
@@ -73,15 +73,15 @@ export function CamposCliente({ estado, inicial }: { estado: EstadoFormulario; i
           {texto('localidad', 'Localidad')}
           {texto('provincia', 'Provincia')}
         </div>
-      </SeccionFormulario>
-      <SeccionFormulario titulo="Gestión comercial" descripcion="Condiciones habituales y notas internas.">
+      </SectionForm>
+      <SectionForm titulo="Gestión comercial" descripcion="Condiciones habituales y notas internas.">
         <div className="space-y-4">
           {texto('condicion_pago', 'Condición de pago habitual', { placeholder: 'Ej.: 30 - 45 días F.F.' })}
-          <Campo id="notas" etiqueta="Notas" error={error('notas')}>
-            <Textarea id="notas" name="notas" rows={3} defaultValue={valor('notas')} placeholder="Escribí notas internas sobre el cliente" />
-          </Campo>
+          <Field id="notas" label="Notas" error={error('notas')}>
+            <Textarea id="notas" name="notas" rows={3} defaultValue={value('notas')} placeholder="Escribí notas internas sobre el cliente" />
+          </Field>
         </div>
-      </SeccionFormulario>
+      </SectionForm>
     </>
   )
 }

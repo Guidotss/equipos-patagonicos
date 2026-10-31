@@ -1,56 +1,56 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
-import { EncabezadoFormulario } from '@/components/formulario/estructura-formulario'
-import { AccionesDocumento } from '@/components/documentos/acciones-documento'
-import { DocumentoForm } from '@/components/documentos/documento-form'
+import { BarCrumbs, Content } from '@/components/app-shell/header'
+import { HeaderForm } from '@/components/form/structure-form'
+import { ActionsDocument } from '@/components/documents/actions-document'
+import { DocumentForm } from '@/components/documents/document-form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { TIPOS_DOCUMENTO, type TipoDocumento } from '@/lib/documentos/esquemas'
-import { contextoDocumento } from '@/lib/documentos/lecturas'
-import { numeroDocumento } from '@/lib/documentos/pantallas'
+import { TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
+import { contextoDocument } from '@/lib/documents/queries'
+import { numberDocument } from '@/lib/documents/screens'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
+import { isUuid } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Documento' }
-export default async function DocumentoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!esUuid(id)) notFound()
+  if (!isUuid(id)) notFound()
   const supabase = await createClient()
-  const { data: documento, error } = await supabase.from('documentos').select('*').eq('id', id).maybeSingle()
+  const { data: document, error } = await supabase.from('documentos').select('*').eq('id', id).maybeSingle()
   if (error) throw error
-  if (!documento) notFound()
+  if (!document) notFound()
   const [contexto, archivos, vinculos, aplicaciones] = await Promise.all([
-    contextoDocumento(supabase, documento.cliente_id),
+    contextoDocument(supabase, document.cliente_id),
     supabase.from('documento_archivos').select('*').eq('documento_id', id).order('orden'),
     supabase.from('documento_presupuestos').select('cotizacion_id').eq('documento_id', id),
     supabase.from('op_facturas').select('factura_id, monto_aplicado').eq('op_id', id),
   ])
-  for (const resultado of [archivos, vinculos, aplicaciones]) if (resultado.error) throw resultado.error
-  const presupuestoId = vinculos.data![0]?.cotizacion_id
+  for (const result of [archivos, vinculos, aplicaciones]) if (result.error) throw result.error
+  const budgetId = vinculos.data![0]?.cotizacion_id
   return (
     <>
-      <BarraMigas
-        migas={[
+      <BarCrumbs
+        crumbs={[
           { texto: 'Presupuestos', href: '/presupuestos' },
-          ...(presupuestoId
+          ...(budgetId
             ? [
                 {
                   texto: String(
-                    contexto.presupuestos.find((item) => item.id === presupuestoId)?.numero ?? 'Presupuesto',
+                    contexto.budgets.find((item) => item.id === budgetId)?.numero ?? 'Presupuesto',
                   ),
-                  href: `/presupuestos/${presupuestoId}`,
+                  href: `/presupuestos/${budgetId}`,
                 },
               ]
             : []),
-          { texto: numeroDocumento(documento) },
+          { texto: numberDocument(document) },
         ]}
       />
-      <Contenido className="max-w-6xl">
-        <EncabezadoFormulario
-          titulo={`${TIPOS_DOCUMENTO[documento.tipo as TipoDocumento]} · ${numeroDocumento(documento)}`}
+      <Content className="max-w-6xl">
+        <HeaderForm
+          titulo={`${TIPOS_DOCUMENT[document.tipo as TipoDocument]} · ${numberDocument(document)}`}
         />
-        {documento.deleted_at ? (
+        {document.deleted_at ? (
           <>
             <Alert>
               <AlertDescription>
@@ -58,14 +58,14 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
                 deben estar vigentes y tener saldo disponible.
               </AlertDescription>
             </Alert>
-            <AccionesDocumento id={id} anulado />
+            <ActionsDocument id={id} anulado />
             {aplicaciones.data!.length ? (
               <ul className="flex flex-col gap-2">
                 {aplicaciones.data!.map((item) => (
                   <li key={item.factura_id}>
                     <Link href={`/documentos/${item.factura_id}`} className="text-sm text-primary underline">
                       Revisar factura{' '}
-                      {contexto.documentos.find((factura) => factura.id === item.factura_id)?.numero || 'sin número'}
+                      {contexto.documentos.find((invoice) => invoice.id === item.factura_id)?.numero || 'sin número'}
                     </Link>
                   </li>
                 ))}
@@ -86,17 +86,17 @@ export default async function DocumentoPage({ params }: { params: Promise<{ id: 
             </ul>
           </>
         ) : (
-          <DocumentoForm
-            opciones={contexto.presupuestos}
-            presupuestoId={presupuestoId}
-            contextoInicial={contexto}
-            documento={documento}
-            archivosExistentes={archivos.data!}
+          <DocumentForm
+            options={contexto.budgets}
+            budgetId={budgetId}
+            contextoInitial={contexto}
+            document={document}
+            filesExisting={archivos.data!}
             vinculos={vinculos.data!.map((item) => item.cotizacion_id)}
             aplicacionesIniciales={aplicaciones.data!}
           />
         )}
-      </Contenido>
+      </Content>
     </>
   )
 }

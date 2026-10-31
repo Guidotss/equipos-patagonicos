@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parsearFormato, parsearNegritas } from './formato'
+import { parsearFormat, parsearNegritas } from './format'
 
 describe('parsearNegritas', () => {
   it('separa los tramos en negrita', () => {
@@ -26,7 +26,7 @@ describe('parsearNegritas', () => {
 describe('parsearFormato', () => {
   it('reconoce párrafos y viñetas de dos niveles, e ignora líneas vacías', () => {
     const texto = 'Intro\n\n- Primero\n  - Detalle\n• Segundo\n    - Detalle con más sangría'
-    expect(parsearFormato(texto)).toEqual([
+    expect(parsearFormat(texto)).toEqual([
       { tipo: 'parrafo', segmentos: [{ texto: 'Intro', negrita: false }] },
       { tipo: 'vineta', nivel: 1, segmentos: [{ texto: 'Primero', negrita: false }] },
       { tipo: 'vineta', nivel: 2, segmentos: [{ texto: 'Detalle', negrita: false }] },
@@ -36,7 +36,7 @@ describe('parsearFormato', () => {
   })
 
   it('aplica negritas dentro de viñetas y acepta saltos \\r\\n', () => {
-    expect(parsearFormato('- **Documentación:** el Cliente…\r\nFin')).toEqual([
+    expect(parsearFormat('- **Documentación:** el Cliente…\r\nFin')).toEqual([
       {
         tipo: 'vineta',
         nivel: 1,
@@ -50,6 +50,6 @@ describe('parsearFormato', () => {
   })
 
   it('un guion sin espacio no es viñeta', () => {
-    expect(parsearFormato('-30 días')).toEqual([{ tipo: 'parrafo', segmentos: [{ texto: '-30 días', negrita: false }] }])
+    expect(parsearFormat('-30 días')).toEqual([{ tipo: 'parrafo', segmentos: [{ texto: '-30 días', negrita: false }] }])
   })
 })

@@ -1,19 +1,19 @@
 import type { Metadata } from 'next'
-import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
-import { EncabezadoFormulario } from '@/components/formulario/estructura-formulario'
-import { ClienteForm } from '@/components/clientes/cliente-form'
-import { crearCliente } from '../actions'
+import { BarCrumbs, Content } from '@/components/app-shell/header'
+import { HeaderForm } from '@/components/form/structure-form'
+import { ClientForm } from '@/components/clients/client-form'
+import { crearClient } from '../actions'
 
 export const metadata: Metadata = { title: 'Nuevo cliente' }
 
-export default function NuevoClientePage() {
+export default function NewClientPage() {
   return (
     <>
-      <BarraMigas migas={[{ texto: 'Clientes', href: '/clientes' }, { texto: 'Nuevo cliente' }]} />
-      <Contenido className="max-w-6xl pb-28">
-        <EncabezadoFormulario titulo="Nuevo cliente" descripcion="Los contactos se agregan desde la ficha, después de crearlo." />
-          <ClienteForm accion={crearCliente} textoBoton="Crear cliente" />
-      </Contenido>
+      <BarCrumbs crumbs={[{ texto: 'Clientes', href: '/clientes' }, { texto: 'Nuevo cliente' }]} />
+      <Content className="max-w-6xl pb-28">
+        <HeaderForm titulo="Nuevo cliente" descripcion="Los contactos se agregan desde la ficha, después de crearlo." />
+          <ClientForm accion={crearClient} textButton="Crear cliente" />
+      </Content>
     </>
   )
 }

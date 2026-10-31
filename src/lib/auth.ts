@@ -1,28 +1,28 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
-import { esSesionInvalida } from '@/lib/auth/errores'
+import { isSessionInvalid } from '@/lib/auth/errors'
 import { createClient } from '@/lib/supabase/server'
 
-export type Rol = 'admin' | 'operador'
+export type Role = 'admin' | 'operador'
 
-export type UsuarioActual = {
+export type UserCurrent = {
   id: string
   email: string
   nombre: string
-  rol: Rol
+  rol: Role
 }
 
-type EstadoSesion =
+type StatusSession =
   | { estado: 'anonimo' }
   | { estado: 'inactivo'; email: string }
-  | { estado: 'activo'; usuario: UsuarioActual }
+  | { estado: 'activo'; user: UserCurrent }
 
 /** Valida la sesión con getClaims (nunca getSession en el servidor) y lee el perfil. */
-export const getEstadoSesion = cache(async (): Promise<EstadoSesion> => {
+export const getStatusSession = cache(async (): Promise<StatusSession> => {
   const supabase = await createClient()
-  const { data, error: errorSesion } = await supabase.auth.getClaims()
-  if (errorSesion && !esSesionInvalida(errorSesion)) throw errorSesion
+  const { data, error: errorSession } = await supabase.auth.getClaims()
+  if (errorSession && !isSessionInvalid(errorSession)) throw errorSession
   const claims = data?.claims
   if (!claims) return { estado: 'anonimo' }
 
@@ -41,14 +41,14 @@ export const getEstadoSesion = cache(async (): Promise<EstadoSesion> => {
 
   return {
     estado: 'activo',
-    usuario: { id: claims.sub, email, nombre: perfil.nombre, rol: perfil.rol as Rol },
+    user: { id: claims.sub, email, nombre: perfil.nombre, rol: perfil.rol as Role },
   }
 })
 
 /** Para layouts y páginas protegidas: devuelve el usuario activo o redirige. */
-export async function requireUsuario(): Promise<UsuarioActual> {
-  const sesion = await getEstadoSesion()
-  if (sesion.estado === 'anonimo') redirect('/login')
-  if (sesion.estado === 'inactivo') redirect('/sin-acceso')
-  return sesion.usuario
+export async function requireUser(): Promise<UserCurrent> {
+  const session = await getStatusSession()
+  if (session.estado === 'anonimo') redirect('/login')
+  if (session.estado === 'inactivo') redirect('/sin-acceso')
+  return session.user
 }

@@ -14,41 +14,41 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { ConfirmacionEnLugar } from '@/components/formulario/confirmacion-en-lugar'
-import { Tarjeta } from '@/components/formulario/tarjeta'
+import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Pastilla } from '@/components/ui/pastilla'
+import { Pill } from '@/components/ui/pill'
 import { Textarea } from '@/components/ui/textarea'
-import type { BloqueEditor, PlantillaEditor } from '@/lib/cotizaciones/editor'
-import type { Despachar, ErroresBloque } from '@/lib/cotizaciones/editor-pantalla'
-import type { Bloque } from '@/lib/plantillas/contenido'
+import type { BlockEditor, TemplateEditor } from '@/lib/quotes/editor'
+import type { Despachar, ErrorsBlock } from '@/lib/quotes/editor-screen'
+import type { Block } from '@/lib/templates/content'
 import {
   alternarNegrita,
   alternarVineta,
-  bloqueDePlantilla,
+  blockOfTemplate,
   limpiarPegado,
-  mismosBloques,
+  mismosBlocks,
   pegar,
   quitarSangria,
   tramoCambiado,
-  type Edicion,
+  type Editing,
   type Seleccion,
-} from '@/lib/plantillas/edicion'
+} from '@/lib/templates/editing'
 
 type Herramienta = {
-  etiqueta: string
+  label: string
   atajo?: string
-  Icono: LucideIcon
-  aplicar: (texto: string, seleccion: Seleccion) => Edicion
+  Icon: LucideIcon
+  aplicar: (texto: string, seleccion: Seleccion) => Editing
 }
 
 /** Solo lo que entiende parsearFormato y dibuja el PDF (decisión 5): sin itálica ni lista numerada. */
 const HERRAMIENTAS: Herramienta[] = [
-  { etiqueta: 'Negrita', atajo: 'Ctrl+B', Icono: Bold, aplicar: alternarNegrita },
-  { etiqueta: 'Viñeta', Icono: List, aplicar: (texto, seleccion) => alternarVineta(texto, seleccion, 1) },
-  { etiqueta: 'Subviñeta', Icono: ListIndentIncrease, aplicar: (texto, seleccion) => alternarVineta(texto, seleccion, 2) },
-  { etiqueta: 'Quitar sangría', Icono: ListIndentDecrease, aplicar: quitarSangria },
+  { label: 'Negrita', atajo: 'Ctrl+B', Icon: Bold, aplicar: alternarNegrita },
+  { label: 'Viñeta', Icon: List, aplicar: (texto, seleccion) => alternarVineta(texto, seleccion, 1) },
+  { label: 'Subviñeta', Icon: ListIndentIncrease, aplicar: (texto, seleccion) => alternarVineta(texto, seleccion, 2) },
+  { label: 'Quitar sangría', Icon: ListIndentDecrease, aplicar: quitarSangria },
 ]
 
 const ICONO = 'text-muted-foreground'
@@ -57,129 +57,129 @@ const ICONO = 'text-muted-foreground'
  * Reemplaza la selección del textarea enfocado con insertText, como lo haría el usuario: entra en el historial del
  * textarea (Ctrl/⌘+Z lo deshace) y dispara input, que React toma por onChange. false si el navegador no lo soporta.
  */
-function reemplazarSeleccion(reemplazo: string): boolean {
+function replaceSeleccion(reemplazo: string): boolean {
   return reemplazo === '' ? document.execCommand('delete') : document.execCommand('insertText', false, reemplazo)
 }
 
-function EditorBloque({
-  bloque,
-  indice,
+function EditorBlock({
+  bloque: block,
+  index,
   total,
   original,
-  errores,
+  errors,
   despachar,
 }: {
-  bloque: BloqueEditor
-  indice: number
+  bloque: BlockEditor
+  index: number
   total: number
   /** El bloque de la plantilla con el mismo título (y número de aparición), si existe. */
-  original: Bloque | null
+  original: Block | null
   /** Los errores de guardado de este bloque (por su clave: siguen acá aunque se mueva). */
-  errores: ErroresBloque
+  errors: ErrorsBlock
   despachar: Despachar
 }) {
-  const numero = indice + 1
-  const id = `bloque-${bloque.clave}`
-  const nombre = bloque.titulo.trim() || `Bloque ${numero}`
+  const numero = index + 1
+  const id = `bloque-${block.clave}`
+  const nombre = block.titulo.trim() || `Bloque ${numero}`
   const area = useRef<HTMLTextAreaElement>(null)
   // Selección a marcar cuando el reducer aplique el texto editado.
-  const seleccionPendiente = useRef<Seleccion | null>(null)
+  const seleccionPending = useRef<Seleccion | null>(null)
   // Al ocultar el foco va a "Mostrar" y al mostrar vuelve a "Ocultar" (cada botón se monta de nuevo). Al subir o bajar,
   // sigue en el botón que se tocó: React mueve el nodo del bloque y el foco se perdería.
   const foco = useRef<'mostrar' | 'ocultar' | 'subir' | 'bajar' | null>(null)
-  const botonSubir = useRef<HTMLButtonElement>(null)
-  const botonBajar = useRef<HTMLButtonElement>(null)
+  const buttonUpload = useRef<HTMLButtonElement>(null)
+  const buttonBajar = useRef<HTMLButtonElement>(null)
   const [confirmando, setConfirmando] = useState(false)
 
   // Un bloque oculto (con "Ocultar" o por una versión nueva del servidor) no deja su confirmación abierta para cuando
   // vuelva a mostrarse.
-  if (bloque.oculto && confirmando) setConfirmando(false)
+  if (block.hidden && confirmando) setConfirmando(false)
 
   useLayoutEffect(() => {
-    const seleccion = seleccionPendiente.current
-    const elemento = area.current
-    if (!seleccion || !elemento) return
-    seleccionPendiente.current = null
-    elemento.focus()
-    elemento.setSelectionRange(seleccion.inicio, seleccion.fin)
-  }, [bloque.contenido])
+    const seleccion = seleccionPending.current
+    const element = area.current
+    if (!seleccion || !element) return
+    seleccionPending.current = null
+    element.focus()
+    element.setSelectionRange(seleccion.inicio, seleccion.fin)
+  }, [block.contenido])
 
   useLayoutEffect(() => {
-    const movido = foco.current
-    if (movido !== 'subir' && movido !== 'bajar') return
+    const moved = foco.current
+    if (moved !== 'subir' && moved !== 'bajar') return
     foco.current = null
     // En la punta, el botón que se tocó queda deshabilitado: el foco pasa al otro del mismo bloque.
     const [tocado, otro] =
-      movido === 'subir' ? [botonSubir.current, botonBajar.current] : [botonBajar.current, botonSubir.current]
-    const destino = tocado && !tocado.disabled ? tocado : otro
-    destino?.focus()
-  }, [indice])
+      moved === 'subir' ? [buttonUpload.current, buttonBajar.current] : [buttonBajar.current, buttonUpload.current]
+    const destination = tocado && !tocado.disabled ? tocado : otro
+    destination?.focus()
+  }, [index])
 
-  const alMontarMostrar = useCallback((boton: HTMLButtonElement | null) => {
-    if (boton && foco.current === 'mostrar') {
+  const onMontarShow = useCallback((button: HTMLButtonElement | null) => {
+    if (button && foco.current === 'mostrar') {
       foco.current = null
-      boton.focus()
+      button.focus()
     }
   }, [])
-  const alMontarOcultar = useCallback((boton: HTMLButtonElement | null) => {
-    if (boton && foco.current === 'ocultar') {
+  const onMontarHide = useCallback((button: HTMLButtonElement | null) => {
+    if (button && foco.current === 'ocultar') {
       foco.current = null
-      boton.focus()
+      button.focus()
     }
   }, [])
 
-  const cambiar = (cambios: Partial<Omit<BloqueEditor, 'clave'>>) =>
-    despachar({ tipo: 'bloque', clave: bloque.clave, cambios })
+  const change = (changes: Partial<Omit<BlockEditor, 'clave'>>) =>
+    despachar({ tipo: 'bloque', clave: block.clave, changes })
 
   /**
    * Aplica una edición de la barra (o Ctrl/⌘+B) con el mismo mecanismo que el pegado: elige el tramo que cambia y lo
    * reemplaza con insertText, así Ctrl/⌘+Z la deshace. Si el navegador no lo soporta, la aplica el reducer.
    */
-  function editar(operacion: (texto: string, seleccion: Seleccion) => Edicion) {
-    const elemento = area.current
-    if (!elemento) return
-    const viejo = elemento.value
-    const { texto, seleccion } = operacion(viejo, { inicio: elemento.selectionStart, fin: elemento.selectionEnd })
+  function edit(operacion: (texto: string, seleccion: Seleccion) => Editing) {
+    const element = area.current
+    if (!element) return
+    const viejo = element.value
+    const { texto, seleccion } = operacion(viejo, { inicio: element.selectionStart, fin: element.selectionEnd })
     // Con el teclado, el foco puede estar en el botón de la barra: insertText actúa sobre el elemento enfocado.
-    elemento.focus()
+    element.focus()
     if (texto !== viejo) {
       const tramo = tramoCambiado(viejo, texto)
-      elemento.setSelectionRange(tramo.inicio, tramo.fin)
-      if (!reemplazarSeleccion(tramo.reemplazo)) {
-        seleccionPendiente.current = seleccion
-        cambiar({ contenido: texto })
+      element.setSelectionRange(tramo.inicio, tramo.fin)
+      if (!replaceSeleccion(tramo.reemplazo)) {
+        seleccionPending.current = seleccion
+        change({ contenido: texto })
         return
       }
     }
-    elemento.setSelectionRange(seleccion.inicio, seleccion.fin)
+    element.setSelectionRange(seleccion.inicio, seleccion.fin)
   }
 
-  function cerrarConfirmacion() {
+  function cerrarConfirmation() {
     setConfirmando(false)
     requestAnimationFrame(() => area.current?.focus())
   }
 
-  const errorTitulo = errores.titulo
-  const errorContenido = errores.contenido
-  const describir = errorTitulo || errorContenido ? `${id}-error` : undefined
-  const puedeRestaurar = original !== null && original.contenido !== bloque.contenido
+  const errorTitle = errors.titulo
+  const errorContent = errors.contenido
+  const describir = errorTitle || errorContent ? `${id}-error` : undefined
+  const canRestore = original !== null && original.contenido !== block.contenido
 
-  if (bloque.oculto) {
+  if (block.hidden) {
     // El nombre accesible es el texto que se ve en la fila.
-    const visible = bloque.titulo.trim() || 'Sin título'
+    const visible = block.titulo.trim() || 'Sin título'
     return (
       <article aria-label={visible} className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed px-3 py-2">
         {/* Con min-w-32 la fila se parte en el celular en vez de achicar el título a nada. */}
         <span className="min-w-32 flex-1 truncate text-[15px] text-muted-foreground">{visible}</span>
-        <Pastilla>Oculto en esta cotización</Pastilla>
+        <Pill>Oculto en esta cotización</Pill>
         <Button
-          ref={alMontarMostrar}
+          ref={onMontarShow}
           type="button"
           variant="outline"
           size="sm"
           onClick={() => {
             foco.current = 'ocultar'
-            cambiar({ oculto: false })
+            change({ hidden: false })
           }}
         >
           <Eye aria-hidden />
@@ -198,47 +198,47 @@ function EditorBloque({
         <Input
           id={`${id}-titulo`}
           aria-label={`Título del bloque ${numero}`}
-          value={bloque.titulo}
+          value={block.titulo}
           placeholder="Sin título"
-          onChange={(evento) => cambiar({ titulo: evento.target.value })}
-          aria-invalid={Boolean(errorTitulo)}
+          onChange={(evento) => change({ titulo: evento.target.value })}
+          aria-invalid={Boolean(errorTitle)}
           aria-describedby={describir}
           className="h-8 min-w-0 flex-1 border-transparent bg-transparent px-1.5 text-[15px] font-medium shadow-none hover:border-input focus-visible:border-ring focus-visible:ring-0 md:text-[15px] dark:bg-transparent"
         />
         <Button
-          ref={botonSubir}
+          ref={buttonUpload}
           type="button"
           variant="ghost"
           size="icon-sm"
           className={ICONO}
           aria-label="Subir bloque"
           title="Subir bloque"
-          disabled={indice === 0}
+          disabled={index === 0}
           onClick={() => {
             foco.current = 'subir'
-            despachar({ tipo: 'moverBloque', clave: bloque.clave, direccion: -1 })
+            despachar({ tipo: 'moverBloque', clave: block.clave, direccion: -1 })
           }}
         >
           <ArrowUp aria-hidden />
         </Button>
         <Button
-          ref={botonBajar}
+          ref={buttonBajar}
           type="button"
           variant="ghost"
           size="icon-sm"
           className={ICONO}
           aria-label="Bajar bloque"
           title="Bajar bloque"
-          disabled={indice === total - 1}
+          disabled={index === total - 1}
           onClick={() => {
             foco.current = 'bajar'
-            despachar({ tipo: 'moverBloque', clave: bloque.clave, direccion: 1 })
+            despachar({ tipo: 'moverBloque', clave: block.clave, direccion: 1 })
           }}
         >
           <ArrowDown aria-hidden />
         </Button>
         <Button
-          ref={alMontarOcultar}
+          ref={onMontarHide}
           type="button"
           variant="ghost"
           size="icon-sm"
@@ -248,12 +248,12 @@ function EditorBloque({
           disabled={confirmando}
           onClick={() => {
             foco.current = 'mostrar'
-            cambiar({ oculto: true })
+            change({ hidden: true })
           }}
         >
           <EyeOff aria-hidden />
         </Button>
-        {puedeRestaurar ? (
+        {canRestore ? (
           <Button
             type="button"
             variant="ghost"
@@ -270,17 +270,17 @@ function EditorBloque({
       </div>
 
       {confirmando && original ? (
-        <ConfirmacionEnLugar
+        <ConfirmationInLugar
           className="m-2"
-          tono="aviso"
+          tone="aviso"
           pregunta="¿Restaurar este bloque desde la plantilla?"
-          detalle="Se pierden los cambios hechos en su texto."
-          textoConfirmar="Restaurar"
-          alConfirmar={() => {
-            cambiar({ titulo: original.titulo, contenido: original.contenido, oculto: false })
-            cerrarConfirmacion()
+          detail="Se pierden los cambios hechos en su texto."
+          textConfirm="Restaurar"
+          onConfirm={() => {
+            change({ titulo: original.titulo, contenido: original.contenido, hidden: false })
+            cerrarConfirmation()
           }}
-          alCancelar={cerrarConfirmacion}
+          onCancelar={cerrarConfirmation}
         />
       ) : null}
 
@@ -291,20 +291,20 @@ function EditorBloque({
         aria-controls={`${id}-contenido`}
         className="flex gap-0.5 border-b bg-muted/30 px-1.5 py-1"
       >
-        {HERRAMIENTAS.map(({ etiqueta, atajo, Icono, aplicar }) => (
+        {HERRAMIENTAS.map(({ label, atajo, Icon, aplicar: apply }) => (
           <Button
-            key={etiqueta}
+            key={label}
             type="button"
             variant="ghost"
             size="icon-sm"
             className={ICONO}
-            aria-label={etiqueta}
-            title={atajo ? `${etiqueta} (${atajo})` : etiqueta}
+            aria-label={label}
+            title={atajo ? `${label} (${atajo})` : label}
             // Sin esto el clic le saca el foco y la selección al texto.
             onMouseDown={(evento) => evento.preventDefault()}
-            onClick={() => editar(aplicar)}
+            onClick={() => edit(apply)}
           >
-            <Icono aria-hidden />
+            <Icon aria-hidden />
           </Button>
         ))}
       </div>
@@ -313,13 +313,13 @@ function EditorBloque({
         ref={area}
         id={`${id}-contenido`}
         aria-label={`Contenido del bloque ${numero}`}
-        value={bloque.contenido}
+        value={block.contenido}
         placeholder="Texto del bloque"
-        onChange={(evento) => cambiar({ contenido: evento.target.value })}
+        onChange={(evento) => change({ contenido: evento.target.value })}
         onKeyDown={(evento) => {
           if ((evento.ctrlKey || evento.metaKey) && !evento.altKey && evento.key.toLowerCase() === 'b') {
             evento.preventDefault()
-            editar(alternarNegrita)
+            edit(alternarNegrita)
           }
         }}
         // Lo pegado desde Word llega como texto plano, pero con sus viñetas y tabs: se lleva al formato mínimo.
@@ -332,65 +332,65 @@ function EditorBloque({
           // insertText conserva Ctrl/⌘+Z (asignar el value por programa lo pierde) y dispara input, que React toma
           // por onChange. Si el navegador no lo soporta, se reemplaza el texto a mano.
           if (!document.execCommand('insertText', false, limpio)) {
-            editar((texto, seleccion) => pegar(texto, seleccion, pegado))
+            edit((texto, seleccion) => pegar(texto, seleccion, pegado))
           }
         }}
-        aria-invalid={Boolean(errorContenido)}
+        aria-invalid={Boolean(errorContent)}
         aria-describedby={describir}
         className="min-h-20 resize-none rounded-none border-0 px-3 py-2.5 text-[15px] shadow-none focus-visible:ring-0 md:text-[15px] dark:bg-transparent"
       />
       {describir ? (
         <p id={describir} className="border-t px-3 py-2 text-sm text-destructive">
-          {[errorTitulo, errorContenido].filter(Boolean).join(' · ')}
+          {[errorTitle, errorContent].filter(Boolean).join(' · ')}
         </p>
       ) : null}
     </article>
   )
 }
 
-const SIN_ERRORES: ErroresBloque = {}
+const WITHOUT_ERRORS: ErrorsBlock = {}
 
-export function TarjetaTextos({
+export function CardTexts({
   bloques,
-  plantilla,
-  errores,
+  plantilla: template,
+  errors,
   despachar,
 }: {
-  bloques: BloqueEditor[]
+  bloques: BlockEditor[]
   /** La plantilla de la cotización (también si está inactiva); null si no tiene. */
-  plantilla: PlantillaEditor | null
+  plantilla: TemplateEditor | null
   /** Los errores de guardado de los bloques, por clave de bloque (erroresDeBloques). */
-  errores: Record<string, ErroresBloque>
+  errors: Record<string, ErrorsBlock>
   despachar: Despachar
 }) {
   const [confirmando, setConfirmando] = useState(false)
-  const botonRestaurar = useRef<HTMLButtonElement>(null)
-  const lista = useRef<HTMLDivElement>(null)
-  const hayQueRestaurar = plantilla !== null && bloques.length > 0 && !mismosBloques(bloques, plantilla.bloques)
+  const buttonRestore = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  const hasQueRestore = template !== null && bloques.length > 0 && !mismosBlocks(bloques, template.bloques)
 
   /**
    * Restaurados, los bloques son otros (claves nuevas) y el botón que se tocó ya no está: el foco va al primero, a su
    * título (o a su "Mostrar", si viene oculto), en vez de quedar en el body.
    */
-  function restaurarTodos() {
-    if (!plantilla) return
-    despachar({ tipo: 'restaurarBloques', bloques: plantilla.bloques })
-    requestAnimationFrame(() => lista.current?.querySelector<HTMLElement>('input, button')?.focus())
+  function restoreTodos() {
+    if (!template) return
+    despachar({ tipo: 'restaurarBloques', bloques: template.bloques })
+    requestAnimationFrame(() => list.current?.querySelector<HTMLElement>('input, button')?.focus())
   }
 
   function cerrar() {
     setConfirmando(false)
-    requestAnimationFrame(() => botonRestaurar.current?.focus())
+    requestAnimationFrame(() => buttonRestore.current?.focus())
   }
 
   return (
-    <Tarjeta
+    <Card
       compacta
       titulo="Textos"
-      acciones={
-        hayQueRestaurar ? (
+      actions={
+        hasQueRestore ? (
           <Button
-            ref={botonRestaurar}
+            ref={buttonRestore}
             type="button"
             variant="ghost"
             size="sm"
@@ -404,45 +404,45 @@ export function TarjetaTextos({
         ) : null
       }
     >
-      {confirmando && plantilla ? (
-        <ConfirmacionEnLugar
-          tono="aviso"
-          pregunta={`¿Restaurar todos los textos desde «${plantilla.nombre}»?`}
-          detalle="Se pierden los cambios hechos en los textos de esta cotización, también los bloques ocultos."
-          textoConfirmar="Restaurar"
-          alConfirmar={() => {
+      {confirmando && template ? (
+        <ConfirmationInLugar
+          tone="aviso"
+          pregunta={`¿Restaurar todos los textos desde «${template.nombre}»?`}
+          detail="Se pierden los cambios hechos en los textos de esta cotización, también los bloques ocultos."
+          textConfirm="Restaurar"
+          onConfirm={() => {
             setConfirmando(false)
-            restaurarTodos()
+            restoreTodos()
           }}
-          alCancelar={cerrar}
+          onCancelar={cerrar}
         />
       ) : null}
       {bloques.length === 0 ? (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed px-4 py-6">
           <p className="flex-1 text-[15px] text-muted-foreground">Esta cotización no tiene textos.</p>
-          {plantilla && plantilla.bloques.length > 0 ? (
+          {template && template.bloques.length > 0 ? (
             // Sin textos no hay nada que perder: restaura sin confirmar.
-            <Button type="button" variant="outline" size="sm" onClick={restaurarTodos}>
+            <Button type="button" variant="outline" size="sm" onClick={restoreTodos}>
               <RotateCcw aria-hidden />
               Restaurar desde la plantilla
             </Button>
           ) : null}
         </div>
       ) : (
-        <div ref={lista} className="space-y-3">
-          {bloques.map((bloque, indice) => (
-            <EditorBloque
-              key={bloque.clave}
-              bloque={bloque}
-              indice={indice}
+        <div ref={list} className="space-y-3">
+          {bloques.map((block, index) => (
+            <EditorBlock
+              key={block.clave}
+              bloque={block}
+              index={index}
               total={bloques.length}
-              original={plantilla ? bloqueDePlantilla(plantilla.bloques, bloques, indice) : null}
-              errores={errores[bloque.clave] ?? SIN_ERRORES}
+              original={template ? blockOfTemplate(template.bloques, bloques, index) : null}
+              errors={errors[block.clave] ?? WITHOUT_ERRORS}
               despachar={despachar}
             />
           ))}
         </div>
       )}
-    </Tarjeta>
+    </Card>
   )
 }

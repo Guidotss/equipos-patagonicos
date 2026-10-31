@@ -1,155 +1,155 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireUsuario } from '@/lib/auth'
+import { requireUser } from '@/lib/auth'
 import {
-  CAMPOS_EMPRESA,
-  CAMPOS_EQUIPO,
-  CAMPOS_FIRMANTE,
-  esquemaEmpresa,
-  esquemaEquipo,
-  esquemaFirmante,
-  esquemaNombrePlantilla,
-} from '@/lib/catalogos/esquemas'
+  FIELDS_COMPANY,
+  FIELDS_EQUIPMENT,
+  FIELDS_SIGNER,
+  schemaCompany,
+  schemaEquipment,
+  schemaSigner,
+  schemaNameTemplate,
+} from '@/lib/catalogs/schemas'
 import {
-  exito,
+  success,
   falloBase,
-  falloValidacion,
-  leerCampos,
-  mensajeErrorBase,
-  type EstadoFormulario,
-} from '@/lib/formularios'
+  falloValidation,
+  readFields,
+  messageErrorBase,
+  type StatusForm,
+} from '@/lib/forms'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
+import { isUuid } from '@/lib/validation'
 
-function exigirUuid(id: string) {
-  if (!esUuid(id)) throw new Error('Identificador inválido')
+function requireUuid(id: string) {
+  if (!isUuid(id)) throw new Error('Identificador inválido')
 }
 
-export async function actualizarEmpresa(_previo: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
-  const usuario = await requireUsuario()
-  const valores = leerCampos(formData, CAMPOS_EMPRESA)
-  if (usuario.rol !== 'admin') return { ok: false, mensaje: 'Solo un administrador puede cambiar estos datos', errores: {}, valores }
-  const datos = esquemaEmpresa.safeParse(valores)
-  if (!datos.success) return falloValidacion(datos.error, valores)
+export async function actualizarCompany(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
+  const user = await requireUser()
+  const values = readFields(formData, FIELDS_COMPANY)
+  if (user.rol !== 'admin') return { ok: false, message: 'Solo un administrador puede cambiar estos datos', errors: {}, values }
+  const datos = schemaCompany.safeParse(values)
+  if (!datos.success) return falloValidation(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('empresa_config').update(datos.data).eq('id', true)
-  if (error) return falloBase(error, valores)
+  if (error) return falloBase(error, values)
 
   revalidatePath('/configuracion/empresa')
-  return exito('Datos de la empresa guardados')
+  return success('Datos de la empresa guardados')
 }
 
-export async function crearFirmante(_previo: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
-  await requireUsuario()
-  const valores = leerCampos(formData, CAMPOS_FIRMANTE)
-  const datos = esquemaFirmante.safeParse(valores)
-  if (!datos.success) return falloValidacion(datos.error, valores)
+export async function crearSigner(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
+  await requireUser()
+  const values = readFields(formData, FIELDS_SIGNER)
+  const datos = schemaSigner.safeParse(values)
+  if (!datos.success) return falloValidation(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('firmantes').insert(datos.data)
-  if (error) return falloBase(error, valores)
+  if (error) return falloBase(error, values)
 
   revalidatePath('/configuracion/firmantes')
-  return exito('Firmante agregado')
+  return success('Firmante agregado')
 }
 
-export async function actualizarFirmante(
+export async function actualizarSigner(
   id: string,
-  _previo: EstadoFormulario,
+  _previous: StatusForm,
   formData: FormData,
-): Promise<EstadoFormulario> {
-  await requireUsuario()
-  exigirUuid(id)
-  const valores = leerCampos(formData, CAMPOS_FIRMANTE)
-  const datos = esquemaFirmante.safeParse(valores)
-  if (!datos.success) return falloValidacion(datos.error, valores)
+): Promise<StatusForm> {
+  await requireUser()
+  requireUuid(id)
+  const values = readFields(formData, FIELDS_SIGNER)
+  const datos = schemaSigner.safeParse(values)
+  if (!datos.success) return falloValidation(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('firmantes').update(datos.data).eq('id', id)
-  if (error) return falloBase(error, valores)
+  if (error) return falloBase(error, values)
 
   revalidatePath('/configuracion/firmantes')
-  return exito('Firmante guardado')
+  return success('Firmante guardado')
 }
 
-export async function cambiarEstadoFirmante(id: string, activo: boolean): Promise<void> {
-  await requireUsuario()
-  exigirUuid(id)
+export async function changeStatusSigner(id: string, activo: boolean): Promise<void> {
+  await requireUser()
+  requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('firmantes').update({ activo }).eq('id', id)
-  if (error) throw new Error(mensajeErrorBase(error))
+  if (error) throw new Error(messageErrorBase(error))
   revalidatePath('/configuracion/firmantes')
 }
 
-export async function crearEquipo(_previo: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
-  await requireUsuario()
-  const valores = leerCampos(formData, CAMPOS_EQUIPO)
-  const datos = esquemaEquipo.safeParse(valores)
-  if (!datos.success) return falloValidacion(datos.error, valores)
+export async function crearEquipment(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
+  await requireUser()
+  const values = readFields(formData, FIELDS_EQUIPMENT)
+  const datos = schemaEquipment.safeParse(values)
+  if (!datos.success) return falloValidation(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').insert(datos.data)
-  if (error) return falloBase(error, valores)
+  if (error) return falloBase(error, values)
 
   revalidatePath('/configuracion/equipos')
-  return exito('Equipo agregado')
+  return success('Equipo agregado')
 }
 
-export async function actualizarEquipo(
+export async function actualizarEquipment(
   id: string,
-  _previo: EstadoFormulario,
+  _previous: StatusForm,
   formData: FormData,
-): Promise<EstadoFormulario> {
-  await requireUsuario()
-  exigirUuid(id)
-  const valores = leerCampos(formData, CAMPOS_EQUIPO)
-  const datos = esquemaEquipo.safeParse(valores)
-  if (!datos.success) return falloValidacion(datos.error, valores)
+): Promise<StatusForm> {
+  await requireUser()
+  requireUuid(id)
+  const values = readFields(formData, FIELDS_EQUIPMENT)
+  const datos = schemaEquipment.safeParse(values)
+  if (!datos.success) return falloValidation(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').update(datos.data).eq('id', id)
-  if (error) return falloBase(error, valores)
+  if (error) return falloBase(error, values)
 
   revalidatePath('/configuracion/equipos')
-  return exito('Equipo guardado')
+  return success('Equipo guardado')
 }
 
-export async function cambiarEstadoEquipo(id: string, activo: boolean): Promise<void> {
-  await requireUsuario()
-  exigirUuid(id)
+export async function changeStatusEquipment(id: string, activo: boolean): Promise<void> {
+  await requireUser()
+  requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').update({ activo }).eq('id', id)
-  if (error) throw new Error(mensajeErrorBase(error))
+  if (error) throw new Error(messageErrorBase(error))
   revalidatePath('/configuracion/equipos')
 }
 
-export async function renombrarPlantilla(
+export async function renameTemplate(
   id: string,
-  _previo: EstadoFormulario,
+  _previous: StatusForm,
   formData: FormData,
-): Promise<EstadoFormulario> {
-  await requireUsuario()
-  exigirUuid(id)
-  const valores = leerCampos(formData, ['nombre'] as const)
-  const datos = esquemaNombrePlantilla.safeParse(valores)
-  if (!datos.success) return falloValidacion(datos.error, valores)
+): Promise<StatusForm> {
+  await requireUser()
+  requireUuid(id)
+  const values = readFields(formData, ['nombre'] as const)
+  const datos = schemaNameTemplate.safeParse(values)
+  if (!datos.success) return falloValidation(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('plantillas').update(datos.data).eq('id', id)
-  if (error) return falloBase(error, valores, { campo: 'nombre', mensaje: 'Ya existe una plantilla con ese nombre' })
+  if (error) return falloBase(error, values, { campo: 'nombre', message: 'Ya existe una plantilla con ese nombre' })
 
   revalidatePath('/configuracion/plantillas')
   revalidatePath(`/configuracion/plantillas/${id}`)
-  return exito('Plantilla renombrada')
+  return success('Plantilla renombrada')
 }
 
-export async function cambiarEstadoPlantilla(id: string, activa: boolean): Promise<void> {
-  await requireUsuario()
-  exigirUuid(id)
+export async function changeStatusTemplate(id: string, activa: boolean): Promise<void> {
+  await requireUser()
+  requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('plantillas').update({ activa }).eq('id', id)
-  if (error) throw new Error(mensajeErrorBase(error))
+  if (error) throw new Error(messageErrorBase(error))
   revalidatePath('/configuracion/plantillas')
 }

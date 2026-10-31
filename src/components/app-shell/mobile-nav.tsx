@@ -7,10 +7,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { SidebarNav } from './sidebar-nav'
 
 export function MobileNav({ logo }: { logo: React.ReactNode }) {
-  const [abierto, setAbierto] = useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
-    <Sheet open={abierto} onOpenChange={setAbierto}>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Abrir menú">
           <Menu className="size-5" />
@@ -21,7 +21,7 @@ export function MobileNav({ logo }: { logo: React.ReactNode }) {
           <SheetTitle className="sr-only">Equipos Patagónicos</SheetTitle>
           {logo}
         </SheetHeader>
-        <SidebarNav onNavigate={() => setAbierto(false)} />
+        <SidebarNav onNavigate={() => setOpen(false)} />
       </SheetContent>
     </Sheet>
   )

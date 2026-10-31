@@ -3,23 +3,23 @@
 import { PanelsLeftBottom, Pencil, Plus, Printer, StickyNote } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Contenido } from '@/components/app-shell/encabezado'
-import { Campo } from '@/components/formulario/campo'
-import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
-import { FormularioAccion } from '@/components/formulario/formulario-accion'
-import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
-import { FranjaVista, FrasesResueltas, Tarjeta, useVistaEnVivo } from '@/components/formulario/tarjeta'
+import { Content } from '@/components/app-shell/header'
+import { Field } from '@/components/form/field'
+import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import { FormAction } from '@/components/form/form-action'
+import { MessageForm } from '@/components/form/message-form'
+import { BandView, PhrasesResolved, Card, useViewInLive } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Pastilla } from '@/components/ui/pastilla'
+import { Pill } from '@/components/ui/pill'
 import { Textarea } from '@/components/ui/textarea'
-import type { CampoEquipo } from '@/lib/catalogos/esquemas'
-import { valorCampo, type AccionFormulario, type EstadoFormulario } from '@/lib/formularios'
+import type { FieldEquipment } from '@/lib/catalogs/schemas'
+import { valueField, type ActionForm, type StatusForm } from '@/lib/forms'
 import { cn } from '@/lib/utils'
-import { IconoGrua } from './icono-grua'
+import { IconCrane } from './icon-crane'
 
 /** Un equipo con la capacidad ya como texto ("60,5"). */
-export type Equipo = {
+export type Equipment = {
   id: string
   nombre: string
   capacidad_tn: string
@@ -32,21 +32,21 @@ export type Equipo = {
 
 const LISTA = '/configuracion/equipos'
 
-type DefinicionCampo = { campo: CampoEquipo; etiqueta: string; ancho?: boolean; props?: React.ComponentProps<typeof Input> }
+type DefinitionField = { campo: FieldEquipment; label: string; ancho?: boolean; props?: React.ComponentProps<typeof Input> }
 
-const CAMPOS_DATOS: DefinicionCampo[] = [
-  { campo: 'nombre', etiqueta: 'Nombre', ancho: true },
-  { campo: 'capacidad_tn', etiqueta: 'Capacidad (TN)', props: { inputMode: 'decimal' } },
-  { campo: 'identificacion', etiqueta: 'N° interno o dominio' },
-  { campo: 'marca', etiqueta: 'Marca' },
-  { campo: 'modelo', etiqueta: 'Modelo' },
+const FIELDS_DATA: DefinitionField[] = [
+  { campo: 'nombre', label: 'Nombre', ancho: true },
+  { campo: 'capacidad_tn', label: 'Capacidad (TN)', props: { inputMode: 'decimal' } },
+  { campo: 'identificacion', label: 'N° interno o dominio' },
+  { campo: 'marca', label: 'Marca' },
+  { campo: 'modelo', label: 'Modelo' },
 ]
 
-const CAMPOS_VISTA = ['capacidad_tn', 'descripcion'] as const
+const FIELDS_VIEW = ['capacidad_tn', 'descripcion'] as const
 
-type Inicial = Partial<Record<CampoEquipo, string>>
+type Initial = Partial<Record<FieldEquipment, string>>
 
-function Dato({ activo, className, children }: { activo: boolean; className?: string; children: React.ReactNode }) {
+function Data({ activo, className, children }: { activo: boolean; className?: string; children: React.ReactNode }) {
   return (
     <span
       className={cn(
@@ -60,124 +60,124 @@ function Dato({ activo, className, children }: { activo: boolean; className?: st
   )
 }
 
-function PastillaEstado({ activo }: { activo: boolean }) {
-  return activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>
+function PillStatus({ activo }: { activo: boolean }) {
+  return activo ? <Pill tone="exito">Activo</Pill> : <Pill>Inactivo</Pill>
 }
 
 /** Capacidad y marca · modelo, como chips. */
-function datosClave(equipo: Equipo): string[] {
+function dataKey(equipo: Equipment): string[] {
   return [
     equipo.capacidad_tn ? `${equipo.capacidad_tn} TN` : '',
     [equipo.marca, equipo.modelo].filter(Boolean).join(' · '),
   ].filter(Boolean)
 }
 
-function CamposDatos({ estado, inicial }: { estado: EstadoFormulario; inicial: Inicial }) {
+function FieldsData({ estado, initial }: { estado: StatusForm; initial: Initial }) {
   return (
     <div className="grid gap-x-4 gap-y-3 @sm:grid-cols-2">
-      {CAMPOS_DATOS.map(({ campo, etiqueta, ancho, props }) => (
-        <Campo
-          key={campo}
-          id={`equipo-${campo}`}
-          etiqueta={etiqueta}
-          error={estado.errores[campo]}
+      {FIELDS_DATA.map(({ campo: field, label, ancho, props }) => (
+        <Field
+          key={field}
+          id={`equipo-${field}`}
+          label={label}
+          error={estado.errors[field]}
           className={ancho ? '@sm:col-span-2' : undefined}
         >
           <Input
-            id={`equipo-${campo}`}
-            name={campo}
-            defaultValue={valorCampo(estado, inicial, campo)}
-            aria-invalid={Boolean(estado.errores[campo])}
+            id={`equipo-${field}`}
+            name={field}
+            defaultValue={valueField(estado, initial, field)}
+            aria-invalid={Boolean(estado.errors[field])}
             {...props}
           />
-        </Campo>
+        </Field>
       ))}
     </div>
   )
 }
 
 /** Alta (sin equipo) o edición de un equipo en pantalla propia. */
-export function FormularioEquipo({
+export function FormEquipment({
   accion,
   equipo,
-  botonEstado,
-  frases,
+  buttonStatus,
+  phrases,
 }: {
-  accion: AccionFormulario
-  equipo?: Equipo
+  accion: ActionForm
+  equipo?: Equipment
   /** Activar/Desactivar, solo en edición. */
-  botonEstado?: React.ReactNode
+  buttonStatus?: React.ReactNode
   /** Oraciones de las plantillas activas con {{capacidad}} o {{equipo_descripcion}}. */
-  frases: string[]
+  phrases: string[]
 }) {
   const router = useRouter()
-  const inicial: Inicial = equipo ?? {}
-  const { vista, alEscribir, sincronizar } = useVistaEnVivo(CAMPOS_VISTA, inicial)
-  const textoGuardar = equipo ? 'Guardar cambios' : 'Guardar equipo'
-  const chips = equipo ? datosClave(equipo) : []
+  const initial: Initial = equipo ?? {}
+  const { view, onEscribir, sincronizar } = useViewInLive(FIELDS_VIEW, initial)
+  const textSave = equipo ? 'Guardar cambios' : 'Guardar equipo'
+  const chips = equipo ? dataKey(equipo) : []
 
   return (
-    <FormularioAccion
+    <FormAction
       accion={accion}
-      textoBoton={textoGuardar}
-      boton={false}
-      alGuardar={() => router.push(LISTA)}
-      encabezado={() => (
-        <Contenido className="max-w-6xl pb-0">
-          <EncabezadoFormulario
+      textButton={textSave}
+      button={false}
+      onSave={() => router.push(LISTA)}
+      header={() => (
+        <Content className="max-w-6xl pb-0">
+          <HeaderForm
             titulo={equipo?.nombre || 'Nuevo equipo'}
-            estado={equipo ? <PastillaEstado activo={equipo.activo} /> : null}
+            estado={equipo ? <PillStatus activo={equipo.activo} /> : null}
             descripcion={chips.length > 0 ? chips.join(' · ') : 'Datos del equipo y descripción que se usa al cotizar.'}
-            acciones={botonEstado}
+            actions={buttonStatus}
           />
-        </Contenido>
+        </Content>
       )}
     >
-      {(estado, pendiente) => (
-        <Contenido className="max-w-6xl pt-6 pb-28">
-          <MensajeFormulario estado={estado} />
-          <HojaFormulario ref={sincronizar} onInput={alEscribir}>
-            <Tarjeta
-              icono={PanelsLeftBottom}
+      {(estado, pending) => (
+        <Content className="max-w-6xl pt-6 pb-28">
+          <MessageForm estado={estado} />
+          <SheetForm ref={sincronizar} onInput={onEscribir}>
+            <Card
+              icon={PanelsLeftBottom}
               titulo="Datos del equipo"
               descripcion="Identifican la grúa en las listas y en el combo de la cotización."
             >
-              <CamposDatos estado={estado} inicial={inicial} />
-            </Tarjeta>
-            <Tarjeta
-              icono={StickyNote}
+              <FieldsData estado={estado} initial={initial} />
+            </Card>
+            <Card
+              icon={StickyNote}
               titulo="Texto para la cotización"
               descripcion="Es el texto de “Equipo ofrecido”."
-              franja={
-                frases.length > 0 ? (
-                  <FranjaVista icono={Printer} titulo="Así sale en la cotización">
-                    <FrasesResueltas
-                      frases={frases}
-                      valores={{ capacidad: vista.capacidad_tn, equipo_descripcion: vista.descripcion }}
+              band={
+                phrases.length > 0 ? (
+                  <BandView icon={Printer} titulo="Así sale en la cotización">
+                    <PhrasesResolved
+                      phrases={phrases}
+                      values={{ capacidad: view.capacidad_tn, equipo_descripcion: view.descripcion }}
                     />
-                  </FranjaVista>
+                  </BandView>
                 ) : null
               }
             >
-              <Campo id="equipo-descripcion" etiqueta="Descripción para la cotización" error={estado.errores.descripcion}>
+              <Field id="equipo-descripcion" label="Descripción para la cotización" error={estado.errors.descripcion}>
                 <Textarea
                   id="equipo-descripcion"
                   name="descripcion"
-                  defaultValue={valorCampo(estado, inicial, 'descripcion')}
-                  aria-invalid={Boolean(estado.errores.descripcion)}
+                  defaultValue={valueField(estado, initial, 'descripcion')}
+                  aria-invalid={Boolean(estado.errors.descripcion)}
                   className="min-h-56"
                 />
-              </Campo>
-            </Tarjeta>
-          </HojaFormulario>
-          <AccionesFormulario volver={LISTA} textoBoton={textoGuardar} pendiente={pendiente} />
-        </Contenido>
+              </Field>
+            </Card>
+          </SheetForm>
+          <ActionsForm back={LISTA} textButton={textSave} pendiente={pending} />
+        </Content>
       )}
-    </FormularioAccion>
+    </FormAction>
   )
 }
 
-export function NuevoEquipo() {
+export function NewEquipment() {
   return (
     <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
       <Link href={`${LISTA}/nuevo`}>
@@ -188,7 +188,7 @@ export function NuevoEquipo() {
   )
 }
 
-export function Equipos({ equipos }: { equipos: (Equipo & { boton: React.ReactNode })[] }) {
+export function Equipment({ equipos }: { equipos: (Equipment & { button: React.ReactNode })[] }) {
   if (equipos.length === 0) {
     return (
       <p className="rounded-xl border border-dashed px-6 py-12 text-center text-muted-foreground">
@@ -207,7 +207,7 @@ export function Equipos({ equipos }: { equipos: (Equipo & { boton: React.ReactNo
               equipo.activo ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground',
             )}
           >
-            <IconoGrua className="size-6 stroke-[1.5] sm:size-9" />
+            <IconCrane className="size-6 stroke-[1.5] sm:size-9" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
@@ -215,22 +215,22 @@ export function Equipos({ equipos }: { equipos: (Equipo & { boton: React.ReactNo
                 <p className={cn('text-lg font-medium', equipo.activo ? null : 'text-muted-foreground')}>{equipo.nombre}</p>
                 {equipo.capacidad_tn || equipo.marca || equipo.modelo || equipo.identificacion ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {[...datosClave(equipo), equipo.identificacion].filter(Boolean).map((dato, indice) => (
-                      <Dato key={indice} activo={equipo.activo}>
-                        {dato}
-                      </Dato>
+                    {[...dataKey(equipo), equipo.identificacion].filter(Boolean).map((data, index) => (
+                      <Data key={index} activo={equipo.activo}>
+                        {data}
+                      </Data>
                     ))}
                   </div>
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
-                <PastillaEstado activo={equipo.activo} />
+                <PillStatus activo={equipo.activo} />
                 <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
                   <Link href={`${LISTA}/${equipo.id}`} aria-label={`Editar ${equipo.nombre}`}>
                     <Pencil />
                   </Link>
                 </Button>
-                {equipo.boton}
+                {equipo.button}
               </div>
             </div>
             {equipo.descripcion ? (

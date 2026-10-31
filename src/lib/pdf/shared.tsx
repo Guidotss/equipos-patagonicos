@@ -1,12 +1,12 @@
 import { Image, Text, View } from '@react-pdf/renderer'
-import type { DocumentoCotizacion } from '@/lib/cotizaciones/documento'
-import type { NodoFormato, Segmento } from '@/lib/plantillas/formato'
-import { partirVariables } from '@/lib/plantillas/variables'
-import { estilos } from './estilos'
-import { RUTA_LOGO } from './fuentes'
+import type { DocumentQuote } from '@/lib/quotes/document'
+import type { NodoFormat, Segmento } from '@/lib/templates/format'
+import { partirVariables } from '@/lib/templates/variables'
+import { styles } from './styles'
+import { PATH_LOGO } from './fonts'
 
-type EstiloPdf = React.ComponentProps<typeof View>['style']
-type EstiloImagen = React.ComponentProps<typeof Image>['style']
+type StylePdf = React.ComponentProps<typeof View>['style']
+type StyleImagen = React.ComponentProps<typeof Image>['style']
 
 /**
  * Texto que puede tener {{variables}} sin completar. Va siempre adentro de un <Text>.
@@ -15,14 +15,14 @@ type EstiloImagen = React.ComponentProps<typeof Image>['style']
  * Va por prop y no por un contexto de React: las rutas de Next empaquetan estos componentes con el React de
  * servidor (sin createContext ni useContext) y react-pdf, que se carga sin empaquetar, los dibuja con otro React.
  */
-export function TextoVariables({ texto, resaltar = false }: { texto: string; resaltar?: boolean }) {
-  if (!resaltar || !texto.includes('{{')) return <>{texto}</>
+export function TextVariables({ texto, highlight = false }: { texto: string; highlight?: boolean }) {
+  if (!highlight || !texto.includes('{{')) return <>{texto}</>
   // partirVariables deja los nombres en las posiciones impares.
   return (
     <>
-      {partirVariables(texto).map((parte, indice) =>
-        indice % 2 === 1 ? (
-          <Text key={indice} style={estilos.variable}>{`{{${parte}}}`}</Text>
+      {partirVariables(texto).map((parte, index) =>
+        index % 2 === 1 ? (
+          <Text key={index} style={styles.variable}>{`{{${parte}}}`}</Text>
         ) : (
           parte
         ),
@@ -32,26 +32,26 @@ export function TextoVariables({ texto, resaltar = false }: { texto: string; res
 }
 
 /** El número de la cotización; sin guardar todavía no tiene (la vista previa muestra la variable). */
-export function textoNumero(numero: number | null): string {
+export function textNumber(numero: number | null): string {
   return numero === null ? '{{numero}}' : String(numero)
 }
 
 /** Logo arriba a la derecha. Cada formato puede pasar su tamaño de logo. */
-export function Membrete({ logo = estilos.logo }: { logo?: EstiloImagen }) {
+export function Letterhead({ logo = styles.logo }: { logo?: StyleImagen }) {
   return (
-    <View style={estilos.membrete} fixed>
+    <View style={styles.letterhead} fixed>
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf no tiene alt */}
-      <Image src={RUTA_LOGO} style={logo} />
+      <Image src={PATH_LOGO} style={logo} />
     </View>
   )
 }
 
-export function Segmentos({ segmentos, resaltar }: { segmentos: Segmento[]; resaltar?: boolean }) {
+export function Segmentos({ segmentos, highlight }: { segmentos: Segmento[]; highlight?: boolean }) {
   return (
     <>
-      {segmentos.map((segmento, indice) => (
-        <Text key={indice} style={segmento.negrita ? estilos.negrita : undefined}>
-          <TextoVariables texto={segmento.texto} resaltar={resaltar} />
+      {segmentos.map((segmento, index) => (
+        <Text key={index} style={segmento.negrita ? styles.negrita : undefined}>
+          <TextVariables texto={segmento.texto} highlight={highlight} />
         </Text>
       ))}
     </>
@@ -59,27 +59,27 @@ export function Segmentos({ segmentos, resaltar }: { segmentos: Segmento[]; resa
 }
 
 /** Texto con formato mínimo. Nivel 1 con el guion de los originales; nivel 2 con viñeta. */
-export function TextoFormateado({
+export function TextFormatted({
   nodos,
-  estilo,
-  resaltar,
+  style,
+  highlight,
 }: {
-  nodos: NodoFormato[]
-  estilo?: EstiloPdf
-  resaltar?: boolean
+  nodos: NodoFormat[]
+  style?: StylePdf
+  highlight?: boolean
 }) {
   return (
-    <View style={estilo}>
-      {nodos.map((nodo, indice) =>
+    <View style={style}>
+      {nodos.map((nodo, index) =>
         nodo.tipo === 'parrafo' ? (
-          <Text key={indice} style={estilos.parrafo}>
-            <Segmentos segmentos={nodo.segmentos} resaltar={resaltar} />
+          <Text key={index} style={styles.parrafo}>
+            <Segmentos segmentos={nodo.segmentos} highlight={highlight} />
           </Text>
         ) : (
-          <View key={indice} style={estilos.vineta} wrap={false}>
-            <Text style={nodo.nivel === 1 ? estilos.marcaVineta1 : estilos.marcaVineta2}>{nodo.nivel === 1 ? '-' : '•'}</Text>
-            <Text style={estilos.textoVineta}>
-              <Segmentos segmentos={nodo.segmentos} resaltar={resaltar} />
+          <View key={index} style={styles.vineta} wrap={false}>
+            <Text style={nodo.nivel === 1 ? styles.markVineta1 : styles.markVineta2}>{nodo.nivel === 1 ? '-' : '•'}</Text>
+            <Text style={styles.textVineta}>
+              <Segmentos segmentos={nodo.segmentos} highlight={highlight} />
             </Text>
           </View>
         ),
@@ -89,27 +89,27 @@ export function TextoFormateado({
 }
 
 /** Con `conLogo`, debajo va un logo más chico alineado a la izquierda (como en la por jornada original). */
-export function Firma({ firmante, conLogo }: { firmante: DocumentoCotizacion['firmante']; conLogo?: boolean }) {
+export function Signature({ firmante, withLogo }: { firmante: DocumentQuote['firmante']; withLogo?: boolean }) {
   if (!firmante) return null
   return (
-    <View style={estilos.firma} wrap={false}>
+    <View style={styles.signature} wrap={false}>
       <Text>{firmante.nombre}</Text>
       {firmante.cargo ? <Text>{firmante.cargo}</Text> : null}
       {firmante.telefono ? <Text>{firmante.telefono}</Text> : null}
-      {conLogo ? (
+      {withLogo ? (
         // eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf no tiene alt
-        <Image src={RUTA_LOGO} style={estilos.logoFirma} />
+        <Image src={PATH_LOGO} style={styles.logoSignature} />
       ) : null}
     </View>
   )
 }
 
 /** Con `linea` (la por jornada), arriba va una línea azul fina del ancho del cuerpo, en una posición fija. */
-export function Pie({ pie, linea }: { pie: DocumentoCotizacion['pie']; linea?: boolean }) {
+export function Footer({ pie: footer, line }: { pie: DocumentQuote['pie']; line?: boolean }) {
   return (
-    <View style={[estilos.pie, linea ? estilos.pieJornada : estilos.pieMensual]} fixed>
-      <Text style={estilos.pieDireccion}>{pie.linea}</Text>
-      {pie.web ? <Text>{pie.web}</Text> : null}
+    <View style={[styles.pie, line ? styles.footerDaily : styles.footerMonthly]} fixed>
+      <Text style={styles.footerDireccion}>{footer.line}</Text>
+      {footer.web ? <Text>{footer.web}</Text> : null}
     </View>
   )
 }

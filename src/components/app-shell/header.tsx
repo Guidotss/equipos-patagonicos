@@ -1,27 +1,27 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
-export type Miga = { texto: string; href?: string }
+export type Crumb = { texto: string; href?: string }
 
 /** Barra fina de arriba con el camino hasta la página actual. */
-export function BarraMigas({ migas }: { migas: Miga[] }) {
+export function BarCrumbs({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <div className="z-10 flex h-14 items-center border-b bg-background/90 px-4 backdrop-blur md:sticky md:top-0 md:px-9">
       <nav aria-label="Ubicación" className="min-w-0 flex-1">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-          {migas.map((miga, indice) => (
+          {crumbs.map((crumb, index) => (
             <li
-              key={`${indice}-${miga.texto}`}
-              className={cn('flex min-w-0 items-center gap-1.5', indice === 0 && 'shrink-0')}
+              key={`${index}-${crumb.texto}`}
+              className={cn('flex min-w-0 items-center gap-1.5', index === 0 && 'shrink-0')}
             >
-              {indice > 0 ? <span aria-hidden className="shrink-0">/</span> : null}
-              {miga.href ? (
-                <Link href={miga.href} title={miga.texto} className="min-w-0 truncate transition-colors hover:text-foreground">
-                  {miga.texto}
+              {index > 0 ? <span aria-hidden className="shrink-0">/</span> : null}
+              {crumb.href ? (
+                <Link href={crumb.href} title={crumb.texto} className="min-w-0 truncate transition-colors hover:text-foreground">
+                  {crumb.texto}
                 </Link>
               ) : (
-                <span aria-current="page" title={miga.texto} className="min-w-0 truncate text-foreground">
-                  {miga.texto}
+                <span aria-current="page" title={crumb.texto} className="min-w-0 truncate text-foreground">
+                  {crumb.texto}
                 </span>
               )}
             </li>
@@ -33,12 +33,12 @@ export function BarraMigas({ migas }: { migas: Miga[] }) {
 }
 
 /** Banda azul con la trama de ganchos de grúa que abre las fichas y las secciones principales. */
-export function Portada({ className, children }: { className?: string; children?: React.ReactNode }) {
+export function Cover({ className, children }: { className?: string; children?: React.ReactNode }) {
   return (
-    <div className={cn('relative h-30 overflow-hidden bg-linear-to-r from-portada-desde to-portada-hasta', className)}>
+    <div className={cn('relative h-30 overflow-hidden bg-linear-to-r from-cover-from to-cover-to', className)}>
       <div
         aria-hidden
-        className="absolute inset-y-0 right-0 w-3/5 bg-[url(/portada-ganchos.svg)] bg-size-[auto_100%] bg-right bg-repeat-x mask-l-from-40%"
+        className="absolute inset-y-0 right-0 w-3/5 bg-[url(/cover-hooks.svg)] bg-size-[auto_100%] bg-right bg-repeat-x mask-l-from-40%"
       />
       {children ? <div className="relative h-full">{children}</div> : null}
     </div>
@@ -46,14 +46,14 @@ export function Portada({ className, children }: { className?: string; children?
 }
 
 /** Encabezado de una sección principal: título y bajada en blanco sobre la banda. */
-export function EncabezadoSeccion({ titulo, descripcion }: { titulo: string; descripcion?: string }) {
+export function HeaderSection({ titulo: title, descripcion }: { titulo: string; descripcion?: string }) {
   return (
-    <Portada>
+    <Cover>
       <div className="flex h-full flex-col justify-center gap-1 px-4 md:px-9">
-        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-[2rem]">{titulo}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-[2rem]">{title}</h1>
         {descripcion ? <p className="text-white/80 md:text-lg">{descripcion}</p> : null}
       </div>
-    </Portada>
+    </Cover>
   )
 }
 
@@ -61,22 +61,22 @@ export function EncabezadoSeccion({ titulo, descripcion }: { titulo: string; des
  * Encabezado de una ficha (cliente, presupuesto…): banda, recuadro superpuesto con la inicial o un ícono,
  * título con su estado, datos clave y acciones.
  */
-export function EncabezadoFicha({
-  titulo,
+export function HeaderFicha({
+  titulo: title,
   recuadro,
   estado,
   datos,
-  acciones,
+  actions,
 }: {
   titulo: string
   recuadro: React.ReactNode
   estado?: React.ReactNode
   datos?: React.ReactNode
-  acciones?: React.ReactNode
+  actions?: React.ReactNode
 }) {
   return (
     <header>
-      <Portada />
+      <Cover />
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3 px-4 md:px-9">
         <div
           aria-hidden
@@ -86,12 +86,12 @@ export function EncabezadoFicha({
         </div>
         <div className="min-w-0 flex-1 basis-72 space-y-1 sm:pt-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{titulo}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
             {estado}
           </div>
           {datos ? <div className="text-[15px] text-foreground/80">{datos}</div> : null}
         </div>
-        {acciones ? <div className="flex items-center gap-2 sm:pt-4">{acciones}</div> : null}
+        {actions ? <div className="flex items-center gap-2 sm:pt-4">{actions}</div> : null}
       </div>
     </header>
   )
@@ -101,18 +101,18 @@ export function EncabezadoFicha({
  * Encabezado de una página sin banda (listas, subpáginas de configuración). `compacto` es el del editor de cotización:
  * título más chico y en semibold para que entren el número, la pastilla y tres botones en una fila a 1200 px.
  */
-export function EncabezadoPagina({
-  titulo,
+export function HeaderPage({
+  titulo: title,
   descripcion,
   extra,
-  acciones,
-  compacto = false,
+  actions,
+  compact = false,
 }: {
   titulo: string
   descripcion?: React.ReactNode
   extra?: React.ReactNode
-  acciones?: React.ReactNode
-  compacto?: boolean
+  actions?: React.ReactNode
+  compact?: boolean
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
@@ -121,21 +121,21 @@ export function EncabezadoPagina({
           <h1
             className={cn(
               'leading-tight tracking-tight',
-              compacto ? 'text-[1.75rem] font-semibold' : 'text-[2.1875rem] font-normal',
+              compact ? 'text-[1.75rem] font-semibold' : 'text-[2.1875rem] font-normal',
             )}
           >
-            {titulo}
+            {title}
           </h1>
           {extra}
         </div>
         {descripcion ? <p className="text-[15px] text-muted-foreground">{descripcion}</p> : null}
       </div>
-      {acciones ? <div className="flex flex-wrap items-center gap-2">{acciones}</div> : null}
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   )
 }
 
 /** Margen del contenido de cada página, debajo de la barra de migas y la banda. */
-export function Contenido({ className, children }: { className?: string; children: React.ReactNode }) {
+export function Content({ className, children }: { className?: string; children: React.ReactNode }) {
   return <div className={cn('max-w-[90rem] space-y-6 px-4 py-8 md:px-9', className)}>{children}</div>
 }

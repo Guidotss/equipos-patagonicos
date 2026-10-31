@@ -1,14 +1,14 @@
 import type { Metadata } from 'next'
-import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
-import { Plantillas } from '@/components/configuracion/plantillas'
-import { BotonEstado } from '@/components/formulario/boton-estado'
-import { FORMATOS, type Formato } from '@/lib/plantillas/contenido'
+import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
+import { Templates } from '@/components/settings/templates'
+import { ButtonStatus } from '@/components/form/button-status'
+import { FORMATOS, type Format } from '@/lib/templates/content'
 import { createClient } from '@/lib/supabase/server'
-import { cambiarEstadoPlantilla } from '../actions'
+import { changeStatusTemplate } from '../actions'
 
 export const metadata: Metadata = { title: 'Plantillas' }
 
-export default async function PlantillasPage() {
+export default async function TemplatesPage() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('plantillas')
@@ -17,28 +17,28 @@ export default async function PlantillasPage() {
     .order('nombre')
   if (error) throw error
 
-  const plantillas = data.map((plantilla) => ({
-    ...plantilla,
-    formato: FORMATOS[plantilla.formato as Formato] ?? plantilla.formato,
-    boton: (
-      <BotonEstado
-        activo={plantilla.activa}
-        etiqueta={plantilla.nombre}
-        accion={cambiarEstadoPlantilla.bind(null, plantilla.id, !plantilla.activa)}
+  const plantillas = data.map((template) => ({
+    ...template,
+    formato: FORMATOS[template.formato as Format] ?? template.formato,
+    button: (
+      <ButtonStatus
+        activo={template.activa}
+        label={template.nombre}
+        accion={changeStatusTemplate.bind(null, template.id, !template.activa)}
       />
     ),
   }))
 
   return (
     <>
-      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Plantillas' }]} />
-      <Contenido>
-        <EncabezadoPagina
+      <BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Plantillas' }]} />
+      <Content>
+        <HeaderPage
           titulo="Plantillas"
           descripcion="Creá plantillas desde una cotización o abrí una para editar sus textos e ítems."
         />
-        <Plantillas plantillas={plantillas} />
-      </Contenido>
+        <Templates plantillas={plantillas} />
+      </Content>
     </>
   )
 }

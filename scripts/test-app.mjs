@@ -1,12 +1,12 @@
 import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { validarEntornoPruebas } from "./pruebas-entorno.mjs";
+import { validateEnvTests } from './test-env.mjs';
 
-validarEntornoPruebas();
-const appDir = process.env.EP_PRUEBAS_APP_DIR;
-const root = process.env.EP_PRUEBAS_REPO_ROOT;
-if (!appDir || !root || !process.env.EP_PRUEBAS_APP_STATE_FILE)
+validateEnvTests();
+const appDir = process.env.EP_TESTS_APP_DIR;
+const root = process.env.EP_TESTS_REPO_ROOT;
+if (!appDir || !root || !process.env.EP_TESTS_APP_STATE_FILE)
   throw new Error("Falta el directorio temporal de Next");
 const child = spawn(
   process.execPath,
@@ -32,10 +32,10 @@ child.once("error", (error) => {
 });
 if (child.pid)
   writeFileSync(
-    process.env.EP_PRUEBAS_APP_STATE_FILE,
+    process.env.EP_TESTS_APP_STATE_FILE,
     JSON.stringify({
       pid: child.pid,
-      runId: process.env.EP_PRUEBAS_RUN_ID,
+      runId: process.env.EP_TESTS_RUN_ID,
       appDir,
     }),
     { mode: 0o600 },

@@ -1,38 +1,38 @@
 import { Document, Page, Text, View } from '@react-pdf/renderer'
-import type { DocumentoCotizacion } from '@/lib/cotizaciones/documento'
-import { formatMontoJornada } from '@/lib/format/montos'
-import { Firma, Membrete, Pie, TextoFormateado, TextoVariables } from './comunes'
-import { estilos } from './estilos'
+import type { DocumentQuote } from '@/lib/quotes/document'
+import { formatAmountDaily } from '@/lib/format/amounts'
+import { Signature, Letterhead, Footer, TextFormatted, TextVariables } from './shared'
+import { styles } from './styles'
 
-type Item = DocumentoCotizacion['items'][number]
+type Item = DocumentQuote['items'][number]
 
 /** Agrupa los ítems por sección respetando el orden en que aparecen. */
-function agruparPorSeccion(items: Item[]): { seccion: string; items: Item[] }[] {
-  const grupos: { seccion: string; items: Item[] }[] = []
+function agruparBySection(items: Item[]): { seccion: string; items: Item[] }[] {
+  const groups: { seccion: string; items: Item[] }[] = []
   for (const item of items) {
-    const ultimo = grupos.at(-1)
-    if (ultimo && ultimo.seccion === item.seccion) ultimo.items.push(item)
-    else grupos.push({ seccion: item.seccion, items: [item] })
+    const last = groups.at(-1)
+    if (last && last.seccion === item.seccion) last.items.push(item)
+    else groups.push({ seccion: item.seccion, items: [item] })
   }
-  return grupos
+  return groups
 }
 
-function conDosPuntos(titulo: string) {
-  return titulo.endsWith(':') ? titulo : `${titulo}:`
+function withDosPuntos(title: string) {
+  return title.endsWith(':') ? title : `${title}:`
 }
 
-const cuerpo = { fontWeight: 'bold' as const, fontSize: 10.5 }
+const body = { fontWeight: 'bold' as const, fontSize: 10.5 }
 
-export function CotizacionJornada({ doc, resaltar }: { doc: DocumentoCotizacion; resaltar?: boolean }) {
+export function QuoteDaily({ doc, highlight }: { doc: DocumentQuote; highlight?: boolean }) {
   const { destinatario } = doc
-  const conTitulo = doc.bloques.filter((bloque) => bloque.titulo)
-  const sinTitulo = doc.bloques.filter((bloque) => !bloque.titulo)
+  const withTitle = doc.bloques.filter((block) => block.titulo)
+  const withoutTitle = doc.bloques.filter((block) => !block.titulo)
 
   return (
     <Document title={`Cotización N° ${doc.numero ?? '{{numero}}'}`} language="es-AR">
-      <Page size="A4" style={[estilos.pagina, estilos.paginaJornada, cuerpo]}>
-        <Membrete />
-        <Text style={estilos.fecha}>{doc.encabezadoFecha}</Text>
+      <Page size="A4" style={[styles.pagina, styles.pageDaily, body]}>
+        <Letterhead />
+        <Text style={styles.fecha}>{doc.encabezadoFecha}</Text>
 
         <View style={{ marginBottom: 12 }}>
           <Text>Señores</Text>
@@ -43,35 +43,35 @@ export function CotizacionJornada({ doc, resaltar }: { doc: DocumentoCotizacion;
 
         {doc.asunto ? (
           <Text style={{ marginBottom: 10 }}>
-            <TextoVariables texto={doc.asunto} resaltar={resaltar} />
+            <TextVariables texto={doc.asunto} highlight={highlight} />
           </Text>
         ) : null}
         {doc.intro ? (
           <Text style={{ marginBottom: 10 }}>
-            <TextoVariables texto={doc.intro} resaltar={resaltar} />
+            <TextVariables texto={doc.intro} highlight={highlight} />
           </Text>
         ) : null}
 
-        {conTitulo.map((bloque, indice) => (
-          <View key={indice} style={estilos.bloque}>
-            <Text style={[estilos.subrayado, { marginBottom: 4 }]} minPresenceAhead={40}>
-              <TextoVariables texto={conDosPuntos(bloque.titulo)} resaltar={resaltar} />
+        {withTitle.map((block, index) => (
+          <View key={index} style={styles.bloque}>
+            <Text style={[styles.subrayado, { marginBottom: 4 }]} minPresenceAhead={40}>
+              <TextVariables texto={withDosPuntos(block.titulo)} highlight={highlight} />
             </Text>
-            <TextoFormateado nodos={bloque.nodos} resaltar={resaltar} />
+            <TextFormatted nodos={block.nodos} highlight={highlight} />
           </View>
         ))}
 
-        {agruparPorSeccion(doc.items).map((grupo, indice) => (
-          <View key={indice} style={{ marginTop: 16 }} wrap={false}>
-            <Text style={[estilos.subrayado, { marginBottom: 4 }]}>{conDosPuntos(grupo.seccion || 'Precios')}</Text>
+        {agruparBySection(doc.items).map((grupo, index) => (
+          <View key={index} style={{ marginTop: 16 }} wrap={false}>
+            <Text style={[styles.subrayado, { marginBottom: 4 }]}>{withDosPuntos(grupo.seccion || 'Precios')}</Text>
             {grupo.items.map((item) => (
               <View key={item.orden} style={{ flexDirection: 'row', marginBottom: 4 }}>
                 <Text style={{ flex: 1, paddingRight: 12 }}>
-                  <TextoVariables texto={item.descripcion} resaltar={resaltar} />
+                  <TextVariables texto={item.descripcion} highlight={highlight} />
                   {item.cantidad === 1 ? '' : ` (x${item.cantidad.toLocaleString('es-AR')})`}
                 </Text>
                 <Text style={{ width: 150, textAlign: 'right' }}>
-                  {item.precioUnitario === null ? '' : `${formatMontoJornada(item.precioUnitario)} más IVA`}
+                  {item.priceUnitario === null ? '' : `${formatAmountDaily(item.priceUnitario)} más IVA`}
                 </Text>
               </View>
             ))}
@@ -81,16 +81,16 @@ export function CotizacionJornada({ doc, resaltar }: { doc: DocumentoCotizacion;
         {doc.total === null ? null : (
           <View style={{ flexDirection: 'row', marginTop: 8 }}>
             <Text style={{ flex: 1 }}>Total</Text>
-            <Text style={{ width: 150, textAlign: 'right' }}>{formatMontoJornada(doc.total)} más IVA</Text>
+            <Text style={{ width: 150, textAlign: 'right' }}>{formatAmountDaily(doc.total)} más IVA</Text>
           </View>
         )}
 
-        {sinTitulo.map((bloque, indice) => (
-          <TextoFormateado key={indice} nodos={bloque.nodos} resaltar={resaltar} estilo={{ marginTop: 16 }} />
+        {withoutTitle.map((block, index) => (
+          <TextFormatted key={index} nodos={block.nodos} highlight={highlight} style={{ marginTop: 16 }} />
         ))}
 
-        <Firma firmante={doc.firmante} conLogo />
-        <Pie pie={doc.pie} linea />
+        <Signature firmante={doc.firmante} withLogo />
+        <Footer pie={doc.pie} line />
       </Page>
     </Document>
   )

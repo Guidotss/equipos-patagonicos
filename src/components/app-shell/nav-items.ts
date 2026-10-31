@@ -10,6 +10,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/configuracion', label: 'Configuración', icon: Settings },
 ]
 
-export function estaActivo(pathname: string, href: string): boolean {
+export function estaActive(pathname: string, href: string): boolean {
   return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
 }

@@ -1,25 +1,25 @@
 import { formatCuit } from '@/lib/cuit'
-import { encabezadoFecha } from '@/lib/format/fechas'
-import type { Formato, Unidad } from '@/lib/plantillas/contenido'
-import { parsearFormato, type NodoFormato } from '@/lib/plantillas/formato'
-import { resolverVariables, variablesDesconocidas, type NombreVariable } from '@/lib/plantillas/variables'
-import { leerDatos } from './datos'
-import { lineaPie } from './pie'
+import { headerDate } from '@/lib/format/dates'
+import type { Format, Unit } from '@/lib/templates/content'
+import { parsearFormat, type NodoFormat } from '@/lib/templates/format'
+import { resolverVariables, variablesDesconocidas, type NameVariable } from '@/lib/templates/variables'
+import { readData } from './data'
+import { lineFooter } from './footer'
 
 /** Filas de la base que hacen falta para dibujar una cotización. */
-export type FuenteDocumento = {
+export type SourceDocument = {
   cotizacion: {
     /** null: todavía no se guardó (vista previa del editor). {{numero}} queda sin completar. */
     numero: number | null
     fecha: string
-    formato: Formato
+    formato: Format
     asunto: string
     intro: string
     validez_dias: number
     mostrar_total: boolean
     datos: unknown
     /** Los ocultos no se dibujan ni cuentan para las variables sin completar. */
-    bloques: { titulo: string; contenido: string; oculto?: boolean }[]
+    bloques: { titulo: string; contenido: string; hidden?: boolean }[]
   }
   items: {
     orden: number
@@ -27,7 +27,7 @@ export type FuenteDocumento = {
     descripcion: string
     cantidad: number
     precio_unitario: number | null
-    unidad: Unidad
+    unidad: Unit
   }[]
   cliente: { razon_social: string; cuit: string | null }
   contacto: { nombre: string; email: string } | null
@@ -45,9 +45,9 @@ export type FuenteDocumento = {
   }
 }
 
-export type DocumentoCotizacion = {
+export type DocumentQuote = {
   numero: number | null
-  formato: Formato
+  formato: Format
   encabezadoFecha: string
   destinatario: { razonSocial: string; cuit: string | null; atencion: string | null; email: string | null }
   asunto: string
@@ -57,122 +57,122 @@ export type DocumentoCotizacion = {
     seccion: string
     descripcion: string
     cantidad: number
-    precioUnitario: number | null
-    unidad: Unidad
+    priceUnitario: number | null
+    unidad: Unit
     total: number | null
   }[]
-  bloques: { titulo: string; nodos: NodoFormato[] }[]
+  bloques: { titulo: string; nodos: NodoFormat[] }[]
   total: number | null
   firmante: { nombre: string; cargo: string; telefono: string } | null
-  pie: { linea: string; web: string }
+  pie: { line: string; web: string }
   /** Variables conocidas sin valor: quedan como {{x}}. */
-  faltantes: NombreVariable[]
+  faltantes: NameVariable[]
   /** Nombres entre llaves que no son variables (mal escritos): quedan como están. */
   desconocidas: string[]
 }
 
-function formatCapacidad(capacidad: number | null | undefined): string {
-  if (capacidad === null || capacidad === undefined) return ''
-  return String(capacidad).replace('.', ',')
+function formatCapacity(capacity: number | null | undefined): string {
+  if (capacity === null || capacity === undefined) return ''
+  return String(capacity).replace('.', ',')
 }
 
 /** Valor de cada variable de plantilla para esta cotización. */
-export function valoresVariables(fuente: FuenteDocumento): Partial<Record<NombreVariable, string>> {
-  const datos = leerDatos(fuente.cotizacion.datos)
+export function valuesVariables(source: SourceDocument): Partial<Record<NameVariable, string>> {
+  const datos = readData(source.cotizacion.datos)
   return {
-    numero: fuente.cotizacion.numero === null ? '' : String(fuente.cotizacion.numero),
-    capacidad: formatCapacidad(fuente.equipo?.capacidad_tn),
-    equipo_descripcion: fuente.equipo?.descripcion ?? '',
-    validez_dias: String(fuente.cotizacion.validez_dias),
+    numero: source.cotizacion.numero === null ? '' : String(source.cotizacion.numero),
+    capacidad: formatCapacity(source.equipo?.capacidad_tn),
+    equipo_descripcion: source.equipo?.descripcion ?? '',
+    validez_dias: String(source.cotizacion.validez_dias),
     ubicacion: datos.ubicacion,
     horario: datos.horario,
     plazo_entrega: datos.plazo_entrega,
     duracion_estimada: datos.duracion_estimada,
     forma_pago: datos.forma_pago,
     disponibilidad: datos.disponibilidad,
-    indice_base: datos.indice_base || fuente.empresa.indice_base,
-    proxima_actualizacion: datos.proxima_actualizacion || fuente.empresa.proxima_actualizacion,
+    indice_base: datos.indice_base || source.empresa.indice_base,
+    proxima_actualizacion: datos.proxima_actualizacion || source.empresa.proxima_actualizacion,
   }
 }
 
-const redondear = (valor: number) => Math.round(valor * 100) / 100
+const redondear = (value: number) => Math.round(value * 100) / 100
 
 /** "F.F.." → "F.F." (el valor ya terminaba en punto y la plantilla agrega otro). No toca "...". */
 export function colapsarPuntoDoble(texto: string): string {
   return texto.replace(/(?<!\.)\.\.(?!\.)/g, '.')
 }
 
-export function armarDocumento(fuente: FuenteDocumento): DocumentoCotizacion {
-  const valores = valoresVariables(fuente)
-  const faltantes = new Set<NombreVariable>()
+export function buildDocument(source: SourceDocument): DocumentQuote {
+  const values = valuesVariables(source)
+  const faltantes = new Set<NameVariable>()
   const desconocidas = new Set<string>()
-  const registrarDesconocidas = (texto: string) => {
+  const registerDesconocidas = (texto: string) => {
     for (const nombre of variablesDesconocidas(texto)) desconocidas.add(nombre)
   }
   // Todo texto resuelto pasa por acá (asunto, intro, títulos, ítems y cada segmento de los bloques).
-  const reemplazar = (texto: string) => {
-    const resultado = resolverVariables(texto, valores)
-    for (const nombre of resultado.faltantes) faltantes.add(nombre)
-    return colapsarPuntoDoble(resultado.texto)
+  const replace = (texto: string) => {
+    const result = resolverVariables(texto, values)
+    for (const nombre of result.faltantes) faltantes.add(nombre)
+    return colapsarPuntoDoble(result.texto)
   }
   const resolver = (texto: string) => {
-    registrarDesconocidas(texto)
-    return reemplazar(texto)
+    registerDesconocidas(texto)
+    return replace(texto)
   }
   // Primero el formato y después las variables: un valor cargado (con saltos de línea, "- " o "**")
   // no cambia la estructura del bloque. Las desconocidas se buscan en el texto entero por si cruzan un "**" o un salto.
-  const resolverBloque = (contenido: string): NodoFormato[] => {
-    registrarDesconocidas(contenido)
-    return parsearFormato(contenido).map((nodo) => ({
+  const resolverBlock = (content: string): NodoFormat[] => {
+    registerDesconocidas(content)
+    return parsearFormat(content).map((nodo) => ({
       ...nodo,
-      segmentos: nodo.segmentos.map((segmento) => ({ ...segmento, texto: reemplazar(segmento.texto) })),
+      segmentos: nodo.segmentos.map((segmento) => ({ ...segmento, texto: replace(segmento.texto) })),
     }))
   }
 
-  const items = [...fuente.items]
+  const items = [...source.items]
     .sort((a, b) => a.orden - b.orden)
     .map((item) => ({
       orden: item.orden,
       seccion: item.seccion,
       descripcion: resolver(item.descripcion),
       cantidad: item.cantidad,
-      precioUnitario: item.precio_unitario,
+      priceUnitario: item.precio_unitario,
       unidad: item.unidad,
       total: item.precio_unitario === null ? null : redondear(item.cantidad * item.precio_unitario),
     }))
 
-  const todosConPrecio = items.length > 0 && items.every((item) => item.total !== null)
+  const todosWithPrice = items.length > 0 && items.every((item) => item.total !== null)
   const total =
-    fuente.cotizacion.mostrar_total && todosConPrecio
-      ? redondear(items.reduce((suma, item) => suma + (item.total ?? 0), 0))
+    source.cotizacion.mostrar_total && todosWithPrice
+      ? redondear(items.reduce((sum, item) => sum + (item.total ?? 0), 0))
       : null
 
-  const { empresa } = fuente
+  const { empresa: company } = source
 
   return {
-    numero: fuente.cotizacion.numero,
-    formato: fuente.cotizacion.formato,
-    encabezadoFecha: encabezadoFecha(empresa.ciudad, fuente.cotizacion.fecha),
+    numero: source.cotizacion.numero,
+    formato: source.cotizacion.formato,
+    encabezadoFecha: headerDate(company.ciudad, source.cotizacion.fecha),
     destinatario: {
-      razonSocial: fuente.cliente.razon_social,
-      cuit: fuente.cliente.cuit ? formatCuit(fuente.cliente.cuit) : null,
-      atencion: fuente.contacto?.nombre || null,
-      email: fuente.contacto?.email || null,
+      razonSocial: source.cliente.razon_social,
+      cuit: source.cliente.cuit ? formatCuit(source.cliente.cuit) : null,
+      atencion: source.contacto?.nombre || null,
+      email: source.contacto?.email || null,
     },
-    asunto: resolver(fuente.cotizacion.asunto),
-    intro: resolver(fuente.cotizacion.intro),
+    asunto: resolver(source.cotizacion.asunto),
+    intro: resolver(source.cotizacion.intro),
     items,
     // Un bloque oculto sigue guardado en la cotización (para mostrarlo de nuevo tal cual), pero no sale en el PDF:
     // se filtra antes de resolver, así sus variables no figuran como faltantes ni como mal escritas.
-    bloques: fuente.cotizacion.bloques
-      .filter((bloque) => !bloque.oculto)
-      .map((bloque) => ({
-        titulo: resolver(bloque.titulo),
-        nodos: resolverBloque(bloque.contenido),
+    bloques: source.cotizacion.bloques
+      .filter((block) => !block.hidden)
+      .map((block) => ({
+        titulo: resolver(block.titulo),
+        nodos: resolverBlock(block.contenido),
       })),
     total,
-    firmante: fuente.firmante,
-    pie: { linea: lineaPie(empresa), web: empresa.web },
+    firmante: source.firmante,
+    pie: { line: lineFooter(company), web: company.web },
     faltantes: [...faltantes],
     desconocidas: [...desconocidas],
   }

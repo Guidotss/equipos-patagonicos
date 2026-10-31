@@ -2,16 +2,16 @@
 // Las rutas de PDF del editor: POST /cotizaciones/vista-previa (estado sin guardar) y GET …/pdf?actual=1.
 // Las Server Actions se prueban desde la pantalla (tests/e2e/cotizaciones.spec.ts).
 import { expect, test } from '@playwright/test'
-import { conBase } from './base-datos'
+import { withBase } from './database'
 import { extractText, getDocumentProxy } from 'unpdf'
-import type { EstadoEditor } from '@/lib/cotizaciones/editor'
-import { iniciarSesion } from './helpers'
+import type { StatusEditor } from '@/lib/quotes/editor'
+import { iniciarSession } from './helpers'
 
 const MARCA = 'e2e-vista-previa'
 let base: { cliente: string; equipo: string; firmante: string; enviada: string }
 
 test.beforeAll(async () => {
-  base = await conBase(async (db) => {
+  base = await withBase(async (db) => {
     const { rows: [ids] } = await db.query<{ cliente: string; equipo: string; firmante: string }>(
       `select
          (select id from public.clientes where razon_social = 'VERTICE SERVICIOS INTEGRALES S.R.L.') as cliente,
@@ -20,7 +20,7 @@ test.beforeAll(async () => {
     )
     // Una enviada que se corrigió después del envío. El envío apunta a un PDF que no está en Storage: sin ?actual=1
     // la ruta lo intentaría bajar; con ?actual=1 tiene que generar lo guardado ahora.
-    const { rows: [enviada] } = await db.query<{ id: string }>(
+    const { rows: [sent] } = await db.query<{ id: string }>(
       `insert into public.cotizaciones (cliente_id, formato, equipo_id, estado, asunto, datos, notas)
        values ($1, 'jornada', $2, 'enviada', 'Asunto corregido después del envío', '{"ubicacion": "Neuquén"}', $3)
        returning id`,
@@ -29,28 +29,28 @@ test.beforeAll(async () => {
     await db.query(
       `insert into public.cotizacion_items (cotizacion_id, orden, descripcion, precio_unitario, unidad)
        values ($1, 1, 'Jornada', 1950000, 'JORNADA')`,
-      [enviada.id],
+      [sent.id],
     )
     await db.query('insert into public.cotizacion_envios (cotizacion_id, pdf_path) values ($1, $2)', [
-      enviada.id,
-      `cotizaciones/${enviada.id}/enviada-que-no-esta.pdf`,
+      sent.id,
+      `cotizaciones/${sent.id}/enviada-que-no-esta.pdf`,
     ])
-    return { ...ids, enviada: enviada.id }
+    return { ...ids, enviada: sent.id }
   })
 })
 
 test.afterAll(async () => {
-  await conBase((db) => db.query('delete from public.cotizaciones where notas = $1', [MARCA]))
+  await withBase((db) => db.query('delete from public.cotizaciones where notas = $1', [MARCA]))
 })
 
-async function textoDelPdf(pdf: Buffer): Promise<string> {
-  const documento = await getDocumentProxy(new Uint8Array(pdf))
-  const { text } = await extractText(documento, { mergePages: true })
+async function textOfPdf(pdf: Buffer): Promise<string> {
+  const document = await getDocumentProxy(new Uint8Array(pdf))
+  const { text } = await extractText(document, { mergePages: true })
   return text.replace(/\s+/g, ' ')
 }
 
 /** El estado de una cotización nueva por jornada en el editor, sin guardar. */
-function estado(cambios: Partial<EstadoEditor> = {}): EstadoEditor {
+function estado(changes: Partial<StatusEditor> = {}): StatusEditor {
   return {
     id: null,
     version: null,
@@ -59,7 +59,7 @@ function estado(cambios: Partial<EstadoEditor> = {}): EstadoEditor {
     origen: 'app',
     cliente: { id: base.cliente, razon_social: 'Lo que diga el navegador', cuit: null },
     contactoId: '',
-    plantillaId: '',
+    templateId: '',
     formato: 'jornada',
     equipoId: base.equipo,
     firmanteId: base.firmante,
@@ -89,33 +89,33 @@ function estado(cambios: Partial<EstadoEditor> = {}): EstadoEditor {
         unidad: 'JORNADA',
       },
     ],
-    bloques: [{ clave: 'b', titulo: 'Alcance', contenido: '- Horario de 8 a 17 hs.', oculto: false }],
-    reemplazaA: null,
-    ...cambios,
+    bloques: [{ clave: 'b', titulo: 'Alcance', contenido: '- Horario de 8 a 17 hs.', hidden: false }],
+    replacesA: null,
+    ...changes,
   }
 }
 
 test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo válido', async ({ page, playwright, baseURL }) => {
-  const anonimo = await playwright.request.newContext({ baseURL })
-  const sinSesion = await anonimo.post('/cotizaciones/vista-previa', { data: { estado: estado() }, maxRedirects: 0 })
-  expect(sinSesion.status()).toBe(307)
-  await anonimo.dispose()
+  const anonymous = await playwright.request.newContext({ baseURL })
+  const withoutSession = await anonymous.post('/cotizaciones/vista-previa', { data: { estado: estado() }, maxRedirects: 0 })
+  expect(withoutSession.status()).toBe(307)
+  await anonymous.dispose()
 
-  await iniciarSesion(page)
-  const roto = await page.request.post('/cotizaciones/vista-previa', { data: { estado: { ...estado(), items: 'nada' } } })
-  expect(roto.status()).toBe(400)
-  const sinEnvoltorio = await page.request.post('/cotizaciones/vista-previa', { data: estado() })
-  expect(sinEnvoltorio.status()).toBe(400)
+  await iniciarSession(page)
+  const broken = await page.request.post('/cotizaciones/vista-previa', { data: { estado: { ...estado(), items: 'nada' } } })
+  expect(broken.status()).toBe(400)
+  const withoutWrapper = await page.request.post('/cotizaciones/vista-previa', { data: estado() })
+  expect(withoutWrapper.status()).toBe(400)
   const noJson = await page.request.post('/cotizaciones/vista-previa', {
     headers: { 'Content-Type': 'text/plain' },
     data: 'hola',
   })
   expect(noJson.status()).toBe(400)
 
-  const respuesta = await page.request.post('/cotizaciones/vista-previa', { data: { estado: estado() } })
-  expect(respuesta.status()).toBe(200)
-  expect(respuesta.headers()['content-type']).toBe('application/pdf')
-  const texto = await textoDelPdf(await respuesta.body())
+  const response = await page.request.post('/cotizaciones/vista-previa', { data: { estado: estado() } })
+  expect(response.status()).toBe(200)
+  expect(response.headers()['content-type']).toBe('application/pdf')
+  const texto = await textOfPdf(await response.body())
   // El cliente y el equipo se releen de la base; las variables sin completar quedan a la vista.
   expect(texto).toContain('VERTICE SERVICIOS INTEGRALES S.R.L.')
   expect(texto).not.toContain('Lo que diga el navegador')
@@ -123,16 +123,16 @@ test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo v
   expect(texto).toContain('Servicios de izaje en {{ubicacion}}.')
 
   // No guardó nada.
-  const guardadas = await conBase((db) =>
+  const guardadas = await withBase((db) =>
     db.query(`select 1 from public.cotizaciones where asunto = 'Alquiler de Grúa de {{capacidad}} TN'`),
   )
   expect(guardadas.rowCount).toBe(0)
 })
 
 test('?actual=1 muestra lo guardado ahora en una enviada, no su último envío', async ({ page }) => {
-  await iniciarSesion(page)
-  const respuesta = await page.request.get(`/cotizaciones/${base.enviada}/pdf?actual=1`)
-  expect(respuesta.status()).toBe(200)
-  expect(respuesta.headers()['content-type']).toBe('application/pdf')
-  expect(await textoDelPdf(await respuesta.body())).toContain('Asunto corregido después del envío')
+  await iniciarSession(page)
+  const response = await page.request.get(`/cotizaciones/${base.enviada}/pdf?actual=1`)
+  expect(response.status()).toBe(200)
+  expect(response.headers()['content-type']).toBe('application/pdf')
+  expect(await textOfPdf(await response.body())).toContain('Asunto corregido después del envío')
 })

@@ -1,5 +1,5 @@
 /** Grúa sobre camión, con el trazo de lucide (que no trae una). */
-export function IconoGrua({ className }: { className?: string }) {
+export function IconCrane({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"

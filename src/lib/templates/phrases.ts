@@ -1,17 +1,17 @@
-import { leerBloques } from './contenido'
-import { parsearFormato } from './formato'
-import { variablesUsadas, type NombreVariable } from './variables'
+import { readBlocks } from './content'
+import { parsearFormat } from './format'
+import { variablesUsadas, type NameVariable } from './variables'
 
 /** Oraciones de las plantillas que usan alguna de estas variables, sin viñetas ni negritas y sin repetir. */
-export function frasesConVariables(plantillas: { bloques: unknown }[], nombres: readonly NombreVariable[]): string[] {
-  const frases = new Set<string>()
+export function phrasesWithVariables(plantillas: { bloques: unknown }[], names: readonly NameVariable[]): string[] {
+  const phrases = new Set<string>()
   for (const { bloques } of plantillas) {
-    for (const bloque of leerBloques(bloques)) {
-      for (const nodo of parsearFormato(bloque.contenido)) {
+    for (const block of readBlocks(bloques)) {
+      for (const nodo of parsearFormat(block.contenido)) {
         const texto = nodo.segmentos.map((segmento) => segmento.texto).join('')
-        if (variablesUsadas(texto).some((nombre) => (nombres as readonly string[]).includes(nombre))) frases.add(texto)
+        if (variablesUsadas(texto).some((nombre) => (names as readonly string[]).includes(nombre))) phrases.add(texto)
       }
     }
   }
-  return [...frases]
+  return [...phrases]
 }

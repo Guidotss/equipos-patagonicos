@@ -3,20 +3,20 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { destinoSeguro } from '@/lib/auth/destino'
-import { mensajeErrorLogin } from '@/lib/auth/errores'
+import { destinationSeguro } from '@/lib/auth/destination'
+import { messageErrorLogin } from '@/lib/auth/errors'
 import { createClient } from '@/lib/supabase/server'
 
-const esquema = z.object({
+const schema = z.object({
   email: z.email('Ingresá un email válido'),
   password: z.string().min(1, 'Ingresá tu contraseña'),
   next: z.string().optional(),
 })
 
-export type EstadoLogin = { error: string | null }
+export type StatusLogin = { error: string | null }
 
-export async function iniciarSesion(_previo: EstadoLogin, formData: FormData): Promise<EstadoLogin> {
-  const datos = esquema.safeParse({
+export async function iniciarSession(_previous: StatusLogin, formData: FormData): Promise<StatusLogin> {
+  const datos = schema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
     next: formData.get('next') ?? undefined,
@@ -28,12 +28,12 @@ export async function iniciarSesion(_previo: EstadoLogin, formData: FormData): P
     email: datos.data.email,
     password: datos.data.password,
   })
-  if (error) return { error: mensajeErrorLogin(error) }
+  if (error) return { error: messageErrorLogin(error) }
 
-  redirect(destinoSeguro(datos.data.next))
+  redirect(destinationSeguro(datos.data.next))
 }
 
-export async function cerrarSesion() {
+export async function cerrarSession() {
   const supabase = await createClient()
   const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) {

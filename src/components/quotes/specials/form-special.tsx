@@ -3,102 +3,102 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { FileUp, FileCheck2, Paperclip } from 'lucide-react'
-import { crearEspecial, prepararPdfExistente } from '@/app/(app)/cotizaciones/especiales-actions'
-import { Contenido } from '@/components/app-shell/encabezado'
-import { SelectorCliente, type ClienteBuscado } from '@/components/cotizaciones/editor/selector-cliente'
-import { Campo } from '@/components/formulario/campo'
-import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
-import { Tarjeta } from '@/components/formulario/tarjeta'
+import { crearSpecial, preparePdfExisting } from '@/app/(app)/cotizaciones/specials-actions'
+import { Content } from '@/components/app-shell/header'
+import { SelectorClient, type ClientBuscado } from '@/components/quotes/editor/selector-client'
+import { Field } from '@/components/form/field'
+import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import { Card } from '@/components/form/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
-import { esquemaEspecial } from '@/lib/cotizaciones/especiales'
-import { erroresPorRuta } from '@/lib/formularios'
+import { schemaSpecial } from '@/lib/quotes/specials'
+import { errorsByPath } from '@/lib/forms'
 import { createClient } from '@/lib/supabase/client'
 
-export function FormularioEspecial({ origen, hoy }: { origen: 'importada' | 'directa'; hoy: string }) {
+export function FormSpecial({ origen, today }: { origen: 'importada' | 'directa'; today: string }) {
   const router = useRouter()
-  const [cliente, setCliente] = useState<ClienteBuscado | null>(null)
-  const [valores, setValores] = useState({ numero: '', fecha: hoy, fecha_aprobacion: '', formato: 'jornada', estado: 'enviada', asunto: '', notas: '' })
-  const [archivo, setArchivo] = useState<File | null>(null)
+  const [cliente, setClient] = useState<ClientBuscado | null>(null)
+  const [values, setValues] = useState({ numero: '', fecha: today, fecha_aprobacion: '', formato: 'jornada', estado: 'enviada', asunto: '', notas: '' })
+  const [archivo, setFile] = useState<File | null>(null)
   const [subido, setSubido] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState(false)
-  const enCurso = useRef(false)
-  const formulario = useRef<HTMLFormElement>(null)
-  const [mensaje, setMensaje] = useState('')
-  const [errores, setErrores] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
+  const inCurso = useRef(false)
+  const form = useRef<HTMLFormElement>(null)
+  const [message, setMessage] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [progreso, setProgreso] = useState('')
-  const importada = origen === 'importada'
+  const imported = origen === 'importada'
 
   useEffect(() => {
-    if (ocupado || !mensaje) return
-    const destino = formulario.current?.querySelector<HTMLElement>('[aria-invalid="true"], [role="alert"]')
-    destino?.focus()
-  }, [ocupado, mensaje, errores])
+    if (busy || !message) return
+    const destination = form.current?.querySelector<HTMLElement>('[aria-invalid="true"], [role="alert"]')
+    destination?.focus()
+  }, [busy, message, errors])
 
-  async function guardar(evento: React.FormEvent<HTMLFormElement>) {
+  async function save(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    if (enCurso.current) return
-    const entrada = { ...valores, cliente_id: cliente?.id ?? '' }
-    const validacion = esquemaEspecial(origen).safeParse(entrada)
-    const erroresDatos = validacion.success ? {} : erroresPorRuta(validacion.error)
-    if (importada && !archivo && !subido) erroresDatos.archivo = 'Elegí el PDF de la cotización'
-    if (Object.keys(erroresDatos).length) {
-      setErrores(erroresDatos)
-      setMensaje('Revisá los datos marcados')
+    if (inCurso.current) return
+    const entrada = { ...values, cliente_id: cliente?.id ?? '' }
+    const validation = schemaSpecial(origen).safeParse(entrada)
+    const errorsData = validation.success ? {} : errorsByPath(validation.error)
+    if (imported && !archivo && !subido) errorsData.archivo = 'Elegí el PDF de la cotización'
+    if (Object.keys(errorsData).length) {
+      setErrors(errorsData)
+      setMessage('Revisá los datos marcados')
       return
     }
-    enCurso.current = true
-    setOcupado(true)
-    setMensaje('')
-    setErrores({})
+    inCurso.current = true
+    setBusy(true)
+    setMessage('')
+    setErrors({})
     try {
       let path = subido ?? undefined
-      if (importada && !path) {
+      if (imported && !path) {
         if (!archivo) return
         setProgreso('Subiendo PDF…')
-        const permiso = await prepararPdfExistente(archivo.size, archivo.type)
-        if (!permiso.ok) { setMensaje(permiso.mensaje); setErrores({ archivo: permiso.mensaje }); return }
+        const permiso = await preparePdfExisting(archivo.size, archivo.type)
+        if (!permiso.ok) { setMessage(permiso.message); setErrors({ archivo: permiso.message }); return }
         const { error } = await createClient().storage.from('documentos').uploadToSignedUrl(permiso.datos.path, permiso.datos.token, archivo, { contentType: 'application/pdf' })
         if (error) {
-          const mensajeArchivo = 'No se pudo subir el PDF. Probá nuevamente.'
-          setMensaje(mensajeArchivo)
-          setErrores({ archivo: mensajeArchivo })
+          const messageFile = 'No se pudo subir el PDF. Probá nuevamente.'
+          setMessage(messageFile)
+          setErrors({ archivo: messageFile })
           return
         }
         path = permiso.datos.path; setSubido(path)
       }
       setProgreso('Guardando…')
-      const r = await crearEspecial(origen, entrada, path)
-      if (!r.ok) { setMensaje(r.mensaje); setErrores(r.errores ?? {}); return }
-      router.push(importada ? `/cotizaciones/${r.datos.id}` : `/presupuestos/${r.datos.id}`)
-    } catch { setMensaje('No se pudo completar la operación. Podés reintentar sin perder los datos.') }
-    finally { enCurso.current = false; setOcupado(false); setProgreso('') }
+      const r = await crearSpecial(origen, entrada, path)
+      if (!r.ok) { setMessage(r.message); setErrors(r.errors ?? {}); return }
+      router.push(imported ? `/cotizaciones/${r.datos.id}` : `/presupuestos/${r.datos.id}`)
+    } catch { setMessage('No se pudo completar la operación. Podés reintentar sin perder los datos.') }
+    finally { inCurso.current = false; setBusy(false); setProgreso('') }
   }
-  function campo(nombre: keyof typeof valores) { return { value: valores[nombre], onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setValores((v) => ({ ...v, [nombre]: e.target.value })), 'aria-invalid': Boolean(errores[nombre]) } }
+  function field(nombre: keyof typeof values) { return { value: values[nombre], onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setValues((v) => ({ ...v, [nombre]: e.target.value })), 'aria-invalid': Boolean(errors[nombre]) } }
 
-  return <Contenido className="mx-auto w-full max-w-6xl pb-28">
-    <EncabezadoFormulario titulo={importada ? 'Cargar cotización existente' : 'Presupuesto directo'} descripcion={importada ? 'Conservá el número y el PDF original de la cotización.' : 'Registrá un trabajo acordado sin cotización formal.'} />
-    <form ref={formulario} onSubmit={guardar} noValidate className="space-y-6">
-      <fieldset disabled={ocupado} className="min-w-0">
-        <legend className="sr-only">{importada ? 'Datos de la cotización existente' : 'Datos del presupuesto directo'}</legend>
-        <HojaFormulario>
-          <Tarjeta titulo="Datos del trabajo" descripcion="Identificá al cliente y registrá los datos acordados." icono={importada ? FileUp : FileCheck2}>
+  return <Content className="mx-auto w-full max-w-6xl pb-28">
+    <HeaderForm titulo={imported ? 'Cargar cotización existente' : 'Presupuesto directo'} descripcion={imported ? 'Conservá el número y el PDF original de la cotización.' : 'Registrá un trabajo acordado sin cotización formal.'} />
+    <form ref={form} onSubmit={save} noValidate className="space-y-6">
+      <fieldset disabled={busy} className="min-w-0">
+        <legend className="sr-only">{imported ? 'Datos de la cotización existente' : 'Datos del presupuesto directo'}</legend>
+        <SheetForm>
+          <Card titulo="Datos del trabajo" descripcion="Identificá al cliente y registrá los datos acordados." icon={imported ? FileUp : FileCheck2}>
             <div className="flex flex-col gap-4">
-              <Campo id="especial-cliente" etiqueta="Cliente" error={errores.cliente_id}><SelectorCliente id="especial-cliente" cliente={cliente} alElegir={setCliente} error={errores.cliente_id} /></Campo>
+              <Field id="especial-cliente" label="Cliente" error={errors.cliente_id}><SelectorClient id="especial-cliente" cliente={cliente} onChoose={setClient} error={errors.cliente_id} /></Field>
               <div className="grid gap-4 sm:grid-cols-2">
-                {importada ? <Campo id="especial-numero" etiqueta="Número original" error={errores.numero}><Input id="especial-numero" inputMode="numeric" {...campo('numero')} /></Campo> : null}
-                <Campo id="especial-fecha" etiqueta="Fecha" error={errores.fecha}><Input id="especial-fecha" type="date" {...campo('fecha')} /></Campo>
-                {importada ? <Campo id="especial-formato" etiqueta="Formato"><NativeSelect id="especial-formato" {...campo('formato')} className="w-full"><NativeSelectOption value="jornada">Por jornada</NativeSelectOption><NativeSelectOption value="mensual">Mensual</NativeSelectOption></NativeSelect></Campo> : null}
-                {importada ? <Campo id="especial-estado" etiqueta="Estado"><NativeSelect id="especial-estado" {...campo('estado')} className="w-full"><NativeSelectOption value="enviada">Enviada</NativeSelectOption><NativeSelectOption value="aprobada">Aprobada</NativeSelectOption></NativeSelect></Campo> : null}
-                {!importada || valores.estado === 'aprobada' ? <Campo id="especial-aprobacion" etiqueta="Fecha de aprobación" ayuda="Si queda vacía, se usa la fecha del trabajo." error={errores.fecha_aprobacion}><Input id="especial-aprobacion" type="date" min={valores.fecha} {...campo('fecha_aprobacion')} /></Campo> : null}
+                {imported ? <Field id="especial-numero" label="Número original" error={errors.numero}><Input id="especial-numero" inputMode="numeric" {...field('numero')} /></Field> : null}
+                <Field id="especial-fecha" label="Fecha" error={errors.fecha}><Input id="especial-fecha" type="date" {...field('fecha')} /></Field>
+                {imported ? <Field id="especial-formato" label="Formato"><NativeSelect id="especial-formato" {...field('formato')} className="w-full"><NativeSelectOption value="jornada">Por jornada</NativeSelectOption><NativeSelectOption value="mensual">Mensual</NativeSelectOption></NativeSelect></Field> : null}
+                {imported ? <Field id="especial-estado" label="Estado"><NativeSelect id="especial-estado" {...field('estado')} className="w-full"><NativeSelectOption value="enviada">Enviada</NativeSelectOption><NativeSelectOption value="aprobada">Aprobada</NativeSelectOption></NativeSelect></Field> : null}
+                {!imported || values.estado === 'aprobada' ? <Field id="especial-aprobacion" label="Fecha de aprobación" help="Si queda vacía, se usa la fecha del trabajo." error={errors.fecha_aprobacion}><Input id="especial-aprobacion" type="date" min={values.fecha} {...field('fecha_aprobacion')} /></Field> : null}
               </div>
-              <Campo id="especial-asunto" etiqueta="Descripción del trabajo" error={errores.asunto}><Input id="especial-asunto" {...campo('asunto')} /></Campo>
-              <Campo id="especial-notas" etiqueta="Notas internas" error={errores.notas}><Textarea id="especial-notas" maxLength={2000} {...campo('notas')} /></Campo>
+              <Field id="especial-asunto" label="Descripción del trabajo" error={errors.asunto}><Input id="especial-asunto" {...field('asunto')} /></Field>
+              <Field id="especial-notas" label="Notas internas" error={errors.notas}><Textarea id="especial-notas" maxLength={2000} {...field('notas')} /></Field>
             </div>
-          </Tarjeta>
-          {importada ? <Tarjeta titulo="PDF original" icono={FileUp}>
+          </Card>
+          {imported ? <Card titulo="PDF original" icon={FileUp}>
             <label
               htmlFor="especial-archivo"
               className="relative flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-lg border border-dashed border-primary/50 bg-primary/5 px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-within:ring-3 focus-within:ring-ring/50 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50 has-[[aria-invalid=true]]:border-destructive"
@@ -109,12 +109,12 @@ export function FormularioEspecial({ origen, hoy }: { origen: 'importada' | 'dir
                 type="file"
                 accept="application/pdf"
                 className="sr-only"
-                aria-invalid={Boolean(errores.archivo)}
-                aria-describedby={`especial-archivo-ayuda${errores.archivo ? ' especial-archivo-error' : ''}`}
+                aria-invalid={Boolean(errors.archivo)}
+                aria-describedby={`especial-archivo-ayuda${errors.archivo ? ' especial-archivo-error' : ''}`}
                 onChange={(e) => {
-                  setArchivo(e.target.files?.[0] ?? null)
+                  setFile(e.target.files?.[0] ?? null)
                   setSubido(null)
-                  setErrores((actuales) => ({ ...actuales, archivo: '' }))
+                  setErrors((actuales) => ({ ...actuales, archivo: '' }))
                 }}
               />
               <Paperclip aria-hidden className="size-5" />
@@ -122,16 +122,16 @@ export function FormularioEspecial({ origen, hoy }: { origen: 'importada' | 'dir
             </label>
             <p id="especial-archivo-ayuda" className="mt-2 text-xs text-muted-foreground">Un archivo PDF de hasta 10 MB.</p>
             {archivo ? <p className="mt-2 text-sm text-muted-foreground [overflow-wrap:anywhere]">{archivo.name} · {(archivo.size / 1024).toFixed(0)} KB{subido ? ' · Subido' : ''}</p> : null}
-            {errores.archivo ? <p id="especial-archivo-error" className="mt-2 text-sm text-destructive">{errores.archivo}</p> : null}
-          </Tarjeta> : null}
-        </HojaFormulario>
+            {errors.archivo ? <p id="especial-archivo-error" className="mt-2 text-sm text-destructive">{errors.archivo}</p> : null}
+          </Card> : null}
+        </SheetForm>
       </fieldset>
-      {mensaje ? <Alert variant="destructive" tabIndex={-1}><AlertDescription>{mensaje}</AlertDescription></Alert> : null}
-      <AccionesFormulario
-        volver="/cotizaciones"
-        textoBoton={progreso || (importada ? 'Cargar cotización' : 'Crear presupuesto')}
-        disabled={ocupado}
+      {message ? <Alert variant="destructive" tabIndex={-1}><AlertDescription>{message}</AlertDescription></Alert> : null}
+      <ActionsForm
+        back="/cotizaciones"
+        textButton={progreso || (imported ? 'Cargar cotización' : 'Crear presupuesto')}
+        disabled={busy}
       />
     </form>
-  </Contenido>
+  </Content>
 }

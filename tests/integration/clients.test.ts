@@ -1,27 +1,27 @@
 // tests/integration/clientes.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { adminClient, anonClient, borrarUsuario, crearUsuario, sql } from './helpers'
+import { adminClient, anonClient, removeUser, crearUser, sql } from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
-const CUIT_DE_PRUEBA = '33693450239' // AFIP: válido y fuera de los datos de ejemplo
+const CUIT_OF_TEST = '33693450239' // AFIP: válido y fuera de los datos de ejemplo
 const creados: string[] = []
-let activo: Awaited<ReturnType<typeof crearUsuario>>
-let inactivo: Awaited<ReturnType<typeof crearUsuario>>
+let activo: Awaited<ReturnType<typeof crearUser>>
+let inactivo: Awaited<ReturnType<typeof crearUser>>
 
 async function limpiar() {
-  await sql('delete from public.clientes where razon_social like $1 or cuit = $2', [`%${MARCA}%`, CUIT_DE_PRUEBA])
+  await sql('delete from public.clientes where razon_social like $1 or cuit = $2', [`%${MARCA}%`, CUIT_OF_TEST])
 }
 
 beforeAll(async () => {
   await limpiar()
-  activo = await crearUsuario({ activo: true, rol: 'operador' })
-  inactivo = await crearUsuario({ activo: false })
+  activo = await crearUser({ activo: true, rol: 'operador' })
+  inactivo = await crearUser({ activo: false })
   creados.push(activo.id, inactivo.id)
 })
 
 afterAll(async () => {
   await limpiar()
-  for (const id of creados) await borrarUsuario(id)
+  for (const id of creados) await removeUser(id)
 })
 
 describe('clientes', () => {
@@ -47,16 +47,16 @@ describe('clientes', () => {
       .insert({ razon_social: `Informado ${MARCA} ${cuit}`, cuit }).select('id, cuit').single()
     expect(error).toBeNull()
     expect(data?.cuit).toBe(cuit)
-    const editado = await activo.client.from('clientes').update({ cuit: `${cuit} actualizado` })
+    const edited = await activo.client.from('clientes').update({ cuit: `${cuit} actualizado` })
       .eq('id', data!.id).select('cuit').single()
-    expect(editado.error).toBeNull()
-    expect(editado.data?.cuit).toBe(`${cuit} actualizado`)
+    expect(edited.error).toBeNull()
+    expect(edited.data?.cuit).toBe(`${cuit} actualizado`)
   })
 
   it('la base conserva la unicidad del CUIT informado', async () => {
-    const primero = await activo.client.from('clientes').insert({ razon_social: `Uno ${MARCA}`, cuit: CUIT_DE_PRUEBA })
-    expect(primero.error).toBeNull()
-    const repetido = await activo.client.from('clientes').insert({ razon_social: `Dos ${MARCA}`, cuit: CUIT_DE_PRUEBA })
+    const first = await activo.client.from('clientes').insert({ razon_social: `Uno ${MARCA}`, cuit: CUIT_OF_TEST })
+    expect(first.error).toBeNull()
+    const repetido = await activo.client.from('clientes').insert({ razon_social: `Dos ${MARCA}`, cuit: CUIT_OF_TEST })
     expect(repetido.error?.code).toBe('23505')
   })
 
@@ -119,35 +119,35 @@ describe('buscar_clientes', () => {
     await activo.client.from('contactos').insert({ cliente_id: data!.id, nombre: `Ñandú ${MARCA}` })
   })
 
-  async function buscar(texto: string) {
+  async function search(texto: string) {
     const { data, error } = await activo.client.rpc('buscar_clientes', { texto, limite: 50 })
     if (error) throw error
     return data.map((c) => c.razon_social)
   }
 
   it('ignora acentos y mayúsculas', async () => {
-    expect(await buscar(`vertice servicios ${MARCA}`)).toEqual([`VÉRTICE SERVICIOS ${MARCA} S.R.L.`])
+    expect(await search(`vertice servicios ${MARCA}`)).toEqual([`VÉRTICE SERVICIOS ${MARCA} S.R.L.`])
   })
 
   it('encuentra por nombre de contacto', async () => {
-    expect(await buscar(`nandu ${MARCA}`)).toEqual([`VÉRTICE SERVICIOS ${MARCA} S.R.L.`])
+    expect(await search(`nandu ${MARCA}`)).toEqual([`VÉRTICE SERVICIOS ${MARCA} S.R.L.`])
   })
 
   it('encuentra por CUIT con o sin guiones', async () => {
-    expect(await buscar('33-69345023')).toContain(`Uno ${MARCA}`)
-    expect(await buscar('3369345023')).toContain(`Uno ${MARCA}`)
+    expect(await search('33-69345023')).toContain(`Uno ${MARCA}`)
+    expect(await search('3369345023')).toContain(`Uno ${MARCA}`)
   })
 
   it('trata % y _ como texto, no como comodines', async () => {
-    expect(await buscar('%')).toEqual([])
-    expect(await buscar('_')).toEqual([])
+    expect(await search('%')).toEqual([])
+    expect(await search('_')).toEqual([])
   })
 
   it('sin texto devuelve clientes, activos primero', async () => {
     const { data } = await activo.client.rpc('buscar_clientes', { texto: '', limite: 200 })
     expect(data!.length).toBeGreaterThan(0)
-    const indiceInactivo = data!.findIndex((c) => !c.activo)
-    if (indiceInactivo >= 0) expect(data!.slice(indiceInactivo).every((c) => !c.activo)).toBe(true)
+    const indexInactivo = data!.findIndex((c) => !c.activo)
+    if (indexInactivo >= 0) expect(data!.slice(indexInactivo).every((c) => !c.activo)).toBe(true)
   })
 
   it('anon no puede ejecutarla', async () => {

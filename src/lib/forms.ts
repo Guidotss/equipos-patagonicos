@@ -1,33 +1,33 @@
 import type { ZodError } from 'zod'
 
-export type EstadoFormulario = {
+export type StatusForm = {
   ok: boolean
-  mensaje: string | null
-  errores: Partial<Record<string, string>>
+  message: string | null
+  errors: Partial<Record<string, string>>
   /** Lo que envió el usuario: se vuelve a mostrar si la acción falla (React resetea el form). */
-  valores?: Record<string, string>
+  values?: Record<string, string>
 }
 
-export type AccionFormulario = (estado: EstadoFormulario, formData: FormData) => Promise<EstadoFormulario>
+export type ActionForm = (estado: StatusForm, formData: FormData) => Promise<StatusForm>
 
-export const ESTADO_INICIAL: EstadoFormulario = { ok: false, mensaje: null, errores: {} }
+export const STATUS_INITIAL: StatusForm = { ok: false, message: null, errors: {} }
 
-export function leerCampos<const K extends string>(formData: FormData, campos: readonly K[]): Record<K, string> {
+export function readFields<const K extends string>(formData: FormData, fields: readonly K[]): Record<K, string> {
   const datos = {} as Record<K, string>
-  for (const campo of campos) {
-    const valor = formData.get(campo)
-    datos[campo] = typeof valor === 'string' ? valor : ''
+  for (const field of fields) {
+    const value = formData.get(field)
+    datos[field] = typeof value === 'string' ? value : ''
   }
   return datos
 }
 
-export function falloValidacion(error: ZodError, valores: Record<string, string>): EstadoFormulario {
-  const errores: Record<string, string> = {}
+export function falloValidation(error: ZodError, values: Record<string, string>): StatusForm {
+  const errors: Record<string, string> = {}
   for (const issue of error.issues) {
-    const campo = String(issue.path[0] ?? '')
-    if (campo && !errores[campo]) errores[campo] = issue.message
+    const field = String(issue.path[0] ?? '')
+    if (field && !errors[field]) errors[field] = issue.message
   }
-  return { ok: false, mensaje: 'Revisá los datos marcados', errores, valores }
+  return { ok: false, message: 'Revisá los datos marcados', errors, values }
 }
 
 /**
@@ -35,19 +35,19 @@ export function falloValidacion(error: ZodError, valores: Record<string, string>
  * entero), con el primer mensaje de cada ruta. Para los formularios con listas, donde `falloValidacion` no alcanza
  * (se queda con el primer tramo de la ruta).
  */
-export function erroresPorRuta(error: ZodError): Record<string, string> {
+export function errorsByPath(error: ZodError): Record<string, string> {
   // Un Map y no un objeto: una ruta como 'constructor' o '__proto__' no choca con las propiedades heredadas.
-  const errores = new Map<string, string>()
+  const errors = new Map<string, string>()
   for (const issue of error.issues) {
-    const ruta = issue.path.map(String).join('.')
-    if (!errores.has(ruta)) errores.set(ruta, issue.message)
+    const path = issue.path.map(String).join('.')
+    if (!errors.has(path)) errors.set(path, issue.message)
   }
-  return Object.fromEntries(errores)
+  return Object.fromEntries(errors)
 }
 
 type ErrorBase = { code?: string; message: string }
 
-export function mensajeErrorBase(error: ErrorBase): string {
+export function messageErrorBase(error: ErrorBase): string {
   switch (error.code) {
     case '23505':
       return 'Ya existe un registro con esos datos'
@@ -67,23 +67,23 @@ export function mensajeErrorBase(error: ErrorBase): string {
 /** Error de Postgres/PostgREST. Si es un duplicado y se indica el campo, el error va a ese campo. */
 export function falloBase(
   error: ErrorBase,
-  valores: Record<string, string>,
-  duplicado?: { campo: string; mensaje: string },
-): EstadoFormulario {
+  values: Record<string, string>,
+  duplicado?: { campo: string; message: string },
+): StatusForm {
   if (error.code === '23505' && duplicado) {
-    return { ok: false, mensaje: duplicado.mensaje, errores: { [duplicado.campo]: duplicado.mensaje }, valores }
+    return { ok: false, message: duplicado.message, errors: { [duplicado.campo]: duplicado.message }, values }
   }
-  return { ok: false, mensaje: mensajeErrorBase(error), errores: {}, valores }
+  return { ok: false, message: messageErrorBase(error), errors: {}, values }
 }
 
-export function exito(mensaje: string): EstadoFormulario {
-  return { ok: true, mensaje, errores: {} }
+export function success(message: string): StatusForm {
+  return { ok: true, message, errors: {} }
 }
 
-export function valorCampo(
-  estado: EstadoFormulario,
-  inicial: Partial<Record<string, string | null>> | undefined,
-  campo: string,
+export function valueField(
+  estado: StatusForm,
+  initial: Partial<Record<string, string | null>> | undefined,
+  field: string,
 ): string {
-  return estado.valores?.[campo] ?? inicial?.[campo] ?? ''
+  return estado.values?.[field] ?? initial?.[field] ?? ''
 }

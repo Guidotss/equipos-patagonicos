@@ -3,21 +3,21 @@
 // lo usa con useReducer, la Server Action valida con payloadGuardar y la vista previa arma el documento con
 // fuenteDesdeEditor. Se puede importar desde el navegador.
 import { z } from 'zod'
-import { esFecha, esMes, hoyArgentina, mesEnLetras } from '@/lib/format/fechas'
-import { parsePrecio } from '@/lib/format/montos'
-import { erroresPorRuta } from '@/lib/formularios'
+import { isDate, isMonth, todayArgentina, monthInLetters } from '@/lib/format/dates'
+import { parsePrice } from '@/lib/format/amounts'
+import { errorsByPath } from '@/lib/forms'
 import {
   UNIDADES,
-  leerBloques,
-  type Bloque,
-  type Formato,
-  type ItemPlantilla,
-  type Unidad,
-} from '@/lib/plantillas/contenido'
-import type { NombreVariable } from '@/lib/plantillas/variables'
-import { esUuid } from '@/lib/validacion'
-import { esquemaDatos, esquemaItem, leerDatos, type CampoDatos, type DatosCotizacion } from './datos'
-import { armarDocumento, type FuenteDocumento } from './documento'
+  readBlocks,
+  type Block,
+  type Format,
+  type ItemTemplate,
+  type Unit,
+} from '@/lib/templates/content'
+import type { NameVariable } from '@/lib/templates/variables'
+import { isUuid } from '@/lib/validation'
+import { schemaData, schemaItem, readData, type FieldData, type DataQuote } from './data'
+import { buildDocument, type SourceDocument } from './document'
 
 // ---------------------------------------------------------------------------------------------------------------
 // Tipos
@@ -29,11 +29,11 @@ export type ItemEditor = {
   descripcion: string
   cantidad: string
   precio: string
-  unidad: Unidad
+  unidad: Unit
 }
-export type BloqueEditor = { clave: string; titulo: string; contenido: string; oculto: boolean }
+export type BlockEditor = { clave: string; titulo: string; contenido: string; hidden: boolean }
 
-export type EstadoEditor = {
+export type StatusEditor = {
   id: string | null
   version: string | null
   numero: number | null
@@ -41,8 +41,8 @@ export type EstadoEditor = {
   origen: 'app' | 'importada' | 'directa'
   cliente: { id: string; razon_social: string; cuit: string | null } | null
   contactoId: string // '' = Sin Atte.
-  plantillaId: string
-  formato: Formato
+  templateId: string
+  formato: Format
   equipoId: string
   firmanteId: string
   fecha: string // 'YYYY-MM-DD'
@@ -51,28 +51,28 @@ export type EstadoEditor = {
   proximaActualizacion: string // 'YYYY-MM' o ''
   asunto: string
   intro: string
-  datos: DatosCotizacion // incluye proxima_actualizacion (texto) e indice_base
+  datos: DataQuote // incluye proxima_actualizacion (texto) e indice_base
   items: ItemEditor[]
-  bloques: BloqueEditor[]
-  reemplazaA: string | null // solo cuenta al crear
+  bloques: BlockEditor[]
+  replacesA: string | null // solo cuenta al crear
 }
 
-export type PlantillaEditor = {
+export type TemplateEditor = {
   id: string
   nombre: string
-  formato: Formato
+  formato: Format
   asunto: string
   intro: string
   validez_dias: number
-  bloques: Bloque[]
-  items: ItemPlantilla[]
+  bloques: Block[]
+  items: ItemTemplate[]
 }
 
-export type CatalogosEditor = {
-  plantillas: PlantillaEditor[]
+export type CatalogsEditor = {
+  plantillas: TemplateEditor[]
   equipos: { id: string; nombre: string; capacidad_tn: number | null; descripcion: string; activo: boolean }[]
   firmantes: { id: string; nombre: string; cargo: string; telefono: string; activo: boolean }[]
-  empresa: FuenteDocumento['empresa']
+  empresa: SourceDocument['empresa']
 }
 
 /**
@@ -89,7 +89,7 @@ export const SELECT_EDITOR = `id, numero, estado, origen, fecha, formato, asunto
   envios:cotizacion_envios(id, enviada_at)`
 
 /** La fila que devuelve la consulta de SELECT_EDITOR (editor.test.ts comprueba que el tipo inferido encaja). */
-export type FilaEditor = {
+export type RowEditor = {
   id: string
   numero: number
   estado: string
@@ -123,27 +123,27 @@ export type FilaEditor = {
   envios: { id: string; enviada_at: string }[]
 }
 
-export type AccionEditor =
-  | { tipo: 'campo'; campo: CampoEditor; valor: string }
-  | { tipo: 'dato'; campo: CampoDatos; valor: string }
-  | { tipo: 'mostrarTotal'; valor: boolean }
-  | { tipo: 'cliente'; cliente: EstadoEditor['cliente']; contactoId: string }
-  | { tipo: 'plantilla'; plantilla: PlantillaEditor }
-  | { tipo: 'agregarItem'; despuesDe?: string; seccion?: string }
-  | { tipo: 'item'; clave: string; cambios: Partial<Omit<ItemEditor, 'clave'>> }
+export type ActionEditor =
+  | { tipo: 'campo'; campo: FieldEditor; value: string }
+  | { tipo: 'dato'; campo: FieldData; value: string }
+  | { tipo: 'mostrarTotal'; value: boolean }
+  | { tipo: 'cliente'; cliente: StatusEditor['cliente']; contactoId: string }
+  | { tipo: 'plantilla'; plantilla: TemplateEditor }
+  | { tipo: 'agregarItem'; despuesOf?: string; seccion?: string }
+  | { tipo: 'item'; clave: string; changes: Partial<Omit<ItemEditor, 'clave'>> }
   | { tipo: 'moverItem'; desde: number; hasta: number }
   | { tipo: 'quitarItem'; clave: string }
   | { tipo: 'duplicarItem'; clave: string }
   | { tipo: 'renombrarSeccion'; clave: string; seccion: string }
   | { tipo: 'agregarSeccion'; nombre: string }
-  | { tipo: 'bloque'; clave: string; cambios: Partial<Omit<BloqueEditor, 'clave'>> }
+  | { tipo: 'bloque'; clave: string; changes: Partial<Omit<BlockEditor, 'clave'>> }
   | { tipo: 'moverBloque'; clave: string; direccion: -1 | 1 }
-  | { tipo: 'restaurarBloques'; bloques: Bloque[] }
+  | { tipo: 'restaurarBloques'; bloques: Block[] }
   | { tipo: 'guardado'; id: string; version: string; numero: number }
-  | { tipo: 'reemplazar'; estado: EstadoEditor }
+  | { tipo: 'reemplazar'; estado: StatusEditor }
 
 /** Campos de texto de la cabecera que se cambian con la acción 'campo'. */
-export type CampoEditor =
+export type FieldEditor =
   | 'contactoId'
   | 'equipoId'
   | 'firmanteId'
@@ -153,13 +153,13 @@ export type CampoEditor =
   | 'asunto'
   | 'intro'
 
-export type PayloadGuardar = { p_datos: Record<string, unknown>; p_items: Record<string, unknown>[] }
+export type PayloadSave = { p_datos: Record<string, unknown>; p_items: Record<string, unknown>[] }
 
-export type Pendientes = {
-  variables: NombreVariable[]
+export type PendingList = {
+  variables: NameVariable[]
   desconocidas: string[]
-  itemsSinPrecio: number
-  sinItems: boolean
+  itemsWithoutPrice: number
+  withoutItems: boolean
 }
 
 /**
@@ -167,36 +167,36 @@ export type Pendientes = {
  * que vio la pantalla ya no es la de la fila. El servicio da el mismo error antes de generar un PDF y el editor lo
  * reconoce para ofrecer "Recargar" (acciones-estado.ts): si cambia en la base, cambia acá.
  */
-export const MENSAJE_CONFLICTO = 'La cotización cambió desde que la abriste; volvé a intentarlo'
+export const MESSAGE_CONFLICT = 'La cotización cambió desde que la abriste; volvé a intentarlo'
 
 // ---------------------------------------------------------------------------------------------------------------
 // Texto de los números de la grilla
 
-let clavesSinCrypto = 0
+let keysWithoutCrypto = 0
 
 /** Clave estable de una fila o un bloque (para React y para arrastrar); no se guarda. */
-export function nuevaClave(): string {
+export function newKey(): string {
   // crypto.randomUUID solo existe en un contexto seguro (HTTPS o localhost): el dev server abierto desde el celular
   // por la IP de la red no lo tiene. La clave no se guarda: alcanza con que no se repita en la página.
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
-  clavesSinCrypto += 1
-  return `clave-${clavesSinCrypto}-${Math.random().toString(36).slice(2)}`
+  keysWithoutCrypto += 1
+  return `clave-${keysWithoutCrypto}-${Math.random().toString(36).slice(2)}`
 }
 
-const sinDecimales = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0, useGrouping: 'always' })
-const conDecimales = new Intl.NumberFormat('es-AR', {
+const withoutDecimals = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0, useGrouping: 'always' })
+const withDecimals = new Intl.NumberFormat('es-AR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
   useGrouping: 'always',
 })
 
 /** Precio guardado → texto de la celda: "39.000.000" o "1.950.000,50". parsePrecio lo vuelve a leer igual. */
-export function textoPrecio(precio: number): string {
-  return Number.isInteger(precio) ? sinDecimales.format(precio) : conDecimales.format(precio)
+export function textPrice(price: number): string {
+  return Number.isInteger(price) ? withoutDecimals.format(price) : withDecimals.format(price)
 }
 
 /** Cantidad guardada → texto de la celda, con coma decimal: 1 → "1", 1.5 → "1,5". */
-export function textoCantidad(cantidad: number): string {
+export function textQuantity(cantidad: number): string {
   return String(cantidad).replace('.', ',')
 }
 
@@ -205,30 +205,30 @@ export function textoCantidad(cantidad: number): string {
 
 const ESTADOS = ['borrador', 'enviada', 'aprobada', 'rechazada'] as const
 const ORIGENES = ['app', 'importada', 'directa'] as const
-const FORMATOS_EDITOR = ['mensual', 'jornada'] as const satisfies readonly Formato[]
+const FORMATS_EDITOR = ['mensual', 'jornada'] as const satisfies readonly Format[]
 
 /** La base garantiza estos valores (CHECK): uno distinto es un error de programación. */
-function unoDe<const T extends readonly string[]>(valor: string, opciones: T, error: string): T[number] {
-  if (!opciones.includes(valor)) throw new Error(`${error}: ${valor}`)
-  return valor as T[number]
+function unoOf<const T extends readonly string[]>(value: string, options: T, error: string): T[number] {
+  if (!options.includes(value)) throw new Error(`${error}: ${value}`)
+  return value as T[number]
 }
 
-function bloquesDelEditor(bloques: Bloque[]): BloqueEditor[] {
-  return bloques.map((bloque) => ({
-    clave: nuevaClave(),
-    titulo: bloque.titulo,
-    contenido: bloque.contenido,
-    oculto: bloque.oculto,
+function blocksOfEditor(bloques: Block[]): BlockEditor[] {
+  return bloques.map((block) => ({
+    clave: newKey(),
+    titulo: block.titulo,
+    contenido: block.contenido,
+    hidden: block.hidden,
   }))
 }
 
 /** Una cotización nueva: borrador de la app, con la plantilla aplicada si hay una. */
-export function estadoNuevo(args: {
-  plantilla: PlantillaEditor | null
+export function statusNew(args: {
+  plantilla: TemplateEditor | null
   firmanteId: string
-  hoy: string
-}): EstadoEditor {
-  const vacio: EstadoEditor = {
+  today: string
+}): StatusEditor {
+  const empty: StatusEditor = {
     id: null,
     version: null,
     numero: null,
@@ -236,58 +236,58 @@ export function estadoNuevo(args: {
     origen: 'app',
     cliente: null,
     contactoId: '',
-    plantillaId: '',
+    templateId: '',
     formato: 'mensual',
     equipoId: '',
     firmanteId: args.firmanteId,
-    fecha: args.hoy,
+    fecha: args.today,
     validezDias: '30',
     mostrarTotal: false,
     proximaActualizacion: '',
     asunto: '',
     intro: '',
-    datos: leerDatos({}),
+    datos: readData({}),
     items: [],
     bloques: [],
-    reemplazaA: null,
+    replacesA: null,
   }
-  return args.plantilla ? aplicarPlantilla(vacio, args.plantilla) : vacio
+  return args.plantilla ? applyTemplate(empty, args.plantilla) : empty
 }
 
 /** El estado de una cotización guardada, tal como la lee la página (ver SELECT_EDITOR). */
-export function estadoDesdeFila(fila: FilaEditor): EstadoEditor {
+export function statusFromRow(row: RowEditor): StatusEditor {
   return {
-    id: fila.id,
-    version: fila.updated_at,
-    numero: fila.numero,
-    estado: unoDe(fila.estado, ESTADOS, 'Estado desconocido'),
-    origen: unoDe(fila.origen, ORIGENES, 'Origen desconocido'),
-    cliente: { id: fila.cliente.id, razon_social: fila.cliente.razon_social, cuit: fila.cliente.cuit },
-    contactoId: fila.contacto_id ?? '',
-    plantillaId: fila.plantilla_id ?? '',
-    formato: unoDe(fila.formato, FORMATOS_EDITOR, 'Formato desconocido'),
-    equipoId: fila.equipo_id ?? '',
-    firmanteId: fila.firmante_id ?? '',
-    fecha: fila.fecha,
-    validezDias: String(fila.validez_dias),
-    mostrarTotal: fila.mostrar_total,
+    id: row.id,
+    version: row.updated_at,
+    numero: row.numero,
+    estado: unoOf(row.estado, ESTADOS, 'Estado desconocido'),
+    origen: unoOf(row.origen, ORIGENES, 'Origen desconocido'),
+    cliente: { id: row.cliente.id, razon_social: row.cliente.razon_social, cuit: row.cliente.cuit },
+    contactoId: row.contacto_id ?? '',
+    templateId: row.plantilla_id ?? '',
+    formato: unoOf(row.formato, FORMATS_EDITOR, 'Formato desconocido'),
+    equipoId: row.equipo_id ?? '',
+    firmanteId: row.firmante_id ?? '',
+    fecha: row.fecha,
+    validezDias: String(row.validez_dias),
+    mostrarTotal: row.mostrar_total,
     // La columna guarda el primer día del mes ('2026-11-01'); el control es <input type="month">.
-    proximaActualizacion: fila.fecha_proxima_actualizacion?.slice(0, 7) ?? '',
-    asunto: fila.asunto,
-    intro: fila.intro,
-    datos: leerDatos(fila.datos),
-    items: [...fila.items]
+    proximaActualizacion: row.fecha_proxima_actualizacion?.slice(0, 7) ?? '',
+    asunto: row.asunto,
+    intro: row.intro,
+    datos: readData(row.datos),
+    items: [...row.items]
       .sort((a, b) => a.orden - b.orden)
       .map((item) => ({
-        clave: nuevaClave(),
+        clave: newKey(),
         seccion: item.seccion,
         descripcion: item.descripcion,
-        cantidad: textoCantidad(item.cantidad),
-        precio: item.precio_unitario === null ? '' : textoPrecio(item.precio_unitario),
-        unidad: unoDe(item.unidad, UNIDADES, 'Unidad desconocida'),
+        cantidad: textQuantity(item.cantidad),
+        precio: item.precio_unitario === null ? '' : textPrice(item.precio_unitario),
+        unidad: unoOf(item.unidad, UNIDADES, 'Unidad desconocida'),
       })),
-    bloques: bloquesDelEditor(leerBloques(fila.bloques)),
-    reemplazaA: fila.reemplaza_a,
+    bloques: blocksOfEditor(readBlocks(row.bloques)),
+    replacesA: row.reemplaza_a,
   }
 }
 
@@ -295,45 +295,45 @@ export function estadoDesdeFila(fila: FilaEditor): EstadoEditor {
  * Precarga lo que trae la plantilla: formato, asunto, introducción, textos, validez e ítems sin precio.
  * Cliente, contacto, equipo, firmante, fecha, datos, próxima actualización y "mostrar total" no cambian.
  */
-export function aplicarPlantilla(estado: EstadoEditor, plantilla: PlantillaEditor): EstadoEditor {
+export function applyTemplate(estado: StatusEditor, template: TemplateEditor): StatusEditor {
   return {
     ...estado,
-    plantillaId: plantilla.id,
-    formato: plantilla.formato,
-    asunto: plantilla.asunto,
-    intro: plantilla.intro,
-    validezDias: String(plantilla.validez_dias),
-    items: plantilla.items.map((item) => ({
-      clave: nuevaClave(),
+    templateId: template.id,
+    formato: template.formato,
+    asunto: template.asunto,
+    intro: template.intro,
+    validezDias: String(template.validez_dias),
+    items: template.items.map((item) => ({
+      clave: newKey(),
       seccion: item.seccion,
       descripcion: item.descripcion,
-      cantidad: textoCantidad(item.cantidad),
+      cantidad: textQuantity(item.cantidad),
       precio: '',
       unidad: item.unidad,
     })),
-    bloques: bloquesDelEditor(plantilla.bloques),
+    bloques: blocksOfEditor(template.bloques),
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Reducer
 
-function insertar<T>(lista: T[], posicion: number, elemento: T): T[] {
-  return [...lista.slice(0, posicion), elemento, ...lista.slice(posicion)]
+function insert<T>(list: T[], position: number, element: T): T[] {
+  return [...list.slice(0, position), element, ...list.slice(position)]
 }
 
 /** Saca el elemento de `desde` y lo pone en `hasta` (como arrayMove de dnd-kit). */
-function mover<T>(lista: T[], desde: number, hasta: number): T[] {
-  const copia = [...lista]
-  const [elemento] = copia.splice(desde, 1)
-  copia.splice(hasta, 0, elemento)
-  return copia
+function move<T>(list: T[], desde: number, hasta: number): T[] {
+  const copy = [...list]
+  const [element] = copy.splice(desde, 1)
+  copy.splice(hasta, 0, element)
+  return copy
 }
 
 /** Fila vacía: copia sección y unidad de la fila de referencia; sin referencia, la unidad típica del formato. */
-function itemNuevo(estado: EstadoEditor, referencia: ItemEditor | undefined, seccion?: string): ItemEditor {
+function itemNew(estado: StatusEditor, referencia: ItemEditor | undefined, seccion?: string): ItemEditor {
   return {
-    clave: nuevaClave(),
+    clave: newKey(),
     seccion: seccion ?? referencia?.seccion ?? '',
     descripcion: '',
     cantidad: '1',
@@ -342,38 +342,38 @@ function itemNuevo(estado: EstadoEditor, referencia: ItemEditor | undefined, sec
   }
 }
 
-function moverItem(items: ItemEditor[], desde: number, hasta: number): ItemEditor[] {
-  const valido = (indice: number) => Number.isInteger(indice) && indice >= 0 && indice < items.length
-  if (desde === hasta || !valido(desde) || !valido(hasta)) return items
-  const lista = mover(items, desde, hasta)
-  const anterior = lista[hasta - 1]
-  const siguiente = lista[hasta + 1]
-  const movido = lista[hasta]
+function moveItem(items: ItemEditor[], desde: number, hasta: number): ItemEditor[] {
+  const valid = (index: number) => Number.isInteger(index) && index >= 0 && index < items.length
+  if (desde === hasta || !valid(desde) || !valid(hasta)) return items
+  const list = move(items, desde, hasta)
+  const previous = list[hasta - 1]
+  const next = list[hasta + 1]
+  const moved = list[hasta]
   // Las secciones son rachas de filas consecutivas. Si la fila cae en el medio de otro grupo, se suma a ese grupo:
   // si conservara la suya, partiría el grupo en dos. En el borde entre dos grupos conserva su sección.
-  if (anterior && siguiente && anterior.seccion === siguiente.seccion && movido.seccion !== anterior.seccion) {
-    lista[hasta] = { ...movido, seccion: anterior.seccion }
+  if (previous && next && previous.seccion === next.seccion && moved.seccion !== previous.seccion) {
+    list[hasta] = { ...moved, seccion: previous.seccion }
   }
-  return lista
+  return list
 }
 
 /** Renombra la racha de filas consecutivas con la misma sección que la fila `clave` (no otras rachas iguales). */
-function renombrarSeccion(items: ItemEditor[], clave: string, seccion: string): ItemEditor[] {
-  const indice = items.findIndex((item) => item.clave === clave)
-  if (indice < 0) return items
-  const actual = items[indice].seccion
-  let inicio = indice
-  while (inicio > 0 && items[inicio - 1].seccion === actual) inicio--
-  let fin = indice
+function renameSection(items: ItemEditor[], clave: string, seccion: string): ItemEditor[] {
+  const index = items.findIndex((item) => item.clave === clave)
+  if (index < 0) return items
+  const actual = items[index].seccion
+  let home = index
+  while (home > 0 && items[home - 1].seccion === actual) home--
+  let fin = index
   while (fin < items.length - 1 && items[fin + 1].seccion === actual) fin++
-  return items.map((item, i) => (i >= inicio && i <= fin ? { ...item, seccion } : item))
+  return items.map((item, i) => (i >= home && i <= fin ? { ...item, seccion } : item))
 }
 
 /**
  * Todas las transiciones del editor. Pura salvo las claves nuevas (crypto.randomUUID). Si la acción no cambia nada
  * (mover fuera de rango, una clave que ya no existe), devuelve el mismo estado.
  */
-export function reducirEditor(estado: EstadoEditor, accion: AccionEditor): EstadoEditor {
+export function reduceEditor(estado: StatusEditor, accion: ActionEditor): StatusEditor {
   switch (accion.tipo) {
     case 'campo':
       if (accion.campo === 'proximaActualizacion') {
@@ -382,70 +382,70 @@ export function reducirEditor(estado: EstadoEditor, accion: AccionEditor): Estad
         // la fila se conserva.
         return {
           ...estado,
-          proximaActualizacion: accion.valor,
-          datos: { ...estado.datos, proxima_actualizacion: esMes(accion.valor) ? mesEnLetras(accion.valor) : '' },
+          proximaActualizacion: accion.value,
+          datos: { ...estado.datos, proxima_actualizacion: isMonth(accion.value) ? monthInLetters(accion.value) : '' },
         }
       }
-      return { ...estado, [accion.campo]: accion.valor }
+      return { ...estado, [accion.campo]: accion.value }
     case 'dato':
-      return { ...estado, datos: { ...estado.datos, [accion.campo]: accion.valor } }
+      return { ...estado, datos: { ...estado.datos, [accion.campo]: accion.value } }
     case 'mostrarTotal':
-      return { ...estado, mostrarTotal: accion.valor }
+      return { ...estado, mostrarTotal: accion.value }
     case 'cliente':
       return { ...estado, cliente: accion.cliente, contactoId: accion.contactoId }
     case 'plantilla':
-      return aplicarPlantilla(estado, accion.plantilla)
+      return applyTemplate(estado, accion.plantilla)
     case 'agregarItem': {
-      const indice = accion.despuesDe ? estado.items.findIndex((item) => item.clave === accion.despuesDe) : -1
-      const referencia = indice >= 0 ? estado.items[indice] : estado.items.at(-1)
-      const nuevo = itemNuevo(estado, referencia, accion.seccion)
-      return { ...estado, items: insertar(estado.items, indice >= 0 ? indice + 1 : estado.items.length, nuevo) }
+      const index = accion.despuesOf ? estado.items.findIndex((item) => item.clave === accion.despuesOf) : -1
+      const referencia = index >= 0 ? estado.items[index] : estado.items.at(-1)
+      const nuevo = itemNew(estado, referencia, accion.seccion)
+      return { ...estado, items: insert(estado.items, index >= 0 ? index + 1 : estado.items.length, nuevo) }
     }
     case 'item':
       if (!estado.items.some((item) => item.clave === accion.clave)) return estado
       return {
         ...estado,
         items: estado.items.map((item) =>
-          item.clave === accion.clave ? { ...item, ...accion.cambios, clave: item.clave } : item,
+          item.clave === accion.clave ? { ...item, ...accion.changes, clave: item.clave } : item,
         ),
       }
     case 'moverItem': {
-      const items = moverItem(estado.items, accion.desde, accion.hasta)
+      const items = moveItem(estado.items, accion.desde, accion.hasta)
       return items === estado.items ? estado : { ...estado, items }
     }
     case 'quitarItem':
       if (!estado.items.some((item) => item.clave === accion.clave)) return estado
       return { ...estado, items: estado.items.filter((item) => item.clave !== accion.clave) }
     case 'duplicarItem': {
-      const indice = estado.items.findIndex((item) => item.clave === accion.clave)
-      if (indice < 0) return estado
-      const copia = { ...estado.items[indice], clave: nuevaClave() }
-      return { ...estado, items: insertar(estado.items, indice + 1, copia) }
+      const index = estado.items.findIndex((item) => item.clave === accion.clave)
+      if (index < 0) return estado
+      const copy = { ...estado.items[index], clave: newKey() }
+      return { ...estado, items: insert(estado.items, index + 1, copy) }
     }
     case 'renombrarSeccion': {
-      const items = renombrarSeccion(estado.items, accion.clave, accion.seccion)
+      const items = renameSection(estado.items, accion.clave, accion.seccion)
       return items === estado.items ? estado : { ...estado, items }
     }
     case 'agregarSeccion': {
-      const nuevo = itemNuevo(estado, estado.items.at(-1), accion.nombre.trim() || 'Nueva sección')
+      const nuevo = itemNew(estado, estado.items.at(-1), accion.nombre.trim() || 'Nueva sección')
       return { ...estado, items: [...estado.items, nuevo] }
     }
     case 'bloque':
-      if (!estado.bloques.some((bloque) => bloque.clave === accion.clave)) return estado
+      if (!estado.bloques.some((block) => block.clave === accion.clave)) return estado
       return {
         ...estado,
-        bloques: estado.bloques.map((bloque) =>
-          bloque.clave === accion.clave ? { ...bloque, ...accion.cambios, clave: bloque.clave } : bloque,
+        bloques: estado.bloques.map((block) =>
+          block.clave === accion.clave ? { ...block, ...accion.changes, clave: block.clave } : block,
         ),
       }
     case 'moverBloque': {
-      const indice = estado.bloques.findIndex((bloque) => bloque.clave === accion.clave)
-      const destino = indice + accion.direccion
-      if (indice < 0 || destino < 0 || destino >= estado.bloques.length) return estado
-      return { ...estado, bloques: mover(estado.bloques, indice, destino) }
+      const index = estado.bloques.findIndex((block) => block.clave === accion.clave)
+      const destination = index + accion.direccion
+      if (index < 0 || destination < 0 || destination >= estado.bloques.length) return estado
+      return { ...estado, bloques: move(estado.bloques, index, destination) }
     }
     case 'restaurarBloques':
-      return { ...estado, bloques: bloquesDelEditor(accion.bloques) }
+      return { ...estado, bloques: blocksOfEditor(accion.bloques) }
     case 'guardado':
       return { ...estado, id: accion.id, version: accion.version, numero: accion.numero }
     case 'reemplazar':
@@ -456,48 +456,48 @@ export function reducirEditor(estado: EstadoEditor, accion: AccionEditor): Estad
 // ---------------------------------------------------------------------------------------------------------------
 // Forma de lo que llega del navegador
 
-const textoLibre = z.string().max(20_000)
-const idOpcional = z.union([z.literal(''), z.uuid()])
+const textFree = z.string().max(20_000)
+const idOptional = z.union([z.literal(''), z.uuid()])
 
 /**
  * La forma de EstadoEditor, sin reglas de negocio (un precio mal escrito o la falta de cliente pasan). Sirve para
  * rechazar con 400 un cuerpo que no es un estado del editor (POST /cotizaciones/vista-previa) antes de usarlo; las
  * reglas para guardar están en payloadGuardar. Los ids son uuid o '' porque el servidor los relee de la base.
  */
-export const esquemaEstadoEditor = z.object({
+export const schemaStatusEditor = z.object({
   id: z.uuid().nullable(),
   version: z.string().max(64).nullable(),
   numero: z.number().int().positive().nullable(),
   estado: z.enum(ESTADOS),
   origen: z.enum(ORIGENES),
-  cliente: z.object({ id: z.uuid(), razon_social: textoLibre, cuit: z.string().nullable() }).nullable(),
-  contactoId: idOpcional,
-  plantillaId: idOpcional,
-  formato: z.enum(FORMATOS_EDITOR),
-  equipoId: idOpcional,
-  firmanteId: idOpcional,
+  cliente: z.object({ id: z.uuid(), razon_social: textFree, cuit: z.string().nullable() }).nullable(),
+  contactoId: idOptional,
+  templateId: idOptional,
+  formato: z.enum(FORMATS_EDITOR),
+  equipoId: idOptional,
+  firmanteId: idOptional,
   fecha: z.string().max(10),
   validezDias: z.string().max(10),
   mostrarTotal: z.boolean(),
   proximaActualizacion: z.string().max(7),
-  asunto: textoLibre,
-  intro: textoLibre,
+  asunto: textFree,
+  intro: textFree,
   datos: z.object({
-    ubicacion: textoLibre,
-    horario: textoLibre,
-    plazo_entrega: textoLibre,
-    duracion_estimada: textoLibre,
-    forma_pago: textoLibre,
-    disponibilidad: textoLibre,
-    indice_base: textoLibre,
-    proxima_actualizacion: textoLibre,
+    ubicacion: textFree,
+    horario: textFree,
+    plazo_entrega: textFree,
+    duracion_estimada: textFree,
+    forma_pago: textFree,
+    disponibilidad: textFree,
+    indice_base: textFree,
+    proxima_actualizacion: textFree,
   }),
   items: z
     .array(
       z.object({
         clave: z.string().max(64),
-        seccion: textoLibre,
-        descripcion: textoLibre,
+        seccion: textFree,
+        descripcion: textFree,
         cantidad: z.string().max(30),
         precio: z.string().max(30),
         unidad: z.enum(UNIDADES),
@@ -505,71 +505,71 @@ export const esquemaEstadoEditor = z.object({
     )
     .max(500),
   bloques: z
-    .array(z.object({ clave: z.string().max(64), titulo: textoLibre, contenido: textoLibre, oculto: z.boolean() }))
+    .array(z.object({ clave: z.string().max(64), titulo: textFree, contenido: textFree, hidden: z.boolean() }))
     .max(100),
-  reemplazaA: z.uuid().nullable(),
-}) satisfies z.ZodType<EstadoEditor>
+  replacesA: z.uuid().nullable(),
+}) satisfies z.ZodType<StatusEditor>
 
 // ---------------------------------------------------------------------------------------------------------------
 // Guardar
 
-const MENSAJE_VALIDEZ = 'Ingresá una validez de 1 a 365 días'
-const MENSAJE_MES = 'Elegí un mes válido'
-const MENSAJE_FECHA = 'Ingresá una fecha válida'
+const MESSAGE_VALIDITY = 'Ingresá una validez de 1 a 365 días'
+const MESSAGE_MONTH = 'Elegí un mes válido'
+const MESSAGE_DATE = 'Ingresá una fecha válida'
 
 /** El texto de la próxima actualización en el PDF: el mes elegido manda; sin mes, queda el texto que hubiera. */
-function proximaActualizacionEnTexto(mes: string, textoActual: string): string {
-  return esMes(mes) ? mesEnLetras(mes) : textoActual
+function nextUpdateInText(month: string, textCurrent: string): string {
+  return isMonth(month) ? monthInLetters(month) : textCurrent
 }
 
-function uuidOpcional(mensaje: string) {
+function uuidOptional(message: string) {
   return z
-    .string(mensaje)
-    .refine((valor) => valor === '' || esUuid(valor), mensaje)
-    .transform((valor) => valor || null)
+    .string(message)
+    .refine((value) => value === '' || isUuid(value), message)
+    .transform((value) => value || null)
 }
 
-const clienteElegido = z.unknown().transform((cliente, ctx) => {
+const clientChosen = z.unknown().transform((cliente, ctx) => {
   const id = cliente !== null && typeof cliente === 'object' ? (cliente as { id?: unknown }).id : undefined
-  if (typeof id === 'string' && esUuid(id)) return id
+  if (typeof id === 'string' && isUuid(id)) return id
   ctx.addIssue({ code: 'custom', message: 'Elegí el cliente' })
   return z.NEVER
 })
 
-const cantidadEscrita = z
+const quantityWritten = z
   .string('Ingresá la cantidad')
   .transform((texto, ctx) => {
-    const cantidad = parsePrecio(texto)
+    const cantidad = parsePrice(texto)
     if (cantidad === null) {
       ctx.addIssue({ code: 'custom', message: texto.trim() ? 'Cantidad inválida' : 'Ingresá la cantidad' })
       return z.NEVER
     }
     return cantidad
   })
-  .pipe(esquemaItem.shape.cantidad)
+  .pipe(schemaItem.shape.cantidad)
 
-const precioEscrito = z
+const priceWritten = z
   .string('Precio inválido')
   .transform((texto, ctx) => {
     if (texto.trim() === '') return null
-    const precio = parsePrecio(texto)
-    if (precio === null) {
+    const price = parsePrice(texto)
+    if (price === null) {
       ctx.addIssue({ code: 'custom', message: 'Precio inválido' })
       return z.NEVER
     }
-    return precio
+    return price
   })
-  .pipe(esquemaItem.shape.precio_unitario)
+  .pipe(schemaItem.shape.precio_unitario)
 
 // Las reglas de cada celda son las de esquemaItem; las claves de error usan los nombres de la grilla
 // ('items.2.precio'), no los de la base ('precio_unitario').
-const esquemaItemEditor = z
+const schemaItemEditor = z
   .object({
-    seccion: esquemaItem.shape.seccion,
-    descripcion: esquemaItem.shape.descripcion,
-    cantidad: cantidadEscrita,
-    precio: precioEscrito,
-    unidad: esquemaItem.shape.unidad,
+    seccion: schemaItem.shape.seccion,
+    descripcion: schemaItem.shape.descripcion,
+    cantidad: quantityWritten,
+    precio: priceWritten,
+    unidad: schemaItem.shape.unidad,
   })
   .superRefine((item, ctx) => {
     // El total de la fila es numeric(16,2) en la base: si no entra, la base contestaría con un error de desborde.
@@ -585,39 +585,39 @@ const esquemaItemEditor = z
     unidad: item.unidad,
   }))
 
-const esquemaBloqueEditor = z.object({
+const schemaBlockEditor = z.object({
   titulo: z.string().trim().max(200, 'Máximo 200 caracteres'),
   // Sin trim: dos espacios al principio de una línea son una subviñeta.
   contenido: z.string().max(10_000, 'Máximo 10.000 caracteres'),
-  oculto: z.boolean(),
+  hidden: z.boolean(),
 })
 
 // Las claves son las de EstadoEditor, así erroresPorRuta devuelve 'cliente', 'validezDias', 'items.2.precio'…
-const esquemaEditor = z.object({
-  cliente: clienteElegido,
-  contactoId: uuidOpcional('Contacto inválido'),
-  plantillaId: uuidOpcional('Plantilla inválida'),
-  formato: z.enum(FORMATOS_EDITOR, { error: 'Elegí el formato' }),
-  equipoId: uuidOpcional('Equipo inválido'),
-  firmanteId: uuidOpcional('Firmante inválido'),
-  fecha: z.string(MENSAJE_FECHA).refine(esFecha, MENSAJE_FECHA),
+const schemaEditor = z.object({
+  cliente: clientChosen,
+  contactoId: uuidOptional('Contacto inválido'),
+  templateId: uuidOptional('Plantilla inválida'),
+  formato: z.enum(FORMATS_EDITOR, { error: 'Elegí el formato' }),
+  equipoId: uuidOptional('Equipo inválido'),
+  firmanteId: uuidOptional('Firmante inválido'),
+  fecha: z.string(MESSAGE_DATE).refine(isDate, MESSAGE_DATE),
   validezDias: z
-    .string(MENSAJE_VALIDEZ)
+    .string(MESSAGE_VALIDITY)
     .trim()
-    .regex(/^\d{1,3}$/, MENSAJE_VALIDEZ)
+    .regex(/^\d{1,3}$/, MESSAGE_VALIDITY)
     .transform(Number)
-    .refine((dias) => dias >= 1 && dias <= 365, MENSAJE_VALIDEZ),
+    .refine((dias) => dias >= 1 && dias <= 365, MESSAGE_VALIDITY),
   mostrarTotal: z.boolean(),
-  proximaActualizacion: z.string(MENSAJE_MES).refine((mes) => mes === '' || esMes(mes), MENSAJE_MES),
+  proximaActualizacion: z.string(MESSAGE_MONTH).refine((month) => month === '' || isMonth(month), MESSAGE_MONTH),
   asunto: z.string().trim().max(500, 'Máximo 500 caracteres'),
   intro: z.string().trim().max(5000, 'Máximo 5000 caracteres'),
-  datos: esquemaDatos,
-  items: z.array(esquemaItemEditor),
-  bloques: z.array(esquemaBloqueEditor),
-  reemplazaA: z
+  datos: schemaData,
+  items: z.array(schemaItemEditor),
+  bloques: z.array(schemaBlockEditor),
+  replacesA: z
     .string()
     .nullable()
-    .refine((id) => id === null || esUuid(id), 'Cotización anterior inválida'),
+    .refine((id) => id === null || isUuid(id), 'Cotización anterior inválida'),
 })
 
 /**
@@ -626,51 +626,51 @@ const esquemaEditor = z.object({
  * fecha_proxima_actualizacion ('YYYY-MM-01') y el texto datos.proxima_actualizacion; los bloques ocultos viajan
  * con oculto: true. Lo usan la Server Action (que no confía en lo que manda el navegador) y hayCambios.
  */
-export function payloadGuardar(
-  estado: EstadoEditor,
-): { ok: true; payload: PayloadGuardar } | { ok: false; errores: Record<string, string> } {
-  const resultado = esquemaEditor.safeParse(estado)
-  if (!resultado.success) return { ok: false, errores: erroresPorRuta(resultado.error) }
-  const valido = resultado.data
+export function payloadSave(
+  estado: StatusEditor,
+): { ok: true; payload: PayloadSave } | { ok: false; errors: Record<string, string> } {
+  const result = schemaEditor.safeParse(estado)
+  if (!result.success) return { ok: false, errors: errorsByPath(result.error) }
+  const valid = result.data
   return {
     ok: true,
     payload: {
       p_datos: {
-        cliente_id: valido.cliente,
-        contacto_id: valido.contactoId,
-        formato: valido.formato,
-        plantilla_id: valido.plantillaId,
-        equipo_id: valido.equipoId,
-        firmante_id: valido.firmanteId,
-        fecha: valido.fecha,
-        asunto: valido.asunto,
-        intro: valido.intro,
+        cliente_id: valid.cliente,
+        contacto_id: valid.contactoId,
+        formato: valid.formato,
+        plantilla_id: valid.templateId,
+        equipo_id: valid.equipoId,
+        firmante_id: valid.firmanteId,
+        fecha: valid.fecha,
+        asunto: valid.asunto,
+        intro: valid.intro,
         datos: {
-          ...valido.datos,
-          proxima_actualizacion: proximaActualizacionEnTexto(
-            valido.proximaActualizacion,
-            valido.datos.proxima_actualizacion,
+          ...valid.datos,
+          proxima_actualizacion: nextUpdateInText(
+            valid.proximaActualizacion,
+            valid.datos.proxima_actualizacion,
           ),
         },
-        bloques: valido.bloques,
-        validez_dias: valido.validezDias,
-        mostrar_total: valido.mostrarTotal,
-        fecha_proxima_actualizacion: valido.proximaActualizacion ? `${valido.proximaActualizacion}-01` : null,
-        reemplaza_a: valido.reemplazaA,
+        bloques: valid.bloques,
+        validez_dias: valid.validezDias,
+        mostrar_total: valid.mostrarTotal,
+        fecha_proxima_actualizacion: valid.proximaActualizacion ? `${valid.proximaActualizacion}-01` : null,
+        reemplaza_a: valid.replacesA,
       },
-      p_items: valido.items,
+      p_items: valid.items,
     },
   }
 }
 
 /** Huella de lo que se guardaría. Con algo a medio escribir (un precio inválido, sin cliente) se usa el contenido. */
-function huella(estado: EstadoEditor): string {
-  const resultado = payloadGuardar(estado)
-  if (resultado.ok) return `payload:${JSON.stringify(resultado.payload)}`
+function fingerprint(estado: StatusEditor): string {
+  const result = payloadSave(estado)
+  if (result.ok) return `payload:${JSON.stringify(result.payload)}`
   return `estado:${JSON.stringify({
     ...estado,
     items: estado.items.map((item) => [item.seccion, item.descripcion, item.cantidad, item.precio, item.unidad]),
-    bloques: estado.bloques.map((bloque) => [bloque.titulo, bloque.contenido, bloque.oculto]),
+    bloques: estado.bloques.map((block) => [block.titulo, block.contenido, block.hidden]),
   })}`
 }
 
@@ -678,8 +678,8 @@ function huella(estado: EstadoEditor): string {
  * true si guardar cambiaría algo. Compara lo que se mandaría a la base, no las claves ni cómo está escrito
  * ("39000000" y "39.000.000" son el mismo precio).
  */
-export function hayCambios(guardado: EstadoEditor, actual: EstadoEditor): boolean {
-  return huella(guardado) !== huella(actual)
+export function hasChanges(saved: StatusEditor, actual: StatusEditor): boolean {
+  return fingerprint(saved) !== fingerprint(actual)
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -691,60 +691,60 @@ export function hayCambios(guardado: EstadoEditor, actual: EstadoEditor): boolea
  * variables). Lo que está a medio escribir no rompe: fecha inválida → hoy, validez inválida → 0, cantidad
  * inválida → 1, precio inválido → sin precio.
  */
-export function fuenteDesdeEditor(
-  estado: EstadoEditor,
-  catalogos: CatalogosEditor,
+export function sourceFromEditor(
+  estado: StatusEditor,
+  catalogs: CatalogsEditor,
   contacto: { nombre: string; email: string } | null,
-): FuenteDocumento {
-  const equipo = catalogos.equipos.find((candidato) => candidato.id === estado.equipoId)
-  const firmante = catalogos.firmantes.find((candidato) => candidato.id === estado.firmanteId)
-  const validez = Number(estado.validezDias.trim())
+): SourceDocument {
+  const equipo = catalogs.equipos.find((candidate) => candidate.id === estado.equipoId)
+  const firmante = catalogs.firmantes.find((candidate) => candidate.id === estado.firmanteId)
+  const validity = Number(estado.validezDias.trim())
   return {
     cotizacion: {
       numero: estado.numero,
-      fecha: esFecha(estado.fecha) ? estado.fecha : hoyArgentina(),
+      fecha: isDate(estado.fecha) ? estado.fecha : todayArgentina(),
       formato: estado.formato,
       asunto: estado.asunto,
       intro: estado.intro,
-      validez_dias: Number.isInteger(validez) && validez > 0 ? validez : 0,
+      validez_dias: Number.isInteger(validity) && validity > 0 ? validity : 0,
       mostrar_total: estado.mostrarTotal,
       datos: {
         ...estado.datos,
-        proxima_actualizacion: proximaActualizacionEnTexto(
+        proxima_actualizacion: nextUpdateInText(
           estado.proximaActualizacion,
           estado.datos.proxima_actualizacion,
         ),
       },
-      bloques: estado.bloques.map(({ titulo, contenido, oculto }) => ({ titulo, contenido, oculto })),
+      bloques: estado.bloques.map(({ titulo: title, contenido: content, hidden }) => ({ titulo: title, contenido: content, hidden })),
     },
-    items: estado.items.map((item, indice) => ({
-      orden: indice + 1,
+    items: estado.items.map((item, index) => ({
+      orden: index + 1,
       seccion: item.seccion,
       descripcion: item.descripcion,
-      cantidad: parsePrecio(item.cantidad) ?? 1,
-      precio_unitario: parsePrecio(item.precio),
+      cantidad: parsePrice(item.cantidad) ?? 1,
+      precio_unitario: parsePrice(item.precio),
       unidad: item.unidad,
     })),
     cliente: { razon_social: estado.cliente?.razon_social ?? '', cuit: estado.cliente?.cuit ?? null },
     contacto,
     equipo: equipo ? { capacidad_tn: equipo.capacidad_tn, descripcion: equipo.descripcion } : null,
     firmante: firmante ? { nombre: firmante.nombre, cargo: firmante.cargo, telefono: firmante.telefono } : null,
-    empresa: catalogos.empresa,
+    empresa: catalogs.empresa,
   }
 }
 
 /** Lo que falta para poder enviar o aprobar, calculado con el mismo armarDocumento que dibuja el PDF. */
-export function pendientesEditor(estado: EstadoEditor, catalogos: CatalogosEditor): Pendientes {
-  const documento = armarDocumento(fuenteDesdeEditor(estado, catalogos, null))
+export function pendingListEditor(estado: StatusEditor, catalogs: CatalogsEditor): PendingList {
+  const document = buildDocument(sourceFromEditor(estado, catalogs, null))
   return {
     // Sin guardar todavía no hay número: se asigna al guardar, no es algo que el usuario tenga que completar.
-    variables: documento.faltantes.filter((nombre) => nombre !== 'numero' || estado.id !== null),
-    desconocidas: documento.desconocidas,
-    itemsSinPrecio: estado.items.filter((item) => parsePrecio(item.precio) === null).length,
-    sinItems: estado.items.length === 0,
+    variables: document.faltantes.filter((nombre) => nombre !== 'numero' || estado.id !== null),
+    desconocidas: document.desconocidas,
+    itemsWithoutPrice: estado.items.filter((item) => parsePrice(item.precio) === null).length,
+    withoutItems: estado.items.length === 0,
   }
 }
 
-export function puedeEnviar(p: Pendientes): boolean {
-  return p.variables.length === 0 && p.desconocidas.length === 0 && p.itemsSinPrecio === 0 && !p.sinItems
+export function canSend(p: PendingList): boolean {
+  return p.variables.length === 0 && p.desconocidas.length === 0 && p.itemsWithoutPrice === 0 && !p.withoutItems
 }

@@ -1,21 +1,21 @@
 import type { Metadata } from 'next'
-import { BarraMigas } from '@/components/app-shell/encabezado'
-import { FirmanteForm } from '@/components/configuracion/firmantes'
-import { crearFirmante } from '../../actions'
+import { BarCrumbs } from '@/components/app-shell/header'
+import { SignerForm } from '@/components/settings/signers'
+import { crearSigner } from '../../actions'
 
 export const metadata: Metadata = { title: 'Nuevo firmante' }
 
-export default function NuevoFirmantePage() {
+export default function NewSignerPage() {
   return (
     <>
-      <BarraMigas
-        migas={[
+      <BarCrumbs
+        crumbs={[
           { texto: 'Configuración', href: '/configuracion' },
           { texto: 'Firmantes', href: '/configuracion/firmantes' },
           { texto: 'Nuevo firmante' },
         ]}
       />
-      <FirmanteForm accion={crearFirmante} />
+      <SignerForm accion={crearSigner} />
     </>
   )
 }

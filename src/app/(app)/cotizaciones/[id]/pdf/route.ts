@@ -1,9 +1,9 @@
 // src/app/(app)/cotizaciones/[id]/pdf/route.ts
-import { getEstadoSesion } from '@/lib/auth'
-import { pdfParaMostrar } from '@/lib/cotizaciones/servicio'
-import { contentDisposition } from '@/lib/pdf/nombre-archivo'
+import { getStatusSession } from '@/lib/auth'
+import { pdfForShow } from '@/lib/quotes/service'
+import { contentDisposition } from '@/lib/pdf/file-name'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
+import { isUuid } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,22 +13,22 @@ export const dynamic = 'force-dynamic'
  * haya enviado antes.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const sesion = await getEstadoSesion()
-  if (sesion.estado !== 'activo') return new Response('No autorizado', { status: 401 })
+  const session = await getStatusSession()
+  if (session.estado !== 'activo') return new Response('No autorizado', { status: 401 })
 
   const { id } = await params
-  const parametros = new URL(request.url).searchParams
-  const envio = parametros.get('envio') ?? undefined
-  if (!esUuid(id) || (envio !== undefined && !esUuid(envio))) return new Response('No encontrada', { status: 404 })
+  const query = new URL(request.url).searchParams
+  const envio = query.get('envio') ?? undefined
+  if (!isUuid(id) || (envio !== undefined && !isUuid(envio))) return new Response('No encontrada', { status: 404 })
 
   const supabase = await createClient()
-  const resultado = await pdfParaMostrar(supabase, id, envio, { actual: parametros.get('actual') === '1' })
-  if (!resultado) return new Response('No encontrada', { status: 404 })
+  const result = await pdfForShow(supabase, id, envio, { actual: query.get('actual') === '1' })
+  if (!result) return new Response('No encontrada', { status: 404 })
 
-  return new Response(new Uint8Array(resultado.pdf), {
+  return new Response(new Uint8Array(result.pdf), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': contentDisposition(resultado.nombreArchivo, parametros.has('descargar') ? 'attachment' : 'inline'),
+      'Content-Disposition': contentDisposition(result.nameFile, query.has('descargar') ? 'attachment' : 'inline'),
       'Cache-Control': 'private, no-store',
     },
   })

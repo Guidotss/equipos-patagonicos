@@ -1,19 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
-import { E2E_EMAIL, E2E_NOMBRE, E2E_PASSWORD } from './credenciales'
-import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
+import { E2E_EMAIL, E2E_NAME, E2E_PASSWORD } from './credentials'
+import { validateEnvTests } from '../../scripts/test-env.mjs'
 
 /** Deja un usuario admin activo con contraseña conocida (idempotente). */
 export default async function globalSetup() {
-  const { baseURL } = validarEntornoPruebas()
+  const { baseURL } = validateEnvTests()
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
-  const { data: lista, error: errorLista } = await admin.auth.admin.listUsers({ perPage: 1000 })
-  if (errorLista) throw errorLista
+  const { data: list, error: errorList } = await admin.auth.admin.listUsers({ perPage: 1000 })
+  if (errorList) throw errorList
 
-  let id = lista.users.find((u) => u.email === E2E_EMAIL)?.id
+  let id = list.users.find((u) => u.email === E2E_EMAIL)?.id
   if (id) {
     const { error } = await admin.auth.admin.updateUserById(id, { password: E2E_PASSWORD })
     if (error) throw error
@@ -22,13 +22,13 @@ export default async function globalSetup() {
       email: E2E_EMAIL,
       password: E2E_PASSWORD,
       email_confirm: true,
-      user_metadata: { nombre: E2E_NOMBRE },
+      user_metadata: { nombre: E2E_NAME },
     })
     if (error) throw error
     id = data.user.id
   }
 
-  const { error } = await admin.from('profiles').update({ activo: true, rol: 'admin', nombre: E2E_NOMBRE }).eq('id', id)
+  const { error } = await admin.from('profiles').update({ activo: true, rol: 'admin', nombre: E2E_NAME }).eq('id', id)
   if (error) throw error
 
   // Compila el login antes de abrir varios navegadores contra next dev en frío.

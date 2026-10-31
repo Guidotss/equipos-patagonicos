@@ -2,10 +2,10 @@
 
 import { ArrowLeft, FileText } from 'lucide-react'
 import Link from 'next/link'
-import { Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
-import { EstadoCotizacion } from '@/components/cotizaciones/estado-cotizacion'
+import { Content, HeaderPage } from '@/components/app-shell/header'
+import { StatusQuote } from '@/components/quotes/status-quote'
 import { Button } from '@/components/ui/button'
-import { formatFechaCorta } from '@/lib/format/fechas'
+import { formatDateCorta } from '@/lib/format/dates'
 
 const ORIGEN = {
   importada: 'Cargada desde un PDF.',
@@ -13,8 +13,8 @@ const ORIGEN = {
 } as const
 
 /** Cotización cargada o presupuesto directo: no se editan (decisión 24). La vista completa llega en el plan 3C. */
-export function CotizacionSoloLectura({
-  cotizacion,
+export function QuoteSoloQuery({
+  cotizacion: quote,
 }: {
   cotizacion: {
     id: string
@@ -29,16 +29,16 @@ export function CotizacionSoloLectura({
   }
 }) {
   return (
-    <Contenido>
-      <EncabezadoPagina
-        compacto
-        titulo={`Cotización N° ${cotizacion.numero}`}
-        extra={<EstadoCotizacion estado={cotizacion.estado} vencida={cotizacion.vencida} />}
-        descripcion={`${cotizacion.cliente} · ${formatFechaCorta(cotizacion.fecha)}`}
-        acciones={
-          cotizacion.tienePdf ? (
+    <Content>
+      <HeaderPage
+        compact
+        titulo={`Cotización N° ${quote.numero}`}
+        extra={<StatusQuote estado={quote.estado} vencida={quote.vencida} />}
+        descripcion={`${quote.cliente} · ${formatDateCorta(quote.fecha)}`}
+        actions={
+          quote.tienePdf ? (
             <Button asChild variant="outline" size="lg">
-              <a href={`/cotizaciones/${cotizacion.id}/pdf`} target="_blank" rel="noreferrer">
+              <a href={`/cotizaciones/${quote.id}/pdf`} target="_blank" rel="noreferrer">
                 <FileText aria-hidden />
                 Ver el PDF original
               </a>
@@ -47,9 +47,9 @@ export function CotizacionSoloLectura({
         }
       />
       <div className="max-w-3xl space-y-1 rounded-lg border bg-muted px-4 py-3 text-sm">
-        <p>{ORIGEN[cotizacion.origen]}</p>
-        {cotizacion.asunto ? (
-          <p className="text-muted-foreground [overflow-wrap:anywhere]">Trabajo: {cotizacion.asunto}</p>
+        <p>{ORIGEN[quote.origen]}</p>
+        {quote.asunto ? (
+          <p className="text-muted-foreground [overflow-wrap:anywhere]">Trabajo: {quote.asunto}</p>
         ) : null}
       </div>
       <Link
@@ -59,6 +59,6 @@ export function CotizacionSoloLectura({
         <ArrowLeft className="size-4" aria-hidden />
         Volver a Cotizaciones
       </Link>
-    </Contenido>
+    </Content>
   )
 }

@@ -1,44 +1,44 @@
 'use client'
 // src/components/cotizaciones/editor/encabezado-editor.tsx
 
-import { EncabezadoPagina } from '@/components/app-shell/encabezado'
-import { EstadoCotizacion } from '@/components/cotizaciones/estado-cotizacion'
+import { HeaderPage } from '@/components/app-shell/header'
+import { StatusQuote } from '@/components/quotes/status-quote'
 import { Button } from '@/components/ui/button'
-import type { EstadoEditor } from '@/lib/cotizaciones/editor'
-import { resumenEncabezado } from '@/lib/cotizaciones/editor-pantalla'
+import type { StatusEditor } from '@/lib/quotes/editor'
+import { resumenHeader } from '@/lib/quotes/editor-screen'
 import { cn } from '@/lib/utils'
 
-export function EncabezadoEditor({
+export function HeaderEditor({
   estado,
-  hoy,
+  today,
   editable,
-  cambios,
+  changes,
   guardando,
-  ocupado,
-  alGuardar,
-  acciones,
+  busy,
+  onSave,
+  actions,
 }: {
-  estado: EstadoEditor
-  hoy: string
+  estado: StatusEditor
+  today: string
   editable: boolean
-  cambios: boolean
+  changes: boolean
   guardando: boolean
   /** Alguna acción corre: todos los botones de acción quedan deshabilitados (decisión 12). */
-  ocupado: boolean
-  alGuardar: () => void
+  busy: boolean
+  onSave: () => void
   /** Botones de transición y menú ⋯ (Task 12), a la derecha de Guardar. Botones size="lg" (h-9). */
-  acciones?: React.ReactNode
+  actions?: React.ReactNode
 }) {
-  const resumen = resumenEncabezado(estado, hoy)
+  const resumen = resumenHeader(estado, today)
 
   return (
-    <EncabezadoPagina
-      compacto
+    <HeaderPage
+      compact
       titulo={resumen.titulo}
-      extra={<EstadoCotizacion estado={estado.estado} vencida={resumen.vence?.vencida ?? false} />}
+      extra={<StatusQuote estado={estado.estado} vencida={resumen.vence?.vencida ?? false} />}
       descripcion={
         <>
-          {resumen.detalle}
+          {resumen.detail}
           {resumen.vence ? (
             <>
               {' · '}
@@ -47,7 +47,7 @@ export function EncabezadoEditor({
           ) : null}
         </>
       }
-      acciones={
+      actions={
         <>
           {editable ? (
             // Debajo de 90rem Guardar está en la barra fija de abajo (BarraInferior).
@@ -55,14 +55,14 @@ export function EncabezadoEditor({
               type="button"
               variant="outline"
               size="lg"
-              onClick={alGuardar}
-              disabled={ocupado || (estado.id !== null && !cambios)}
+              onClick={onSave}
+              disabled={busy || (estado.id !== null && !changes)}
               className="hidden min-[90rem]:inline-flex"
             >
               {guardando ? 'Guardando…' : 'Guardar'}
             </Button>
           ) : null}
-          {acciones}
+          {actions}
         </>
       }
     />

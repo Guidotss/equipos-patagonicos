@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { BarraMigas } from '@/components/app-shell/encabezado'
-import { ContactoForm } from '@/components/clientes/contacto-form'
+import { BarCrumbs } from '@/components/app-shell/header'
+import { ContactForm } from '@/components/clients/contact-form'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
-import { crearContacto } from '../../../actions'
+import { isUuid } from '@/lib/validation'
+import { crearContact } from '../../../actions'
 
 export const metadata: Metadata = { title: 'Nuevo contacto' }
 
-export default async function NuevoContactoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NewContactPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!esUuid(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
   const { data: cliente, error } = await supabase.from('clientes').select('razon_social').eq('id', id).maybeSingle()
@@ -19,14 +19,14 @@ export default async function NuevoContactoPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <BarraMigas
-        migas={[
+      <BarCrumbs
+        crumbs={[
           { texto: 'Clientes', href: '/clientes' },
           { texto: cliente.razon_social, href: `/clientes/${id}` },
           { texto: 'Nuevo contacto' },
         ]}
       />
-      <ContactoForm accion={crearContacto.bind(null, id)} clienteId={id} razonSocial={cliente.razon_social} />
+      <ContactForm accion={crearContact.bind(null, id)} clientId={id} razonSocial={cliente.razon_social} />
     </>
   )
 }

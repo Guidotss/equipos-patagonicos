@@ -2,141 +2,141 @@
 
 import { AlignLeft, Building2, CalendarClock, FileText, Printer } from 'lucide-react'
 import { Fragment } from 'react'
-import { Contenido } from '@/components/app-shell/encabezado'
-import { AccionesFormulario, EncabezadoFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
-import { FormularioAccion } from '@/components/formulario/formulario-accion'
-import { MensajeFormulario } from '@/components/formulario/mensaje-formulario'
+import { Content } from '@/components/app-shell/header'
+import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import { FormAction } from '@/components/form/form-action'
+import { MessageForm } from '@/components/form/message-form'
 import {
-  CamposGrilla,
-  FranjaVista,
-  FrasesResueltas,
-  Resaltado,
-  Tarjeta,
-  useVistaEnVivo,
-  type DefinicionCampo,
-} from '@/components/formulario/tarjeta'
-import type { CampoEmpresa } from '@/lib/catalogos/esquemas'
-import { tramosPie } from '@/lib/cotizaciones/pie'
-import { encabezadoFecha } from '@/lib/format/fechas'
-import type { AccionFormulario } from '@/lib/formularios'
+  FieldsGrid,
+  BandView,
+  PhrasesResolved,
+  Highlight,
+  Card,
+  useViewInLive,
+  type DefinitionField,
+} from '@/components/form/card'
+import type { FieldCompany } from '@/lib/catalogs/schemas'
+import { tramosFooter } from '@/lib/quotes/footer'
+import { headerDate } from '@/lib/format/dates'
+import type { ActionForm } from '@/lib/forms'
 
-type CampoDeEmpresa = DefinicionCampo & { campo: CampoEmpresa }
-type Valores = Partial<Record<CampoEmpresa, string | null>>
+type FieldOfCompany = DefinitionField & { campo: FieldCompany }
+type Values = Partial<Record<FieldCompany, string | null>>
 
 // Agrupados por dónde se usa cada dato (ver armarDocumento y tramosPie). El pie va en el orden en que se imprime.
-const CAMPOS_PIE: CampoDeEmpresa[] = [
-  { campo: 'direccion', etiqueta: 'Dirección', ancho: true },
-  { campo: 'ciudad', etiqueta: 'Ciudad' },
-  { campo: 'telefono', etiqueta: 'Teléfono' },
-  { campo: 'email', etiqueta: 'Email', ancho: true },
-  { campo: 'web', etiqueta: 'Web', ancho: true },
+const FIELDS_FOOTER: FieldOfCompany[] = [
+  { campo: 'direccion', label: 'Dirección', ancho: true },
+  { campo: 'ciudad', label: 'Ciudad' },
+  { campo: 'telefono', label: 'Teléfono' },
+  { campo: 'email', label: 'Email', ancho: true },
+  { campo: 'web', label: 'Web', ancho: true },
 ]
-const CAMPOS_TARIFAS: CampoDeEmpresa[] = [
-  { campo: 'indice_base', etiqueta: 'Mes base del índice FADEEAC', placeholder: 'junio 2026' },
-  { campo: 'proxima_actualizacion', etiqueta: 'Próxima actualización', placeholder: 'noviembre de 2026' },
+const FIELDS_TARIFAS: FieldOfCompany[] = [
+  { campo: 'indice_base', label: 'Mes base del índice FADEEAC', placeholder: 'junio 2026' },
+  { campo: 'proxima_actualizacion', label: 'Próxima actualización', placeholder: 'noviembre de 2026' },
 ]
-const CAMPOS_FISCALES: CampoDeEmpresa[] = [
-  { campo: 'razon_social', etiqueta: 'Razón social', ancho: true },
-  { campo: 'cuit', etiqueta: 'CUIT', placeholder: '30-12345678-9' },
-  { campo: 'provincia', etiqueta: 'Provincia' },
+const FIELDS_FISCALES: FieldOfCompany[] = [
+  { campo: 'razon_social', label: 'Razón social', ancho: true },
+  { campo: 'cuit', label: 'CUIT', placeholder: '30-12345678-9' },
+  { campo: 'provincia', label: 'Provincia' },
 ]
 
-const CAMPOS_VISTA = ['direccion', 'ciudad', 'telefono', 'email', 'web', 'indice_base', 'proxima_actualizacion'] as const
-type CampoVista = (typeof CAMPOS_VISTA)[number]
+const FIELDS_VIEW = ['direccion', 'ciudad', 'telefono', 'email', 'web', 'indice_base', 'proxima_actualizacion'] as const
+type FieldView = (typeof FIELDS_VIEW)[number]
 
 /** La fecha y el pie tal como los arma el PDF, con los datos de esta pantalla resaltados. */
-function FranjaPdf({ hoy, valores }: { hoy: string; valores: Record<CampoVista, string> }) {
-  const fecha = encabezadoFecha(valores.ciudad, hoy)
+function BandPdf({ today, values }: { today: string; values: Record<FieldView, string> }) {
+  const fecha = headerDate(values.ciudad, today)
   return (
-    <FranjaVista icono={Printer} titulo="Así sale en el PDF">
+    <BandView icon={Printer} titulo="Así sale en el PDF">
       <p>
-        {valores.ciudad ? <Resaltado>{valores.ciudad}</Resaltado> : null}
-        {fecha.slice(valores.ciudad.length)}
+        {values.ciudad ? <Highlight>{values.ciudad}</Highlight> : null}
+        {fecha.slice(values.ciudad.length)}
       </p>
       <p className="[overflow-wrap:anywhere]">
-        {tramosPie(valores).map((tramo, indice) => (
-          <Fragment key={indice}>
-            {indice > 0 ? ' - ' : null}
-            {tramo.prefijo}
-            {tramo.fijo ? tramo.valor : <Resaltado>{tramo.valor}</Resaltado>}
+        {tramosFooter(values).map((tramo, index) => (
+          <Fragment key={index}>
+            {index > 0 ? ' - ' : null}
+            {tramo.prefix}
+            {tramo.fijo ? tramo.value : <Highlight>{tramo.value}</Highlight>}
           </Fragment>
         ))}
       </p>
-      {valores.web ? (
+      {values.web ? (
         <p className="[overflow-wrap:anywhere]">
-          <Resaltado>{valores.web}</Resaltado>
+          <Highlight>{values.web}</Highlight>
         </p>
       ) : null}
-    </FranjaVista>
+    </BandView>
   )
 }
 
-export function EmpresaForm({
+export function CompanyForm({
   accion,
-  inicial,
-  soloLectura,
-  hoy,
-  frasesTarifas,
+  initial,
+  soloQuery,
+  today,
+  phrasesTarifas,
 }: {
-  accion: AccionFormulario
-  inicial: Valores
-  soloLectura: boolean
+  accion: ActionForm
+  initial: Values
+  soloQuery: boolean
   /** Fecha (YYYY-MM-DD) de "Así sale en el PDF"; viene del servidor para que coincida con el HTML inicial. */
-  hoy: string
+  today: string
   /** Oraciones de las plantillas activas con {{indice_base}} o {{proxima_actualizacion}}. */
-  frasesTarifas: string[]
+  phrasesTarifas: string[]
 }) {
-  const { vista, alEscribir, sincronizar } = useVistaEnVivo(CAMPOS_VISTA, inicial)
-  const datosClave = [inicial.direccion, inicial.ciudad, inicial.email].filter(Boolean).join(' · ')
+  const { view, onEscribir, sincronizar } = useViewInLive(FIELDS_VIEW, initial)
+  const dataKey = [initial.direccion, initial.ciudad, initial.email].filter(Boolean).join(' · ')
 
   return (
-    <FormularioAccion
+    <FormAction
       accion={accion}
-      textoBoton="Guardar cambios"
-      soloLectura={soloLectura}
-      boton={false}
+      textButton="Guardar cambios"
+      soloQuery={soloQuery}
+      button={false}
     >
-      {(estado, pendiente) => (
-        <Contenido className="max-w-6xl pb-28">
-          <EncabezadoFormulario
-            titulo={inicial.razon_social || 'Empresa'}
-            descripcion={datosClave || 'Datos de la empresa que se usan en las cotizaciones.'}
+      {(estado, pending) => (
+        <Content className="max-w-6xl pb-28">
+          <HeaderForm
+            titulo={initial.razon_social || 'Empresa'}
+            descripcion={dataKey || 'Datos de la empresa que se usan en las cotizaciones.'}
           />
-          {soloLectura ? <p className="text-sm text-muted-foreground">Solo un administrador puede modificar estos datos.</p> : null}
-          <MensajeFormulario estado={estado} />
-          <HojaFormulario ref={sincronizar} onInput={alEscribir}>
-            <Tarjeta
-              icono={FileText}
+          {soloQuery ? <p className="text-sm text-muted-foreground">Solo un administrador puede modificar estos datos.</p> : null}
+          <MessageForm estado={estado} />
+          <SheetForm ref={sincronizar} onInput={onEscribir}>
+            <Card
+              icon={FileText}
               titulo="Pie de las cotizaciones"
               descripcion="Se imprime al pie de cada página; la ciudad también encabeza la fecha."
-              franja={<FranjaPdf hoy={hoy} valores={vista} />}
+              band={<BandPdf today={today} values={view} />}
             >
-              <CamposGrilla estado={estado} inicial={inicial} campos={CAMPOS_PIE} />
-            </Tarjeta>
-            <Tarjeta
-              icono={CalendarClock}
+              <FieldsGrid estado={estado} initial={initial} fields={FIELDS_FOOTER} />
+            </Card>
+            <Card
+              icon={CalendarClock}
               titulo="Actualización de tarifas"
               descripcion="Valores por defecto de cada cotización nueva."
-              franja={
-                frasesTarifas.length > 0 ? (
-                  <FranjaVista icono={AlignLeft} titulo="Así sale en las condiciones">
-                    <FrasesResueltas
-                      frases={frasesTarifas}
-                      valores={{ indice_base: vista.indice_base, proxima_actualizacion: vista.proxima_actualizacion }}
+              band={
+                phrasesTarifas.length > 0 ? (
+                  <BandView icon={AlignLeft} titulo="Así sale en las condiciones">
+                    <PhrasesResolved
+                      phrases={phrasesTarifas}
+                      values={{ indice_base: view.indice_base, proxima_actualizacion: view.proxima_actualizacion }}
                     />
-                  </FranjaVista>
+                  </BandView>
                 ) : null
               }
             >
-              <CamposGrilla estado={estado} inicial={inicial} campos={CAMPOS_TARIFAS} />
-            </Tarjeta>
-            <Tarjeta icono={Building2} titulo="Datos fiscales" descripcion="No se imprimen en las cotizaciones.">
-              <CamposGrilla estado={estado} inicial={inicial} campos={CAMPOS_FISCALES} />
-            </Tarjeta>
-          </HojaFormulario>
-          <AccionesFormulario volver="/configuracion" textoBoton="Guardar cambios" pendiente={pendiente} soloLectura={soloLectura} />
-        </Contenido>
+              <FieldsGrid estado={estado} initial={initial} fields={FIELDS_TARIFAS} />
+            </Card>
+            <Card icon={Building2} titulo="Datos fiscales" descripcion="No se imprimen en las cotizaciones.">
+              <FieldsGrid estado={estado} initial={initial} fields={FIELDS_FISCALES} />
+            </Card>
+          </SheetForm>
+          <ActionsForm back="/configuracion" textButton="Guardar cambios" pendiente={pending} soloQuery={soloQuery} />
+        </Content>
       )}
-    </FormularioAccion>
+    </FormAction>
   )
 }

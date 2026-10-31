@@ -1,19 +1,19 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { esSesionInvalida } from '@/lib/auth/errores'
+import { isSessionInvalid } from '@/lib/auth/errors'
 import { publicEnv } from '@/lib/env'
 
-const RUTAS_PUBLICAS = ['/login']
+const PATHS_PUBLICAS = ['/login']
 
-function esPublica(pathname: string) {
-  return RUTAS_PUBLICAS.some((ruta) => pathname === ruta || pathname.startsWith(`${ruta}/`))
+function isPublic(pathname: string) {
+  return PATHS_PUBLICAS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 }
 
 /** Redirige conservando las cookies de sesión que haya escrito Supabase. */
-function redirigir(destino: URL, conCookiesDe: NextResponse) {
-  const respuesta = NextResponse.redirect(destino)
-  for (const cookie of conCookiesDe.cookies.getAll()) respuesta.cookies.set(cookie)
-  return respuesta
+function redirigir(destination: URL, withCookiesOf: NextResponse) {
+  const response = NextResponse.redirect(destination)
+  for (const cookie of withCookiesOf.cookies.getAll()) response.cookies.set(cookie)
+  return response
 }
 
 export async function updateSession(request: NextRequest) {
@@ -29,7 +29,7 @@ export async function updateSession(request: NextRequest) {
           for (const { name, value } of cookiesToSet) request.cookies.set(name, value)
           response = NextResponse.next({ request })
           for (const { name, value, options } of cookiesToSet) response.cookies.set(name, value, options)
-          for (const [clave, valor] of Object.entries(headers ?? {})) response.headers.set(clave, valor)
+          for (const [clave, value] of Object.entries(headers ?? {})) response.headers.set(clave, value)
         },
       },
     },
@@ -40,23 +40,23 @@ export async function updateSession(request: NextRequest) {
   // Si Auth no respondió no sabemos si hay sesión: se deja pasar. El layout vuelve a validar y,
   // si Auth sigue caído, se ve src/app/error.tsx con "Reintentar". Mandar al login no ayudaría:
   // tampoco se podría entrar.
-  if (error && !esSesionInvalida(error)) return response
+  if (error && !isSessionInvalid(error)) return response
   const autenticado = Boolean(data?.claims)
   const { pathname, search } = request.nextUrl
 
-  if (!autenticado && !esPublica(pathname)) {
-    const destino = request.nextUrl.clone()
-    destino.pathname = '/login'
-    destino.search = ''
-    if (pathname !== '/') destino.searchParams.set('next', `${pathname}${search}`)
-    return redirigir(destino, response)
+  if (!autenticado && !isPublic(pathname)) {
+    const destination = request.nextUrl.clone()
+    destination.pathname = '/login'
+    destination.search = ''
+    if (pathname !== '/') destination.searchParams.set('next', `${pathname}${search}`)
+    return redirigir(destination, response)
   }
 
   if (autenticado && pathname === '/login') {
-    const destino = request.nextUrl.clone()
-    destino.pathname = '/'
-    destino.search = ''
-    return redirigir(destino, response)
+    const destination = request.nextUrl.clone()
+    destination.pathname = '/'
+    destination.search = ''
+    return redirigir(destination, response)
   }
 
   return response

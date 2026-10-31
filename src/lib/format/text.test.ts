@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { iniciales } from './texto'
+import { iniciales } from './text'
 
 describe('iniciales', () => {
   it('toma la primera letra de las dos primeras palabras', () => {

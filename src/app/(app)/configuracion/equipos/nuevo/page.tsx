@@ -1,28 +1,28 @@
 import type { Metadata } from 'next'
-import { BarraMigas } from '@/components/app-shell/encabezado'
-import { FormularioEquipo } from '@/components/configuracion/equipos'
-import { VARIABLES_EQUIPO } from '@/lib/catalogos/equipos'
-import { frasesConVariables } from '@/lib/plantillas/frases'
+import { BarCrumbs } from '@/components/app-shell/header'
+import { FormEquipment } from '@/components/settings/equipment'
+import { VARIABLES_EQUIPMENT } from '@/lib/catalogs/equipment'
+import { phrasesWithVariables } from '@/lib/templates/phrases'
 import { createClient } from '@/lib/supabase/server'
-import { crearEquipo } from '../../actions'
+import { crearEquipment } from '../../actions'
 
 export const metadata: Metadata = { title: 'Nuevo equipo' }
 
-export default async function NuevoEquipoPage() {
+export default async function NewEquipmentPage() {
   const supabase = await createClient()
   const { data: plantillas, error } = await supabase.from('plantillas').select('bloques').eq('activa', true)
   if (error) throw error
 
   return (
     <>
-      <BarraMigas
-        migas={[
+      <BarCrumbs
+        crumbs={[
           { texto: 'Configuración', href: '/configuracion' },
           { texto: 'Equipos', href: '/configuracion/equipos' },
           { texto: 'Nuevo equipo' },
         ]}
       />
-      <FormularioEquipo accion={crearEquipo} frases={frasesConVariables(plantillas, VARIABLES_EQUIPO)} />
+      <FormEquipment accion={crearEquipment} phrases={phrasesWithVariables(plantillas, VARIABLES_EQUIPMENT)} />
     </>
   )
 }

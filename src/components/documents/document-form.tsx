@@ -4,232 +4,232 @@ import { FileText, LoaderCircle } from 'lucide-react'
 import { useCallback, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { guardarDocumento, leerContextoDocumento } from '@/app/(app)/documentos/actions'
-import { Campo } from '@/components/formulario/campo'
-import { AccionesFormulario, HojaFormulario } from '@/components/formulario/estructura-formulario'
-import { Tarjeta } from '@/components/formulario/tarjeta'
+import { saveDocument, readContextoDocument } from '@/app/(app)/documentos/actions'
+import { Field } from '@/components/form/field'
+import { ActionsForm, SheetForm } from '@/components/form/structure-form'
+import { Card } from '@/components/form/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { CAMPOS_DOCUMENTO, TIPOS_COMPROBANTE, TIPOS_DOCUMENTO, type TipoDocumento } from '@/lib/documentos/esquemas'
+import { FIELDS_DOCUMENT, TIPOS_COMPROBANTE, TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
 import {
-  type ArchivoDocumento,
-  type ContextoDocumento,
-  type Documento,
-  type OpcionPresupuesto,
-} from '@/lib/documentos/pantallas'
-import type { ArchivoSubido } from '@/lib/documentos/servicio'
-import { formatMoneda, formatMontoTabla, parsePrecio } from '@/lib/format/montos'
-import { SubidaArchivos } from './subida-archivos'
+  type FileDocument,
+  type ContextoDocument,
+  type Document,
+  type OptionBudget,
+} from '@/lib/documents/screens'
+import type { FileSubido } from '@/lib/documents/service'
+import { formatMoneda, formatAmountTable, parsePrice } from '@/lib/format/amounts'
+import { UploadFiles } from './upload-files'
 
-type Valores = Record<(typeof CAMPOS_DOCUMENTO)[number], string>
-const CONTEXTO_VACIO: ContextoDocumento = { presupuestos: [], documentos: [], facturas: [], equipos: [] }
-const normalizarNumero = (numero: string) =>
+type Values = Record<(typeof FIELDS_DOCUMENT)[number], string>
+const CONTEXTO_EMPTY: ContextoDocument = { budgets: [], documentos: [], facturas: [], equipos: [] }
+const normalizeNumber = (numero: string) =>
   numero
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
     .replace(/^0+/, '')
 
-export function DocumentoForm({
-  opciones,
-  presupuestoId = '',
-  contextoInicial = CONTEXTO_VACIO,
+export function DocumentForm({
+  options,
+  budgetId = '',
+  contextoInitial = CONTEXTO_EMPTY,
   tipo = 'remito',
-  documento,
-  archivosExistentes = [],
+  document,
+  filesExisting = [],
   vinculos = [],
   aplicacionesIniciales = [],
-  remitoId,
-  facturaId,
-  cotizacion,
+  deliveryNoteId,
+  invoiceId,
+  cotizacion: quote,
 }: {
-  opciones: OpcionPresupuesto[]
-  presupuestoId?: string
-  contextoInicial?: ContextoDocumento
-  tipo?: TipoDocumento
-  documento?: Documento
-  archivosExistentes?: ArchivoDocumento[]
+  options: OptionBudget[]
+  budgetId?: string
+  contextoInitial?: ContextoDocument
+  tipo?: TipoDocument
+  document?: Document
+  filesExisting?: FileDocument[]
   vinculos?: string[]
   aplicacionesIniciales?: { factura_id: string; monto_aplicado: number }[]
-  remitoId?: string
-  facturaId?: string
+  deliveryNoteId?: string
+  invoiceId?: string
   cotizacion?: { id: string; version: string }
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const enviando = useRef(false)
-  const [contexto, setContexto] = useState(contextoInicial)
-  const [seleccionados, setSeleccionados] = useState(vinculos.length ? vinculos : presupuestoId ? [presupuestoId] : [])
-  const [clienteId, setClienteId] = useState(
-    documento?.cliente_id ?? opciones.find((opcion) => opcion.id === presupuestoId)?.cliente_id ?? '',
+  const [contexto, setContexto] = useState(contextoInitial)
+  const [seleccionados, setSeleccionados] = useState(vinculos.length ? vinculos : budgetId ? [budgetId] : [])
+  const [clientId, setClientId] = useState(
+    document?.cliente_id ?? options.find((option) => option.id === budgetId)?.cliente_id ?? '',
   )
   const [cargando, setCargando] = useState(false)
-  const [buscarPresupuesto, setBuscarPresupuesto] = useState('')
-  const solicitudContexto = useRef(0)
-  const [valores, setValores] = useState<Valores>(() => {
-    const inicial = Object.fromEntries(
-      CAMPOS_DOCUMENTO.map((campo) => [campo, documento?.[campo] == null ? '' : String(documento[campo])]),
-    ) as Valores
-    inicial.tipo = documento?.tipo ?? tipo
-    inicial.tipo_comprobante = documento?.tipo_comprobante ?? 'FA'
-    const factura = contextoInicial.facturas.find((item) => item.id === facturaId)
-    if (factura?.saldo) inicial.monto = formatMontoTabla(factura.saldo)
-    else if (documento?.monto) inicial.monto = formatMontoTabla(documento.monto)
-    return inicial
+  const [searchBudget, setSearchBudget] = useState('')
+  const requestContexto = useRef(0)
+  const [values, setValues] = useState<Values>(() => {
+    const initial = Object.fromEntries(
+      FIELDS_DOCUMENT.map((field) => [field, document?.[field] == null ? '' : String(document[field])]),
+    ) as Values
+    initial.tipo = document?.tipo ?? tipo
+    initial.tipo_comprobante = document?.tipo_comprobante ?? 'FA'
+    const invoice = contextoInitial.facturas.find((item) => item.id === invoiceId)
+    if (invoice?.saldo) initial.monto = formatAmountTable(invoice.saldo)
+    else if (document?.monto) initial.monto = formatAmountTable(document.monto)
+    return initial
   })
-  const [remitos, setRemitos] = useState<string[]>(() =>
-    documento
-      ? contextoInicial.documentos.filter((item) => item.factura_id === documento.id).map((item) => item.id)
-      : remitoId
-        ? [remitoId]
+  const [remitos, setDeliveryNotes] = useState<string[]>(() =>
+    document
+      ? contextoInitial.documentos.filter((item) => item.factura_id === document.id).map((item) => item.id)
+      : deliveryNoteId
+        ? [deliveryNoteId]
         : [],
   )
   const [aplicaciones, setAplicaciones] = useState<Record<string, string>>(() => {
-    if (documento)
+    if (document)
       return Object.fromEntries(
-        aplicacionesIniciales.map((item) => [item.factura_id, formatMontoTabla(item.monto_aplicado)]),
+        aplicacionesIniciales.map((item) => [item.factura_id, formatAmountTable(item.monto_aplicado)]),
       )
-    const factura = contextoInicial.facturas.find((item) => item.id === facturaId)
-    return factura?.id && factura.saldo ? { [factura.id]: formatMontoTabla(factura.saldo) } : {}
+    const invoice = contextoInitial.facturas.find((item) => item.id === invoiceId)
+    return invoice?.id && invoice.saldo ? { [invoice.id]: formatAmountTable(invoice.saldo) } : {}
   })
-  const [nuevos, setNuevos] = useState<ArchivoSubido[]>([])
+  const [nuevos, setNew] = useState<FileSubido[]>([])
   const [subiendo, setSubiendo] = useState(false)
   const [quitar, setQuitar] = useState<string[]>([])
-  const [mensaje, setMensaje] = useState('')
-  const [errores, setErrores] = useState<Record<string, string>>({})
-  const alCambiarArchivos = useCallback((archivos: ArchivoSubido[], pendientes: boolean) => {
-    setNuevos(archivos)
-    setSubiendo(pendientes)
+  const [message, setMessage] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const onChangeFiles = useCallback((archivos: FileSubido[], pendingList: boolean) => {
+    setNew(archivos)
+    setSubiendo(pendingList)
   }, [])
-  const cambiarCampo = (campo: keyof Valores, valor: string) =>
-    setValores((anteriores) => ({ ...anteriores, [campo]: valor }))
-  const cambiarLista = (lista: string[], id: string, checked: boolean) =>
-    checked ? [...lista, id] : lista.filter((item) => item !== id)
+  const changeField = (field: keyof Values, value: string) =>
+    setValues((anteriores) => ({ ...anteriores, [field]: value }))
+  const changeList = (list: string[], id: string, checked: boolean) =>
+    checked ? [...list, id] : list.filter((item) => item !== id)
 
-  async function elegirPresupuesto(id: string) {
-    const opcion = opciones.find((item) => item.id === id)
+  async function chooseBudget(id: string) {
+    const option = options.find((item) => item.id === id)
     setSeleccionados(id ? [id] : [])
-    if (!opcion || opcion.cliente_id === clienteId) return
-    setClienteId(opcion.cliente_id)
-    setRemitos([])
+    if (!option || option.cliente_id === clientId) return
+    setClientId(option.cliente_id)
+    setDeliveryNotes([])
     setAplicaciones({})
-    setNuevos([])
+    setNew([])
     setSubiendo(false)
-    const solicitud = ++solicitudContexto.current
+    const request = ++requestContexto.current
     setCargando(true)
     try {
-      const respuesta = await leerContextoDocumento(opcion.cliente_id)
-      if (solicitud !== solicitudContexto.current) return
-      if (respuesta.ok) {
-        setContexto(respuesta.datos)
-        setMensaje('')
+      const response = await readContextoDocument(option.cliente_id)
+      if (request !== requestContexto.current) return
+      if (response.ok) {
+        setContexto(response.datos)
+        setMessage('')
       } else {
-        setContexto(CONTEXTO_VACIO)
-        setMensaje(respuesta.mensaje)
+        setContexto(CONTEXTO_EMPTY)
+        setMessage(response.message)
       }
     } catch {
-      setMensaje('No se pudieron cargar los documentos del cliente. Volvé a seleccionar el presupuesto.')
+      setMessage('No se pudieron cargar los documentos del cliente. Volvé a seleccionar el presupuesto.')
     } finally {
-      if (solicitud === solicitudContexto.current) setCargando(false)
+      if (request === requestContexto.current) setCargando(false)
     }
   }
-  function cambiarAplicacion(id: string, valor: string | null) {
-    const siguiente = { ...aplicaciones }
-    if (valor === null) delete siguiente[id]
-    else siguiente[id] = valor
-    setAplicaciones(siguiente)
-    const total = Object.values(siguiente).reduce((suma, monto) => suma + (parsePrecio(monto) ?? 0), 0)
-    cambiarCampo('monto', total ? formatMontoTabla(total) : '')
+  function changeAplicacion(id: string, value: string | null) {
+    const next = { ...aplicaciones }
+    if (value === null) delete next[id]
+    else next[id] = value
+    setAplicaciones(next)
+    const total = Object.values(next).reduce((sum, monto) => sum + (parsePrice(monto) ?? 0), 0)
+    changeField('monto', total ? formatAmountTable(total) : '')
   }
-  function guardar(evento: React.FormEvent) {
+  function save(evento: React.FormEvent) {
     evento.preventDefault()
     if (enviando.current || subiendo || cargando) return
     enviando.current = true
-    setMensaje('')
-    setErrores({})
+    setMessage('')
+    setErrors({})
     startTransition(async () => {
       try {
-        const resultado = await guardarDocumento({
-          id: documento?.id,
-          clienteId,
-          presupuestos: seleccionados,
-          datos: valores,
+        const result = await saveDocument({
+          id: document?.id,
+          clientId,
+          budgets: seleccionados,
+          datos: values,
           archivos: nuevos,
           quitar,
-          remitos: valores.tipo === 'factura' ? remitos : [],
+          remitos: values.tipo === 'factura' ? remitos : [],
           aplicaciones:
-            valores.tipo === 'orden_pago'
+            values.tipo === 'orden_pago'
               ? Object.entries(aplicaciones).map(([factura_id, monto_aplicado]) => ({ factura_id, monto_aplicado }))
               : [],
-          cotizacion,
+          cotizacion: quote,
         })
-        if (!resultado.ok) {
-          setMensaje(resultado.mensaje)
-          setErrores(resultado.errores ?? {})
+        if (!result.ok) {
+          setMessage(result.message)
+          setErrors(result.errors ?? {})
           return
         }
-        router.push(`/presupuestos/${resultado.datos.presupuesto}`)
+        router.push(`/presupuestos/${result.datos.presupuesto}`)
         router.refresh()
       } catch {
-        setMensaje('No se pudo guardar. Tus datos y archivos siguen acá para reintentar.')
+        setMessage('No se pudo guardar. Tus datos y archivos siguen acá para reintentar.')
       } finally {
         enviando.current = false
       }
     })
   }
-  function campo(nombre: keyof Valores, etiqueta: string, tipoInput = 'text', requerido = false) {
+  function field(nombre: keyof Values, label: string, tipoInput = 'text', required = false) {
     return (
-      <Campo id={nombre} etiqueta={etiqueta} error={errores[`datos.${nombre}`]}>
+      <Field id={nombre} label={label} error={errors[`datos.${nombre}`]}>
         <Input
           id={nombre}
-          value={valores[nombre]}
-          onChange={(evento) => cambiarCampo(nombre, evento.target.value)}
+          value={values[nombre]}
+          onChange={(evento) => changeField(nombre, evento.target.value)}
           type={tipoInput}
-          required={requerido}
+          required={required}
           maxLength={nombre === 'numero' || nombre === 'numero_oc_ref' ? 50 : undefined}
           inputMode={nombre === 'monto' ? 'decimal' : undefined}
-          aria-invalid={Boolean(errores[`datos.${nombre}`])}
+          aria-invalid={Boolean(errors[`datos.${nombre}`])}
         />
-      </Campo>
+      </Field>
     )
   }
   const duplicado =
-    valores.numero &&
+    values.numero &&
     contexto.documentos.some(
       (item) =>
-        item.id !== documento?.id &&
+        item.id !== document?.id &&
         !item.deleted_at &&
-        item.tipo === valores.tipo &&
-        normalizarNumero(item.numero) === normalizarNumero(valores.numero),
+        item.tipo === values.tipo &&
+        normalizeNumber(item.numero) === normalizeNumber(values.numero),
     )
-  const presupuestosCliente = contexto.presupuestos.filter(
+  const budgetsClient = contexto.budgets.filter(
     (item) => item.presupuesto_estado !== 'anulado' || seleccionados.includes(item.id),
   )
-  const facturasActivas = new Set(contexto.facturas.map((item) => item.id))
-  const remitosDisponibles = contexto.documentos.filter(
+  const invoicesActivas = new Set(contexto.facturas.map((item) => item.id))
+  const deliveryNotesDisponibles = contexto.documentos.filter(
     (item) =>
       item.tipo === 'remito' &&
       (remitos.includes(item.id) || (!item.deleted_at &&
-      (!item.factura_id || item.factura_id === documento?.id || !facturasActivas.has(item.factura_id)))),
+      (!item.factura_id || item.factura_id === document?.id || !invoicesActivas.has(item.factura_id)))),
   )
-  const facturasAnuladas = contexto.documentos.filter((item) => item.tipo === 'factura' && item.deleted_at && aplicaciones[item.id] !== undefined)
-  const normalizarBusqueda = (valor: string) => valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-AR')
-  const opcionesVisibles = opciones.filter((item) => item.presupuesto_estado !== 'anulado')
-    .filter((item) => item.id === seleccionados[0] || normalizarBusqueda(`${item.numero} ${item.cliente_razon_social} ${item.asunto}`).includes(normalizarBusqueda(buscarPresupuesto)))
+  const invoicesAnuladas = contexto.documentos.filter((item) => item.tipo === 'factura' && item.deleted_at && aplicaciones[item.id] !== undefined)
+  const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-AR')
+  const optionsVisible = options.filter((item) => item.presupuesto_estado !== 'anulado')
+    .filter((item) => item.id === seleccionados[0] || normalizeSearch(`${item.numero} ${item.cliente_razon_social} ${item.asunto}`).includes(normalizeSearch(searchBudget)))
     .toSorted((a, b) => Number(b.presupuesto_estado === 'en_curso') - Number(a.presupuesto_estado === 'en_curso') || b.numero - a.numero)
-  const volver = presupuestoId ? `/presupuestos/${presupuestoId}` : '/presupuestos'
+  const back = budgetId ? `/presupuestos/${budgetId}` : '/presupuestos'
 
   return (
-    <form onSubmit={guardar} id="nuevo-documento" className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-28">
-      {mensaje ? (
+    <form onSubmit={save} id="nuevo-documento" className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-28">
+      {message ? (
         <Alert variant="destructive">
-          <AlertDescription>{mensaje}</AlertDescription>
+          <AlertDescription>{message}</AlertDescription>
         </Alert>
       ) : null}
-      {cotizacion ? (
+      {quote ? (
         <Alert>
           <AlertDescription>
             Al guardar la orden de compra también se aprueba la cotización y se conserva su PDF.
@@ -238,59 +238,59 @@ export function DocumentoForm({
       ) : null}
       <fieldset disabled={pending || cargando} className="min-w-0">
         <legend className="sr-only">Contenido del documento</legend>
-        <HojaFormulario>
-          <Tarjeta titulo="Presupuesto y tipo" descripcion="Seleccioná el presupuesto y el tipo de documento que vas a registrar.">
+        <SheetForm>
+          <Card titulo="Presupuesto y tipo" descripcion="Seleccioná el presupuesto y el tipo de documento que vas a registrar.">
             <div className="flex flex-col gap-4">
-              {!documento && !cotizacion ? (
+              {!document && !quote ? (
                 <div className="flex flex-col gap-3">
-                <Campo id="buscar-presupuesto" etiqueta="Buscar presupuesto"><Input id="buscar-presupuesto" placeholder="Número, cliente o trabajo" value={buscarPresupuesto} onChange={(evento) => setBuscarPresupuesto(evento.target.value)} /></Campo>
-                <Campo id="presupuesto" etiqueta="Presupuesto" error={errores.presupuestos}>
+                <Field id="buscar-presupuesto" label="Buscar presupuesto"><Input id="buscar-presupuesto" placeholder="Número, cliente o trabajo" value={searchBudget} onChange={(evento) => setSearchBudget(evento.target.value)} /></Field>
+                <Field id="presupuesto" label="Presupuesto" error={errors.budgets}>
                   <NativeSelect
                     id="presupuesto"
                     className="w-full"
                     value={seleccionados[0] ?? ''}
-                    onChange={(evento) => void elegirPresupuesto(evento.target.value)}
+                    onChange={(evento) => void chooseBudget(evento.target.value)}
                     required
                   >
                     <NativeSelectOption value="">Elegí un presupuesto</NativeSelectOption>
-                    {opcionesVisibles.map((item) => (
+                    {optionsVisible.map((item) => (
                         <NativeSelectOption key={item.id} value={item.id}>
                           {item.numero} · {item.cliente_razon_social} · {item.asunto}{item.presupuesto_estado === 'finalizado' ? ' · Finalizado' : ''}
                         </NativeSelectOption>
                       ))}
                   </NativeSelect>
-                </Campo>
-                {opcionesVisibles.length === 0 ? <p className="text-sm text-muted-foreground">No hay presupuestos con esa búsqueda.</p> : null}
+                </Field>
+                {optionsVisible.length === 0 ? <p className="text-sm text-muted-foreground">No hay presupuestos con esa búsqueda.</p> : null}
                 </div>
               ) : null}
-              <Campo id="tipo-documento" etiqueta="Tipo de documento" error={errores['datos.tipo']}>
+              <Field id="tipo-documento" label="Tipo de documento" error={errors['datos.tipo']}>
                 <ToggleGroup
                   id="tipo-documento"
                   type="single"
-                  value={valores.tipo}
-                  onValueChange={(valor) => {
-                    if (valor) cambiarCampo('tipo', valor)
+                  value={values.tipo}
+                  onValueChange={(value) => {
+                    if (value) changeField('tipo', value)
                   }}
                   variant="outline"
                   className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4"
-                  disabled={Boolean(cotizacion)}
+                  disabled={Boolean(quote)}
                   aria-label="Tipo de documento"
                 >
-                  {Object.entries(TIPOS_DOCUMENTO).map(([valor, etiqueta]) => (
-                    <ToggleGroupItem key={valor} value={valor} className="h-17 flex-col gap-1 text-xs">
+                  {Object.entries(TIPOS_DOCUMENT).map(([value, label]) => (
+                    <ToggleGroupItem key={value} value={value} className="h-17 flex-col gap-1 text-xs">
                       <FileText aria-hidden />
-                      {etiqueta}
+                      {label}
                     </ToggleGroupItem>
                   ))}
                 </ToggleGroup>
-              </Campo>
+              </Field>
             </div>
-          </Tarjeta>
-          <Tarjeta titulo="Adjuntar archivos">
+          </Card>
+          <Card titulo="Adjuntar archivos">
             <div className="flex flex-col gap-3">
-              {archivosExistentes.length ? (
+              {filesExisting.length ? (
                 <ul className="flex flex-col gap-2">
-                  {archivosExistentes.map((archivo) => (
+                  {filesExisting.map((archivo) => (
                     <li
                       key={archivo.id}
                       className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
@@ -310,7 +310,7 @@ export function DocumentoForm({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setQuitar((lista) => cambiarLista(lista, archivo.id, !lista.includes(archivo.id)))}
+                        onClick={() => setQuitar((list) => changeList(list, archivo.id, !list.includes(archivo.id)))}
                       >
                         {quitar.includes(archivo.id) ? 'Conservar' : 'Quitar'}
                       </Button>
@@ -318,14 +318,14 @@ export function DocumentoForm({
                   ))}
                 </ul>
               ) : null}
-              <SubidaArchivos key={clienteId} clienteId={clienteId} disabled={pending} alCambiar={alCambiarArchivos} />
-              {errores.archivos ? <p className="text-sm text-destructive">{errores.archivos}</p> : null}
+              <UploadFiles key={clientId} clientId={clientId} disabled={pending} onChange={onChangeFiles} />
+              {errors.archivos ? <p className="text-sm text-destructive">{errors.archivos}</p> : null}
             </div>
-          </Tarjeta>
-          <Tarjeta titulo="Datos del documento">
+          </Card>
+          <Card titulo="Datos del documento">
             <div className="grid gap-4 sm:grid-cols-2">
-              {campo('numero', 'Número (opcional)')}
-              {campo('fecha', 'Fecha (opcional)', 'date')}
+              {field('numero', 'Número (opcional)')}
+              {field('fecha', 'Fecha (opcional)', 'date')}
               {duplicado ? (
                 <Alert className="sm:col-span-2">
                   <AlertDescription>
@@ -333,44 +333,44 @@ export function DocumentoForm({
                   </AlertDescription>
                 </Alert>
               ) : null}
-              {campo(
+              {field(
                 'monto',
-                valores.tipo === 'factura'
+                values.tipo === 'factura'
                   ? 'Monto total con IVA'
-                  : valores.tipo === 'orden_pago'
+                  : values.tipo === 'orden_pago'
                     ? 'Monto de la orden de pago'
                     : 'Monto (opcional)',
                 'text',
-                valores.tipo === 'factura' || valores.tipo === 'orden_pago',
+                values.tipo === 'factura' || values.tipo === 'orden_pago',
               )}
-              {valores.tipo === 'factura' ? (
+              {values.tipo === 'factura' ? (
                 <>
-                  <Campo id="tipo_comprobante" etiqueta="Comprobante" error={errores['datos.tipo_comprobante']}>
+                  <Field id="tipo_comprobante" label="Comprobante" error={errors['datos.tipo_comprobante']}>
                     <NativeSelect
                       id="tipo_comprobante"
-                      value={valores.tipo_comprobante}
-                      onChange={(evento) => cambiarCampo('tipo_comprobante', evento.target.value)}
+                      value={values.tipo_comprobante}
+                      onChange={(evento) => changeField('tipo_comprobante', evento.target.value)}
                       className="w-full"
                     >
-                      {Object.entries(TIPOS_COMPROBANTE).map(([valor, etiqueta]) => (
-                        <NativeSelectOption value={valor} key={valor}>
-                          {etiqueta}
+                      {Object.entries(TIPOS_COMPROBANTE).map(([value, label]) => (
+                        <NativeSelectOption value={value} key={value}>
+                          {label}
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>
-                  </Campo>
-                  {campo('fecha_vencimiento', 'Vencimiento (opcional)', 'date')}
-                  {campo('numero_oc_ref', 'OC de referencia (opcional)')}
+                  </Field>
+                  {field('fecha_vencimiento', 'Vencimiento (opcional)', 'date')}
+                  {field('numero_oc_ref', 'OC de referencia (opcional)')}
                 </>
               ) : null}
-              {valores.tipo === 'remito' ? (
+              {values.tipo === 'remito' ? (
                 <>
-                  <Campo id="equipo_id" etiqueta="Equipo (opcional)">
+                  <Field id="equipo_id" label="Equipo (opcional)">
                     <NativeSelect
                       id="equipo_id"
                       className="w-full"
-                      value={valores.equipo_id}
-                      onChange={(evento) => cambiarCampo('equipo_id', evento.target.value)}
+                      value={values.equipo_id}
+                      onChange={(evento) => changeField('equipo_id', evento.target.value)}
                     >
                       <NativeSelectOption value="">Sin equipo</NativeSelectOption>
                       {contexto.equipos.map((equipo) => (
@@ -379,37 +379,37 @@ export function DocumentoForm({
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>
-                  </Campo>
-                  {campo('periodo_desde', 'Período desde (opcional)', 'date')}
-                  {campo('periodo_hasta', 'Período hasta (opcional)', 'date')}
+                  </Field>
+                  {field('periodo_desde', 'Período desde (opcional)', 'date')}
+                  {field('periodo_hasta', 'Período hasta (opcional)', 'date')}
                 </>
               ) : null}
-              <Campo id="notas" etiqueta="Notas (opcional)" error={errores['datos.notas']} className="sm:col-span-2">
+              <Field id="notas" label="Notas (opcional)" error={errors['datos.notas']} className="sm:col-span-2">
                 <Textarea
                   id="notas"
-                  value={valores.notas}
-                  onChange={(evento) => cambiarCampo('notas', evento.target.value)}
+                  value={values.notas}
+                  onChange={(evento) => changeField('notas', evento.target.value)}
                   rows={3}
                   maxLength={2000}
                 />
-              </Campo>
+              </Field>
             </div>
-          </Tarjeta>
-          {!cotizacion && presupuestosCliente.length ? (
-            <Tarjeta
+          </Card>
+          {!quote && budgetsClient.length ? (
+            <Card
               titulo="Presupuestos vinculados"
               descripcion="Podés compartir este documento entre presupuestos del mismo cliente."
             >
               <fieldset className="flex flex-col gap-2">
                 <legend className="sr-only">Presupuestos vinculados</legend>
-                {presupuestosCliente.map((item) => (
+                {budgetsClient.map((item) => (
                   <label key={item.id} className="flex items-start gap-2 rounded-md px-1 py-1.5 text-sm">
                     <input
                       type="checkbox"
                       className="mt-0.5 size-4 accent-primary"
                       checked={seleccionados.includes(item.id)}
                       onChange={(evento) =>
-                        setSeleccionados((lista) => cambiarLista(lista, item.id, evento.target.checked))
+                        setSeleccionados((list) => changeList(list, item.id, evento.target.checked))
                       }
                     />
                     <span>
@@ -418,23 +418,23 @@ export function DocumentoForm({
                   </label>
                 ))}
               </fieldset>
-            </Tarjeta>
+            </Card>
           ) : null}
-          {valores.tipo === 'factura' ? (
-            <Tarjeta
+          {values.tipo === 'factura' ? (
+            <Card
               titulo="Remitos que cubre"
               descripcion="Elegí los remitos del cliente incluidos en esta factura."
             >
               <fieldset className="flex flex-col gap-2">
                 <legend className="sr-only">Remitos que cubre</legend>
-                {remitosDisponibles.length ? (
-                  remitosDisponibles.map((item) => (
+                {deliveryNotesDisponibles.length ? (
+                  deliveryNotesDisponibles.map((item) => (
                     <label key={item.id} className="flex items-start gap-2 py-1.5 text-sm">
                       <input
                         type="checkbox"
                         className="mt-0.5 size-4 accent-primary"
                         checked={remitos.includes(item.id)}
-                        onChange={(evento) => setRemitos((lista) => cambiarLista(lista, item.id, evento.target.checked))}
+                        onChange={(evento) => setDeliveryNotes((list) => changeList(list, item.id, evento.target.checked))}
                       />
                       <span>Remito {item.numero || 'sin número'}{item.deleted_at ? <span className="block text-xs text-destructive">Anulado: desmarcalo para desvincularlo o <Link href={`/documentos/${item.id}`} className="underline">abrilo para restaurarlo</Link>.</span> : null}</span>
                     </label>
@@ -443,16 +443,16 @@ export function DocumentoForm({
                   <p className="text-sm text-muted-foreground">No hay remitos pendientes de facturar.</p>
                 )}
               </fieldset>
-            </Tarjeta>
+            </Card>
           ) : null}
-          {valores.tipo === 'orden_pago' ? (
-            <Tarjeta
+          {values.tipo === 'orden_pago' ? (
+            <Card
               titulo="Facturas que cancela"
               descripcion="El importe se completa con el saldo disponible; podés ajustarlo."
             >
               <fieldset className="flex flex-col gap-3">
                 <legend className="sr-only">Facturas que cancela</legend>
-                {facturasAnuladas.map((item) => <Alert key={item.id} variant="destructive"><AlertDescription><p>La factura {item.numero || 'sin número'} está anulada. <Link href={`/documentos/${item.id}`} className="underline">Abrila para restaurarla</Link> o quitá esta aplicación antes de guardar.</p><Button type="button" variant="outline" size="sm" onClick={() => cambiarAplicacion(item.id, null)}>Desvincular factura {item.numero || 'sin número'}</Button></AlertDescription></Alert>)}
+                {invoicesAnuladas.map((item) => <Alert key={item.id} variant="destructive"><AlertDescription><p>La factura {item.numero || 'sin número'} está anulada. <Link href={`/documentos/${item.id}`} className="underline">Abrila para restaurarla</Link> o quitá esta aplicación antes de guardar.</p><Button type="button" variant="outline" size="sm" onClick={() => changeAplicacion(item.id, null)}>Desvincular factura {item.numero || 'sin número'}</Button></AlertDescription></Alert>)}
                 {contexto.facturas
                   .filter(
                     (item) =>
@@ -472,7 +472,7 @@ export function DocumentoForm({
                             className="mt-0.5 size-4 accent-primary"
                             checked={aplicaciones[id] !== undefined}
                             onChange={(evento) =>
-                              cambiarAplicacion(id, evento.target.checked ? formatMontoTabla(disponible) : null)
+                              changeAplicacion(id, evento.target.checked ? formatAmountTable(disponible) : null)
                             }
                           />
                           <span>
@@ -488,7 +488,7 @@ export function DocumentoForm({
                             aria-label={`Importe aplicado a ${item.numero || 'factura sin número'}`}
                             inputMode="decimal"
                             value={aplicaciones[id]}
-                            onChange={(evento) => cambiarAplicacion(id, evento.target.value)}
+                            onChange={(evento) => changeAplicacion(id, evento.target.value)}
                             required
                           />
                         ) : null}
@@ -503,22 +503,22 @@ export function DocumentoForm({
                   <p className="text-sm text-muted-foreground">No hay facturas con saldo para este cliente.</p>
                 ) : null}
               </fieldset>
-            </Tarjeta>
+            </Card>
           ) : null}
-        </HojaFormulario>
+        </SheetForm>
       </fieldset>
-      {Object.entries(errores)
-        .filter(([campo]) => !campo.startsWith('datos.') && campo !== 'archivos')
-        .map(([campo, error]) => (
-          <p key={campo} role="alert" className="text-sm text-destructive">
+      {Object.entries(errors)
+        .filter(([field]) => !field.startsWith('datos.') && field !== 'archivos')
+        .map(([field, error]) => (
+          <p key={field} role="alert" className="text-sm text-destructive">
             {error}
           </p>
         ))}
-      <AccionesFormulario
-        volver={volver}
-        textoBoton={documento ? 'Guardar cambios' : cotizacion ? 'Aprobar y guardar OC' : 'Guardar documento'}
+      <ActionsForm
+        back={back}
+        textButton={document ? 'Guardar cambios' : quote ? 'Aprobar y guardar OC' : 'Guardar documento'}
         pendiente={pending}
-        disabled={subiendo || cargando || !clienteId}
+        disabled={subiendo || cargando || !clientId}
       >
         {subiendo || cargando ? (
           <span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -526,7 +526,7 @@ export function DocumentoForm({
             <span className="sr-only sm:not-sr-only">{subiendo ? 'Subiendo archivos…' : 'Cargando documentos…'}</span>
           </span>
         ) : null}
-      </AccionesFormulario>
+      </ActionsForm>
     </form>
   )
 }

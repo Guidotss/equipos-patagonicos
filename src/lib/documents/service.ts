@@ -3,62 +3,62 @@
 // No importar 'server-only' acá: Vitest lo carga.
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
-import { esUuid } from '@/lib/validacion'
-import { conNombreDeDescarga, rutaArchivo, validarArchivo, type MimePermitido } from './archivos'
-import type { DatosDocumento } from './esquemas'
+import { isUuid } from '@/lib/validation'
+import { withNameOfDownload, pathFile, validateFile, type MimePermitido } from './files'
+import type { DataDocument } from './schemas'
 
-type Cliente = SupabaseClient<Database>
+type Client = SupabaseClient<Database>
 
 const BUCKET = 'documentos'
 
 /** Error con un mensaje pensado para mostrarle al usuario. */
-export class ErrorDocumento extends Error {}
+export class ErrorDocument extends Error {}
 
-function errorDeRpc(error: { code?: string; message: string }) {
-  return error.code === 'P0001' ? new ErrorDocumento(error.message) : error
+function errorOfRpc(error: { code?: string; message: string }) {
+  return error.code === 'P0001' ? new ErrorDocument(error.message) : error
 }
 
 /** Valida el archivo y devuelve la ruta y el token para que el navegador suba directo a Storage. */
-export async function prepararSubida(
-  supabase: Cliente,
-  archivo: { clienteId: string; mime: string; tamano: number },
+export async function prepareUpload(
+  supabase: Client,
+  archivo: { clientId: string; mime: string; tamano: number },
 ): Promise<{ path: string; token: string; signedUrl: string }> {
-  if (!esUuid(archivo.clienteId)) throw new ErrorDocumento('Cliente inválido')
-  const problema = validarArchivo(archivo)
-  if (problema) throw new ErrorDocumento(problema)
-  const ruta = rutaArchivo(archivo.clienteId, archivo.mime as MimePermitido)
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(ruta)
+  if (!isUuid(archivo.clientId)) throw new ErrorDocument('Cliente inválido')
+  const problema = validateFile(archivo)
+  if (problema) throw new ErrorDocument(problema)
+  const path = pathFile(archivo.clientId, archivo.mime as MimePermitido)
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path)
   if (error) throw error
   return { path: data.path, token: data.token, signedUrl: data.signedUrl }
 }
 
-export type ArchivoSubido = { path: string; nombre_original: string }
+export type FileSubido = { path: string; nombre_original: string }
 
-export async function registrarDocumento(
-  supabase: Cliente,
+export async function registerDocument(
+  supabase: Client,
   entrada: {
-    clienteId: string
-    presupuestos: string[]
-    datos: DatosDocumento
-    archivos: ArchivoSubido[]
+    clientId: string
+    budgets: string[]
+    datos: DataDocument
+    archivos: FileSubido[]
     remitos?: string[]
     aplicaciones?: { factura_id: string; monto_aplicado: number }[]
   },
 ): Promise<string> {
   const { data, error } = await supabase.rpc('registrar_documento', {
-    p_datos: { ...entrada.datos, cliente_id: entrada.clienteId },
-    p_presupuestos: entrada.presupuestos,
+    p_datos: { ...entrada.datos, cliente_id: entrada.clientId },
+    p_presupuestos: entrada.budgets,
     p_archivos: entrada.archivos,
     p_remitos: entrada.remitos ?? [],
     p_aplicaciones: entrada.aplicaciones ?? [],
   })
-  if (error) throw errorDeRpc(error)
+  if (error) throw errorOfRpc(error)
   return data
 }
 
 /** URL firmada por 60 segundos que descarga el archivo con su nombre original. */
-export async function urlDescarga(supabase: Cliente, ruta: string, nombreOriginal: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, 60)
+export async function urlDownload(supabase: Client, path: string, nameOriginal: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60)
   if (error) throw error
-  return conNombreDeDescarga(data.signedUrl, nombreOriginal)
+  return withNameOfDownload(data.signedUrl, nameOriginal)
 }

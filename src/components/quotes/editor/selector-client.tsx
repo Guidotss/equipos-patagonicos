@@ -5,90 +5,90 @@ import { ChevronsUpDown, Plus } from 'lucide-react'
 import { unstable_rethrow } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { buscarClientes, crearClienteRapido } from '@/app/(app)/cotizaciones/actions'
+import { searchClients, crearClientRapido } from '@/app/(app)/cotizaciones/actions'
 import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Pastilla } from '@/components/ui/pastilla'
+import { Pill } from '@/components/ui/pill'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { mismoNombre } from '@/lib/cotizaciones/editor-pantalla'
+import { mismoName } from '@/lib/quotes/editor-screen'
 import { formatCuit } from '@/lib/cuit'
 import { cn } from '@/lib/utils'
 
-export type ClienteBuscado = { id: string; razon_social: string; cuit: string | null; activo: boolean }
+export type ClientBuscado = { id: string; razon_social: string; cuit: string | null; activo: boolean }
 
-const DEMORA_BUSQUEDA = 250
+const DEMORA_SEARCH = 250
 
-const MENSAJE_FALLO_BUSQUEDA = 'No se pudo buscar. Probá de nuevo en un momento.'
+const MESSAGE_FALLO_SEARCH = 'No se pudo buscar. Probá de nuevo en un momento.'
 
 /** La lista que devolvió la búsqueda de un texto, o la marca de que falló (entonces no hay lista). */
-type Busqueda = { texto: string; resultados: ClienteBuscado[]; fallo: boolean }
+type Search = { texto: string; results: ClientBuscado[]; fallo: boolean }
 
 /**
  * Combobox de cliente (decisión 18): busca con buscar_clientes (sin acentos, por CUIT y por contacto), muestra los
  * inactivos al final con su marca y ofrece "+ Crear cliente «texto»" con solo la razón social.
  */
-export function SelectorCliente({
+export function SelectorClient({
   id,
   cliente,
   error,
-  alElegir,
+  onChoose,
 }: {
   id: string
   cliente: { id: string; razon_social: string } | null
   error?: string
-  alElegir: (cliente: ClienteBuscado) => void
+  onChoose: (cliente: ClientBuscado) => void
 }) {
-  const [abierto, setAbierto] = useState(false)
-  const [texto, setTexto] = useState('')
+  const [open, setOpen] = useState(false)
+  const [texto, setText] = useState('')
   // Cada lista guarda el texto que la pidió: ver `resultados` más abajo.
-  const [busqueda, setBusqueda] = useState<Busqueda | null>(null)
+  const [search, setSearch] = useState<Search | null>(null)
   const [buscando, setBuscando] = useState(false)
   const [creando, setCreando] = useState(false)
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const ultimoPedido = useRef(0)
+  const lastPedido = useRef(0)
 
-  function buscar(valor: string, demora: number) {
+  function findClients(value: string, demora: number) {
     if (temporizador.current) clearTimeout(temporizador.current)
-    const pedido = ++ultimoPedido.current
+    const pedido = ++lastPedido.current
     setBuscando(true)
     temporizador.current = setTimeout(async () => {
       try {
-        const resultado = await buscarClientes(valor)
-        if (pedido !== ultimoPedido.current) return
-        if (resultado.ok) setBusqueda({ texto: valor, resultados: resultado.datos, fallo: false })
+        const result = await searchClients(value)
+        if (pedido !== lastPedido.current) return
+        if (result.ok) setSearch({ texto: value, results: result.datos, fallo: false })
         else {
           // Una falla no es "no hay coincidencias": sin la marca se ofrecería crear un cliente que quizás ya existe.
-          setBusqueda({ texto: valor, resultados: [], fallo: true })
-          toast.error(resultado.mensaje)
+          setSearch({ texto: value, results: [], fallo: true })
+          toast.error(result.message)
         }
       } catch (error) {
         unstable_rethrow(error)
-        if (pedido === ultimoPedido.current) {
-          setBusqueda({ texto: valor, resultados: [], fallo: true })
-          toast.error(MENSAJE_FALLO_BUSQUEDA)
+        if (pedido === lastPedido.current) {
+          setSearch({ texto: value, results: [], fallo: true })
+          toast.error(MESSAGE_FALLO_SEARCH)
         }
       } finally {
-        if (pedido === ultimoPedido.current) setBuscando(false)
+        if (pedido === lastPedido.current) setBuscando(false)
       }
     }, demora)
   }
 
-  function alAbrir(siguiente: boolean) {
-    setAbierto(siguiente)
-    if (siguiente) {
-      setTexto('')
-      buscar('', 0)
+  function onAbrir(next: boolean) {
+    setOpen(next)
+    if (next) {
+      setText('')
+      findClients('', 0)
     }
   }
 
-  function alEscribir(valor: string) {
-    setTexto(valor)
-    buscar(valor, DEMORA_BUSQUEDA)
+  function onEscribir(value: string) {
+    setText(value)
+    findClients(value, DEMORA_SEARCH)
   }
 
-  function elegir(elegido: ClienteBuscado) {
-    setAbierto(false)
-    alElegir(elegido)
+  function choose(chosen: ClientBuscado) {
+    setOpen(false)
+    onChoose(chosen)
   }
 
   const razonSocial = texto.trim()
@@ -97,13 +97,13 @@ export function SelectorCliente({
     if (!razonSocial || creando) return
     setCreando(true)
     try {
-      const resultado = await crearClienteRapido(razonSocial)
-      if (!resultado.ok) {
-        toast.error(resultado.mensaje)
+      const result = await crearClientRapido(razonSocial)
+      if (!result.ok) {
+        toast.error(result.message)
         return
       }
       toast.success('Cliente creado. El CUIT y los demás datos se completan en Clientes.')
-      elegir({ ...resultado.datos, activo: true })
+      choose({ ...result.datos, activo: true })
     } catch (error) {
       unstable_rethrow(error)
       toast.error('No se pudo crear el cliente. Probá de nuevo en un momento.')
@@ -114,28 +114,28 @@ export function SelectorCliente({
 
   // Solo se muestra la lista del texto que está escrito. Mientras llega la del texto nuevo, la anterior no se puede
   // elegir: cmdk deja marcado su primer ítem y un Enter rápido lo elegiría (una cotización a nombre de otro cliente).
-  const alDia = busqueda !== null && busqueda.texto === texto
-  const resultados = alDia ? busqueda.resultados : []
-  const fallo = alDia && busqueda.fallo
+  const onDay = search !== null && search.texto === texto
+  const results = onDay ? search.results : []
+  const fallo = onDay && search.fallo
 
   // Ofrecer crear sin la lista de este texto (todavía no llegó o la búsqueda falló) deja crear un duplicado de un
   // cliente que ya existe (solo el CUIT es único en la tabla).
   const ofrecerCrear =
     !buscando &&
-    alDia &&
+    onDay &&
     !fallo &&
     razonSocial !== '' &&
-    !resultados.some((otro) => mismoNombre(otro.razon_social, razonSocial))
+    !results.some((otro) => mismoName(otro.razon_social, razonSocial))
 
   return (
-    <Popover open={abierto} onOpenChange={alAbrir}>
+    <Popover open={open} onOpenChange={onAbrir}>
       <PopoverTrigger asChild>
         <Button
           id={id}
           type="button"
           variant="outline"
           role="combobox"
-          aria-expanded={abierto}
+          aria-expanded={open}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
           // Una razón social que no entra se corta con "…": el title la deja leer entera.
@@ -150,32 +150,32 @@ export function SelectorCliente({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-72 p-0">
         <Command shouldFilter={false} label="Buscar cliente">
-          <CommandInput value={texto} onValueChange={alEscribir} placeholder="Razón social, CUIT o contacto" />
+          <CommandInput value={texto} onValueChange={onEscribir} placeholder="Razón social, CUIT o contacto" />
           <CommandList>
-            {buscando && resultados.length === 0 ? (
+            {buscando && results.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Buscando…</p>
             ) : null}
             {buscando ? null : fallo ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">{MENSAJE_FALLO_BUSQUEDA}</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{MESSAGE_FALLO_SEARCH}</p>
             ) : (
               <CommandEmpty>{texto ? 'No hay clientes que coincidan.' : 'Todavía no hay clientes cargados.'}</CommandEmpty>
             )}
-            {resultados.length > 0 ? (
+            {results.length > 0 ? (
               <CommandGroup>
-                {resultados.map((opcion) => (
+                {results.map((option) => (
                   <CommandItem
-                    key={opcion.id}
-                    value={opcion.id}
-                    onSelect={() => elegir(opcion)}
-                    className={cn(!opcion.activo && 'text-muted-foreground')}
+                    key={option.id}
+                    value={option.id}
+                    onSelect={() => choose(option)}
+                    className={cn(!option.activo && 'text-muted-foreground')}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate">{opcion.razon_social}</span>
-                      {opcion.cuit ? (
-                        <span className="block text-xs text-muted-foreground tabular-nums">{formatCuit(opcion.cuit)}</span>
+                      <span className="block truncate">{option.razon_social}</span>
+                      {option.cuit ? (
+                        <span className="block text-xs text-muted-foreground tabular-nums">{formatCuit(option.cuit)}</span>
                       ) : null}
                     </span>
-                    {opcion.activo ? null : <Pastilla>Inactivo</Pastilla>}
+                    {option.activo ? null : <Pill>Inactivo</Pill>}
                   </CommandItem>
                 ))}
               </CommandGroup>

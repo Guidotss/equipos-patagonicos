@@ -5,12 +5,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { iniciarSesion, type EstadoLogin } from './actions'
+import { iniciarSession, type StatusLogin } from './actions'
 
-const estadoInicial: EstadoLogin = { error: null }
+const statusInitial: StatusLogin = { error: null }
 
 export function LoginForm({ next }: { next?: string }) {
-  const [estado, accion, pendiente] = useActionState(iniciarSesion, estadoInicial)
+  const [estado, accion, pending] = useActionState(iniciarSession, statusInitial)
 
   return (
     <form action={accion} className="space-y-5">
@@ -43,9 +43,9 @@ export function LoginForm({ next }: { next?: string }) {
         type="submit"
         size="lg"
         className="mt-2 h-12 w-full text-base font-semibold shadow-lg shadow-primary/25"
-        disabled={pendiente}
+        disabled={pending}
       >
-        {pendiente ? 'Ingresando…' : 'Ingresar'}
+        {pending ? 'Ingresando…' : 'Ingresar'}
       </Button>
     </form>
   )

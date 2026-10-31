@@ -1,120 +1,120 @@
 import { FileText, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { AccionesDocumento } from '@/components/documentos/acciones-documento'
-import { Tarjeta } from '@/components/formulario/tarjeta'
+import { ActionsDocument } from '@/components/documents/actions-document'
+import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
-import { Pastilla } from '@/components/ui/pastilla'
-import { TIPOS_DOCUMENTO, type TipoDocumento } from '@/lib/documentos/esquemas'
+import { Pill } from '@/components/ui/pill'
+import { TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
 import {
-  ESTADOS_COBRO,
-  numeroDocumento,
-  type ArchivoDocumento,
-  type Documento,
-  type Factura,
-} from '@/lib/documentos/pantallas'
-import { formatMoneda } from '@/lib/format/montos'
-import { formatFechaCorta } from '@/lib/format/fechas'
+  STATUSES_COBRO,
+  numberDocument,
+  type FileDocument,
+  type Document,
+  type Invoice,
+} from '@/lib/documents/screens'
+import { formatMoneda } from '@/lib/format/amounts'
+import { formatDateCorta } from '@/lib/format/dates'
 
-const TITULOS: Record<TipoDocumento, string> = {
+const TITULOS: Record<TipoDocument, string> = {
   orden_compra: 'Órdenes de compra',
   remito: 'Remitos',
   factura: 'Facturas',
   orden_pago: 'Órdenes de pago',
 }
 
-export function SeccionesDocumentos({
-  presupuestoId,
+export function SectionsDocuments({
+  budgetId,
   documentos,
   archivos,
   facturas,
   anulados,
   aplicaciones,
 }: {
-  presupuestoId: string
-  documentos: Documento[]
-  archivos: ArchivoDocumento[]
-  facturas: Factura[]
+  budgetId: string
+  documentos: Document[]
+  archivos: FileDocument[]
+  facturas: Invoice[]
   anulados: boolean
   aplicaciones: { op_id: string; factura_id: string; monto_aplicado: number }[]
 }) {
   return (
     <div className="flex flex-col gap-4">
-      {(Object.keys(TIPOS_DOCUMENTO) as TipoDocumento[]).map((tipo) => {
-        const lista = documentos.filter((item) => item.tipo === tipo)
-        const activos = lista.filter((item) => !item.deleted_at)
+      {(Object.keys(TIPOS_DOCUMENT) as TipoDocument[]).map((tipo) => {
+        const list = documentos.filter((item) => item.tipo === tipo)
+        const activos = list.filter((item) => !item.deleted_at)
         return (
-          <Tarjeta
+          <Card
             key={tipo}
             titulo={`${TITULOS[tipo]} · ${activos.length}`}
             compacta
-            acciones={
+            actions={
               !anulados ? (
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/presupuestos/${presupuestoId}?nuevo=${tipo}#nuevo-documento`}>
+                  <Link href={`/presupuestos/${budgetId}?nuevo=${tipo}#nuevo-documento`}>
                     <Plus data-icon="inline-start" />
-                    Agregar<span className="sr-only"> {TIPOS_DOCUMENTO[tipo]}</span>
+                    Agregar<span className="sr-only"> {TIPOS_DOCUMENT[tipo]}</span>
                   </Link>
                 </Button>
               ) : undefined
             }
           >
-            {lista.length ? (
+            {list.length ? (
               <ul className="flex flex-col divide-y">
-                {lista.map((documento) => {
-                  const factura = facturas.find((item) => item.id === documento.id)
-                  const facturado = documento.factura_id && facturas.some((item) => item.id === documento.factura_id)
-                  const documentoArchivos = archivos.filter((item) => item.documento_id === documento.id)
-                  const pagos = aplicaciones.filter((item) => item.op_id === documento.id)
+                {list.map((document) => {
+                  const invoice = facturas.find((item) => item.id === document.id)
+                  const facturado = document.factura_id && facturas.some((item) => item.id === document.factura_id)
+                  const documentFiles = archivos.filter((item) => item.documento_id === document.id)
+                  const pagos = aplicaciones.filter((item) => item.op_id === document.id)
                   return (
                     <li
-                      key={documento.id}
+                      key={document.id}
                       className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0"
-                      data-documento={documento.id}
+                      data-documento={document.id}
                     >
                       <div className="flex flex-wrap items-start gap-3">
                         <FileText aria-hidden className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
                         <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <Link
-                              href={`/documentos/${documento.id}`}
+                              href={`/documentos/${document.id}`}
                               className="font-medium text-primary hover:underline"
                             >
-                              {numeroDocumento(documento)}
+                              {numberDocument(document)}
                             </Link>
-                            {documento.deleted_at ? (
-                              <Pastilla>Anulado</Pastilla>
-                            ) : factura?.estado_cobro ? (
-                              <Pastilla
-                                tono={
-                                  factura.estado_cobro === 'cobrada'
+                            {document.deleted_at ? (
+                              <Pill>Anulado</Pill>
+                            ) : invoice?.estado_cobro ? (
+                              <Pill
+                                tone={
+                                  invoice.estado_cobro === 'cobrada'
                                     ? 'exito'
-                                    : factura.estado_cobro === 'parcial'
+                                    : invoice.estado_cobro === 'parcial'
                                       ? 'info'
                                       : 'aviso'
                                 }
                               >
-                                {ESTADOS_COBRO[factura.estado_cobro]}
-                              </Pastilla>
+                                {STATUSES_COBRO[invoice.estado_cobro]}
+                              </Pill>
                             ) : tipo === 'remito' ? (
-                              <Pastilla tono={facturado ? 'exito' : 'aviso'}>
+                              <Pill tone={facturado ? 'exito' : 'aviso'}>
                                 {facturado ? 'Facturado' : 'Sin facturar'}
-                              </Pastilla>
+                              </Pill>
                             ) : null}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {documento.fecha ? formatFechaCorta(documento.fecha) : 'Sin fecha'}
-                            {documento.monto
-                              ? ` · ${tipo === 'factura' ? 'Total ' : ''}${formatMoneda(documento.monto)}`
+                            {document.fecha ? formatDateCorta(document.fecha) : 'Sin fecha'}
+                            {document.monto
+                              ? ` · ${tipo === 'factura' ? 'Total ' : ''}${formatMoneda(document.monto)}`
                               : ''}
-                            {factura ? ` · Saldo ${formatMoneda(factura.saldo ?? 0)}` : ''}
-                            {documento.fecha_vencimiento
-                              ? ` · Vence ${formatFechaCorta(documento.fecha_vencimiento)}`
+                            {invoice ? ` · Saldo ${formatMoneda(invoice.saldo ?? 0)}` : ''}
+                            {document.fecha_vencimiento
+                              ? ` · Vence ${formatDateCorta(document.fecha_vencimiento)}`
                               : ''}
                           </p>
-                          {documento.periodo_desde || documento.periodo_hasta ? (
+                          {document.periodo_desde || document.periodo_hasta ? (
                             <p className="text-sm text-muted-foreground">
-                              Período {documento.periodo_desde ? formatFechaCorta(documento.periodo_desde) : '—'} –{' '}
-                              {documento.periodo_hasta ? formatFechaCorta(documento.periodo_hasta) : '—'}
+                              Período {document.periodo_desde ? formatDateCorta(document.periodo_desde) : '—'} –{' '}
+                              {document.periodo_hasta ? formatDateCorta(document.periodo_hasta) : '—'}
                             </p>
                           ) : null}
                           {pagos.length ? (
@@ -123,16 +123,16 @@ export function SeccionesDocumentos({
                               {pagos
                                 .map((pago) => {
                                   const item = documentos.find((item) => item.id === pago.factura_id)
-                                  return `${item ? numeroDocumento(item) : 'factura vinculada'} (${formatMoneda(pago.monto_aplicado)})`
+                                  return `${item ? numberDocument(item) : 'factura vinculada'} (${formatMoneda(pago.monto_aplicado)})`
                                 })
                                 .join(', ')}
                             </p>
                           ) : null}
-                          {documento.notas ? (
-                            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{documento.notas}</p>
+                          {document.notas ? (
+                            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{document.notas}</p>
                           ) : null}
                           <ul className="flex flex-wrap gap-x-4 gap-y-1">
-                            {documentoArchivos.map((archivo) => (
+                            {documentFiles.map((archivo) => (
                               <li key={archivo.id} className="min-w-0 max-w-full">
                                 <a
                                   href={`/documentos/archivos/${archivo.id}`}
@@ -146,24 +146,24 @@ export function SeccionesDocumentos({
                           </ul>
                         </div>
                         <div className="flex flex-wrap items-start gap-2">
-                          {!documento.deleted_at ? (
+                          {!document.deleted_at ? (
                             <>
                               <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/documentos/${documento.id}`}>Editar</Link>
+                                <Link href={`/documentos/${document.id}`}>Editar</Link>
                               </Button>
                               {tipo === 'remito' && !facturado && !anulados ? (
                                 <Button variant="outline" size="sm" asChild>
                                   <Link
-                                    href={`/presupuestos/${presupuestoId}?nuevo=factura&remito=${documento.id}#nuevo-documento`}
+                                    href={`/presupuestos/${budgetId}?nuevo=factura&remito=${document.id}#nuevo-documento`}
                                   >
                                     Facturar
                                   </Link>
                                 </Button>
                               ) : null}
-                              {factura && (factura.saldo ?? 0) > 0 && !anulados ? (
+                              {invoice && (invoice.saldo ?? 0) > 0 && !anulados ? (
                                 <Button variant="outline" size="sm" asChild>
                                   <Link
-                                    href={`/presupuestos/${presupuestoId}?nuevo=orden_pago&factura=${documento.id}#nuevo-documento`}
+                                    href={`/presupuestos/${budgetId}?nuevo=orden_pago&factura=${document.id}#nuevo-documento`}
                                   >
                                     Registrar pago
                                   </Link>
@@ -171,7 +171,7 @@ export function SeccionesDocumentos({
                               ) : null}
                             </>
                           ) : null}
-                          <AccionesDocumento id={documento.id} anulado={Boolean(documento.deleted_at)} />
+                          <ActionsDocument id={document.id} anulado={Boolean(document.deleted_at)} />
                         </div>
                       </div>
                     </li>
@@ -181,7 +181,7 @@ export function SeccionesDocumentos({
             ) : (
               <p className="text-sm text-muted-foreground">Todavía no hay {TITULOS[tipo].toLowerCase()}.</p>
             )}
-          </Tarjeta>
+          </Card>
         )
       })}
     </div>

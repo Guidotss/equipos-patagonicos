@@ -5,7 +5,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
 
-export type ContextoEstado = {
+export type ContextoStatus = {
   /** Envíos de la cotización, el más reciente primero. */
   envios: { id: string; enviada_at: string }[]
   /** Enviada y fuera de validez (v_cotizaciones.vencida). */
@@ -13,17 +13,17 @@ export type ContextoEstado = {
   /** fecha + validez_dias ('YYYY-MM-DD'). */
   venceEl: string | null
   /** 'YYYY-MM-DD', solo en aprobadas. */
-  fechaAprobacion: string | null
+  dateApproval: string | null
   /** La cotización que esta reemplaza (reemplaza_a): la de la que se duplicó para renegociar. */
   anterior: { id: string; numero: number } | null
 }
 
 /** El de una cotización que todavía no se guardó. */
-export const CONTEXTO_NUEVA: ContextoEstado = { envios: [], vencida: false, venceEl: null, fechaAprobacion: null, anterior: null }
+export const CONTEXTO_NEW: ContextoStatus = { envios: [], vencida: false, venceEl: null, dateApproval: null, anterior: null }
 
 /** null si la cotización no existe (o la RLS no la deja ver). */
-export async function leerContextoEstado(supabase: SupabaseClient<Database>, id: string): Promise<ContextoEstado | null> {
-  const [fila, envios] = await Promise.all([
+export async function readContextoStatus(supabase: SupabaseClient<Database>, id: string): Promise<ContextoStatus | null> {
+  const [row, sends] = await Promise.all([
     supabase.from('v_cotizaciones').select('vencida, vence_el, fecha_aprobacion, reemplaza_a').eq('id', id).maybeSingle(),
     supabase
       .from('cotizacion_envios')
@@ -31,22 +31,22 @@ export async function leerContextoEstado(supabase: SupabaseClient<Database>, id:
       .eq('cotizacion_id', id)
       .order('enviada_at', { ascending: false }),
   ])
-  if (fila.error) throw fila.error
-  if (envios.error) throw envios.error
-  if (!fila.data) return null
+  if (row.error) throw row.error
+  if (sends.error) throw sends.error
+  if (!row.data) return null
 
-  let anterior: ContextoEstado['anterior'] = null
-  if (fila.data.reemplaza_a) {
-    const { data, error } = await supabase.from('cotizaciones').select('id, numero').eq('id', fila.data.reemplaza_a).maybeSingle()
+  let previous: ContextoStatus['anterior'] = null
+  if (row.data.reemplaza_a) {
+    const { data, error } = await supabase.from('cotizaciones').select('id, numero').eq('id', row.data.reemplaza_a).maybeSingle()
     if (error) throw error
-    anterior = data
+    previous = data
   }
 
   return {
-    envios: envios.data,
-    vencida: fila.data.vencida ?? false,
-    venceEl: fila.data.vence_el,
-    fechaAprobacion: fila.data.fecha_aprobacion,
-    anterior,
+    envios: sends.data,
+    vencida: row.data.vencida ?? false,
+    venceEl: row.data.vence_el,
+    dateApproval: row.data.fecha_aprobacion,
+    anterior: previous,
   }
 }

@@ -1,15 +1,15 @@
 import { z } from 'zod'
-import { parsePrecio } from '@/lib/format/montos'
-import { esUuid } from '@/lib/validacion'
-import { esFecha } from '@/lib/format/fechas'
+import { parsePrice } from '@/lib/format/amounts'
+import { isUuid } from '@/lib/validation'
+import { isDate } from '@/lib/format/dates'
 
-export const TIPOS_DOCUMENTO = {
+export const TIPOS_DOCUMENT = {
   orden_compra: 'Orden de compra',
   remito: 'Remito',
   factura: 'Factura',
   orden_pago: 'Orden de pago',
 } as const
-export type TipoDocumento = keyof typeof TIPOS_DOCUMENTO
+export type TipoDocument = keyof typeof TIPOS_DOCUMENT
 
 export const TIPOS_COMPROBANTE = {
   FA: 'Factura A',
@@ -20,22 +20,22 @@ export const TIPOS_COMPROBANTE = {
 } as const
 export type TipoComprobante = keyof typeof TIPOS_COMPROBANTE
 
-function esTipoComprobante(valor: string): valor is TipoComprobante {
-  return Object.hasOwn(TIPOS_COMPROBANTE, valor)
+function isTipoComprobante(value: string): value is TipoComprobante {
+  return Object.hasOwn(TIPOS_COMPROBANTE, value)
 }
 
-const fechaOpcional = z
+const dateOptional = z
   .string()
   .trim()
-  .refine((valor) => valor === '' || esFecha(valor), 'Fecha inválida')
-  .transform((valor) => (valor === '' ? null : valor))
+  .refine((value) => value === '' || isDate(value), 'Fecha inválida')
+  .transform((value) => (value === '' ? null : value))
 
-const montoOpcional = z
+const amountOptional = z
   .string()
   .trim()
-  .transform((valor, ctx) => {
-    if (valor === '') return null
-    const monto = parsePrecio(valor)
+  .transform((value, ctx) => {
+    if (value === '') return null
+    const monto = parsePrice(value)
     // El máximo de numeric(14, 2), la columna donde se guarda.
     if (monto === null || monto <= 0 || monto > 999_999_999_999.99) {
       ctx.addIssue({ code: 'custom', message: 'Monto inválido' })
@@ -44,25 +44,25 @@ const montoOpcional = z
     return monto
   })
 
-export const esquemaDocumento = z
+export const schemaDocument = z
   .object({
-    tipo: z.enum(Object.keys(TIPOS_DOCUMENTO) as [TipoDocumento, ...TipoDocumento[]], {
+    tipo: z.enum(Object.keys(TIPOS_DOCUMENT) as [TipoDocument, ...TipoDocument[]], {
       error: 'Elegí el tipo de documento',
     }),
     numero: z.string().trim().max(50, 'Máximo 50 caracteres'),
-    fecha: fechaOpcional,
-    monto: montoOpcional,
+    fecha: dateOptional,
+    monto: amountOptional,
     // Se valida en el superRefine y solo para facturas: en los otros tipos se descarta.
     tipo_comprobante: z.string().trim().max(10, 'Máximo 10 caracteres'),
-    fecha_vencimiento: fechaOpcional,
+    fecha_vencimiento: dateOptional,
     numero_oc_ref: z.string().trim().max(50, 'Máximo 50 caracteres'),
-    periodo_desde: fechaOpcional,
-    periodo_hasta: fechaOpcional,
+    periodo_desde: dateOptional,
+    periodo_hasta: dateOptional,
     equipo_id: z
       .string()
       .trim()
-      .refine((valor) => valor === '' || esUuid(valor), 'Equipo inválido')
-      .transform((valor) => (valor === '' ? null : valor)),
+      .refine((value) => value === '' || isUuid(value), 'Equipo inválido')
+      .transform((value) => (value === '' ? null : value)),
     notas: z.string().trim().max(2000, 'Máximo 2000 caracteres'),
   })
   .superRefine((datos, ctx) => {
@@ -72,7 +72,7 @@ export const esquemaDocumento = z
     if (datos.tipo === 'factura') {
       if (datos.tipo_comprobante === '') {
         ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí el tipo de comprobante' })
-      } else if (!esTipoComprobante(datos.tipo_comprobante)) {
+      } else if (!isTipoComprobante(datos.tipo_comprobante)) {
         ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí un comprobante válido' })
       }
     }
@@ -83,17 +83,17 @@ export const esquemaDocumento = z
   // Lo que no corresponde al tipo se vacía: la base lo exige (CHECKs por tipo).
   .transform((datos) => ({
     ...datos,
-    tipo_comprobante: datos.tipo === 'factura' && esTipoComprobante(datos.tipo_comprobante) ? datos.tipo_comprobante : null,
+    tipo_comprobante: datos.tipo === 'factura' && isTipoComprobante(datos.tipo_comprobante) ? datos.tipo_comprobante : null,
     fecha_vencimiento: datos.tipo === 'factura' ? datos.fecha_vencimiento : null,
     numero_oc_ref: datos.tipo === 'factura' ? datos.numero_oc_ref : '',
     periodo_desde: datos.tipo === 'remito' ? datos.periodo_desde : null,
     periodo_hasta: datos.tipo === 'remito' ? datos.periodo_hasta : null,
     equipo_id: datos.tipo === 'remito' ? datos.equipo_id : null,
   }))
-export type DatosDocumento = z.output<typeof esquemaDocumento>
+export type DataDocument = z.output<typeof schemaDocument>
 
 /** Campos del formulario de documentos: el tipo exige que todos existan en el esquema (el test, que estén todos). */
-export const CAMPOS_DOCUMENTO = [
+export const FIELDS_DOCUMENT = [
   'tipo',
   'numero',
   'fecha',
@@ -105,4 +105,4 @@ export const CAMPOS_DOCUMENTO = [
   'periodo_hasta',
   'equipo_id',
   'notas',
-] as const satisfies readonly (keyof z.input<typeof esquemaDocumento>)[]
+] as const satisfies readonly (keyof z.input<typeof schemaDocument>)[]

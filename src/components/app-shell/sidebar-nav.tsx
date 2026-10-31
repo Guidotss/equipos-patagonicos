@@ -4,9 +4,9 @@ import { LoaderCircle, type LucideIcon } from 'lucide-react'
 import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { NAV_ITEMS, estaActivo } from './nav-items'
+import { NAV_ITEMS, estaActive } from './nav-items'
 
-function ContenidoEnlace({ label, icon: Icon, activo }: { label: string; icon: LucideIcon; activo: boolean }) {
+function ContentEnlace({ label, icon: Icon, activo }: { label: string; icon: LucideIcon; activo: boolean }) {
   const { pending } = useLinkStatus()
   return (
     <>
@@ -27,7 +27,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Principal" className="flex flex-col gap-1">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-        const activo = estaActivo(pathname, href)
+        const activo = estaActive(pathname, href)
         return (
           <Link
             key={href}
@@ -41,7 +41,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 : 'text-sidebar-foreground hover:bg-sidebar-accent/50',
             )}
           >
-            <ContenidoEnlace label={label} icon={Icon} activo={activo} />
+            <ContentEnlace label={label} icon={Icon} activo={activo} />
           </Link>
         )
       })}

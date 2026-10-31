@@ -2,7 +2,7 @@ import { Table } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
 /** El scroll pertenece a la tabla: filtros y paginación permanecen fuera y el encabezado acompaña a las filas. */
-export function TablaListado({ className, ...props }: React.ComponentProps<'table'>) {
+export function TableListing({ className, ...props }: React.ComponentProps<'table'>) {
   return (
     <Table
       containerClassName="max-h-[max(20rem,calc(100dvh-21rem))] overscroll-contain rounded-t-none focus-visible:outline-2 focus-visible:outline-ring"

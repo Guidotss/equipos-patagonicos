@@ -1,31 +1,31 @@
 // tests/integration/base.test.ts
 import { afterAll, describe, expect, it } from 'vitest'
-import { adminClient, anonClient, borrarUsuario, crearUsuario, sql } from './helpers'
+import { adminClient, anonClient, removeUser, crearUser, sql } from './helpers'
 
 const creados: string[] = []
 
 afterAll(async () => {
-  for (const id of creados) await borrarUsuario(id)
+  for (const id of creados) await removeUser(id)
 })
 
 describe('base de seguridad', () => {
   it('todas las tablas de public tienen RLS activado', async () => {
-    const filas = await sql<{ relname: string }>(`
+    const rows = await sql<{ relname: string }>(`
       select c.relname
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind in ('r', 'p') and not c.relrowsecurity
     `)
-    expect(filas.map((f) => f.relname)).toEqual([])
+    expect(rows.map((f) => f.relname)).toEqual([])
   })
 
   it('anon no tiene privilegios sobre tablas de public', async () => {
-    const filas = await sql(`
+    const rows = await sql(`
       select table_name, privilege_type
       from information_schema.role_table_grants
       where grantee = 'anon' and table_schema = 'public'
     `)
-    expect(filas).toEqual([])
+    expect(rows).toEqual([])
   })
 
   it('el registro público está deshabilitado', async () => {
@@ -59,37 +59,37 @@ describe('base de seguridad', () => {
   })
 
   it('un usuario inactivo no ve ningún perfil, ni el propio', async () => {
-    const usuario = await crearUsuario({ activo: false })
-    creados.push(usuario.id)
+    const user = await crearUser({ activo: false })
+    creados.push(user.id)
 
-    const { data, error } = await usuario.client.from('profiles').select('id')
+    const { data, error } = await user.client.from('profiles').select('id')
     expect(error).toBeNull()
     expect(data).toEqual([])
   })
 
   it('un usuario activo ve los perfiles', async () => {
-    const usuario = await crearUsuario({ activo: true })
-    creados.push(usuario.id)
+    const user = await crearUser({ activo: true })
+    creados.push(user.id)
 
-    const { data, error } = await usuario.client.from('profiles').select('id')
+    const { data, error } = await user.client.from('profiles').select('id')
     expect(error).toBeNull()
-    expect(data?.map((p) => p.id)).toContain(usuario.id)
+    expect(data?.map((p) => p.id)).toContain(user.id)
   })
 
   it('un operador no puede ascenderse a admin', async () => {
-    const usuario = await crearUsuario({ activo: true, rol: 'operador' })
-    creados.push(usuario.id)
+    const user = await crearUser({ activo: true, rol: 'operador' })
+    creados.push(user.id)
 
-    const { data } = await usuario.client.from('profiles').update({ rol: 'admin' }).eq('id', usuario.id).select()
+    const { data } = await user.client.from('profiles').update({ rol: 'admin' }).eq('id', user.id).select()
     expect(data ?? []).toEqual([])
 
-    const [perfil] = await sql<{ rol: string }>('select rol from public.profiles where id = $1', [usuario.id])
+    const [perfil] = await sql<{ rol: string }>('select rol from public.profiles where id = $1', [user.id])
     expect(perfil.rol).toBe('operador')
   })
 
   it('un admin puede activar a otro usuario', async () => {
-    const admin = await crearUsuario({ activo: true, rol: 'admin' })
-    const otro = await crearUsuario({ activo: false })
+    const admin = await crearUser({ activo: true, rol: 'admin' })
+    const otro = await crearUser({ activo: false })
     creados.push(admin.id, otro.id)
 
     const { error } = await admin.client.from('profiles').update({ activo: true }).eq('id', otro.id)

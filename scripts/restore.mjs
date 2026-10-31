@@ -1,32 +1,32 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  baseDestino,
-  ejecutar,
-  entorno,
+  baseDestination,
+  run,
+  env,
   storageAdmin,
-  verificar,
-} from "./respaldo-comun.mjs";
+  verify,
+} from './backup-shared.mjs';
 
-const directorio = process.argv[2];
-if (!directorio)
+const directory = process.argv[2];
+if (!directory)
   throw new Error(
     "Uso: npm run db:restaurar -- /ruta/respaldo [--aplicar --confirmar=host:puerto/base]",
   );
-const m = await verificar(directorio);
+const m = await verify(directory);
 console.log(`Integridad correcta: dump y ${m.archivos.length} archivos.`);
 if (process.argv.includes("--aplicar")) {
-  entorno();
-  const base = baseDestino();
-  if (!process.argv.includes(`--confirmar=${base.identidad}`))
+  env();
+  const base = baseDestination();
+  if (!process.argv.includes(`--confirmar=${base.identity}`))
     throw new Error(
-      `Para reemplazar la base destino, agregá --confirmar=${base.identidad}`,
+      `Para reemplazar la base destino, agregá --confirmar=${base.identity}`,
     );
   if (!process.argv.includes("--archivos")) {
     const versiones = m.migraciones
-      .map((migracion) => `'${migracion.nombre.slice(0, 14)}'`)
+      .map((migration) => `'${migration.nombre.slice(0, 14)}'`)
       .join(",");
-    const preparar = `DO $$ BEGIN
+    const prepare = `DO $$ BEGIN
       IF EXISTS (SELECT 1 FROM auth.users) OR EXISTS (SELECT 1 FROM public.clientes)
         OR EXISTS (SELECT 1 FROM public.cotizaciones) OR EXISTS (SELECT 1 FROM public.documentos)
         OR EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id='documentos') THEN
@@ -41,15 +41,15 @@ if (process.argv.includes("--aplicar")) {
     TRUNCATE public.empresa_config, public.firmantes, public.equipos, public.plantillas, public.clientes,
       public.contactos, public.profiles, public.cotizaciones, public.cotizacion_items, public.cotizacion_envios,
       public.documentos, public.documento_archivos, public.documento_presupuestos, public.op_facturas RESTART IDENTITY CASCADE;`;
-    await ejecutar(
+    await run(
       process.env.PSQL_BIN || "psql",
       [
         "--single-transaction",
         "--set=ON_ERROR_STOP=1",
         "--command",
-        preparar,
+        prepare,
         "--file",
-        path.resolve(directorio, "base.sql"),
+        path.resolve(directory, "base.sql"),
         "--dbname",
         base.env.PGDATABASE,
       ],
@@ -60,7 +60,7 @@ if (process.argv.includes("--aplicar")) {
   for (const a of m.archivos) {
     const { error } = await storage.upload(
       a.path,
-      await readFile(path.join(directorio, "archivos", a.sha256)),
+      await readFile(path.join(directory, "archivos", a.sha256)),
       { contentType: a.mime, upsert: true },
     );
     if (error) throw error;

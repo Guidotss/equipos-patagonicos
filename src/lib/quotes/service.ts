@@ -4,32 +4,32 @@
 // No importar 'server-only' acá: Vitest lo carga.
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { hoyArgentina } from '@/lib/format/fechas'
-import { leerBloques, type Formato, type Unidad } from '@/lib/plantillas/contenido'
-import { VARIABLES } from '@/lib/plantillas/variables'
-import { nombreArchivoCotizacion } from '@/lib/pdf/nombre-archivo'
-import { renderizarCotizacion } from '@/lib/pdf/render'
+import { todayArgentina } from '@/lib/format/dates'
+import { readBlocks, type Format, type Unit } from '@/lib/templates/content'
+import { VARIABLES } from '@/lib/templates/variables'
+import { nameFileQuote } from '@/lib/pdf/file-name'
+import { renderizarQuote } from '@/lib/pdf/render'
 import type { Database, Json } from '@/lib/supabase/database.types'
-import type { DatosDocumento } from '@/lib/documentos/esquemas'
-import type { ArchivoSubido } from '@/lib/documentos/servicio'
-import { armarDocumento, type DocumentoCotizacion, type FuenteDocumento } from './documento'
+import type { DataDocument } from '@/lib/documents/schemas'
+import type { FileSubido } from '@/lib/documents/service'
+import { buildDocument, type DocumentQuote, type SourceDocument } from './document'
 import {
-  MENSAJE_CONFLICTO,
-  fuenteDesdeEditor,
-  type CatalogosEditor,
-  type EstadoEditor,
-  type PayloadGuardar,
+  MESSAGE_CONFLICT,
+  sourceFromEditor,
+  type CatalogsEditor,
+  type StatusEditor,
+  type PayloadSave,
 } from './editor'
 
-type Cliente = SupabaseClient<Database>
+type Client = SupabaseClient<Database>
 
 const BUCKET = 'documentos'
 
 /** Error con un mensaje pensado para mostrarle al usuario. */
-export class ErrorCotizacion extends Error {}
+export class ErrorQuote extends Error {}
 
 /** Datos de la empresa que van en el PDF (membrete, pie y valores por defecto de las variables). */
-async function leerEmpresa(supabase: Cliente): Promise<FuenteDocumento['empresa']> {
+async function readCompany(supabase: Client): Promise<SourceDocument['empresa']> {
   const { data, error } = await supabase
     .from('empresa_config')
     .select('razon_social, direccion, ciudad, telefono, email, web, indice_base, proxima_actualizacion')
@@ -42,8 +42,8 @@ async function leerEmpresa(supabase: Cliente): Promise<FuenteDocumento['empresa'
  * Lee la cotización con todo lo que necesita el PDF en una sola consulta: así `updated_at`
  * (la versión que se manda a las RPC) corresponde exactamente al contenido que se dibuja.
  */
-async function cargarFuente(supabase: Cliente, id: string) {
-  const { data: fila, error } = await supabase
+async function cargarSource(supabase: Client, id: string) {
+  const { data: row, error } = await supabase
     .from('cotizaciones')
     .select(
       `id, numero, fecha, formato, asunto, intro, validez_dias, mostrar_total, datos, bloques, estado, origen,
@@ -57,37 +57,37 @@ async function cargarFuente(supabase: Cliente, id: string) {
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
-  if (!fila) return null
+  if (!row) return null
 
-  const fuente: FuenteDocumento = {
+  const source: SourceDocument = {
     cotizacion: {
-      numero: fila.numero,
-      fecha: fila.fecha,
-      formato: fila.formato as Formato,
-      asunto: fila.asunto,
-      intro: fila.intro,
-      validez_dias: fila.validez_dias,
-      mostrar_total: fila.mostrar_total,
-      datos: fila.datos,
-      bloques: leerBloques(fila.bloques),
+      numero: row.numero,
+      fecha: row.fecha,
+      formato: row.formato as Format,
+      asunto: row.asunto,
+      intro: row.intro,
+      validez_dias: row.validez_dias,
+      mostrar_total: row.mostrar_total,
+      datos: row.datos,
+      bloques: readBlocks(row.bloques),
     },
-    items: fila.items.map((item) => ({ ...item, unidad: item.unidad as Unidad })),
-    cliente: fila.cliente,
-    contacto: fila.contacto,
-    equipo: fila.equipo,
-    firmante: fila.firmante,
-    empresa: await leerEmpresa(supabase),
+    items: row.items.map((item) => ({ ...item, unidad: item.unidad as Unit })),
+    cliente: row.cliente,
+    contacto: row.contacto,
+    equipo: row.equipo,
+    firmante: row.firmante,
+    empresa: await readCompany(supabase),
   }
-  return { fila, fuente }
+  return { fila: row, source }
 }
 
-async function cargarOFallar(supabase: Cliente, id: string) {
-  const cargada = await cargarFuente(supabase, id)
-  if (!cargada) throw new ErrorCotizacion('La cotización no existe')
+async function cargarOFallar(supabase: Client, id: string) {
+  const cargada = await cargarSource(supabase, id)
+  if (!cargada) throw new ErrorQuote('La cotización no existe')
   return cargada
 }
 
-type Fila = NonNullable<Awaited<ReturnType<typeof cargarFuente>>>['fila']
+type Row = NonNullable<Awaited<ReturnType<typeof cargarSource>>>['fila']
 
 const ABIERTAS = ['borrador', 'enviada']
 
@@ -102,65 +102,65 @@ const ABIERTAS = ['borrador', 'enviada']
  * milisegundo, como la base, porque la versión pasa por un Date de JS en el navegador. Sin versión (scripts y
  * tests), vale la que se acaba de leer.
  */
-function exigirVersion(fila: Fila, version: string | undefined) {
+function requireVersion(row: Row, version: string | undefined) {
   if (version === undefined) return
-  const vista = Date.parse(version)
+  const view = Date.parse(version)
   // El mismo texto que da la base (private.exigir_version): así el editor lo reconoce y ofrece "Recargar".
-  if (Number.isNaN(vista) || vista !== Date.parse(fila.updated_at)) throw new ErrorCotizacion(MENSAJE_CONFLICTO)
+  if (Number.isNaN(view) || view !== Date.parse(row.updated_at)) throw new ErrorQuote(MESSAGE_CONFLICT)
 }
 
-function exigirPrecios(fila: Fila) {
-  if (!fila.items.length) throw new ErrorCotizacion('La cotización no tiene ítems')
-  if (fila.items.some((item) => item.precio_unitario === null)) throw new ErrorCotizacion('Hay ítems sin precio')
+function requirePrices(row: Row) {
+  if (!row.items.length) throw new ErrorQuote('La cotización no tiene ítems')
+  if (row.items.some((item) => item.precio_unitario === null)) throw new ErrorQuote('Hay ítems sin precio')
 }
 
-function exigirEnviable(fila: Fila) {
-  if (!ABIERTAS.includes(fila.estado)) {
-    throw new ErrorCotizacion('Solo se puede enviar una cotización en borrador o ya enviada')
+function requireEnviable(row: Row) {
+  if (!ABIERTAS.includes(row.estado)) {
+    throw new ErrorQuote('Solo se puede enviar una cotización en borrador o ya enviada')
   }
-  if (fila.origen !== 'app') {
-    throw new ErrorCotizacion('Una cotización cargada no se envía desde la app: su documento es el PDF original')
+  if (row.origen !== 'app') {
+    throw new ErrorQuote('Una cotización cargada no se envía desde la app: su documento es el PDF original')
   }
-  exigirPrecios(fila)
+  requirePrices(row)
 }
 
-function exigirAprobable(fila: Fila, fecha: string) {
-  if (!ABIERTAS.includes(fila.estado)) throw new ErrorCotizacion('Solo se puede aprobar una cotización en borrador o enviada')
-  if (!z.iso.date().safeParse(fecha).success) throw new ErrorCotizacion('La fecha de aprobación no es válida')
-  if (fecha < fila.fecha) throw new ErrorCotizacion('La fecha de aprobación no puede ser anterior a la cotización')
-  if (fila.origen !== 'importada') exigirPrecios(fila)
+function requireAprobable(row: Row, fecha: string) {
+  if (!ABIERTAS.includes(row.estado)) throw new ErrorQuote('Solo se puede aprobar una cotización en borrador o enviada')
+  if (!z.iso.date().safeParse(fecha).success) throw new ErrorQuote('La fecha de aprobación no es válida')
+  if (fecha < row.fecha) throw new ErrorQuote('La fecha de aprobación no puede ser anterior a la cotización')
+  if (row.origen !== 'importada') requirePrices(row)
 }
 
 /** Arma el documento y exige que no queden variables sin completar ni mal escritas (informa todas juntas). */
-function documentoCompleto(fuente: FuenteDocumento): DocumentoCotizacion {
-  const documento = armarDocumento(fuente)
+function documentComplete(source: SourceDocument): DocumentQuote {
+  const document = buildDocument(source)
   const problemas: string[] = []
-  if (documento.faltantes.length) {
-    problemas.push(`Faltan completar: ${documento.faltantes.map((nombre) => VARIABLES[nombre]).join(', ')}`)
+  if (document.faltantes.length) {
+    problemas.push(`Faltan completar: ${document.faltantes.map((nombre) => VARIABLES[nombre]).join(', ')}`)
   }
-  if (documento.desconocidas.length) {
-    problemas.push(`Hay variables mal escritas: ${documento.desconocidas.map((nombre) => `{{${nombre}}}`).join(', ')}`)
+  if (document.desconocidas.length) {
+    problemas.push(`Hay variables mal escritas: ${document.desconocidas.map((nombre) => `{{${nombre}}}`).join(', ')}`)
   }
-  if (problemas.length) throw new ErrorCotizacion(problemas.join('. '))
-  return documento
+  if (problemas.length) throw new ErrorQuote(problemas.join('. '))
+  return document
 }
 
-async function subirPdf(supabase: Cliente, ruta: string, pdf: Buffer) {
-  const { error } = await supabase.storage.from(BUCKET).upload(ruta, pdf, { contentType: 'application/pdf', upsert: false })
+async function uploadPdf(supabase: Client, path: string, pdf: Buffer) {
+  const { error } = await supabase.storage.from(BUCKET).upload(path, pdf, { contentType: 'application/pdf', upsert: false })
   if (error) throw error
 }
 
 type ErrorRpc = { code?: string; message: string }
 
 /** Los errores de negocio de la base (P0001) llegan como ErrorCotizacion; el resto, tal cual. */
-function errorDeRpc(error: ErrorRpc) {
-  return error.code === 'P0001' ? new ErrorCotizacion(error.message) : error
+function errorOfRpc(error: ErrorRpc) {
+  return error.code === 'P0001' ? new ErrorQuote(error.message) : error
 }
 
 /** Ejecuta una RPC que no devuelve nada y tira su error (ver errorDeRpc). */
 async function llamar(rpc: PromiseLike<{ error: ErrorRpc | null }>): Promise<void> {
   const { error } = await rpc
-  if (error) throw errorDeRpc(error)
+  if (error) throw errorOfRpc(error)
 }
 
 /**
@@ -168,9 +168,9 @@ async function llamar(rpc: PromiseLike<{ error: ErrorRpc | null }>): Promise<voi
  * si otro guardó en el medio, la base lo rechaza con "La cotización cambió…" y no pisa nada.
  * Devuelve el número (se asigna al crear) y la versión nueva, que es la que la pantalla manda la próxima vez.
  */
-export async function guardarCotizacion(
-  supabase: Cliente,
-  payload: PayloadGuardar,
+export async function saveQuote(
+  supabase: Client,
+  payload: PayloadSave,
   id?: string,
   version?: string,
 ): Promise<{ id: string; numero: number; version: string }> {
@@ -180,30 +180,30 @@ export async function guardarCotizacion(
     p_id: id,
     p_updated_at: id ? version : undefined,
   })
-  if (error) throw errorDeRpc(error)
+  if (error) throw errorOfRpc(error)
 
-  const fila = guardada[0]
-  if (!fila) throw new Error('El guardado no devolvió su versión')
-  return fila
+  const row = guardada[0]
+  if (!row) throw new Error('El guardado no devolvió su versión')
+  return row
 }
 
 /** El snapshot se sube antes; la aprobación y el alta de la OC se confirman juntas o se revierten juntas. */
-export async function aprobarConOrdenCompra(
-  supabase: Cliente, id: string, version: string, datos: DatosDocumento, archivos: ArchivoSubido[],
+export async function approveWithOrderCompra(
+  supabase: Client, id: string, version: string, datos: DataDocument, archivos: FileSubido[],
 ): Promise<string> {
-  const { fila, fuente } = await cargarOFallar(supabase, id)
-  exigirVersion(fila, version)
-  exigirAprobable(fila, datos.fecha ?? hoyArgentina())
-  if (datos.tipo !== 'orden_compra') throw new ErrorCotizacion('Elegí una orden de compra')
-  let ruta: string | undefined
-  if (fila.origen === 'app') {
-    ruta = `cotizaciones/${id}/aprobada-${crypto.randomUUID()}.pdf`
-    await subirPdf(supabase, ruta, await renderizarCotizacion(documentoCompleto(fuente)))
+  const { fila: row, source } = await cargarOFallar(supabase, id)
+  requireVersion(row, version)
+  requireAprobable(row, datos.fecha ?? todayArgentina())
+  if (datos.tipo !== 'orden_compra') throw new ErrorQuote('Elegí una orden de compra')
+  let path: string | undefined
+  if (row.origen === 'app') {
+    path = `cotizaciones/${id}/aprobada-${crypto.randomUUID()}.pdf`
+    await uploadPdf(supabase, path, await renderizarQuote(documentComplete(source)))
   }
   const { data, error } = await supabase.rpc('aprobar_con_orden_compra', {
-    p_id: id, p_updated_at: version, p_pdf_path: ruta ?? '', p_documento: datos, p_archivos: archivos,
+    p_id: id, p_updated_at: version, p_pdf_path: path ?? '', p_documento: datos, p_archivos: archivos,
   })
-  if (error) throw errorDeRpc(error)
+  if (error) throw errorOfRpc(error)
   return data
 }
 
@@ -212,22 +212,22 @@ export async function aprobarConOrdenCompra(
  * Con `version`, exige que sea la que vio la pantalla antes de generar nada. Devuelve el id del envío,
  * para descargar exactamente ese PDF (/cotizaciones/{id}/pdf?envio={envioId}&descargar=1).
  */
-export async function enviarCotizacion(supabase: Cliente, id: string, version?: string): Promise<{ envioId: string }> {
-  const { fila, fuente } = await cargarOFallar(supabase, id)
-  exigirVersion(fila, version)
-  exigirEnviable(fila)
+export async function sendQuote(supabase: Client, id: string, version?: string): Promise<{ envioId: string }> {
+  const { fila: row, source } = await cargarOFallar(supabase, id)
+  requireVersion(row, version)
+  requireEnviable(row)
 
-  const pdf = await renderizarCotizacion(documentoCompleto(fuente))
-  const ruta = `cotizaciones/${id}/enviada-${Date.now()}.pdf`
-  await subirPdf(supabase, ruta, pdf)
-  await llamar(supabase.rpc('marcar_enviada', { p_id: id, p_updated_at: fila.updated_at, p_pdf_path: ruta }))
+  const pdf = await renderizarQuote(documentComplete(source))
+  const path = `cotizaciones/${id}/enviada-${Date.now()}.pdf`
+  await uploadPdf(supabase, path, pdf)
+  await llamar(supabase.rpc('marcar_enviada', { p_id: id, p_updated_at: row.updated_at, p_pdf_path: path }))
 
   // La ruta lleva la hora en milisegundos y no se pisa: identifica el envío que se acaba de registrar.
   const { data: envio, error } = await supabase
     .from('cotizacion_envios')
     .select('id')
     .eq('cotizacion_id', id)
-    .eq('pdf_path', ruta)
+    .eq('pdf_path', path)
     .single()
   if (error) throw error
   return { envioId: envio.id }
@@ -237,15 +237,15 @@ export async function enviarCotizacion(supabase: Cliente, id: string, version?: 
  * La cotización que esta reemplaza (renegociación), si es un presupuesto aprobado en curso: la pantalla ofrece
  * finalizarlo. La aprobación ya quedó registrada, así que si esta lectura falla no se ofrece nada (no es un error).
  */
-async function anteriorEnCurso(
-  supabase: Cliente,
-  reemplazaA: string | null,
+async function previousInCurso(
+  supabase: Client,
+  replacesA: string | null,
 ): Promise<{ id: string; numero: number } | null> {
-  if (!reemplazaA) return null
+  if (!replacesA) return null
   const { data, error } = await supabase
     .from('cotizaciones')
     .select('id, numero, estado, presupuesto_estado')
-    .eq('id', reemplazaA)
+    .eq('id', replacesA)
     .maybeSingle()
   if (error || !data) return null
   return data.estado === 'aprobada' && data.presupuesto_estado === 'en_curso' ? { id: data.id, numero: data.numero } : null
@@ -258,87 +258,87 @@ async function anteriorEnCurso(
  * Con `version`, exige que sea la que vio la pantalla antes de generar nada.
  * Devuelve la cotización anterior si esta la reemplaza y su presupuesto sigue en curso.
  */
-export async function aprobarCotizacion(
-  supabase: Cliente,
+export async function approveQuote(
+  supabase: Client,
   id: string,
   fecha?: string,
   version?: string,
 ): Promise<{ anterior: { id: string; numero: number } | null }> {
-  const { fila, fuente } = await cargarOFallar(supabase, id)
-  exigirVersion(fila, version)
-  const fechaAprobacion = fecha ?? hoyArgentina()
-  exigirAprobable(fila, fechaAprobacion)
+  const { fila: row, source } = await cargarOFallar(supabase, id)
+  requireVersion(row, version)
+  const dateApproval = fecha ?? todayArgentina()
+  requireAprobable(row, dateApproval)
 
-  let ruta: string | undefined
-  if (fila.origen !== 'importada') {
-    const pdf = await renderizarCotizacion(documentoCompleto(fuente))
-    ruta = `cotizaciones/${id}/aprobada-${Date.now()}.pdf`
-    await subirPdf(supabase, ruta, pdf)
+  let path: string | undefined
+  if (row.origen !== 'importada') {
+    const pdf = await renderizarQuote(documentComplete(source))
+    path = `cotizaciones/${id}/aprobada-${Date.now()}.pdf`
+    await uploadPdf(supabase, path, pdf)
   }
   await llamar(
     supabase.rpc('aprobar_cotizacion', {
       p_id: id,
-      p_updated_at: fila.updated_at,
-      p_pdf_path: ruta,
-      p_fecha: fechaAprobacion,
+      p_updated_at: row.updated_at,
+      p_pdf_path: path,
+      p_fecha: dateApproval,
     }),
   )
-  return { anterior: await anteriorEnCurso(supabase, fila.reemplaza_a) }
+  return { anterior: await previousInCurso(supabase, row.reemplaza_a) }
 }
 
 /** Desde borrador o enviada (de la app o cargada). */
-export async function rechazarCotizacion(supabase: Cliente, id: string): Promise<void> {
+export async function rejectQuote(supabase: Client, id: string): Promise<void> {
   await llamar(supabase.rpc('rechazar_cotizacion', { p_id: id }))
 }
 
 /** Una rechazada de la app vuelve a borrador; una cargada, a enviada. */
-export async function reabrirCotizacion(supabase: Cliente, id: string): Promise<void> {
+export async function reopenQuote(supabase: Client, id: string): Promise<void> {
   await llamar(supabase.rpc('reabrir_cotizacion', { p_id: id }))
 }
 
 /** Vuelve a enviada (si tuvo envíos o es cargada) o a borrador. No con documentos activos ni en un directo. */
-export async function revertirAprobacion(supabase: Cliente, id: string): Promise<void> {
+export async function revertApproval(supabase: Client, id: string): Promise<void> {
   await llamar(supabase.rpc('revertir_aprobacion', { p_id: id }))
 }
 
 /** Un borrador que nunca se envió, o una cargada que no está aprobada. */
-export async function borrarCotizacion(supabase: Cliente, id: string): Promise<void> {
+export async function removeQuote(supabase: Client, id: string): Promise<void> {
   await llamar(supabase.rpc('borrar_cotizacion', { p_id: id }))
 }
 
 /** Copia como borrador nuevo del mismo cliente (queda como renegociación: reemplaza_a). */
-export async function duplicarCotizacion(supabase: Cliente, id: string, clienteId?: string): Promise<{ id: string }> {
-  const { data, error } = await supabase.rpc('duplicar_cotizacion', { p_id: id, p_cliente_id: clienteId })
-  if (error) throw errorDeRpc(error)
+export async function duplicateQuote(supabase: Client, id: string, clientId?: string): Promise<{ id: string }> {
+  const { data, error } = await supabase.rpc('duplicar_cotizacion', { p_id: id, p_cliente_id: clientId })
+  if (error) throw errorOfRpc(error)
   return { id: data }
 }
 
 /** Finaliza el presupuesto de una cotización aprobada (la anterior de una renegociación). */
-export async function finalizarPresupuesto(supabase: Cliente, id: string): Promise<void> {
+export async function finishBudget(supabase: Client, id: string): Promise<void> {
   await llamar(supabase.rpc('cambiar_estado_presupuesto', { p_id: id, p_estado: 'finalizado' }))
 }
 
-export type EntradaVistaPrevia = { estado: EstadoEditor }
+export type EntryViewPreview = { estado: StatusEditor }
 
-async function leerCliente(supabase: Cliente, id: string) {
+async function readClient(supabase: Client, id: string) {
   const { data, error } = await supabase.from('clientes').select('id, razon_social, cuit').eq('id', id).maybeSingle()
   if (error) throw error
   return data
 }
 
 /** El contacto solo si es de ese cliente (como exige la base al guardar). */
-async function leerContacto(supabase: Cliente, clienteId: string, id: string) {
+async function readContact(supabase: Client, clientId: string, id: string) {
   const { data, error } = await supabase
     .from('contactos')
     .select('nombre, email')
     .eq('id', id)
-    .eq('cliente_id', clienteId)
+    .eq('cliente_id', clientId)
     .maybeSingle()
   if (error) throw error
   return data
 }
 
-async function leerEquipo(supabase: Cliente, id: string) {
+async function readEquipment(supabase: Client, id: string) {
   const { data, error } = await supabase
     .from('equipos')
     .select('id, nombre, capacidad_tn, descripcion, activo')
@@ -348,7 +348,7 @@ async function leerEquipo(supabase: Cliente, id: string) {
   return data
 }
 
-async function leerFirmante(supabase: Cliente, id: string) {
+async function readSigner(supabase: Client, id: string) {
   const { data, error } = await supabase
     .from('firmantes')
     .select('id, nombre, cargo, telefono, activo')
@@ -364,35 +364,35 @@ async function leerFirmante(supabase: Cliente, id: string) {
  * equipo, el firmante y la empresa se releen de la base (un id que no existe, o un contacto de otro cliente,
  * queda vacío).
  */
-export async function vistaPrevia(supabase: Cliente, { estado }: EntradaVistaPrevia): Promise<Buffer> {
-  const clienteId = estado.cliente?.id
-  const [cliente, contacto, equipo, firmante, empresa] = await Promise.all([
-    clienteId ? leerCliente(supabase, clienteId) : null,
-    clienteId && estado.contactoId ? leerContacto(supabase, clienteId, estado.contactoId) : null,
-    estado.equipoId ? leerEquipo(supabase, estado.equipoId) : null,
-    estado.firmanteId ? leerFirmante(supabase, estado.firmanteId) : null,
-    leerEmpresa(supabase),
+export async function viewPreview(supabase: Client, { estado }: EntryViewPreview): Promise<Buffer> {
+  const clientId = estado.cliente?.id
+  const [cliente, contacto, equipo, firmante, company] = await Promise.all([
+    clientId ? readClient(supabase, clientId) : null,
+    clientId && estado.contactoId ? readContact(supabase, clientId, estado.contactoId) : null,
+    estado.equipoId ? readEquipment(supabase, estado.equipoId) : null,
+    estado.firmanteId ? readSigner(supabase, estado.firmanteId) : null,
+    readCompany(supabase),
   ])
-  const catalogos: CatalogosEditor = {
+  const catalogs: CatalogsEditor = {
     plantillas: [],
     equipos: equipo ? [equipo] : [],
     firmantes: firmante ? [firmante] : [],
-    empresa,
+    empresa: company,
   }
   // fuenteDesdeEditor toma equipo y firmante de los catálogos por id, y usa hoy si la fecha está a medio escribir.
-  const releido: EstadoEditor = { ...estado, cliente }
-  const documento = armarDocumento(fuenteDesdeEditor(releido, catalogos, contacto))
-  return renderizarCotizacion(documento, { resaltarVariables: true })
+  const releido: StatusEditor = { ...estado, cliente }
+  const document = buildDocument(sourceFromEditor(releido, catalogs, contacto))
+  return renderizarQuote(document, { highlightVariables: true })
 }
 
-async function descargar(supabase: Cliente, ruta: string): Promise<Buffer> {
-  const { data, error } = await supabase.storage.from(BUCKET).download(ruta)
+async function descargar(supabase: Client, path: string): Promise<Buffer> {
+  const { data, error } = await supabase.storage.from(BUCKET).download(path)
   if (error) throw error
   return Buffer.from(await data.arrayBuffer())
 }
 
 /** La ruta del PDF del último envío de la cotización, o null si nunca se envió. */
-async function rutaUltimoEnvio(supabase: Cliente, id: string): Promise<string | null> {
+async function pathLastSend(supabase: Client, id: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('cotizacion_envios')
     .select('pdf_path')
@@ -405,7 +405,7 @@ async function rutaUltimoEnvio(supabase: Cliente, id: string): Promise<string | 
 }
 
 /** Estados en los que se muestra el último envío: lo que recibió el cliente, no lo editado después. */
-const CON_ENVIO = ['enviada', 'rechazada']
+const WITH_SEND = ['enviada', 'rechazada']
 
 /**
  * El PDF que corresponde mostrar: el de un envío puntual, el congelado de una aprobada,
@@ -416,39 +416,39 @@ const CON_ENVIO = ['enviada', 'rechazada']
  * Con `actual` (la vista previa en el celular), una de la app que no está aprobada se genera en el momento con lo
  * guardado, aunque se haya enviado, y con las variables sin completar en amarillo.
  */
-export async function pdfParaMostrar(
-  supabase: Cliente,
+export async function pdfForShow(
+  supabase: Client,
   id: string,
-  envioId?: string,
-  opciones: { actual?: boolean } = {},
-): Promise<{ pdf: Buffer; nombreArchivo: string } | null> {
-  const cargada = await cargarFuente(supabase, id)
+  sendId?: string,
+  options: { actual?: boolean } = {},
+): Promise<{ pdf: Buffer; nameFile: string } | null> {
+  const cargada = await cargarSource(supabase, id)
   if (!cargada) return null
-  const { fila, fuente } = cargada
-  const nombreArchivo = nombreArchivoCotizacion(fila.numero, fuente.cliente.razon_social)
+  const { fila: row, source } = cargada
+  const nameFile = nameFileQuote(row.numero, source.cliente.razon_social)
 
-  if (envioId) {
+  if (sendId) {
     const { data: envio, error } = await supabase
       .from('cotizacion_envios')
       .select('pdf_path')
-      .eq('id', envioId)
+      .eq('id', sendId)
       .eq('cotizacion_id', id)
       .maybeSingle()
     if (error) throw error
     if (!envio) return null
-    return { pdf: await descargar(supabase, envio.pdf_path), nombreArchivo }
+    return { pdf: await descargar(supabase, envio.pdf_path), nameFile }
   }
 
   // Un presupuesto directo no tiene PDF: generarlo mostraría una cotización que nunca existió.
-  if (fila.origen === 'directa') return null
+  if (row.origen === 'directa') return null
 
-  const actual = opciones.actual === true && fila.origen === 'app' && fila.estado !== 'aprobada'
-  const guardado = actual
+  const actual = options.actual === true && row.origen === 'app' && row.estado !== 'aprobada'
+  const saved = actual
     ? null
-    : (fila.pdf_aprobado_path ??
-      fila.archivo_original_path ??
-      (CON_ENVIO.includes(fila.estado) ? await rutaUltimoEnvio(supabase, id) : null))
-  if (guardado) return { pdf: await descargar(supabase, guardado), nombreArchivo }
+    : (row.pdf_aprobado_path ??
+      row.archivo_original_path ??
+      (WITH_SEND.includes(row.estado) ? await pathLastSend(supabase, id) : null))
+  if (saved) return { pdf: await descargar(supabase, saved), nameFile }
 
-  return { pdf: await renderizarCotizacion(armarDocumento(fuente), { resaltarVariables: actual }), nombreArchivo }
+  return { pdf: await renderizarQuote(buildDocument(source), { highlightVariables: actual }), nameFile }
 }

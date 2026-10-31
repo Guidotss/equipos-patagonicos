@@ -14,22 +14,22 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   configurarSupabase,
-  crearEntornoPruebas,
-  entornoSinConexiones,
-  proyectoPruebas,
-} from "./pruebas-entorno.mjs";
+  crearEnvTests,
+  envWithoutConexiones,
+  projectTests,
+} from './test-env.mjs';
 import {
-  comprobarPuertos,
-  detenerAplicacion,
-  ejecutarProceso,
-} from "./pruebas-procesos.mjs";
+  checkPorts,
+  stopAplicacion,
+  runProcess,
+} from './test-processes.mjs';
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
 const EXCLUIR =
   "realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor";
 
-async function prepararProyecto(root, temporal, id, suite) {
-  const supabase = path.join(temporal, "supabase");
+async function prepareProject(root, temp, id, suite) {
+  const supabase = path.join(temp, "supabase");
   await mkdir(supabase);
   const original = await readFile(
     path.join(root, "supabase/config.toml"),
@@ -50,7 +50,7 @@ async function prepararProyecto(root, temporal, id, suite) {
     path.join(supabase, "seed.sql"),
   );
   if (suite !== "e2e") return;
-  const app = path.join(temporal, "app");
+  const app = path.join(temp, "app");
   await mkdir(app);
   for (const archivo of [
     "src",
@@ -73,35 +73,35 @@ async function prepararProyecto(root, temporal, id, suite) {
   );
 }
 
-async function recursosProyecto(ejecutar, projectId, opciones) {
-  const filtro = `label=com.supabase.cli.project=${projectId}`;
-  const contenedores = await ejecutar(
+async function resourcesProject(run, projectId, options) {
+  const filter = `label=com.supabase.cli.project=${projectId}`;
+  const containers = await run(
     "docker",
-    ["ps", "-aq", "--filter", filtro],
-    opciones,
+    ["ps", "-aq", "--filter", filter],
+    options,
   );
-  const volumenes = await ejecutar(
+  const volumes = await run(
     "docker",
-    ["volume", "ls", "-q", "--filter", filtro],
-    opciones,
+    ["volume", "ls", "-q", "--filter", filter],
+    options,
   );
-  const red = await ejecutar(
+  const network = await run(
     "docker",
     ["network", "ls", "-q", "--filter", `name=^supabase_network_${projectId}$`],
-    opciones,
+    options,
   );
-  const lineas = (r) => r.stdout.trim().split(/\s+/).filter(Boolean);
+  const lines = (r) => r.stdout.trim().split(/\s+/).filter(Boolean);
   return {
-    contenedores: lineas(contenedores),
-    volumenes: lineas(volumenes),
-    redes: lineas(red),
+    containers: lines(containers),
+    volumes: lines(volumes),
+    networks: lines(network),
   };
 }
 
-async function destruirProyecto(ejecutar, cli, projectId, opciones) {
+async function destruirProject(run, cli, projectId, options) {
   let errorStop;
   try {
-    await ejecutar(
+    await run(
       cli,
       [
         "stop",
@@ -109,63 +109,63 @@ async function destruirProyecto(ejecutar, cli, projectId, opciones) {
         projectId,
         "--no-backup",
         "--workdir",
-        opciones.cwd,
+        options.cwd,
       ],
-      opciones,
+      options,
     );
   } catch (error) {
     errorStop = error;
   }
-  const recursos = await recursosProyecto(ejecutar, projectId, opciones);
+  const resources = await resourcesProject(run, projectId, options);
   // Cubre un start parcialmente fallido, que puede dejar recursos fuera del alcance de stop.
-  if (recursos.contenedores.length)
-    await ejecutar("docker", ["rm", "-f", ...recursos.contenedores], opciones);
-  if (recursos.volumenes.length)
-    await ejecutar("docker", ["volume", "rm", ...recursos.volumenes], opciones);
-  if (recursos.redes.length)
-    await ejecutar("docker", ["network", "rm", ...recursos.redes], opciones);
-  const restantes = await recursosProyecto(ejecutar, projectId, opciones);
+  if (resources.containers.length)
+    await run("docker", ["rm", "-f", ...resources.containers], options);
+  if (resources.volumes.length)
+    await run("docker", ["volume", "rm", ...resources.volumes], options);
+  if (resources.networks.length)
+    await run("docker", ["network", "rm", ...resources.networks], options);
+  const restantes = await resourcesProject(run, projectId, options);
   if (Object.values(restantes).some((r) => r.length))
     throw new Error("Quedaron recursos del proyecto temporal");
   if (errorStop) throw errorStop;
 }
 
 /** Dependencias de procesos/señales inyectables para verificar fallos sin acceder a Docker ni a una BD. */
-export async function ejecutarPruebas(
+export async function runTests(
   suite,
   args = [],
   {
     root = RAIZ,
     env = process.env,
-    ejecutar = ejecutarProceso,
-    checkPorts = comprobarPuertos,
-    señales = process,
+    run = runProcess,
+    checkPorts = checkPorts,
+    signals = process,
     log = console.error,
-    lockPath = path.join(os.tmpdir(), "equipos-patagonicos-pruebas.lock"),
+    lockPath = path.join(os.tmpdir(), "equipos-patagonicos-test-runner.lock"),
   } = {},
 ) {
   if (!["int", "e2e"].includes(suite)) {
-    log("Uso: node scripts/pruebas.mjs <int|e2e> [argumentos]");
+    log("Uso: node scripts/test-runner.mjs <int|e2e> [argumentos]");
     return 1;
   }
   const id = randomUUID();
-  const projectId = proyectoPruebas(id);
+  const projectId = projectTests(id);
   const cli = path.join(root, "node_modules/.bin/supabase");
   const controller = new AbortController();
   let lock,
-    temporal,
-    inicioIntentado = false,
-    codigo = 1,
-    interrupcion = 0,
-    conservar = false;
-  const interrumpir = (codigoSeñal) => {
-    interrupcion ||= codigoSeñal;
+    temp,
+    homeAttempted = false,
+    code = 1,
+    interrupt = 0,
+    keep = false;
+  const interrumpir = (codeSignal) => {
+    interrupt ||= codeSignal;
     controller.abort();
   };
   const sigint = () => interrumpir(130);
   const sigterm = () => interrumpir(143);
-  señales.on("SIGINT", sigint);
-  señales.on("SIGTERM", sigterm);
+  signals.on("SIGINT", sigint);
+  signals.on("SIGTERM", sigterm);
   try {
     try {
       lock = await open(lockPath, "wx", 0o600);
@@ -178,105 +178,105 @@ export async function ejecutarPruebas(
     }
     await lock.writeFile(JSON.stringify({ pid: process.pid, projectId }));
     await checkPorts(suite);
-    temporal = await mkdtemp(path.join(root, ".pruebas-"));
+    temp = await mkdtemp(path.join(root, ".test-run-"));
     await writeFile(
-      path.join(temporal, "ejecucion.json"),
+      path.join(temp, "ejecucion.json"),
       JSON.stringify({ pid: process.pid, projectId }),
       { mode: 0o600 },
     );
-    await prepararProyecto(root, temporal, id, suite);
-    const opciones = {
-      cwd: temporal,
-      env: entornoSinConexiones(env),
-      logPath: path.join(temporal, "diagnostico.log"),
+    await prepareProject(root, temp, id, suite);
+    const options = {
+      cwd: temp,
+      env: envWithoutConexiones(env),
+      logPath: path.join(temp, "diagnostico.log"),
     };
-    const previos = await recursosProyecto(ejecutar, projectId, {
-      ...opciones,
+    const previos = await resourcesProject(run, projectId, {
+      ...options,
       signal: controller.signal,
     });
     if (Object.values(previos).some((r) => r.length))
       throw new Error(
         "Ya hay recursos con este identificador; se rechaza un stack no propio",
       );
-    inicioIntentado = true;
+    homeAttempted = true;
     log(`Pruebas ${suite}: creando ${projectId} (API 55321 / BD 55322)`);
-    await ejecutar(
+    await run(
       cli,
-      ["start", "--exclude", EXCLUIR, "--workdir", temporal],
-      { ...opciones, signal: controller.signal },
+      ["start", "--exclude", EXCLUIR, "--workdir", temp],
+      { ...options, signal: controller.signal },
     );
     // status contiene claves: se captura en memoria y no se imprime ni se guarda en el log.
-    const status = await ejecutar(
+    const status = await run(
       cli,
-      ["status", "-o", "json", "--workdir", temporal],
-      { ...opciones, logPath: undefined, signal: controller.signal },
+      ["status", "-o", "json", "--workdir", temp],
+      { ...options, logPath: undefined, signal: controller.signal },
     );
     const testEnv = {
-      ...crearEntornoPruebas(JSON.parse(status.stdout), id, env),
-      EP_PRUEBAS_APP_DIR: path.join(temporal, "app"),
-      EP_PRUEBAS_REPO_ROOT: root,
-      EP_PRUEBAS_APP_STATE_FILE: path.join(temporal, "app-proceso.json"),
+      ...crearEnvTests(JSON.parse(status.stdout), id, env),
+      EP_TESTS_APP_DIR: path.join(temp, "app"),
+      EP_TESTS_REPO_ROOT: root,
+      EP_TESTS_APP_STATE_FILE: path.join(temp, "app-proceso.json"),
     };
     const bin = path.join(
       root,
       "node_modules/.bin",
       suite === "int" ? "vitest" : "playwright",
     );
-    const argumentos =
+    const cliArgs =
       suite === "int"
         ? ["run", "--project", "integration", ...args]
         : ["test", ...args];
-    const resultado = await ejecutar(bin, argumentos, {
+    const result = await run(bin, cliArgs, {
       cwd: root,
       env: testEnv,
       visible: true,
       signal: controller.signal,
     });
-    codigo = resultado.code;
+    code = result.code;
   } catch (error) {
     log(`Pruebas: ${error.message}`);
-    conservar = true;
+    keep = true;
   } finally {
-    if (temporal && suite === "e2e") {
+    if (temp && suite === "e2e") {
       try {
-        await detenerAplicacion(
-          path.join(temporal, "app-proceso.json"),
+        await stopAplicacion(
+          path.join(temp, "app-proceso.json"),
           id,
-          path.join(temporal, "app"),
+          path.join(temp, "app"),
         );
       } catch (error) {
         log(`Error de limpieza del servidor Next: ${error.message}`);
-        codigo = 1;
-        conservar = true;
+        code = 1;
+        keep = true;
       }
     }
-    if (inicioIntentado) {
+    if (homeAttempted) {
       try {
-        await destruirProyecto(ejecutar, cli, projectId, {
-          cwd: temporal,
-          env: entornoSinConexiones(env),
-          logPath: path.join(temporal, "diagnostico.log"),
+        await destruirProject(run, cli, projectId, {
+          cwd: temp,
+          env: envWithoutConexiones(env),
+          logPath: path.join(temp, "diagnostico.log"),
         });
         log(
           `Pruebas: proyecto ${projectId} destruido (contenedores y volúmenes)`,
         );
       } catch (error) {
         log(`Error de limpieza de ${projectId}: ${error.message}`);
-        codigo = 1;
-        conservar = true;
+        code = 1;
+        keep = true;
       }
     }
     try {
-      if (temporal) {
-        if (conservar)
-          log(`Diagnóstico privado y datos de recuperación: ${temporal}`);
-        else await rm(temporal, { recursive: true, force: true });
+      if (temp) {
+        if (keep)
+          log(`Diagnóstico privado y datos de recuperación: ${temp}`);
+        else await rm(temp, { recursive: true, force: true });
       }
     } catch (error) {
       log(
-        `Error de limpieza de archivos temporales (${temporal}): ${error.message}`,
+        `Error de limpieza de archivos temporales (${temp}): ${error.message}`,
       );
-      codigo = 1;
+      code = 1;
     }
     try {
       if (lock) {
@@ -285,13 +285,13 @@ export async function ejecutarPruebas(
       }
     } catch (error) {
       log(`Error al liberar el bloqueo ${lockPath}: ${error.message}`);
-      codigo = 1;
+      code = 1;
     } finally {
-      señales.off("SIGINT", sigint);
-      señales.off("SIGTERM", sigterm);
+      signals.off("SIGINT", sigint);
+      signals.off("SIGTERM", sigterm);
     }
   }
-  return interrupcion || codigo;
+  return interrupt || code;
 }
 
 if (
@@ -299,7 +299,7 @@ if (
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 ) {
   process.umask(0o077);
-  process.exitCode = await ejecutarPruebas(
+  process.exitCode = await runTests(
     process.argv[2],
     process.argv.slice(3),
   );

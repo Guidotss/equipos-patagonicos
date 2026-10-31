@@ -2,36 +2,36 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { cambiarAnulacionDocumento } from '@/app/(app)/documentos/actions'
-import { ConfirmacionEnLugar } from '@/components/formulario/confirmacion-en-lugar'
+import { changeVoidingDocument } from '@/app/(app)/documentos/actions'
+import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
 import { Button } from '@/components/ui/button'
 
-export function AccionesDocumento({ id, anulado }: { id: string; anulado: boolean }) {
+export function ActionsDocument({ id, anulado: voided }: { id: string; anulado: boolean }) {
   const [confirmando, setConfirmando] = useState(false)
-  const [pendiente, startTransition] = useTransition()
+  const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
-  const boton = useRef<HTMLButtonElement>(null)
-  const enCurso = useRef(false)
-  function cambiar(restaurar: boolean) {
-    if (enCurso.current) return
-    enCurso.current = true
+  const button = useRef<HTMLButtonElement>(null)
+  const inCurso = useRef(false)
+  function change(restore: boolean) {
+    if (inCurso.current) return
+    inCurso.current = true
     setError('')
     startTransition(async () => {
       try {
-        const resultado = await cambiarAnulacionDocumento(id, restaurar)
-        if (!resultado.ok) {
-          setError(resultado.mensaje)
+        const result = await changeVoidingDocument(id, restore)
+        if (!result.ok) {
+          setError(result.message)
           return
         }
         setConfirmando(false)
-        if (!restaurar)
-          toast('Documento anulado', { action: { label: 'Deshacer', onClick: () => cambiar(true) }, duration: 10000 })
+        if (!restore)
+          toast('Documento anulado', { action: { label: 'Deshacer', onClick: () => change(true) }, duration: 10000 })
         else toast.success('Documento restaurado')
-        boton.current?.focus()
+        button.current?.focus()
       } catch {
         setError('No se pudo completar la operación. Reintentá.')
       } finally {
-        enCurso.current = false
+        inCurso.current = false
       }
     })
   }
@@ -39,27 +39,27 @@ export function AccionesDocumento({ id, anulado }: { id: string; anulado: boolea
     <div className="flex flex-col items-end gap-2">
       {!confirmando ? (
         <Button
-          ref={boton}
+          ref={button}
           type="button"
-          variant={anulado ? 'outline' : 'ghost'}
+          variant={voided ? 'outline' : 'ghost'}
           size="sm"
-          disabled={pendiente}
-          onClick={() => (anulado ? cambiar(true) : setConfirmando(true))}
+          disabled={pending}
+          onClick={() => (voided ? change(true) : setConfirmando(true))}
         >
-          {anulado ? 'Restaurar' : 'Anular'}
+          {voided ? 'Restaurar' : 'Anular'}
         </Button>
       ) : (
-        <ConfirmacionEnLugar
+        <ConfirmationInLugar
           pregunta="¿Anular este documento?"
-          detalle="Los archivos se conservan. Si es un pago, su importe vuelve al saldo de las facturas."
-          textoConfirmar="Confirmar anulación"
-          textoPendiente="Anulando…"
-          tono="peligro"
-          pendiente={pendiente}
-          alConfirmar={() => cambiar(false)}
-          alCancelar={() => {
+          detail="Los archivos se conservan. Si es un pago, su importe vuelve al saldo de las facturas."
+          textConfirm="Confirmar anulación"
+          textPending="Anulando…"
+          tone="peligro"
+          pendiente={pending}
+          onConfirm={() => change(false)}
+          onCancelar={() => {
             setConfirmando(false)
-            boton.current?.focus()
+            button.current?.focus()
           }}
         />
       )}

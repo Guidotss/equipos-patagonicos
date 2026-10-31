@@ -1,5 +1,5 @@
 /** "COTIZACION N° 112711 VERTICE.pdf", como nombran hoy los archivos. */
-export function nombreArchivoCotizacion(numero: number, razonSocial: string): string {
+export function nameFileQuote(numero: number, razonSocial: string): string {
   const primera = razonSocial.trim().split(/\s+/)[0] ?? ''
   const limpia = primera
     .normalize('NFD')

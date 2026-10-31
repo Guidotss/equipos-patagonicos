@@ -1,11 +1,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import type { UsuarioActual } from '@/lib/auth'
+import type { UserCurrent } from '@/lib/auth'
 import { MobileNav } from './mobile-nav'
 import { SidebarNav } from './sidebar-nav'
 import { UserMenu } from './user-menu'
-import { BuscadorGlobal } from './buscador-global'
+import { SearchGlobal } from './search-global'
 
 function Logo({ className }: { className?: string }) {
   return (
@@ -20,7 +20,7 @@ function Logo({ className }: { className?: string }) {
   )
 }
 
-export function AppShell({ usuario, children }: { usuario: UsuarioActual; children: React.ReactNode }) {
+export function AppShell({ user, children }: { user: UserCurrent; children: React.ReactNode }) {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex min-h-svh">
@@ -28,12 +28,12 @@ export function AppShell({ usuario, children }: { usuario: UsuarioActual; childr
           <Link href="/" className="block px-5 pt-6 pb-10" aria-label="Ir al inicio">
             <Logo className="h-[42px] w-auto" />
           </Link>
-          <div className="px-3 pb-4"><BuscadorGlobal /></div>
+          <div className="px-3 pb-4"><SearchGlobal /></div>
           <div className="flex-1 overflow-y-auto px-3 py-1">
             <SidebarNav />
           </div>
           <div className="border-t border-sidebar-border p-3">
-            <UserMenu nombre={usuario.nombre} email={usuario.email} lateral />
+            <UserMenu nombre={user.nombre} email={user.email} lateral />
           </div>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
@@ -45,8 +45,8 @@ export function AppShell({ usuario, children }: { usuario: UsuarioActual; childr
               </Link>
             </div>
             <div className="flex items-center gap-1">
-              <BuscadorGlobal compacto />
-              <UserMenu nombre={usuario.nombre} email={usuario.email} />
+              <SearchGlobal compact />
+              <UserMenu nombre={user.nombre} email={user.email} />
             </div>
           </header>
           <main className="flex-1">{children}</main>

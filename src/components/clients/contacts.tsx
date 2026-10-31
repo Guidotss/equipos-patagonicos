@@ -1,9 +1,9 @@
 import { Pencil, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { iniciales } from '@/lib/format/texto'
+import { iniciales } from '@/lib/format/text'
 
-export type ContactoFicha = {
+export type ContactFicha = {
   id: string
   nombre: string
   cargo: string
@@ -12,8 +12,8 @@ export type ContactoFicha = {
 }
 
 /** Contactos de la ficha de cliente; el alta y la edición tienen pantalla propia. */
-export function Contactos({ clienteId, contactos }: { clienteId: string; contactos: ContactoFicha[] }) {
-  const base = `/clientes/${clienteId}/contactos`
+export function Contacts({ clientId, contactos }: { clientId: string; contactos: ContactFicha[] }) {
+  const base = `/clientes/${clientId}/contactos`
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-2">

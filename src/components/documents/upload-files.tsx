@@ -3,58 +3,58 @@
 
 import { Camera, FileText, Paperclip, RotateCw, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { prepararArchivo } from '@/app/(app)/documentos/actions'
+import { prepareFile } from '@/app/(app)/documentos/actions'
 import { Button } from '@/components/ui/button'
-import { prepararFoto, subirConProgreso } from '@/lib/documentos/subida'
-import type { ArchivoSubido } from '@/lib/documentos/servicio'
+import { prepareFoto, uploadWithProgreso } from '@/lib/documents/upload'
+import type { FileSubido } from '@/lib/documents/service'
 
-type Subida = {
+type Upload = {
   id: string
   archivo: File
-  vista: string
+  view: string
   progreso: number
   estado: 'subiendo' | 'error' | 'listo'
   error?: string
-  subido?: ArchivoSubido
+  subido?: FileSubido
 }
 
-export function SubidaArchivos({
-  clienteId,
+export function UploadFiles({
+  clientId,
   disabled,
-  alCambiar,
+  onChange,
 }: {
-  clienteId: string
+  clientId: string
   disabled?: boolean
-  alCambiar: (archivos: ArchivoSubido[], pendientes: boolean) => void
+  onChange: (archivos: FileSubido[], pendingList: boolean) => void
 }) {
-  const [archivos, setArchivos] = useState<Subida[]>([])
+  const [archivos, setFiles] = useState<Upload[]>([])
   const [error, setError] = useState('')
   const selector = useRef<HTMLInputElement>(null)
   const camara = useRef<HTMLInputElement>(null)
-  const vistas = useRef<string[]>([])
-  useEffect(() => () => vistas.current.forEach(URL.revokeObjectURL), [])
+  const views = useRef<string[]>([])
+  useEffect(() => () => views.current.forEach(URL.revokeObjectURL), [])
   useEffect(() => {
-    alCambiar(
+    onChange(
       archivos.flatMap((archivo) => (archivo.subido ? [archivo.subido] : [])),
       archivos.some((archivo) => archivo.estado !== 'listo'),
     )
-  }, [archivos, alCambiar])
+  }, [archivos, onChange])
 
-  function actualizar(id: string, cambios: Partial<Subida>) {
-    setArchivos((anteriores) => anteriores.map((archivo) => (archivo.id === id ? { ...archivo, ...cambios } : archivo)))
+  function actualizar(id: string, changes: Partial<Upload>) {
+    setFiles((anteriores) => anteriores.map((archivo) => (archivo.id === id ? { ...archivo, ...changes } : archivo)))
   }
-  async function subir(entrada: Subida) {
+  async function upload(entrada: Upload) {
     actualizar(entrada.id, { estado: 'subiendo', progreso: 0, error: undefined })
     try {
       if (entrada.archivo.name.length > 255) throw new Error('El nombre del archivo puede tener hasta 255 caracteres')
-      const archivo = await prepararFoto(entrada.archivo)
-      const resultado = await prepararArchivo({ clienteId, mime: archivo.type, tamano: archivo.size })
-      if (!resultado.ok) throw new Error(resultado.mensaje)
-      await subirConProgreso(resultado.datos.signedUrl, archivo, (progreso) => actualizar(entrada.id, { progreso }))
+      const archivo = await prepareFoto(entrada.archivo)
+      const result = await prepareFile({ clientId, mime: archivo.type, tamano: archivo.size })
+      if (!result.ok) throw new Error(result.message)
+      await uploadWithProgreso(result.datos.signedUrl, archivo, (progreso) => actualizar(entrada.id, { progreso }))
       actualizar(entrada.id, {
         estado: 'listo',
         progreso: 100,
-        subido: { path: resultado.datos.path, nombre_original: entrada.archivo.name },
+        subido: { path: result.datos.path, nombre_original: entrada.archivo.name },
       })
     } catch (problema) {
       actualizar(entrada.id, {
@@ -63,20 +63,20 @@ export function SubidaArchivos({
       })
     }
   }
-  function seleccionar(lista: FileList | null) {
-    if (!lista) return
-    if (lista.length + archivos.length > 50) {
+  function select(list: FileList | null) {
+    if (!list) return
+    if (list.length + archivos.length > 50) {
       setError('Podés adjuntar hasta 50 archivos por vez.')
       return
     }
     setError('')
-    const nuevas = Array.from(lista).map((archivo): Subida => {
-      const vista = URL.createObjectURL(archivo)
-      vistas.current.push(vista)
-      return { id: crypto.randomUUID(), archivo, vista, progreso: 0, estado: 'subiendo' }
+    const nuevas = Array.from(list).map((archivo): Upload => {
+      const view = URL.createObjectURL(archivo)
+      views.current.push(view)
+      return { id: crypto.randomUUID(), archivo, view, progreso: 0, estado: 'subiendo' }
     })
-    setArchivos((anteriores) => [...anteriores, ...nuevas])
-    for (const archivo of nuevas) void subir(archivo)
+    setFiles((anteriores) => [...anteriores, ...nuevas])
+    for (const archivo of nuevas) void upload(archivo)
   }
 
   return (
@@ -86,7 +86,7 @@ export function SubidaArchivos({
           type="button"
           variant="outline"
           className="h-20 flex-col"
-          disabled={disabled || !clienteId}
+          disabled={disabled || !clientId}
           onClick={() => camara.current?.click()}
         >
           <Camera data-icon="inline-start" />
@@ -96,7 +96,7 @@ export function SubidaArchivos({
           type="button"
           variant="outline"
           className="h-20 flex-col"
-          disabled={disabled || !clienteId}
+          disabled={disabled || !clientId}
           onClick={() => selector.current?.click()}
         >
           <Paperclip data-icon="inline-start" />
@@ -110,9 +110,9 @@ export function SubidaArchivos({
         multiple
         className="sr-only"
         aria-label="Seleccionar archivos del documento"
-        disabled={disabled || !clienteId}
+        disabled={disabled || !clientId}
         onChange={(evento) => {
-          seleccionar(evento.target.files)
+          select(evento.target.files)
           evento.target.value = ''
         }}
       />
@@ -123,9 +123,9 @@ export function SubidaArchivos({
         capture="environment"
         className="sr-only"
         aria-label="Tomar foto del documento"
-        disabled={disabled || !clienteId}
+        disabled={disabled || !clientId}
         onChange={(evento) => {
-          seleccionar(evento.target.files)
+          select(evento.target.files)
           evento.target.value = ''
         }}
       />
@@ -142,14 +142,14 @@ export function SubidaArchivos({
           {archivos.map((archivo) => (
             <li key={archivo.id} className="relative flex gap-3 rounded-lg border p-3">
               <a
-                href={archivo.vista}
+                href={archivo.view}
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`Previsualizar ${archivo.archivo.name}`}
                 className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-md bg-muted"
               >
                 {archivo.archivo.type.startsWith('image/') ? (
-                  <img src={archivo.vista} alt="" className="size-full object-cover" />
+                  <img src={archivo.view} alt="" className="size-full object-cover" />
                 ) : (
                   <FileText className="size-7 text-muted-foreground" />
                 )}
@@ -179,7 +179,7 @@ export function SubidaArchivos({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => void subir(archivo)}
+                      onClick={() => void upload(archivo)}
                       disabled={disabled}
                     >
                       <RotateCw data-icon="inline-start" />
@@ -195,7 +195,7 @@ export function SubidaArchivos({
                 aria-label={`Quitar ${archivo.archivo.name}`}
                 className="absolute top-1 right-1"
                 disabled={disabled || archivo.estado === 'subiendo'}
-                onClick={() => setArchivos((anteriores) => anteriores.filter((item) => item.id !== archivo.id))}
+                onClick={() => setFiles((anteriores) => anteriores.filter((item) => item.id !== archivo.id))}
               >
                 <X />
               </Button>

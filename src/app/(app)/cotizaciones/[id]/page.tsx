@@ -2,26 +2,26 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
+import { BarCrumbs, Content } from '@/components/app-shell/header'
 import { Button } from '@/components/ui/button'
-import { Seguimiento } from '@/components/cotizaciones/especiales/seguimiento'
-import { AccionesEspeciales } from '@/components/cotizaciones/especiales/acciones-especiales'
-import { CotizacionSoloLectura } from '@/components/cotizaciones/cotizacion-solo-lectura'
-import { EditorCotizacion } from '@/components/cotizaciones/editor/editor-cotizacion'
-import { accionDesdeParametro } from '@/lib/cotizaciones/acciones-estado'
-import { leerContextoEstado } from '@/lib/cotizaciones/contexto-estado'
-import { SELECT_EDITOR, estadoDesdeFila } from '@/lib/cotizaciones/editor'
-import { leerCatalogosEditor, leerContactos } from '@/lib/cotizaciones/lecturas-editor'
-import { hoyArgentina, sumarDias } from '@/lib/format/fechas'
+import { FollowUp } from '@/components/quotes/specials/follow-up'
+import { ActionsSpecials } from '@/components/quotes/specials/actions-specials'
+import { QuoteSoloQuery } from '@/components/quotes/quote-read-only'
+import { EditorQuote } from '@/components/quotes/editor/editor-quote'
+import { actionFromParam } from '@/lib/quotes/actions-status'
+import { readContextoStatus } from '@/lib/quotes/context-status'
+import { SELECT_EDITOR, statusFromRow } from '@/lib/quotes/editor'
+import { readCatalogsEditor, readContacts } from '@/lib/quotes/queries-editor'
+import { todayArgentina, sumarDays } from '@/lib/format/dates'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
+import { isUuid } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Cotización' }
 
 /** FilaEditor (Task 3) más el id del cliente, para leer sus contactos. */
 const COLUMNAS = `${SELECT_EDITOR}, cliente_id, notas` as const
 
-export default async function CotizacionPage({
+export default async function QuotePage({
   params,
   searchParams,
 }: {
@@ -29,72 +29,72 @@ export default async function CotizacionPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { id } = await params
-  if (!esUuid(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
-  const { data: fila, error } = await supabase.from('cotizaciones').select(COLUMNAS).eq('id', id).maybeSingle()
+  const { data: row, error } = await supabase.from('cotizaciones').select(COLUMNAS).eq('id', id).maybeSingle()
   if (error) throw error
-  if (!fila) notFound()
+  if (!row) notFound()
 
-  const migas = [{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: `N° ${fila.numero}` }]
-  const accionInicial = accionDesdeParametro((await searchParams).accion)
+  const crumbs = [{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: `N° ${row.numero}` }]
+  const actionInitial = actionFromParam((await searchParams).accion)
 
-  if (fila.origen !== 'app') {
-    const hoy = hoyArgentina()
+  if (row.origen !== 'app') {
+    const today = todayArgentina()
     return (
       <>
-        <BarraMigas migas={migas} />
-        <CotizacionSoloLectura
+        <BarCrumbs crumbs={crumbs} />
+        <QuoteSoloQuery
           cotizacion={{
-            id: fila.id,
-            numero: fila.numero,
-            origen: fila.origen === 'directa' ? 'directa' : 'importada',
-            estado: fila.estado,
+            id: row.id,
+            numero: row.numero,
+            origen: row.origen === 'directa' ? 'directa' : 'importada',
+            estado: row.estado,
             // Como v_cotizaciones: el día del vencimiento todavía no cuenta.
-            vencida: fila.estado === 'enviada' && sumarDias(fila.fecha, fila.validez_dias) < hoy,
-            fecha: fila.fecha,
-            cliente: fila.cliente.razon_social,
-            asunto: fila.asunto,
-            tienePdf: fila.archivo_original_path !== null,
+            vencida: row.estado === 'enviada' && sumarDays(row.fecha, row.validez_dias) < today,
+            fecha: row.fecha,
+            cliente: row.cliente.razon_social,
+            asunto: row.asunto,
+            tienePdf: row.archivo_original_path !== null,
           }}
         />
-        <Contenido className="max-w-5xl pt-0">
-          <AccionesEspeciales id={fila.id} version={fila.updated_at} estado={fila.estado} origen={fila.origen} hoy={hoy} accionInicial={accionInicial} />
-          {fila.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto</Link></Button> : null}
-          {fila.estado === 'enviada' ? <Button asChild variant="outline"><Link href={`/documentos/nuevo?cotizacion=${id}&tipo=orden_compra`}>Aprobar y cargar orden de compra</Link></Button> : null}
-          <Seguimiento key={fila.updated_at} id={id} version={fila.updated_at} notas={fila.notas} fecha={fila.fecha_proxima_actualizacion} />
-        </Contenido>
+        <Content className="max-w-5xl pt-0">
+          <ActionsSpecials id={row.id} version={row.updated_at} estado={row.estado} origen={row.origen} today={today} actionInitial={actionInitial} />
+          {row.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto</Link></Button> : null}
+          {row.estado === 'enviada' ? <Button asChild variant="outline"><Link href={`/documentos/nuevo?cotizacion=${id}&tipo=orden_compra`}>Aprobar y cargar orden de compra</Link></Button> : null}
+          <FollowUp key={row.updated_at} id={id} version={row.updated_at} notas={row.notas} fecha={row.fecha_proxima_actualizacion} />
+        </Content>
       </>
     )
   }
 
-  const [catalogos, contactos, contexto] = await Promise.all([
-    leerCatalogosEditor(supabase, {
-      plantillaId: fila.plantilla_id,
-      equipoId: fila.equipo_id,
-      firmanteId: fila.firmante_id,
+  const [catalogs, contactos, contexto] = await Promise.all([
+    readCatalogsEditor(supabase, {
+      templateId: row.plantilla_id,
+      equipoId: row.equipo_id,
+      firmanteId: row.firmante_id,
     }),
-    leerContactos(supabase, fila.cliente_id),
-    leerContextoEstado(supabase, id),
+    readContacts(supabase, row.cliente_id),
+    readContextoStatus(supabase, id),
   ])
   if (!contexto) notFound()
-  const inicial = estadoDesdeFila(fila)
+  const initial = statusFromRow(row)
 
   return (
     <>
-      <BarraMigas migas={migas} />
-      <EditorCotizacion
-        inicial={inicial}
-        catalogos={catalogos}
+      <BarCrumbs crumbs={crumbs} />
+      <EditorQuote
+        initial={initial}
+        catalogs={catalogs}
         contactos={contactos}
-        hoy={hoyArgentina()}
+        today={todayArgentina()}
         contexto={contexto}
-        accionInicial={accionInicial}
+        actionInitial={actionInitial}
       />
-      {fila.estado === 'aprobada' || fila.estado === 'rechazada' ? <Contenido className="max-w-5xl pt-0">
-        {fila.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto y documentos</Link></Button> : null}
-        {fila.estado === 'aprobada' || fila.estado === 'rechazada' ? <Seguimiento key={fila.updated_at} id={id} version={fila.updated_at} notas={fila.notas} fecha={fila.fecha_proxima_actualizacion} /> : null}
-      </Contenido> : null}
+      {row.estado === 'aprobada' || row.estado === 'rechazada' ? <Content className="max-w-5xl pt-0">
+        {row.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto y documentos</Link></Button> : null}
+        {row.estado === 'aprobada' || row.estado === 'rechazada' ? <FollowUp key={row.updated_at} id={id} version={row.updated_at} notas={row.notas} fecha={row.fecha_proxima_actualizacion} /> : null}
+      </Content> : null}
     </>
   )
 }

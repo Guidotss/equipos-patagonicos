@@ -1,27 +1,27 @@
-const conDecimales = new Intl.NumberFormat('es-AR', {
+const withDecimals = new Intl.NumberFormat('es-AR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
   useGrouping: 'always',
 })
 
-const sinDecimales = new Intl.NumberFormat('es-AR', {
+const withoutDecimals = new Intl.NumberFormat('es-AR', {
   maximumFractionDigits: 0,
   useGrouping: 'always',
 })
 
 /** "39.000.000,00": columnas Precio y Total de la cotización mensual. */
-export function formatMontoTabla(monto: number): string {
-  return conDecimales.format(monto)
+export function formatAmountTable(monto: number): string {
+  return withDecimals.format(monto)
 }
 
 /** "$ 1.950.000.-": precios de la cotización por jornada. */
-export function formatMontoJornada(monto: number): string {
-  return `$ ${sinDecimales.format(Math.round(monto))}.-`
+export function formatAmountDaily(monto: number): string {
+  return `$ ${withoutDecimals.format(Math.round(monto))}.-`
 }
 
 /** "$ 1.950.000,50": montos en pantalla (facturas, órdenes de pago). */
 export function formatMoneda(monto: number): string {
-  return `$ ${conDecimales.format(monto)}`
+  return `$ ${withDecimals.format(monto)}`
 }
 
 /**
@@ -31,7 +31,7 @@ export function formatMoneda(monto: number): string {
  * Rechaza espacios internos: "100 200" o dos celdas pegadas ("39000000\t5000") no se juntan en un número.
  * Devuelve null si el texto no es un monto válido (no admite negativos).
  */
-export function parsePrecio(entrada: string): number | null {
+export function parsePrice(entrada: string): number | null {
   let s = entrada
     .trim()
     .replace(/^\$\s*/, '')

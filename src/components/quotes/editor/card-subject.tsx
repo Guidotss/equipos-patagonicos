@@ -1,36 +1,36 @@
 'use client'
 // src/components/cotizaciones/editor/tarjeta-asunto.tsx
 
-import { Campo } from '@/components/formulario/campo'
-import { Tarjeta } from '@/components/formulario/tarjeta'
-import { ConVariables } from '@/components/plantillas/texto-formateado'
+import { Field } from '@/components/form/field'
+import { Card } from '@/components/form/card'
+import { WithVariables } from '@/components/templates/text-formatted'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { EstadoEditor } from '@/lib/cotizaciones/editor'
-import { ID_CAMPO, type Despachar } from '@/lib/cotizaciones/editor-pantalla'
-import { variablesUsadas } from '@/lib/plantillas/variables'
+import type { StatusEditor } from '@/lib/quotes/editor'
+import { ID_FIELD, type Despachar } from '@/lib/quotes/editor-screen'
+import { variablesUsadas } from '@/lib/templates/variables'
 
 /** Debajo del campo: el texto con sus variables marcadas, para ver qué se completa solo. */
 function Variables({ texto }: { texto: string }) {
   if (variablesUsadas(texto).length === 0) return null
   return (
     <p className="text-[13px] text-muted-foreground [overflow-wrap:anywhere]">
-      <ConVariables texto={texto} />
+      <WithVariables texto={texto} />
     </p>
   )
 }
 
-export function TarjetaAsunto({
+export function CardSubject({
   estado,
-  errores,
+  errors,
   despachar,
 }: {
-  estado: EstadoEditor
-  errores: Record<string, string>
+  estado: StatusEditor
+  errors: Record<string, string>
   despachar: Despachar
 }) {
   return (
-    <Tarjeta
+    <Card
       compacta
       titulo="Asunto e introducción"
       descripcion={
@@ -42,32 +42,32 @@ export function TarjetaAsunto({
     >
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Campo id={ID_CAMPO.asunto} etiqueta="Asunto" error={errores.asunto}>
+          <Field id={ID_FIELD.asunto} label="Asunto" error={errors.asunto}>
             <Input
-              id={ID_CAMPO.asunto}
+              id={ID_FIELD.asunto}
               value={estado.asunto}
               placeholder="Sin asunto"
-              onChange={(evento) => despachar({ tipo: 'campo', campo: 'asunto', valor: evento.target.value })}
-              aria-invalid={Boolean(errores.asunto)}
+              onChange={(evento) => despachar({ tipo: 'campo', campo: 'asunto', value: evento.target.value })}
+              aria-invalid={Boolean(errors.asunto)}
             />
-          </Campo>
+          </Field>
           <Variables texto={estado.asunto} />
         </div>
         <div className="space-y-1.5">
-          <Campo id={ID_CAMPO.intro} etiqueta="Introducción" error={errores.intro}>
+          <Field id={ID_FIELD.intro} label="Introducción" error={errors.intro}>
             <Textarea
-              id={ID_CAMPO.intro}
+              id={ID_FIELD.intro}
               value={estado.intro}
               rows={3}
               placeholder="Sin introducción"
-              onChange={(evento) => despachar({ tipo: 'campo', campo: 'intro', valor: evento.target.value })}
-              aria-invalid={Boolean(errores.intro)}
+              onChange={(evento) => despachar({ tipo: 'campo', campo: 'intro', value: evento.target.value })}
+              aria-invalid={Boolean(errors.intro)}
               className="min-h-20 text-[15px] md:text-[15px]"
             />
-          </Campo>
+          </Field>
           <Variables texto={estado.intro} />
         </div>
       </div>
-    </Tarjeta>
+    </Card>
   )
 }

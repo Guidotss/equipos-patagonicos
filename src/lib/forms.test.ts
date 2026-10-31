@@ -1,34 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { erroresPorRuta, exito, falloBase, falloValidacion, leerCampos, valorCampo } from './formularios'
+import { errorsByPath, success, falloBase, falloValidation, readFields, valueField } from './forms'
 
 describe('leerCampos', () => {
   it('lee los campos pedidos y usa "" para los que faltan o son archivos', () => {
     const fd = new FormData()
     fd.set('nombre', 'Julio')
     fd.set('archivo', new Blob(['x']))
-    expect(leerCampos(fd, ['nombre', 'cargo', 'archivo'] as const)).toEqual({ nombre: 'Julio', cargo: '', archivo: '' })
+    expect(readFields(fd, ['nombre', 'cargo', 'archivo'] as const)).toEqual({ nombre: 'Julio', cargo: '', archivo: '' })
   })
 })
 
 describe('falloValidacion', () => {
   it('devuelve el primer mensaje de cada campo y conserva lo que escribió el usuario', () => {
-    const esquema = z.object({ nombre: z.string().min(1, 'Ingresá el nombre'), email: z.email('Email inválido') })
-    const valores = { nombre: '', email: 'x' }
-    const resultado = esquema.safeParse(valores)
-    if (resultado.success) throw new Error('debería fallar')
+    const schema = z.object({ nombre: z.string().min(1, 'Ingresá el nombre'), email: z.email('Email inválido') })
+    const values = { nombre: '', email: 'x' }
+    const result = schema.safeParse(values)
+    if (result.success) throw new Error('debería fallar')
 
-    expect(falloValidacion(resultado.error, valores)).toEqual({
+    expect(falloValidation(result.error, values)).toEqual({
       ok: false,
-      mensaje: 'Revisá los datos marcados',
-      errores: { nombre: 'Ingresá el nombre', email: 'Email inválido' },
-      valores,
+      message: 'Revisá los datos marcados',
+      errors: { nombre: 'Ingresá el nombre', email: 'Email inválido' },
+      values,
     })
   })
 })
 
 describe('erroresPorRuta', () => {
-  const esquema = z.object({
+  const schema = z.object({
     cliente: z.string().min(1, 'Elegí el cliente'),
     items: z.array(
       z.object({
@@ -39,15 +39,15 @@ describe('erroresPorRuta', () => {
     datos: z.object({ ubicacion: z.string().max(3, 'Máximo 3 caracteres') }),
   })
 
-  function errores(valor: unknown) {
-    const resultado = esquema.safeParse(valor)
-    if (resultado.success) throw new Error('debería fallar')
-    return erroresPorRuta(resultado.error)
+  function errors(value: unknown) {
+    const result = schema.safeParse(value)
+    if (result.success) throw new Error('debería fallar')
+    return errorsByPath(result.error)
   }
 
   it('usa la ruta completa como clave, con los índices de las listas', () => {
     expect(
-      errores({
+      errors({
         cliente: '',
         items: [
           { descripcion: 'Jornada', precio: 1 },
@@ -67,64 +67,64 @@ describe('erroresPorRuta', () => {
 
   it('se queda con el primer mensaje de cada ruta', () => {
     const doble = z.object({ nombre: z.string().min(3, 'Muy corto').regex(/^[a-z]+$/, 'Solo minúsculas') })
-    const resultado = doble.safeParse({ nombre: 'A' })
-    if (resultado.success) throw new Error('debería fallar')
-    expect(erroresPorRuta(resultado.error)).toEqual({ nombre: 'Muy corto' })
+    const result = doble.safeParse({ nombre: 'A' })
+    if (result.success) throw new Error('debería fallar')
+    expect(errorsByPath(result.error)).toEqual({ nombre: 'Muy corto' })
   })
 
   it('un error del objeto entero queda con la clave vacía', () => {
-    const conRegla = z
+    const withRegla = z
       .object({ desde: z.number(), hasta: z.number() })
       .refine((rango) => rango.desde <= rango.hasta, 'Rango invertido')
-    const resultado = conRegla.safeParse({ desde: 2, hasta: 1 })
-    if (resultado.success) throw new Error('debería fallar')
-    expect(erroresPorRuta(resultado.error)).toEqual({ '': 'Rango invertido' })
+    const result = withRegla.safeParse({ desde: 2, hasta: 1 })
+    if (result.success) throw new Error('debería fallar')
+    expect(errorsByPath(result.error)).toEqual({ '': 'Rango invertido' })
   })
 
   it('una ruta con nombre de propiedad heredada no choca con el objeto', () => {
     const raro = z.object({ constructor: z.string('Texto requerido') })
-    const resultado = raro.safeParse({ constructor: 1 })
-    if (resultado.success) throw new Error('debería fallar')
-    expect(erroresPorRuta(resultado.error)).toEqual({ constructor: 'Texto requerido' })
+    const result = raro.safeParse({ constructor: 1 })
+    if (result.success) throw new Error('debería fallar')
+    expect(errorsByPath(result.error)).toEqual({ constructor: 'Texto requerido' })
   })
 })
 
 describe('falloBase', () => {
-  const valores = { cuit: '30719529670' }
+  const values = { cuit: '30719529670' }
 
   it('traduce los códigos de Postgres a mensajes', () => {
-    expect(falloBase({ code: '23505', message: 'dup' }, valores).mensaje).toBe('Ya existe un registro con esos datos')
-    expect(falloBase({ code: '42501', message: 'rls' }, valores).mensaje).toBe(
+    expect(falloBase({ code: '23505', message: 'dup' }, values).message).toBe('Ya existe un registro con esos datos')
+    expect(falloBase({ code: '42501', message: 'rls' }, values).message).toBe(
       'No tenés permiso para hacer esta operación',
     )
-    expect(falloBase({ code: 'P0001', message: 'Mensaje de la regla' }, valores).mensaje).toBe('Mensaje de la regla')
-    expect(falloBase({ code: 'XX000', message: 'raro' }, valores).mensaje).toBe(
+    expect(falloBase({ code: 'P0001', message: 'Mensaje de la regla' }, values).message).toBe('Mensaje de la regla')
+    expect(falloBase({ code: 'XX000', message: 'raro' }, values).message).toBe(
       'No se pudo guardar. Probá de nuevo en un momento.',
     )
-    expect(falloBase({ code: '22003', message: 'overflow' }, valores).mensaje).toBe('Algún número es demasiado grande')
+    expect(falloBase({ code: '22003', message: 'overflow' }, values).message).toBe('Algún número es demasiado grande')
   })
 
   it('marca el campo cuando el duplicado tiene un campo asociado', () => {
-    const resultado = falloBase({ code: '23505', message: 'dup' }, valores, {
+    const result = falloBase({ code: '23505', message: 'dup' }, values, {
       campo: 'cuit',
-      mensaje: 'Ya existe un cliente con ese CUIT',
+      message: 'Ya existe un cliente con ese CUIT',
     })
-    expect(resultado.errores).toEqual({ cuit: 'Ya existe un cliente con ese CUIT' })
-    expect(resultado.valores).toEqual(valores)
+    expect(result.errors).toEqual({ cuit: 'Ya existe un cliente con ese CUIT' })
+    expect(result.values).toEqual(values)
   })
 })
 
 describe('exito', () => {
   it('arma un estado ok', () => {
-    expect(exito('Guardado')).toEqual({ ok: true, mensaje: 'Guardado', errores: {} })
+    expect(success('Guardado')).toEqual({ ok: true, message: 'Guardado', errors: {} })
   })
 })
 
 describe('valorCampo', () => {
   it('prioriza lo que envió el usuario, después el valor inicial y por último ""', () => {
-    const estado = { ok: false, mensaje: null, errores: {}, valores: { nombre: 'Escrito' } }
-    expect(valorCampo(estado, { nombre: 'Inicial', cargo: 'Jefe' }, 'nombre')).toBe('Escrito')
-    expect(valorCampo({ ok: false, mensaje: null, errores: {} }, { cargo: 'Jefe' }, 'cargo')).toBe('Jefe')
-    expect(valorCampo({ ok: false, mensaje: null, errores: {} }, undefined, 'cargo')).toBe('')
+    const estado = { ok: false, message: null, errors: {}, values: { nombre: 'Escrito' } }
+    expect(valueField(estado, { nombre: 'Inicial', cargo: 'Jefe' }, 'nombre')).toBe('Escrito')
+    expect(valueField({ ok: false, message: null, errors: {} }, { cargo: 'Jefe' }, 'cargo')).toBe('Jefe')
+    expect(valueField({ ok: false, message: null, errors: {} }, undefined, 'cargo')).toBe('')
   })
 })

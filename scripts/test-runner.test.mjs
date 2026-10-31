@@ -7,13 +7,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
-  validarEntornoPruebas,
-  crearEntornoPruebas,
+  validateEnvTests,
+  crearEnvTests,
   configurarSupabase,
-  proyectoPruebas,
-} from "./pruebas-entorno.mjs";
-import { ejecutarPruebas } from "./pruebas.mjs";
-import { detenerAplicacion, ejecutarProceso } from "./pruebas-procesos.mjs";
+  projectTests,
+} from './test-env.mjs';
+import { runTests } from './test-runner.mjs';
+import { stopAplicacion, runProcess } from './test-processes.mjs';
 
 const id = "a1c25470-8da3-4eef-8833-e2d6ac27200d";
 const status = {
@@ -22,16 +22,16 @@ const status = {
   PUBLISHABLE_KEY: "publica-de-prueba",
   SECRET_KEY: "secreta-de-prueba",
 };
-const entorno = () =>
-  crearEntornoPruebas(status, id, {
+const testEnv = () =>
+  crearEnvTests(status, id, {
     PATH: "/bin",
     SUPABASE_SECRET_KEY: "ajena",
     DATABASE_URL: "ajena",
   });
 
 test("el guard rechaza ejecución directa, desarrollo y destinos remotos antes de conectar", () => {
-  assert.throws(() => validarEntornoPruebas({}), /runner/);
-  for (const [variable, valor] of [
+  assert.throws(() => validateEnvTests({}), /runner/);
+  for (const [variable, value] of [
     ["NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:54321"],
     ["NEXT_PUBLIC_SUPABASE_URL", "https://proyecto.supabase.co"],
     ["NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:55321/ruta"],
@@ -41,17 +41,17 @@ test("el guard rechaza ejecución directa, desarrollo y destinos remotos antes d
     ["EP_PRUEBAS_PROJECT_ID", "equipos-patagonicos"],
   ])
     assert.throws(
-      () => validarEntornoPruebas({ ...entorno(), [variable]: valor }),
+      () => validateEnvTests({ ...testEnv(), [variable]: value }),
       /aislad|runner/,
     );
   assert.equal(
-    validarEntornoPruebas(entorno()).baseURL,
+    validateEnvTests(testEnv()).baseURL,
     "http://127.0.0.1:3001",
   );
 });
 
 test("el entorno toma las claves del status temporal y descarta conexiones heredadas", () => {
-  const env = entorno();
+  const env = testEnv();
   assert.equal(env.SUPABASE_SECRET_KEY, status.SECRET_KEY);
   assert.equal(
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
@@ -61,7 +61,7 @@ test("el entorno toma las claves del status temporal y descarta conexiones hered
   assert.equal(env.PATH, "/bin");
   assert.throws(
     () =>
-      crearEntornoPruebas(
+      crearEnvTests(
         { ...status, API_URL: "http://127.0.0.1:54321" },
         id,
         {},
@@ -69,7 +69,7 @@ test("el entorno toma las claves del status temporal y descarta conexiones hered
     /aislad/,
   );
   assert.throws(
-    () => crearEntornoPruebas({ ...status, SECRET_KEY: undefined }, id, {}),
+    () => crearEnvTests({ ...status, SECRET_KEY: undefined }, id, {}),
     /claves/,
   );
 });
@@ -81,10 +81,10 @@ test("la copia del config conserva migraciones/seed y cambia puertos, redirects 
   );
   const config = configurarSupabase(original, id);
   assert.ok(
-    proyectoPruebas(id).length <= 40,
+    projectTests(id).length <= 40,
     "Supabase trunca nombres y labels a 40 caracteres",
   );
-  assert.match(config, new RegExp(`project_id = "${proyectoPruebas(id)}"`));
+  assert.match(config, new RegExp(`project_id = "${projectTests(id)}"`));
   assert.match(config, /\[api\][\s\S]*?port = 55321/);
   assert.match(config, /\[db\][\s\S]*?port = 55322/);
   assert.match(config, /\[db.seed\]\n(?:#[^\n]*\n)*enabled = true/);
@@ -97,7 +97,7 @@ test("la copia del config conserva migraciones/seed y cambia puertos, redirects 
   );
 });
 
-async function escenario(fn, opciones = {}) {
+async function escenario(fn, options = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "pruebas-runner-test-"));
   await mkdir(path.join(root, "supabase/migrations"), { recursive: true });
   await writeFile(
@@ -106,36 +106,36 @@ async function escenario(fn, opciones = {}) {
   );
   await writeFile(path.join(root, "supabase/seed.sql"), "-- semilla");
   const llamadas = [];
-  const señales = new EventEmitter();
-  const mensajes = [];
-  let inicio = false;
-  const recursos = {
-    contenedor: opciones.residuo,
-    volumen: opciones.residuo,
-    red: opciones.residuo,
+  const signals = new EventEmitter();
+  const messages = [];
+  let home = false;
+  const resources = {
+    contenedor: options.residuo,
+    volumen: options.residuo,
+    red: options.residuo,
   };
-  const ejecutar = async (comando, args, opts) => {
-    llamadas.push({ comando, args, opts });
+  const run = async (command, args, opts) => {
+    llamadas.push({ command, args, opts });
     if (args[0] === "status")
       return { code: 0, stdout: JSON.stringify(status) };
-    if (args[0] === "start") inicio = true;
-    if (opciones.fallarInicio && args[0] === "start")
+    if (args[0] === "start") home = true;
+    if (options.fallarHome && args[0] === "start")
       throw new Error("inicio parcial");
-    if (opciones.fallarLimpieza && args[0] === "stop")
+    if (options.fallarLimpieza && args[0] === "stop")
       throw new Error("stop falló");
-    if (comando === "docker" && inicio) {
+    if (command === "docker" && home) {
       const tipo =
         args[0] === "ps" || args[0] === "rm"
           ? "contenedor"
           : args[0] === "volume"
             ? "volumen"
             : "red";
-      if (args.includes("rm")) recursos[tipo] = false;
-      else if (recursos[tipo]) return { code: 0, stdout: `propio-${tipo}\n` };
+      if (args.includes("rm")) resources[tipo] = false;
+      else if (resources[tipo]) return { code: 0, stdout: `propio-${tipo}\n` };
     }
     if (args.includes("--project")) {
-      if (opciones.interrumpir) señales.emit("SIGTERM");
-      return { code: opciones.codigo ?? 0, stdout: "" };
+      if (options.interrumpir) signals.emit("SIGTERM");
+      return { code: options.code ?? 0, stdout: "" };
     }
     return { code: 0, stdout: "" };
   };
@@ -143,9 +143,9 @@ async function escenario(fn, opciones = {}) {
     await fn({
       root,
       llamadas,
-      mensajes,
-      ejecutar,
-      señales,
+      messages,
+      run,
+      signals,
       checkPorts: async () => {},
       lockPath: path.join(root, "lock"),
     });
@@ -157,15 +157,15 @@ async function escenario(fn, opciones = {}) {
 test("propaga argumentos y fallo de la suite y destruye únicamente el proyecto creado", async () => {
   await escenario(
     async (deps) => {
-      const code = await ejecutarPruebas(
+      const code = await runTests(
         "int",
         ["clientes", "--reporter=dot"],
-        { ...deps, log: (m) => deps.mensajes.push(m) },
+        { ...deps, log: (m) => deps.messages.push(m) },
       );
       assert.equal(code, 7);
       const suite = deps.llamadas.find((c) => c.args.includes("--project"));
       assert.deepEqual(suite.args.slice(-2), ["clientes", "--reporter=dot"]);
-      validarEntornoPruebas(suite.opts.env);
+      validateEnvTests(suite.opts.env);
       const stop = deps.llamadas.find((c) => c.args[0] === "stop");
       assert.match(stop.args[2], /^equipos-patagonicos-test-/);
       assert.ok(stop.args.includes("--no-backup"));
@@ -178,10 +178,10 @@ test("propaga argumentos y fallo de la suite y destruye únicamente el proyecto 
         deps.llamadas.find((c) => c.args[0] === "status").opts.logPath,
         undefined,
       );
-      assert.ok(deps.mensajes.every((m) => !m.includes(status.SECRET_KEY)));
+      assert.ok(deps.messages.every((m) => !m.includes(status.SECRET_KEY)));
       await assert.rejects(readFile(deps.lockPath), { code: "ENOENT" });
     },
-    { codigo: 7 },
+    { code: 7 },
   );
 });
 
@@ -189,13 +189,13 @@ test("limpia aun cuando start falla parcialmente, y no intenta ejecutar tests", 
   await escenario(
     async (deps) => {
       assert.equal(
-        await ejecutarPruebas("int", [], { ...deps, log: () => {} }),
+        await runTests("int", [], { ...deps, log: () => {} }),
         1,
       );
       assert.ok(deps.llamadas.some((c) => c.args[0] === "stop"));
       assert.ok(!deps.llamadas.some((c) => c.args.includes("--project")));
     },
-    { fallarInicio: true },
+    { fallarHome: true },
   );
 });
 
@@ -203,13 +203,13 @@ test("un fallo de limpieza se hace visible y devuelve error aun si pasaron los t
   await escenario(
     async (deps) => {
       assert.equal(
-        await ejecutarPruebas("int", [], {
+        await runTests("int", [], {
           ...deps,
-          log: (m) => deps.mensajes.push(m),
+          log: (m) => deps.messages.push(m),
         }),
         1,
       );
-      assert.ok(deps.mensajes.some((m) => m.includes("limpieza")));
+      assert.ok(deps.messages.some((m) => m.includes("limpieza")));
     },
     { fallarLimpieza: true },
   );
@@ -219,13 +219,13 @@ test("un inicio parcial remueve residuos solo del label propio cuando stop falla
   await escenario(
     async (deps) => {
       assert.equal(
-        await ejecutarPruebas("int", [], { ...deps, log: () => {} }),
+        await runTests("int", [], { ...deps, log: () => {} }),
         1,
       );
-      const comandosDocker = deps.llamadas.filter(
-        (c) => c.comando === "docker",
+      const commandsDocker = deps.llamadas.filter(
+        (c) => c.command === "docker",
       );
-      const consultas = comandosDocker.filter((c) =>
+      const consultas = commandsDocker.filter((c) =>
         c.args.includes("--filter"),
       );
       assert.ok(
@@ -234,7 +234,7 @@ test("un inicio parcial remueve residuos solo del label propio cuando stop falla
         ),
       );
       assert.deepEqual(
-        comandosDocker.filter((c) => c.args.includes("rm")).map((c) => c.args),
+        commandsDocker.filter((c) => c.args.includes("rm")).map((c) => c.args),
         [
           ["rm", "-f", "propio-contenedor"],
           ["volume", "rm", "propio-volumen"],
@@ -242,7 +242,7 @@ test("un inicio parcial remueve residuos solo del label propio cuando stop falla
         ],
       );
     },
-    { residuo: true, fallarInicio: true, fallarLimpieza: true },
+    { residuo: true, fallarHome: true, fallarLimpieza: true },
   );
 });
 
@@ -250,7 +250,7 @@ test("una interrupción conserva código 143 y pasa por la destrucción del proy
   await escenario(
     async (deps) => {
       assert.equal(
-        await ejecutarPruebas("int", [], { ...deps, log: () => {} }),
+        await runTests("int", [], { ...deps, log: () => {} }),
         143,
       );
       assert.ok(deps.llamadas.some((c) => c.args[0] === "stop"));
@@ -265,13 +265,13 @@ test("rechaza puertos ocupados y doble ejecución antes de arrancar Supabase", a
       throw new Error("puerto ocupado");
     };
     assert.equal(
-      await ejecutarPruebas("int", [], { ...deps, checkPorts, log: () => {} }),
+      await runTests("int", [], { ...deps, checkPorts, log: () => {} }),
       1,
     );
     assert.equal(deps.llamadas.length, 0);
     await writeFile(deps.lockPath, "otro proceso");
     assert.equal(
-      await ejecutarPruebas("int", [], { ...deps, log: () => {} }),
+      await runTests("int", [], { ...deps, log: () => {} }),
       1,
     );
     assert.equal(await readFile(deps.lockPath, "utf8"), "otro proceso");
@@ -285,7 +285,7 @@ test("detiene el grupo de Next registrado, aunque esté fuera del grupo de Playw
     detached: true,
     stdio: "ignore",
   });
-  const cerrado = once(child, "exit");
+  const closed = once(child, "exit");
   try {
     await once(child, "spawn");
     const archivo = path.join(root, "app-proceso.json");
@@ -294,12 +294,12 @@ test("detiene el grupo de Next registrado, aunque esté fuera del grupo de Playw
       JSON.stringify({ pid: child.pid, runId: id, appDir: root }),
     );
     await assert.rejects(
-      detenerAplicacion(archivo, "otra-corrida", root),
+      stopAplicacion(archivo, "otra-corrida", root),
       /no pertenece/,
     );
     process.kill(child.pid, 0);
-    await detenerAplicacion(archivo, id, root);
-    await cerrado;
+    await stopAplicacion(archivo, id, root);
+    await closed;
     assert.throws(() => process.kill(-child.pid, 0), { code: "ESRCH" });
   } finally {
     try {
@@ -313,11 +313,11 @@ test("detiene el grupo de Next registrado, aunque esté fuera del grupo de Playw
 
 test("el ejecutor propaga la interrupción de un proceso real", async () => {
   const controller = new AbortController();
-  const resultado = ejecutarProceso(
+  const result = runProcess(
     process.execPath,
     ["-e", "setInterval(() => {}, 1000)"],
     { signal: controller.signal, visible: true },
   );
   setTimeout(() => controller.abort(), 100);
-  assert.equal((await resultado).code, 143);
+  assert.equal((await result).code, 143);
 });

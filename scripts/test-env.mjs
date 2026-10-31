@@ -1,4 +1,4 @@
-export const PUERTOS_PRUEBAS = Object.freeze({
+export const PORTS_TESTS = Object.freeze({
   api: 55321,
   db: 55322,
   shadow: 55320,
@@ -7,25 +7,25 @@ export const PUERTOS_PRUEBAS = Object.freeze({
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-export function proyectoPruebas(id) {
+export function projectTests(id) {
   if (!UUID.test(id ?? ""))
     throw new Error("Identificador del runner inválido");
   // La CLI trunca a 40 caracteres los nombres y labels de Docker. Mantener el ID explícito idéntico.
   return `equipos-patagonicos-test-${id.replaceAll("-", "").slice(0, 15)}`;
 }
 
-function validarURL(valor, protocolo, puerto) {
+function validateURL(value, protocolo, port) {
   try {
-    const url = new URL(valor);
+    const url = new URL(value);
     if (
       !protocolo.includes(url.protocol) ||
       url.hostname !== "127.0.0.1" ||
-      url.port !== String(puerto) ||
+      url.port !== String(port) ||
       url.search ||
       url.hash ||
-      (puerto === PUERTOS_PRUEBAS.api &&
+      (port === PORTS_TESTS.api &&
         (url.username || url.password || url.pathname !== "/")) ||
-      (puerto === PUERTOS_PRUEBAS.db && url.pathname !== "/postgres")
+      (port === PORTS_TESTS.db && url.pathname !== "/postgres")
     )
       throw new Error();
     return url;
@@ -37,58 +37,58 @@ function validarURL(valor, protocolo, puerto) {
 }
 
 /** Se ejecuta antes de abrir cualquier cliente de BD/API y antes del setup de Playwright. */
-export function validarEntornoPruebas(env = process.env) {
+export function validateEnvTests(env = process.env) {
   if (
-    env.EP_PRUEBAS_RUNNER !== "1" ||
-    env.EP_PRUEBAS_PROJECT_ID !== proyectoPruebas(env.EP_PRUEBAS_RUN_ID)
+    env.EP_TESTS_RUNNER !== "1" ||
+    env.EP_PRUEBAS_PROJECT_ID !== projectTests(env.EP_TESTS_RUN_ID)
   ) {
     throw new Error(
       "Ejecutá las pruebas con el runner: npm run test:int o npm run test:e2e",
     );
   }
   if (
-    env.EP_PRUEBAS_API_PORT !== String(PUERTOS_PRUEBAS.api) ||
-    env.EP_PRUEBAS_DB_PORT !== String(PUERTOS_PRUEBAS.db)
+    env.EP_TESTS_API_PORT !== String(PORTS_TESTS.api) ||
+    env.EP_PRUEBAS_DB_PORT !== String(PORTS_TESTS.db)
   ) {
     throw new Error(
       "Los puertos del entorno no coinciden con los puertos aislados del runner",
     );
   }
-  validarURL(env.NEXT_PUBLIC_SUPABASE_URL, ["http:"], PUERTOS_PRUEBAS.api);
-  validarURL(
+  validateURL(env.NEXT_PUBLIC_SUPABASE_URL, ["http:"], PORTS_TESTS.api);
+  validateURL(
     env.SUPABASE_DB_URL,
     ["postgres:", "postgresql:"],
-    PUERTOS_PRUEBAS.db,
+    PORTS_TESTS.db,
   );
   if (!env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || !env.SUPABASE_SECRET_KEY)
     throw new Error("Faltan las claves del proyecto aislado");
-  const baseURL = `http://127.0.0.1:${PUERTOS_PRUEBAS.app}`;
-  if (env.EP_PRUEBAS_BASE_URL !== baseURL)
+  const baseURL = `http://127.0.0.1:${PORTS_TESTS.app}`;
+  if (env.EP_TESTS_BASE_URL !== baseURL)
     throw new Error("La aplicación debe usar el puerto aislado del runner");
   return { baseURL, projectId: env.EP_PRUEBAS_PROJECT_ID };
 }
 
 /** No hereda credenciales de Supabase/PG ni configuraciones Next del shell del usuario. */
-export function entornoSinConexiones(env = process.env) {
+export function envWithoutConexiones(env = process.env) {
   return Object.fromEntries(
     Object.entries(env).filter(
       ([key]) =>
-        !/^(?:SUPABASE|NEXT_|__NEXT|EP_PRUEBAS|PG|DATABASE_URL|NODE_OPTIONS|NODE_ENV|PORT$)/.test(
+        !/^(?:SUPABASE|NEXT_|__NEXT|EP_PRUEBAS|EP_TESTS|PG|DATABASE_URL|NODE_OPTIONS|NODE_ENV|PORT$)/.test(
           key,
         ),
     ),
   );
 }
 
-export function crearEntornoPruebas(status, id, heredado = process.env) {
+export function crearEnvTests(status, id, inherited = process.env) {
   const env = {
-    ...entornoSinConexiones(heredado),
-    EP_PRUEBAS_RUNNER: "1",
-    EP_PRUEBAS_RUN_ID: id,
-    EP_PRUEBAS_PROJECT_ID: proyectoPruebas(id),
-    EP_PRUEBAS_API_PORT: String(PUERTOS_PRUEBAS.api),
-    EP_PRUEBAS_DB_PORT: String(PUERTOS_PRUEBAS.db),
-    EP_PRUEBAS_BASE_URL: `http://127.0.0.1:${PUERTOS_PRUEBAS.app}`,
+    ...envWithoutConexiones(inherited),
+    EP_TESTS_RUNNER: "1",
+    EP_TESTS_RUN_ID: id,
+    EP_PRUEBAS_PROJECT_ID: projectTests(id),
+    EP_TESTS_API_PORT: String(PORTS_TESTS.api),
+    EP_PRUEBAS_DB_PORT: String(PORTS_TESTS.db),
+    EP_TESTS_BASE_URL: `http://127.0.0.1:${PORTS_TESTS.app}`,
     NEXT_PUBLIC_SUPABASE_URL: status.API_URL,
     SUPABASE_DB_URL: status.DB_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
@@ -96,15 +96,15 @@ export function crearEntornoPruebas(status, id, heredado = process.env) {
     SUPABASE_SECRET_KEY: status.SECRET_KEY ?? status.SERVICE_ROLE_KEY,
     NEXT_TELEMETRY_DISABLED: "1",
   };
-  validarEntornoPruebas(env);
+  validateEnvTests(env);
   return env;
 }
 
 export function configurarSupabase(original, id) {
-  const cambios = {
-    "": { project_id: JSON.stringify(proyectoPruebas(id)) },
-    api: { port: PUERTOS_PRUEBAS.api },
-    db: { port: PUERTOS_PRUEBAS.db, shadow_port: PUERTOS_PRUEBAS.shadow },
+  const changes = {
+    "": { project_id: JSON.stringify(projectTests(id)) },
+    api: { port: PORTS_TESTS.api },
+    db: { port: PORTS_TESTS.db, shadow_port: PORTS_TESTS.shadow },
     "db.pooler": { enabled: false, port: 55329 },
     realtime: { enabled: false },
     studio: { enabled: false, port: 55323 },
@@ -122,12 +122,12 @@ export function configurarSupabase(original, id) {
   let seccion = "";
   return original
     .split("\n")
-    .map((linea) => {
-      const encabezado = linea.match(/^\[([^\]]+)\]$/);
-      if (encabezado) seccion = encabezado[1];
-      const clave = linea.match(/^(\w+)\s*=/)?.[1];
-      const valor = cambios[seccion]?.[clave];
-      return valor === undefined ? linea : `${clave} = ${valor}`;
+    .map((line) => {
+      const header = line.match(/^\[([^\]]+)\]$/);
+      if (header) seccion = header[1];
+      const clave = line.match(/^(\w+)\s*=/)?.[1];
+      const value = changes[seccion]?.[clave];
+      return value === undefined ? line : `${clave} = ${value}`;
     })
     .join("\n");
 }

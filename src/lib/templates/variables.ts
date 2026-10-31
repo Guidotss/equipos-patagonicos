@@ -14,14 +14,14 @@ export const VARIABLES = {
   proxima_actualizacion: 'Próxima actualización de tarifas',
 } as const
 
-export type NombreVariable = keyof typeof VARIABLES
+export type NameVariable = keyof typeof VARIABLES
 
 // Captura todo lo que haya entre llaves dobles, para que un nombre mal tipeado ({{ubicación}}) se informe como desconocido.
 // Los espacios se recortan con trim() y no en el patrón: varios cuantificadores que aceptan espacios seguidos
 // tardan O(n^3) con un "{{" sin cerrar seguido de muchos espacios (ReDoS).
 const PATRON_VARIABLE = /\{\{([^{}]*)\}\}/g
 
-export function esVariable(nombre: string): nombre is NombreVariable {
+export function isVariable(nombre: string): nombre is NameVariable {
   return Object.hasOwn(VARIABLES, nombre)
 }
 
@@ -31,28 +31,28 @@ export function variablesUsadas(texto: string): string[] {
 
 /** "con base en {{ indice_base }}." → ['con base en ', 'indice_base', '.']: los nombres quedan en las posiciones impares. */
 export function partirVariables(texto: string): string[] {
-  return texto.split(PATRON_VARIABLE).map((parte, indice) => (indice % 2 === 1 ? parte.trim() : parte))
+  return texto.split(PATRON_VARIABLE).map((parte, index) => (index % 2 === 1 ? parte.trim() : parte))
 }
 
 export function variablesDesconocidas(texto: string): string[] {
-  return variablesUsadas(texto).filter((nombre) => !esVariable(nombre))
+  return variablesUsadas(texto).filter((nombre) => !isVariable(nombre))
 }
 
 /** Reemplaza las variables conocidas que tienen valor; las vacías quedan como {{x}} y se informan. */
 export function resolverVariables(
   texto: string,
-  valores: Partial<Record<NombreVariable, string>>,
-): { texto: string; faltantes: NombreVariable[] } {
-  const faltantes = new Set<NombreVariable>()
-  const resultado = texto.replace(PATRON_VARIABLE, (original, capturado: string) => {
+  values: Partial<Record<NameVariable, string>>,
+): { texto: string; faltantes: NameVariable[] } {
+  const faltantes = new Set<NameVariable>()
+  const result = texto.replace(PATRON_VARIABLE, (original, capturado: string) => {
     const nombre = capturado.trim()
-    if (!esVariable(nombre)) return original
-    const valor = valores[nombre]?.trim()
-    if (!valor) {
+    if (!isVariable(nombre)) return original
+    const value = values[nombre]?.trim()
+    if (!value) {
       faltantes.add(nombre)
       return original
     }
-    return valor
+    return value
   })
-  return { texto: resultado, faltantes: [...faltantes] }
+  return { texto: result, faltantes: [...faltantes] }
 }

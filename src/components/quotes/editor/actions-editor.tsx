@@ -5,7 +5,7 @@ import { Ellipsis, FileText } from 'lucide-react'
 import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import * as acciones from '@/app/(app)/cotizaciones/actions'
+import * as actions from '@/app/(app)/cotizaciones/actions'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,24 +16,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  disposicionAcciones,
-  esConfirmable,
-  esConflicto,
-  esEditable,
-  ETIQUETA_ACCION,
-  ETIQUETA_EN_CURSO,
-  fechaHoraDeMarca,
-  motivoBloqueo,
-  type AccionConfirmable,
-  type AccionEstado,
-  type BotonAccion,
-} from '@/lib/cotizaciones/acciones-estado'
-import type { ContextoEstado } from '@/lib/cotizaciones/contexto-estado'
-import type { EstadoEditor, Pendientes } from '@/lib/cotizaciones/editor'
+  layoutActions,
+  isConfirmable,
+  isConflict,
+  isEditable,
+  LABEL_ACTION,
+  LABEL_IN_CURSO,
+  dateTimeOfMark,
+  reasonBlock,
+  type ActionConfirmable,
+  type ActionStatus,
+  type ButtonAction,
+} from '@/lib/quotes/actions-status'
+import type { ContextoStatus } from '@/lib/quotes/context-status'
+import type { StatusEditor, PendingList } from '@/lib/quotes/editor'
 import { cn } from '@/lib/utils'
 
-export type Confirmacion =
-  | { tipo: AccionConfirmable }
+export type Confirmation =
+  | { tipo: ActionConfirmable }
   | { tipo: 'recargar' }
   | { tipo: 'finalizar'; anterior: { id: string; numero: number } }
   /** Duplicar con cambios sin guardar: guardarlos antes o copiar lo guardado. */
@@ -43,36 +43,36 @@ export type Confirmacion =
 export type EsperaServidor = 'adoptar' | 'descartar'
 
 /** Lo que devuelve el guardar del editor (VersionGuardada de la Task 8). */
-export type CotizacionGuardada = { id: string; version: string; numero: number }
+export type QuoteGuardada = { id: string; version: string; numero: number }
 
-export type AccionesEstado = {
+export type ActionsStatus = {
   /** La acción que corre (la `accion` del editor: 'guardar' o una de estas). */
-  enCurso: string | null
+  inCurso: string | null
   /** Corre una acción (o una recarga): todos los botones de acción quedan deshabilitados (decisión 12). */
-  ocupado: boolean
+  busy: boolean
   /**
    * Corre una transición (también su guardado previo): el contenido del editor queda deshabilitado, así no se tipea
    * sobre algo que se está enviando, aprobando o rechazando.
    */
-  enTransicion: boolean
+  inTransicion: boolean
   /** Corre el refresco de "Recargar": al terminar, el editor toma lo que haya en `inicial`. */
   recargando: boolean
-  confirmacion: Confirmacion | null
-  conflicto: boolean
-  iniciar: (accion: AccionEstado) => void
+  confirmation: Confirmation | null
+  conflict: boolean
+  iniciar: (accion: ActionStatus) => void
   cancelar: () => void
   aprobar: (fecha: string) => Promise<void>
   /** Confirma rechazar, reabrir, revertir o eliminar. */
-  confirmar: () => Promise<void>
+  confirm: () => Promise<void>
   /** Duplica; con `guardarAntes`, guarda primero lo que hay en pantalla. */
-  duplicar: (guardarAntes: boolean) => Promise<void>
+  duplicar: (saveAntes: boolean) => Promise<void>
   finalizar: () => Promise<void>
   recargar: () => void
-  confirmarRecarga: () => void
+  confirmRecarga: () => void
 }
 
 /** Descarga sin navegar (el atributo download evita salir del editor): el nombre lo pone la ruta del PDF. */
-export function descargarArchivo(url: string) {
+export function downloadFile(url: string) {
   const enlace = document.createElement('a')
   enlace.href = url
   enlace.download = ''
@@ -82,7 +82,7 @@ export function descargarArchivo(url: string) {
 }
 
 /** Una Server Action que no llegó a responder (sin red, por ejemplo): no hay mensaje del servidor que mostrar. */
-const MENSAJE_SIN_RESPUESTA = 'No se pudo completar la operación. Probá de nuevo.'
+const MESSAGE_WITHOUT_RESPONSE = 'No se pudo completar la operación. Probá de nuevo.'
 
 const EXITO = {
   rechazar: 'Cotización rechazada',
@@ -90,50 +90,50 @@ const EXITO = {
   revertir: 'Se revirtió la aprobación',
 } as const
 
-function confirmacionInicial(
-  accion: AccionConfirmable | null | undefined,
-  estado: EstadoEditor,
-  contexto: ContextoEstado,
-  pendientes: Pendientes,
-): Confirmacion | null {
+function confirmationInitial(
+  accion: ActionConfirmable | null | undefined,
+  estado: StatusEditor,
+  contexto: ContextoStatus,
+  pendingList: PendingList,
+): Confirmation | null {
   if (!accion) return null
-  const { botones, menu } = disposicionAcciones(estado, contexto)
-  const disponible = botones.some((boton) => boton.accion === accion) || menu.includes(accion)
-  return disponible && motivoBloqueo(accion, pendientes) === null ? { tipo: accion } : null
+  const { botones, menu } = layoutActions(estado, contexto)
+  const disponible = botones.some((button) => button.accion === accion) || menu.includes(accion)
+  return disponible && reasonBlock(accion, pendingList) === null ? { tipo: accion } : null
 }
 
 /**
  * Las acciones de estado del editor: guardar antes si hace falta, correr la transición con la versión que vio la
  * pantalla, confirmar en el lugar y ofrecer "Recargar" ante un conflicto de versión (decisiones 11 a 15).
  */
-export function useAccionesEstado({
+export function useActionsStatus({
   estado,
   contexto,
-  pendientes,
-  hayCambiosSinGuardar,
-  guardar,
+  pendingList,
+  hasChangesWithoutSave,
+  guardar: save,
   accion,
-  setAccion,
-  conflicto,
-  setConflicto,
+  setAction,
+  conflict,
+  setConflict,
   esperarServidor,
-  accionInicial,
+  actionInitial,
 }: {
-  estado: EstadoEditor
-  contexto: ContextoEstado
-  pendientes: Pendientes
-  hayCambiosSinGuardar: boolean
+  estado: StatusEditor
+  contexto: ContextoStatus
+  pendingList: PendingList
+  hasChangesWithoutSave: boolean
   /**
    * El guardar del editor (Task 8): guarda si hay cambios y devuelve la versión (la actual si no había nada que
    * guardar); null si no se pudo (ya lo mostró) o si la cotización no se edita. Con `navegar: false`, una nueva se
    * crea sin ir a su página; con `avisar: false`, sin el toast de guardado.
    */
-  guardar: (opciones?: { navegar?: boolean; avisar?: boolean }) => Promise<CotizacionGuardada | null>
+  guardar: (options?: { navegar?: boolean; avisar?: boolean }) => Promise<QuoteGuardada | null>
   /** La acción en curso del editor (Task 8): con una en curso se deshabilitan todos los botones. */
   accion: string | null
-  setAccion: (accion: string | null) => void
-  conflicto: boolean
-  setConflicto: (conflicto: boolean) => void
+  setAction: (accion: string | null) => void
+  conflict: boolean
+  setConflict: (conflict: boolean) => void
   /**
    * Avisa al editor que tome la versión del servidor (null: ya no la espera). 'adoptar' toma la próxima distinta de
    * `versionLocal` y de la que había en `inicial` al llamarlo; 'descartar' toma lo que haya en `inicial` cuando
@@ -141,51 +141,51 @@ export function useAccionesEstado({
    */
   esperarServidor: (modo: EsperaServidor | null, versionLocal?: string | null) => void
   /** ?accion= de la URL: abre esa confirmación al entrar. */
-  accionInicial?: AccionConfirmable | null
-}): AccionesEstado {
+  actionInitial?: ActionConfirmable | null
+}): ActionsStatus {
   const router = useRouter()
-  const [confirmacion, setConfirmacion] = useState<Confirmacion | null>(() =>
-    confirmacionInicial(accionInicial, estado, contexto, pendientes),
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(() =>
+    confirmationInitial(actionInitial, estado, contexto, pendingList),
   )
   const [recargando, iniciarRecarga] = useTransition()
-  const [enTransicion, setEnTransicion] = useState(false)
+  const [inTransicion, setInTransicion] = useState(false)
   const disparador = useRef<HTMLElement | null>(null)
 
   // Un cambio de estado de la cotización (enviada, aprobada…, también el que trae la versión de otro) cierra la
   // confirmación abierta: preguntaba por el estado anterior. La oferta de finalizar el presupuesto anterior es la
   // consecuencia de aprobar y se abre justo antes del cambio, así que queda. Se ajusta durante el render.
-  const [estadoVisto, setEstadoVisto] = useState(estado.estado)
-  if (estado.estado !== estadoVisto) {
-    setEstadoVisto(estado.estado)
-    if (confirmacion && confirmacion.tipo !== 'finalizar') setConfirmacion(null)
+  const [statusVisto, setStatusVisto] = useState(estado.estado)
+  if (estado.estado !== statusVisto) {
+    setStatusVisto(estado.estado)
+    if (confirmation && confirmation.tipo !== 'finalizar') setConfirmation(null)
   }
 
   // El ?accion= ya se usó: se saca de la URL para que recargar la página no vuelva a abrir la confirmación.
   useEffect(() => {
-    if (accionInicial) window.history.replaceState(null, '', window.location.pathname)
-  }, [accionInicial])
+    if (actionInitial) window.history.replaceState(null, '', window.location.pathname)
+  }, [actionInitial])
 
-  function abrir(nueva: Confirmacion) {
+  function abrir(nueva: Confirmation) {
     disparador.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    setConfirmacion(nueva)
+    setConfirmation(nueva)
   }
 
   function cancelar() {
-    const volver = disparador.current
+    const back = disparador.current
     disparador.current = null
-    setConfirmacion(null)
+    setConfirmation(null)
     // El foco vuelve al botón que abrió la confirmación, si sigue en pantalla.
     requestAnimationFrame(() => {
-      if (volver?.isConnected) volver.focus()
+      if (back?.isConnected) back.focus()
     })
   }
 
-  function fallo(mensaje: string) {
-    if (esConflicto(mensaje)) {
-      setConfirmacion(null)
-      setConflicto(true)
+  function fallo(message: string) {
+    if (isConflict(message)) {
+      setConfirmation(null)
+      setConflict(true)
     } else {
-      toast.error(mensaje)
+      toast.error(message)
     }
   }
 
@@ -194,11 +194,11 @@ export function useAccionesEstado({
    * la versión del servidor: si la siguiera esperando, tomaría la próxima que traiga una revalidación (la de otro
    * usuario) debajo de lo local, y el guardado siguiente la pisaría sin conflicto.
    */
-  function sinRespuesta(error: unknown) {
+  function withoutResponse(error: unknown) {
     unstable_rethrow(error)
     console.error(error)
     esperarServidor(null)
-    toast.error(MENSAJE_SIN_RESPUESTA)
+    toast.error(MESSAGE_WITHOUT_RESPONSE)
   }
 
   /**
@@ -207,10 +207,10 @@ export function useAccionesEstado({
    * de guardado: el que avisa es el de la transición (o su error). `guardar()` deja la acción del editor en null al
    * terminar: se vuelve a marcar la que sigue corriendo.
    */
-  async function versionParaSeguir(propia: string): Promise<{ id: string; version: string } | null> {
-    if (!hayCambiosSinGuardar && estado.id && estado.version) return { id: estado.id, version: estado.version }
-    const guardada = await guardar({ navegar: false, avisar: false })
-    setAccion(propia)
+  async function versionForSeguir(propia: string): Promise<{ id: string; version: string } | null> {
+    if (!hasChangesWithoutSave && estado.id && estado.version) return { id: estado.id, version: estado.version }
+    const guardada = await save({ navegar: false, avisar: false })
+    setAction(propia)
     return guardada ? { id: guardada.id, version: guardada.version } : null
   }
 
@@ -218,37 +218,37 @@ export function useAccionesEstado({
    * Una nueva se guardó sin navegar para seguir con la transición: al terminar (también si la transición falló, ya
    * quedó guardada) va a su página, que arma el editor con lo que hay en la base. Una existente solo se refresca.
    */
-  function despuesDeLaTransicion(id: string, eraNueva: boolean, salioBien: boolean) {
-    if (eraNueva) router.replace(`/cotizaciones/${id}`)
+  function despuesOfLaTransicion(id: string, eraNew: boolean, salioBien: boolean) {
+    if (eraNew) router.replace(`/cotizaciones/${id}`)
     else if (salioBien) router.refresh()
   }
 
-  async function enviar(accion: 'enviar' | 'reenviar') {
-    const eraNueva = estado.id === null
+  async function send(accion: 'enviar' | 'reenviar') {
+    const eraNew = estado.id === null
     let guardadaId: string | null = null
-    setAccion(accion)
-    setEnTransicion(true)
+    setAction(accion)
+    setInTransicion(true)
     try {
-      const guardada = await versionParaSeguir(accion)
+      const guardada = await versionForSeguir(accion)
       if (!guardada) return
       const { id, version } = guardada
       guardadaId = id
       esperarServidor('adoptar', version)
-      const resultado = await acciones.enviarCotizacion(id, version)
-      if (!resultado.ok) {
+      const result = await actions.sendQuote(id, version)
+      if (!result.ok) {
         esperarServidor(null)
-        fallo(resultado.mensaje)
-        return despuesDeLaTransicion(id, eraNueva, false)
+        fallo(result.message)
+        return despuesOfLaTransicion(id, eraNew, false)
       }
-      descargarArchivo(`/cotizaciones/${id}/pdf?envio=${resultado.datos.envioId}&descargar=1`)
+      downloadFile(`/cotizaciones/${id}/pdf?envio=${result.datos.envioId}&descargar=1`)
       toast.success('Se descargó el PDF y la cotización quedó enviada')
-      despuesDeLaTransicion(id, eraNueva, true)
+      despuesOfLaTransicion(id, eraNew, true)
     } catch (error) {
-      sinRespuesta(error)
-      if (guardadaId) despuesDeLaTransicion(guardadaId, eraNueva, false)
+      withoutResponse(error)
+      if (guardadaId) despuesOfLaTransicion(guardadaId, eraNew, false)
     } finally {
-      setAccion(null)
-      setEnTransicion(false)
+      setAction(null)
+      setInTransicion(false)
     }
   }
 
@@ -256,216 +256,216 @@ export function useAccionesEstado({
    * Se duplica lo guardado. Con `guardarAntes` ("Guardar y duplicar"), lo que hay en pantalla se guarda primero; sin
    * él ("Duplicar lo guardado"), los cambios sin guardar se pierden al ir a la copia.
    */
-  async function duplicar(guardarAntes: boolean) {
+  async function duplicate(saveAntes: boolean) {
     const id = estado.id
     if (!id) return
-    setAccion('duplicar')
-    setEnTransicion(true)
+    setAction('duplicar')
+    setInTransicion(true)
     try {
-      if (guardarAntes && !(await versionParaSeguir('duplicar'))) return
-      const resultado = await acciones.duplicarCotizacion(id)
-      if (!resultado.ok) return fallo(resultado.mensaje)
-      setConfirmacion(null)
+      if (saveAntes && !(await versionForSeguir('duplicar'))) return
+      const result = await actions.duplicateQuote(id)
+      if (!result.ok) return fallo(result.message)
+      setConfirmation(null)
       toast.success('Se creó una copia en borrador')
-      router.push(`/cotizaciones/${resultado.datos.id}`)
+      router.push(`/cotizaciones/${result.datos.id}`)
     } catch (error) {
-      sinRespuesta(error)
+      withoutResponse(error)
     } finally {
-      setAccion(null)
-      setEnTransicion(false)
+      setAction(null)
+      setInTransicion(false)
     }
   }
 
-  function iniciar(accion: AccionEstado) {
-    if (esConfirmable(accion)) return abrir({ tipo: accion })
+  function iniciar(accion: ActionStatus) {
+    if (isConfirmable(accion)) return abrir({ tipo: accion })
     // Otra acción cierra la confirmación que haya abierta.
     disparador.current = null
-    setConfirmacion(null)
-    if (accion === 'enviar' || accion === 'reenviar') return void enviar(accion)
+    setConfirmation(null)
+    if (accion === 'enviar' || accion === 'reenviar') return void send(accion)
     if (accion === 'duplicar') {
       // Con cambios sin guardar se pregunta qué copiar: guardar la original en silencio pisaría, por ejemplo, una
       // enviada con algo que el cliente no recibió.
-      if (hayCambiosSinGuardar && esEditable(estado)) return abrir({ tipo: 'duplicar' })
-      return void duplicar(false)
+      if (hasChangesWithoutSave && isEditable(estado)) return abrir({ tipo: 'duplicar' })
+      return void duplicate(false)
     }
-    if (accion === 'descargar' && estado.id) descargarArchivo(`/cotizaciones/${estado.id}/pdf?descargar=1`)
+    if (accion === 'descargar' && estado.id) downloadFile(`/cotizaciones/${estado.id}/pdf?descargar=1`)
   }
 
-  async function aprobar(fecha: string) {
-    const eraNueva = estado.id === null
+  async function approve(fecha: string) {
+    const eraNew = estado.id === null
     let guardadaId: string | null = null
-    setAccion('aprobar')
-    setEnTransicion(true)
+    setAction('aprobar')
+    setInTransicion(true)
     try {
-      const guardada = await versionParaSeguir('aprobar')
+      const guardada = await versionForSeguir('aprobar')
       if (!guardada) return
       const { id, version } = guardada
       guardadaId = id
       esperarServidor('adoptar', version)
-      const resultado = await acciones.aprobarCotizacion(id, version, fecha)
-      if (!resultado.ok) {
+      const result = await actions.approveQuote(id, version, fecha)
+      if (!result.ok) {
         esperarServidor(null)
-        fallo(resultado.mensaje)
-        return despuesDeLaTransicion(id, eraNueva, false)
+        fallo(result.message)
+        return despuesOfLaTransicion(id, eraNew, false)
       }
       toast.success('Cotización aprobada')
       // Una renegociación: se ofrece cerrar el presupuesto que esta reemplaza (decisión 14). Una nueva no reemplaza a
       // ninguna (reemplaza_a solo lo pone duplicar), así que navegar no pierde la oferta.
-      const { anterior } = resultado.datos
-      setConfirmacion(anterior ? { tipo: 'finalizar', anterior } : null)
-      despuesDeLaTransicion(id, eraNueva, true)
+      const { anterior: previous } = result.datos
+      setConfirmation(previous ? { tipo: 'finalizar', anterior: previous } : null)
+      despuesOfLaTransicion(id, eraNew, true)
     } catch (error) {
-      sinRespuesta(error)
-      if (guardadaId) despuesDeLaTransicion(guardadaId, eraNueva, false)
+      withoutResponse(error)
+      if (guardadaId) despuesOfLaTransicion(guardadaId, eraNew, false)
     } finally {
-      setAccion(null)
-      setEnTransicion(false)
+      setAction(null)
+      setInTransicion(false)
     }
   }
 
-  async function confirmar() {
+  async function confirm() {
     const id = estado.id
-    const tipo = confirmacion?.tipo
+    const tipo = confirmation?.tipo
     if (!id || (tipo !== 'rechazar' && tipo !== 'reabrir' && tipo !== 'revertir' && tipo !== 'borrar')) return
-    setAccion(tipo)
-    setEnTransicion(true)
+    setAction(tipo)
+    setInTransicion(true)
     try {
       if (tipo === 'borrar') {
-        const resultado = await acciones.borrarCotizacion(id)
-        if (!resultado.ok) return fallo(resultado.mensaje)
+        const result = await actions.removeQuote(id)
+        if (!result.ok) return fallo(result.message)
         toast.success(`Se eliminó el borrador N° ${estado.numero}`)
         router.push('/cotizaciones')
         return
       }
       // Una rechazada no se edita: lo que no se guardó se guarda antes de rechazar para no perderlo.
-      const version = tipo === 'rechazar' ? (await versionParaSeguir('rechazar'))?.version : estado.version
+      const version = tipo === 'rechazar' ? (await versionForSeguir('rechazar'))?.version : estado.version
       if (!version) return
       esperarServidor('adoptar', version)
-      const resultado =
+      const result =
         tipo === 'rechazar'
-          ? await acciones.rechazarCotizacion(id)
+          ? await actions.rejectQuote(id)
           : tipo === 'reabrir'
-            ? await acciones.reabrirCotizacion(id)
-            : await acciones.revertirAprobacion(id)
-      if (!resultado.ok) {
+            ? await actions.reopenQuote(id)
+            : await actions.revertApproval(id)
+      if (!result.ok) {
         esperarServidor(null)
-        return fallo(resultado.mensaje)
+        return fallo(result.message)
       }
-      setConfirmacion(null)
+      setConfirmation(null)
       toast.success(EXITO[tipo])
       router.refresh()
     } catch (error) {
-      sinRespuesta(error)
+      withoutResponse(error)
     } finally {
-      setAccion(null)
-      setEnTransicion(false)
+      setAction(null)
+      setInTransicion(false)
     }
   }
 
-  async function finalizar() {
-    if (confirmacion?.tipo !== 'finalizar') return
-    const { anterior } = confirmacion
-    setAccion('finalizar')
+  async function finish() {
+    if (confirmation?.tipo !== 'finalizar') return
+    const { anterior: previous } = confirmation
+    setAction('finalizar')
     try {
-      const resultado = await acciones.finalizarPresupuesto(anterior.id)
-      if (!resultado.ok) return fallo(resultado.mensaje)
-      setConfirmacion(null)
-      toast.success(`Se finalizó el presupuesto N° ${anterior.numero}`)
+      const result = await actions.finishBudget(previous.id)
+      if (!result.ok) return fallo(result.message)
+      setConfirmation(null)
+      toast.success(`Se finalizó el presupuesto N° ${previous.numero}`)
     } catch (error) {
-      sinRespuesta(error)
+      withoutResponse(error)
     } finally {
-      setAccion(null)
+      setAction(null)
     }
   }
 
-  function confirmarRecarga() {
+  function confirmRecarga() {
     // El editor toma lo que haya en `inicial` cuando termina el refresco (`recargando`), sin comparar versiones: una
     // revalidación anterior pudo haber traído ya la del otro usuario, o una intermedia.
     esperarServidor('descartar')
-    setConfirmacion(null)
-    setConflicto(false)
+    setConfirmation(null)
+    setConflict(false)
     iniciarRecarga(() => router.refresh())
   }
 
   function recargar() {
-    if (hayCambiosSinGuardar) return abrir({ tipo: 'recargar' })
-    confirmarRecarga()
+    if (hasChangesWithoutSave) return abrir({ tipo: 'recargar' })
+    confirmRecarga()
   }
 
   return {
-    enCurso: accion,
-    ocupado: accion !== null || recargando,
-    enTransicion,
+    inCurso: accion,
+    busy: accion !== null || recargando,
+    inTransicion,
     recargando,
-    confirmacion,
-    conflicto,
+    confirmation,
+    conflict,
     iniciar,
     cancelar,
-    aprobar,
-    confirmar,
-    duplicar,
-    finalizar,
+    aprobar: approve,
+    confirm,
+    duplicar: duplicate,
+    finalizar: finish,
     recargar,
-    confirmarRecarga,
+    confirmRecarga,
   }
 }
 
 /** Primario de cabecera; con la barra inferior a la vista (< 90rem) se ve como outline: el primario ahí es Guardar. */
 const PRIMARIO = 'shadow-md shadow-primary/20'
-const PRIMARIO_CON_BARRA = cn(
+const PRIMARIO_WITH_BAR = cn(
   PRIMARIO,
   'max-[90rem]:border-border max-[90rem]:bg-background max-[90rem]:text-foreground max-[90rem]:shadow-none max-[90rem]:hover:bg-muted',
 )
 
-function BotonDeAccion({
-  boton,
+function ButtonOfAction({
+  button,
   estado,
-  pendientes,
-  acciones: accionesEstado,
+  pendingList,
+  actions: actionsStatus,
   className,
 }: {
-  boton: BotonAccion
-  estado: EstadoEditor
-  pendientes: Pendientes
-  acciones: AccionesEstado
+  button: ButtonAction
+  estado: StatusEditor
+  pendingList: PendingList
+  actions: ActionsStatus
   /** Visibilidad según el ancho (va en el elemento de afuera). */
   className?: string
 }) {
-  const { accion, primaria } = boton
+  const { accion, primaria } = button
   const variante = primaria ? 'default' : 'outline'
-  const estilo = primaria ? (esEditable(estado) ? PRIMARIO_CON_BARRA : PRIMARIO) : undefined
+  const style = primaria ? (isEditable(estado) ? PRIMARIO_WITH_BAR : PRIMARIO) : undefined
 
   if (accion === 'descargar') {
     if (!estado.id) return null
     return (
-      <Button asChild variant={variante} size="lg" className={cn(estilo, className)}>
+      <Button asChild variant={variante} size="lg" className={cn(style, className)}>
         <a href={`/cotizaciones/${estado.id}/pdf?descargar=1`} download>
-          {ETIQUETA_ACCION.descargar}
+          {LABEL_ACTION.descargar}
         </a>
       </Button>
     )
   }
 
-  const bloqueo = motivoBloqueo(accion, pendientes)
-  const elemento = (
+  const block = reasonBlock(accion, pendingList)
+  const element = (
     <Button
       type="button"
       variant={variante}
       size="lg"
-      className={cn(estilo, bloqueo ? undefined : className)}
-      disabled={accionesEstado.ocupado || bloqueo !== null}
-      onClick={() => accionesEstado.iniciar(accion)}
+      className={cn(style, block ? undefined : className)}
+      disabled={actionsStatus.busy || block !== null}
+      onClick={() => actionsStatus.iniciar(accion)}
     >
-      {accionesEstado.enCurso === accion ? ETIQUETA_EN_CURSO[accion] : ETIQUETA_ACCION[accion]}
+      {actionsStatus.inCurso === accion ? LABEL_IN_CURSO[accion] : LABEL_ACTION[accion]}
     </Button>
   )
   // Un botón deshabilitado no recibe el puntero: el motivo va en el title de un envoltorio.
-  return bloqueo ? (
-    <span title={bloqueo} className={cn('inline-flex', className)}>
-      {elemento}
+  return block ? (
+    <span title={block} className={cn('inline-flex', className)}>
+      {element}
     </span>
   ) : (
-    elemento
+    element
   )
 }
 
@@ -473,24 +473,24 @@ function BotonDeAccion({
  * Los botones de estado del encabezado del editor, a la derecha de Guardar (que dibuja EncabezadoEditor), según el
  * estado (relev-visual §3.2), con el menú ⋯ y el historial de envíos. En el celular los secundarios pasan al menú.
  */
-export function AccionesEncabezado({
+export function ActionsHeader({
   estado,
   contexto,
-  pendientes,
-  acciones: accionesEstado,
+  pendingList,
+  actions: actionsStatus,
 }: {
-  estado: EstadoEditor
-  contexto: ContextoEstado
-  pendientes: Pendientes
-  acciones: AccionesEstado
+  estado: StatusEditor
+  contexto: ContextoStatus
+  pendingList: PendingList
+  actions: ActionsStatus
 }) {
-  const botonMenu = useRef<HTMLButtonElement>(null)
+  const buttonMenu = useRef<HTMLButtonElement>(null)
   /** La confirmación que eligió un ítem del menú: se abre cuando el menú terminó de cerrarse (onCloseAutoFocus). */
-  const pendiente = useRef<AccionEstado | null>(null)
-  const { botones, menu } = disposicionAcciones(estado, contexto)
-  const secundarias = botones.filter((boton) => !boton.primaria).map((boton) => boton.accion)
+  const pending = useRef<ActionStatus | null>(null)
+  const { botones, menu } = layoutActions(estado, contexto)
+  const secundarias = botones.filter((button) => !button.primaria).map((button) => button.accion)
   const id = estado.id
-  const enMenu: { accion: AccionEstado; soloCelular: boolean }[] = [
+  const inMenu: { accion: ActionStatus; soloCelular: boolean }[] = [
     ...secundarias.map((accion) => ({ accion, soloCelular: true })),
     ...menu.map((accion) => ({ accion, soloCelular: false })),
   ]
@@ -499,27 +499,27 @@ export function AccionesEncabezado({
 
   return (
     <>
-      {botones.map((boton) => (
-        <BotonDeAccion
-          key={boton.accion}
-          boton={boton}
+      {botones.map((button) => (
+        <ButtonOfAction
+          key={button.accion}
+          button={button}
           estado={estado}
-          pendientes={pendientes}
-          acciones={accionesEstado}
-          className={boton.primaria ? undefined : 'hidden md:inline-flex'}
+          pendingList={pendingList}
+          actions={actionsStatus}
+          className={button.primaria ? undefined : 'hidden md:inline-flex'}
         />
       ))}
       {/* También en una nueva (sin id): en el celular, Aprobar va en el menú. */}
-      {enMenu.length + contexto.envios.length > 0 ? (
+      {inMenu.length + contexto.envios.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              ref={botonMenu}
+              ref={buttonMenu}
               type="button"
               variant="outline"
               size="icon-lg"
               aria-label="Más acciones"
-              disabled={accionesEstado.ocupado}
+              disabled={actionsStatus.busy}
               className={menuSoloCelular ? 'md:hidden' : undefined}
             >
               <Ellipsis aria-hidden />
@@ -529,22 +529,22 @@ export function AccionesEncabezado({
             align="end"
             className="w-auto min-w-56"
             onCloseAutoFocus={(evento) => {
-              const accion = pendiente.current
+              const accion = pending.current
               if (!accion) return
-              pendiente.current = null
+              pending.current = null
               // Recién acá el FocusScope del menú (modal) ya no atrapa el foco: abrir la confirmación en onSelect
               // dejaría el foco en el ítem y después en body. El foco pasa por el ⋯ (adonde vuelve al cancelar) y, con
               // el render de la confirmación, queda en su "Cancelar" (decisión 15).
               evento.preventDefault()
-              botonMenu.current?.focus()
-              accionesEstado.iniciar(accion)
+              buttonMenu.current?.focus()
+              actionsStatus.iniciar(accion)
             }}
           >
-            {enMenu.map(({ accion, soloCelular }) =>
+            {inMenu.map(({ accion, soloCelular }) =>
               accion === 'descargar' ? (
                 <DropdownMenuItem key={accion} asChild className={soloCelular ? 'md:hidden' : undefined}>
                   <a href={`/cotizaciones/${id}/pdf?descargar=1`} download>
-                    {ETIQUETA_ACCION.descargar}
+                    {LABEL_ACTION.descargar}
                   </a>
                 </DropdownMenuItem>
               ) : (
@@ -552,30 +552,30 @@ export function AccionesEncabezado({
                   key={accion}
                   className={soloCelular ? 'md:hidden' : undefined}
                   variant={accion === 'borrar' ? 'destructive' : 'default'}
-                  disabled={motivoBloqueo(accion, pendientes) !== null}
+                  disabled={reasonBlock(accion, pendingList) !== null}
                   onSelect={() => {
                     // Una confirmación se abre cuando el menú se cerró del todo (ver onCloseAutoFocus). Duplicar
                     // también espera: con cambios sin guardar pregunta qué copiar.
-                    if (esConfirmable(accion) || accion === 'duplicar') pendiente.current = accion
-                    else accionesEstado.iniciar(accion)
+                    if (isConfirmable(accion) || accion === 'duplicar') pending.current = accion
+                    else actionsStatus.iniciar(accion)
                   }}
                 >
-                  {ETIQUETA_ACCION[accion]}
+                  {LABEL_ACTION[accion]}
                 </DropdownMenuItem>
               ),
             )}
             {contexto.envios.length > 0 ? (
               <>
-                {enMenu.length > 0 ? <DropdownMenuSeparator /> : null}
+                {inMenu.length > 0 ? <DropdownMenuSeparator /> : null}
                 <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                   Envíos (lo que recibió el cliente)
                 </DropdownMenuLabel>
-                {contexto.envios.map((envio, indice) => (
+                {contexto.envios.map((envio, index) => (
                   <DropdownMenuItem key={envio.id} asChild>
                     <a href={`/cotizaciones/${id}/pdf?envio=${envio.id}`} target="_blank" rel="noopener">
                       <FileText aria-hidden />
-                      {fechaHoraDeMarca(envio.enviada_at)}
-                      {indice === 0 ? ' · último' : ''}
+                      {dateTimeOfMark(envio.enviada_at)}
+                      {index === 0 ? ' · último' : ''}
                     </a>
                   </DropdownMenuItem>
                 ))}

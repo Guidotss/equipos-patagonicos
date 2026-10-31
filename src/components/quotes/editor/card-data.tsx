@@ -3,58 +3,58 @@
 
 import Link from 'next/link'
 import { useRef, useState } from 'react'
-import { Campo } from '@/components/formulario/campo'
-import { ConfirmacionEnLugar } from '@/components/formulario/confirmacion-en-lugar'
-import { Tarjeta } from '@/components/formulario/tarjeta'
+import { Field } from '@/components/form/field'
+import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { Card } from '@/components/form/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import type { CampoDatos } from '@/lib/cotizaciones/datos'
-import type { CatalogosEditor, EstadoEditor, Pendientes, PlantillaEditor } from '@/lib/cotizaciones/editor'
+import type { FieldData } from '@/lib/quotes/data'
+import type { CatalogsEditor, StatusEditor, PendingList, TemplateEditor } from '@/lib/quotes/editor'
 import {
-  ID_CAMPO,
-  cambiosDeContenido,
-  camposDatosVisibles,
-  esFechaIso,
-  idCampoDato,
-  plantillasDeFormato,
-  textoProximaActualizacion,
+  ID_FIELD,
+  changesOfContent,
+  fieldsDataVisible,
+  isDateIso,
+  idFieldData,
+  templatesOfFormat,
+  textNextUpdate,
   type Despachar,
-} from '@/lib/cotizaciones/editor-pantalla'
-import { FORMATOS, type Formato } from '@/lib/plantillas/contenido'
-import { VARIABLES } from '@/lib/plantillas/variables'
+} from '@/lib/quotes/editor-screen'
+import { FORMATOS, type Format } from '@/lib/templates/content'
+import { VARIABLES } from '@/lib/templates/variables'
 import { cn } from '@/lib/utils'
 
 /** Las mismas clases que la etiqueta de Campo, para los campos que no pueden usarlo (marca superpuesta, selects). */
 const ETIQUETA = 'text-[13px]/none font-normal text-muted-foreground'
 const FALTA = '[&_select]:border-brand-yellow [&_select]:bg-brand-yellow/10'
 
-function SelectorPlantilla({
+function SelectorTemplate({
   estado,
   plantillas,
   error,
   despachar,
 }: {
-  estado: EstadoEditor
-  plantillas: PlantillaEditor[]
+  estado: StatusEditor
+  plantillas: TemplateEditor[]
   error?: string
   despachar: Despachar
 }) {
-  const [pendiente, setPendiente] = useState<PlantillaEditor | null>(null)
+  const [pending, setPending] = useState<TemplateEditor | null>(null)
   const grupo = useRef<HTMLDivElement>(null)
-  const actual = plantillas.find((plantilla) => plantilla.id === estado.plantillaId) ?? null
-  const delFormato = plantillasDeFormato(plantillas, estado.formato)
+  const actual = plantillas.find((template) => template.id === estado.templateId) ?? null
+  const ofFormat = templatesOfFormat(plantillas, estado.formato)
 
-  function elegir(plantilla: PlantillaEditor | undefined) {
-    if (!plantilla || plantilla.id === estado.plantillaId) return
-    if (cambiosDeContenido(estado, actual)) setPendiente(plantilla)
-    else despachar({ tipo: 'plantilla', plantilla })
+  function choose(template: TemplateEditor | undefined) {
+    if (!template || template.id === estado.templateId) return
+    if (changesOfContent(estado, actual)) setPending(template)
+    else despachar({ tipo: 'plantilla', plantilla: template })
   }
 
   // Al cerrar la confirmación el foco vuelve a la opción elegida (después del render).
   function cerrar() {
-    setPendiente(null)
+    setPending(null)
     requestAnimationFrame(() => grupo.current?.querySelector<HTMLElement>('[data-state="on"]')?.focus())
   }
 
@@ -79,50 +79,50 @@ function SelectorPlantilla({
           type="single"
           aria-label="Formato"
           value={estado.formato}
-          onValueChange={(valor) => {
-            if (valor) elegir(plantillasDeFormato(plantillas, valor as Formato)[0])
+          onValueChange={(value) => {
+            if (value) choose(templatesOfFormat(plantillas, value as Format)[0])
           }}
           className="h-8 gap-0 rounded-lg bg-muted p-0.5"
         >
-          {(Object.keys(FORMATOS) as Formato[]).map((formato) => (
+          {(Object.keys(FORMATOS) as Format[]).map((formato) => (
             <ToggleGroupItem
               key={formato}
               value={formato}
-              disabled={plantillasDeFormato(plantillas, formato).length === 0}
+              disabled={templatesOfFormat(plantillas, formato).length === 0}
               className="h-7 rounded-md px-3 text-sm text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"
             >
               {FORMATOS[formato]}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        {delFormato.length > 1 ? (
+        {ofFormat.length > 1 ? (
           <NativeSelect
-            id={ID_CAMPO.plantilla}
+            id={ID_FIELD.plantilla}
             aria-label="Plantilla"
-            value={estado.plantillaId}
-            onChange={(evento) => elegir(plantillas.find((plantilla) => plantilla.id === evento.target.value))}
+            value={estado.templateId}
+            onChange={(evento) => choose(plantillas.find((template) => template.id === evento.target.value))}
             className="min-w-0 flex-1"
           >
-            {delFormato.map((plantilla) => (
-              <NativeSelectOption key={plantilla.id} value={plantilla.id}>
-                {plantilla.nombre}
+            {ofFormat.map((template) => (
+              <NativeSelectOption key={template.id} value={template.id}>
+                {template.nombre}
               </NativeSelectOption>
             ))}
           </NativeSelect>
         ) : null}
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {pendiente ? (
-        <ConfirmacionEnLugar
-          tono="aviso"
-          pregunta={`¿Cambiar a la plantilla «${pendiente.nombre}»?`}
-          detalle="Se reemplazan el asunto, la introducción, los textos y los ítems."
-          textoConfirmar="Cambiar plantilla"
-          alConfirmar={() => {
-            despachar({ tipo: 'plantilla', plantilla: pendiente })
+      {pending ? (
+        <ConfirmationInLugar
+          tone="aviso"
+          pregunta={`¿Cambiar a la plantilla «${pending.nombre}»?`}
+          detail="Se reemplazan el asunto, la introducción, los textos y los ítems."
+          textConfirm="Cambiar plantilla"
+          onConfirm={() => {
+            despachar({ tipo: 'plantilla', plantilla: pending })
             cerrar()
           }}
-          alCancelar={cerrar}
+          onCancelar={cerrar}
         />
       ) : null}
     </div>
@@ -130,52 +130,52 @@ function SelectorPlantilla({
 }
 
 /** Un dato que alimenta una variable. Vacío y usado por el texto: la marca {{x}} encima (nunca como valor). */
-function CampoDato({
-  campo,
-  valor,
-  faltaCompletar,
+function FieldData({
+  campo: field,
+  value,
+  missingComplete,
   error,
   placeholder,
-  ayuda,
+  help,
   despachar,
 }: {
-  campo: CampoDatos
-  valor: string
-  faltaCompletar: boolean
+  campo: FieldData
+  value: string
+  missingComplete: boolean
   error?: string
   placeholder?: string
-  ayuda?: string
+  help?: string
   despachar: Despachar
 }) {
-  const id = idCampoDato(campo)
-  const marcar = faltaCompletar && valor === ''
-  const descripciones =
-    [error ? `${id}-error` : null, !error && ayuda ? `${id}-ayuda` : null, marcar ? `${id}-falta` : null]
+  const id = idFieldData(field)
+  const mark = missingComplete && value === ''
+  const descriptions =
+    [error ? `${id}-error` : null, !error && help ? `${id}-ayuda` : null, mark ? `${id}-falta` : null]
       .filter(Boolean)
       .join(' ') || undefined
 
   return (
     <div className="space-y-1">
       <Label htmlFor={id} className={ETIQUETA}>
-        {VARIABLES[campo]}
+        {VARIABLES[field]}
       </Label>
       <div className="relative">
         <Input
           id={id}
-          value={valor}
+          value={value}
           maxLength={500}
-          placeholder={marcar ? undefined : placeholder}
-          onChange={(evento) => despachar({ tipo: 'dato', campo, valor: evento.target.value })}
+          placeholder={mark ? undefined : placeholder}
+          onChange={(evento) => despachar({ tipo: 'dato', campo: field, value: evento.target.value })}
           aria-invalid={Boolean(error)}
-          aria-describedby={descripciones}
+          aria-describedby={descriptions}
         />
-        {marcar ? (
+        {mark ? (
           <>
             <span
               aria-hidden
               className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 rounded-sm bg-brand-yellow/40 px-0.5 text-sm"
             >
-              {`{{${campo}}}`}
+              {`{{${field}}}`}
             </span>
             <span id={`${id}-falta`} className="sr-only">
               Falta completar: lo usa el texto de la cotización.
@@ -187,19 +187,19 @@ function CampoDato({
         <p id={`${id}-error`} className="text-sm text-destructive">
           {error}
         </p>
-      ) : ayuda ? (
+      ) : help ? (
         <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">
-          {ayuda}
+          {help}
         </p>
       ) : null}
     </div>
   )
 }
 
-function AyudaEquipo({ catalogos, estado, faltan }: { catalogos: CatalogosEditor; estado: EstadoEditor; faltan: Set<string> }) {
-  if (catalogos.equipos.length === 0) {
+function HelpEquipment({ catalogs, estado, missing }: { catalogs: CatalogsEditor; estado: StatusEditor; missing: Set<string> }) {
+  if (catalogs.equipos.length === 0) {
     return (
-      <p id={`${ID_CAMPO.equipo}-ayuda`} className="text-xs text-muted-foreground">
+      <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">
         No hay equipos activos.{' '}
         <Link href="/configuracion/equipos/nuevo" className="text-primary underline-offset-4 hover:underline">
           Cargar equipos en Configuración
@@ -207,27 +207,27 @@ function AyudaEquipo({ catalogos, estado, faltan }: { catalogos: CatalogosEditor
       </p>
     )
   }
-  if (!faltan.has('capacidad') && !faltan.has('equipo_descripcion')) return null
+  if (!missing.has('capacidad') && !missing.has('equipo_descripcion')) return null
   if (estado.equipoId === '') {
-    return <p id={`${ID_CAMPO.equipo}-ayuda`} className="text-xs text-muted-foreground">El texto usa la capacidad y la descripción del equipo.</p>
+    return <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">El texto usa la capacidad y la descripción del equipo.</p>
   }
-  const datos = faltan.has('capacidad') && faltan.has('equipo_descripcion')
+  const datos = missing.has('capacidad') && missing.has('equipo_descripcion')
     ? 'la capacidad y la descripción'
-    : faltan.has('capacidad') ? 'la capacidad' : 'la descripción'
+    : missing.has('capacidad') ? 'la capacidad' : 'la descripción'
   return (
-    <p id={`${ID_CAMPO.equipo}-ayuda`} className="text-xs text-muted-foreground">
+    <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">
       Completá {datos} del equipo en Configuración › Equipos.
     </p>
   )
 }
 
 /** Una fecha que se puede despachar: existe y su año tiene cuatro cifras (0202 es "2027" a medio escribir). */
-function fechaCompleta(valor: string): boolean {
-  return esFechaIso(valor) && !valor.startsWith('0')
+function dateComplete(value: string): boolean {
+  return isDateIso(value) && !value.startsWith('0')
 }
 
-type PropsInputFecha = Omit<React.ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'onBlur'> & {
-  valor: string
+type PropsInputDate = Omit<React.ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'onBlur'> & {
+  value: string
   despachar: Despachar
 }
 
@@ -237,108 +237,108 @@ type PropsInputFecha = Omit<React.ComponentProps<'input'>, 'type' | 'value' | 'o
  * anterior en cada tecla y el año no se podría tipear. El input muestra el borrador; se despacha solo una fecha
  * completa y, al salir del campo, lo que no llegó a serlo vuelve a la fecha del estado.
  */
-function InputFecha({ valor, despachar, ...props }: PropsInputFecha) {
-  const [borrador, setBorrador] = useState({ de: valor, texto: valor })
+function InputDate({ value, despachar, ...props }: PropsInputDate) {
+  const [draft, setDraft] = useState({ de: value, texto: value })
   // Si la fecha cambia desde afuera (recargar, la fecha recién despachada), el borrador la sigue.
-  if (borrador.de !== valor) setBorrador({ de: valor, texto: valor })
+  if (draft.de !== value) setDraft({ de: value, texto: value })
 
   return (
     <Input
       {...props}
       type="date"
-      value={borrador.texto}
+      value={draft.texto}
       onChange={(evento) => {
         const texto = evento.target.value
-        setBorrador({ de: valor, texto })
-        if (fechaCompleta(texto) && texto !== valor) despachar({ tipo: 'campo', campo: 'fecha', valor: texto })
+        setDraft({ de: value, texto })
+        if (dateComplete(texto) && texto !== value) despachar({ tipo: 'campo', campo: 'fecha', value: texto })
       }}
       onBlur={() => {
-        if (borrador.texto !== valor) setBorrador({ de: valor, texto: valor })
+        if (draft.texto !== value) setDraft({ de: value, texto: value })
       }}
     />
   )
 }
 
-export function TarjetaDatos({
+export function CardData({
   estado,
-  catalogos,
-  pendientes,
-  errores,
+  catalogs,
+  pendingList,
+  errors,
   despachar,
 }: {
-  estado: EstadoEditor
-  catalogos: CatalogosEditor
-  pendientes: Pendientes
-  errores: Record<string, string>
+  estado: StatusEditor
+  catalogs: CatalogsEditor
+  pendingList: PendingList
+  errors: Record<string, string>
   despachar: Despachar
 }) {
-  const faltan = new Set<string>(pendientes.variables)
-  const faltaEquipo = estado.equipoId === '' && (faltan.has('capacidad') || faltan.has('equipo_descripcion'))
-  const textoProxima = textoProximaActualizacion(
+  const missing = new Set<string>(pendingList.variables)
+  const missingEquipment = estado.equipoId === '' && (missing.has('capacidad') || missing.has('equipo_descripcion'))
+  const textNext = textNextUpdate(
     estado.proximaActualizacion,
     estado.datos.proxima_actualizacion,
-    catalogos.empresa.proxima_actualizacion,
+    catalogs.empresa.proxima_actualizacion,
   )
-  const faltaProxima = faltan.has('proxima_actualizacion') && estado.proximaActualizacion === ''
-  const errorProxima = errores.proximaActualizacion ?? errores['datos.proxima_actualizacion']
+  const missingNext = missing.has('proxima_actualizacion') && estado.proximaActualizacion === ''
+  const errorNext = errors.proximaActualizacion ?? errors['datos.proxima_actualizacion']
 
   return (
-    <Tarjeta compacta titulo="Datos de esta cotización">
+    <Card compacta titulo="Datos de esta cotización">
       {estado.id === null ? (
-        <SelectorPlantilla
+        <SelectorTemplate
           estado={estado}
-          plantillas={catalogos.plantillas}
-          error={errores.plantillaId ?? errores.formato}
+          plantillas={catalogs.plantillas}
+          error={errors.templateId ?? errors.formato}
           despachar={despachar}
         />
       ) : null}
       <div className="grid gap-x-4 gap-y-3 @md:grid-cols-2">
         <div className="space-y-1">
-          <Label htmlFor={ID_CAMPO.equipo} className={ETIQUETA}>
+          <Label htmlFor={ID_FIELD.equipo} className={ETIQUETA}>
             Equipo
           </Label>
           <NativeSelect
-            id={ID_CAMPO.equipo}
+            id={ID_FIELD.equipo}
             value={estado.equipoId}
-            onChange={(evento) => despachar({ tipo: 'campo', campo: 'equipoId', valor: evento.target.value })}
-            aria-invalid={Boolean(errores.equipoId)}
-            aria-describedby={errores.equipoId
-              ? `${ID_CAMPO.equipo}-error`
-              : catalogos.equipos.length === 0 || faltan.has('capacidad') || faltan.has('equipo_descripcion')
-                ? `${ID_CAMPO.equipo}-ayuda`
+            onChange={(evento) => despachar({ tipo: 'campo', campo: 'equipoId', value: evento.target.value })}
+            aria-invalid={Boolean(errors.equipoId)}
+            aria-describedby={errors.equipoId
+              ? `${ID_FIELD.equipo}-error`
+              : catalogs.equipos.length === 0 || missing.has('capacidad') || missing.has('equipo_descripcion')
+                ? `${ID_FIELD.equipo}-ayuda`
                 : undefined}
             // Menos lugar para la flecha: "Grúa telescópica XCMG 70 TN" no se corta contra ella a 1200 px.
             className={cn(
               'w-full [&_[data-slot=native-select-icon]]:right-2 [&_select]:pr-7',
-              faltaEquipo && FALTA,
+              missingEquipment && FALTA,
             )}
           >
             <NativeSelectOption value="">Elegí un equipo</NativeSelectOption>
-            {catalogos.equipos.map((equipo) => (
+            {catalogs.equipos.map((equipo) => (
               <NativeSelectOption key={equipo.id} value={equipo.id}>
                 {equipo.activo ? equipo.nombre : `${equipo.nombre} (inactivo)`}
               </NativeSelectOption>
             ))}
           </NativeSelect>
-          {errores.equipoId ? (
-            <p id={`${ID_CAMPO.equipo}-error`} className="text-sm text-destructive">
-              {errores.equipoId}
+          {errors.equipoId ? (
+            <p id={`${ID_FIELD.equipo}-error`} className="text-sm text-destructive">
+              {errors.equipoId}
             </p>
           ) : (
-            <AyudaEquipo catalogos={catalogos} estado={estado} faltan={faltan} />
+            <HelpEquipment catalogs={catalogs} estado={estado} missing={missing} />
           )}
         </div>
 
-        {camposDatosVisibles(estado).map((campo) => (
-          <CampoDato
-            key={campo}
-            campo={campo}
-            valor={estado.datos[campo]}
-            faltaCompletar={faltan.has(campo)}
-            error={errores[`datos.${campo}`]}
-            placeholder={campo === 'indice_base' ? catalogos.empresa.indice_base || undefined : undefined}
-            ayuda={
-              campo === 'indice_base' && catalogos.empresa.indice_base
+        {fieldsDataVisible(estado).map((field) => (
+          <FieldData
+            key={field}
+            campo={field}
+            value={estado.datos[field]}
+            missingComplete={missing.has(field)}
+            error={errors[`datos.${field}`]}
+            placeholder={field === 'indice_base' ? catalogs.empresa.indice_base || undefined : undefined}
+            help={
+              field === 'indice_base' && catalogs.empresa.indice_base
                 ? 'Vacío: se usa el de la empresa.'
                 : undefined
             }
@@ -346,72 +346,72 @@ export function TarjetaDatos({
           />
         ))}
 
-        <Campo
-          id={ID_CAMPO.proximaActualizacion}
-          etiqueta="Próxima actualización"
-          error={errorProxima}
-          ayuda={textoProxima ? `En el PDF: «${textoProxima}»` : undefined}
+        <Field
+          id={ID_FIELD.proximaActualizacion}
+          label="Próxima actualización"
+          error={errorNext}
+          help={textNext ? `En el PDF: «${textNext}»` : undefined}
         >
           <Input
-            id={ID_CAMPO.proximaActualizacion}
+            id={ID_FIELD.proximaActualizacion}
             type="month"
             value={estado.proximaActualizacion}
             onChange={(evento) =>
-              despachar({ tipo: 'campo', campo: 'proximaActualizacion', valor: evento.target.value })
+              despachar({ tipo: 'campo', campo: 'proximaActualizacion', value: evento.target.value })
             }
-            aria-invalid={Boolean(errorProxima)}
-            className={cn(faltaProxima && 'border-brand-yellow bg-brand-yellow/10')}
+            aria-invalid={Boolean(errorNext)}
+            className={cn(missingNext && 'border-brand-yellow bg-brand-yellow/10')}
           />
-        </Campo>
+        </Field>
 
         {/* Fecha, validez y firma en una fila de tres (entran a 548 px y ahorran alto). */}
         <div className="grid gap-x-4 gap-y-3 @md:col-span-2 @md:grid-cols-3">
-          <Campo id={ID_CAMPO.fecha} etiqueta="Fecha" error={errores.fecha}>
-            <InputFecha
-              id={ID_CAMPO.fecha}
+          <Field id={ID_FIELD.fecha} label="Fecha" error={errors.fecha}>
+            <InputDate
+              id={ID_FIELD.fecha}
               required
-              valor={estado.fecha}
+              value={estado.fecha}
               despachar={despachar}
-              aria-invalid={Boolean(errores.fecha)}
+              aria-invalid={Boolean(errors.fecha)}
             />
-          </Campo>
-          <Campo id={ID_CAMPO.validez} etiqueta="Validez (días)" error={errores.validezDias}>
+          </Field>
+          <Field id={ID_FIELD.validity} label="Validez (días)" error={errors.validezDias}>
             <Input
-              id={ID_CAMPO.validez}
+              id={ID_FIELD.validity}
               inputMode="numeric"
               value={estado.validezDias}
-              onChange={(evento) => despachar({ tipo: 'campo', campo: 'validezDias', valor: evento.target.value })}
-              aria-invalid={Boolean(errores.validezDias)}
+              onChange={(evento) => despachar({ tipo: 'campo', campo: 'validezDias', value: evento.target.value })}
+              aria-invalid={Boolean(errors.validezDias)}
               className="tabular-nums"
             />
-          </Campo>
+          </Field>
           <div className="space-y-1">
-            <Label htmlFor={ID_CAMPO.firmante} className={ETIQUETA}>
+            <Label htmlFor={ID_FIELD.firmante} className={ETIQUETA}>
               Firma
             </Label>
             <NativeSelect
-              id={ID_CAMPO.firmante}
+              id={ID_FIELD.firmante}
               value={estado.firmanteId}
-              onChange={(evento) => despachar({ tipo: 'campo', campo: 'firmanteId', valor: evento.target.value })}
-              aria-invalid={Boolean(errores.firmanteId)}
-              aria-describedby={errores.firmanteId ? `${ID_CAMPO.firmante}-error` : undefined}
+              onChange={(evento) => despachar({ tipo: 'campo', campo: 'firmanteId', value: evento.target.value })}
+              aria-invalid={Boolean(errors.firmanteId)}
+              aria-describedby={errors.firmanteId ? `${ID_FIELD.firmante}-error` : undefined}
               className="w-full"
             >
               <NativeSelectOption value="">Sin firma</NativeSelectOption>
-              {catalogos.firmantes.map((firmante) => (
+              {catalogs.firmantes.map((firmante) => (
                 <NativeSelectOption key={firmante.id} value={firmante.id}>
                   {firmante.activo ? firmante.nombre : `${firmante.nombre} (inactivo)`}
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-            {errores.firmanteId ? (
-              <p id={`${ID_CAMPO.firmante}-error`} className="text-sm text-destructive">
-                {errores.firmanteId}
+            {errors.firmanteId ? (
+              <p id={`${ID_FIELD.firmante}-error`} className="text-sm text-destructive">
+                {errors.firmanteId}
               </p>
             ) : null}
           </div>
         </div>
       </div>
-    </Tarjeta>
+    </Card>
   )
 }

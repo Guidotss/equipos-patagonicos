@@ -1,24 +1,24 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  centavos,
-  completarFactura,
+  cents,
+  completeInvoice,
   decimal,
   hash,
-  planificarClientes,
-  prepararRevision,
+  planificarClients,
+  prepareReview,
   uuidEstable,
-} from "./preparar.mjs";
+} from './prepare.mjs';
 
 const pdf = Buffer.from("%PDF-1.4 documento sintético para prueba unitaria");
 const cliente = {
   cuit: "30000000007",
   razon_social: "Cliente de ejemplo",
   condicion_iva: "responsable_inscripto",
-  ultima_factura: "00000001",
-  fecha_ultima_factura: "2026-10-01",
+  last_invoice: "00000001",
+  date_last_invoice: "2026-10-01",
 };
-function factura(cambios = {}) {
+function invoice(changes = {}) {
   return {
     archivo: "30709154083_001_00002_00000001.pdf",
     path: "/tmp/factura-ejemplo.pdf",
@@ -49,11 +49,11 @@ function factura(cambios = {}) {
         descripcion: "Servicio de ejemplo",
       },
     ],
-    ...cambios,
+    ...changes,
   };
 }
-function preparar(facturas = [factura()], clientes = [cliente]) {
-  return prepararRevision(
+function prepare(facturas = [invoice()], clientes = [cliente]) {
+  return prepareReview(
     { clientes, facturas },
     {
       archivos: new Map([["/tmp/factura-ejemplo.pdf", pdf]]),
@@ -64,9 +64,9 @@ function preparar(facturas = [factura()], clientes = [cliente]) {
 
 describe("preparación de carga histórica", () => {
   it("usa aritmética exacta en centavos y aplica la bonificación sin perder el total", () => {
-    const resultado = preparar();
-    assert.equal(resultado.total, "3412200.00");
-    assert.deepEqual(resultado.facturas[0].datos.items, [
+    const result = prepare();
+    assert.equal(result.total, "3412200.00");
+    assert.deepEqual(result.facturas[0].datos.items, [
       {
         descripcion: "Servicio de ejemplo",
         cantidad: "3.00",
@@ -74,91 +74,91 @@ describe("preparación de carga histórica", () => {
         unidad: "UNIDAD",
       },
     ]);
-    assert.equal(resultado.facturas[0].clave, "30709154083:FA:00002-00000001");
+    assert.equal(result.facturas[0].clave, "30709154083:FA:00002-00000001");
     assert.equal(
-      resultado.facturas[0].datos.fuente.items[0].precio_unitario,
+      result.facturas[0].datos.source.items[0].precio_unitario,
       "1000000.00",
     );
-    assert.equal(centavos("999999999999.99"), 99999999999999n);
+    assert.equal(cents("999999999999.99"), 99999999999999n);
     assert.equal(decimal(1n), "0.01");
   });
   it("excluye refacturaciones e intereses conservando sus razones", () => {
-    const resultado = preparar([
-      factura(),
-      factura({ numero: "00000002", observaciones: ["Posible refacturación"] }),
-      factura({ numero: "00000003", naturaleza: "Intereses" }),
+    const result = prepare([
+      invoice(),
+      invoice({ numero: "00000002", observaciones: ["Posible refacturación"] }),
+      invoice({ numero: "00000003", naturaleza: "Intereses" }),
     ]);
-    assert.equal(resultado.facturas.length, 1);
+    assert.equal(result.facturas.length, 1);
     assert.deepEqual(
-      resultado.excluidas.map((f) => f.numero),
+      result.excluidas.map((f) => f.numero),
       ["00000002", "00000003"],
     );
   });
   it("no confunde una fecha resuelta con un pendiente y conserva su evidencia", () => {
-    const resultado = preparar([
-      factura({
+    const result = prepare([
+      invoice({
         observaciones_fechas_resueltas: ["El detalle tenía otra fecha."],
       }),
     ]);
-    assert.match(resultado.facturas[0].datos.notas, /Se usa la cabecera/);
+    assert.match(result.facturas[0].datos.notas, /Se usa la cabecera/);
     assert.equal(
-      resultado.facturas[0].datos.fuente.observaciones_fechas_resueltas[0],
+      result.facturas[0].datos.source.observaciones_fechas_resueltas[0],
       "El detalle tenía otra fecha.",
     );
   });
   it("rechaza un archivo cambiado, un número distinto y un cobro no confirmado", () => {
     assert.throws(
-      () => preparar([factura({ sha256: "0".repeat(64) })]),
+      () => prepare([invoice({ sha256: "0".repeat(64) })]),
       /hash/,
     );
     assert.throws(
-      () => preparar([factura({ numero: "00000099" })]),
+      () => prepare([invoice({ numero: "00000099" })]),
       /número no coincide/,
     );
     assert.throws(
-      () => preparar([factura({ estado_cobro: "Pendiente" })]),
+      () => prepare([invoice({ estado_cobro: "Pendiente" })]),
       /Cobro sin confirmar/,
     );
   });
   it("conserva el CUIT informado sin validar contenido ni verificador", () => {
     for (const cuit of ["30000000008", "1", "identificación informada"]) {
-      const resultado = preparar([factura({ cuit })], [{ ...cliente, cuit }]);
-      assert.equal(resultado.clientes[0].cuit, cuit);
-      assert.equal(resultado.facturas[0].cuit, cuit);
+      const result = prepare([invoice({ cuit })], [{ ...cliente, cuit }]);
+      assert.equal(result.clientes[0].cuit, cuit);
+      assert.equal(result.facturas[0].cuit, cuit);
     }
-    const resultado = preparar([factura({ archivo: "30000000008_001_00002_00000001.pdf" })]);
-    assert.equal(resultado.facturas[0].datos.emisor_cuit, "30000000008");
+    const result = prepare([invoice({ archivo: "30000000008_001_00002_00000001.pdf" })]);
+    assert.equal(result.facturas[0].datos.emisor_cuit, "30000000008");
   });
   it("rechaza clientes duplicados y comprobantes repetidos", () => {
     assert.throws(
-      () => preparar([factura()], [cliente, cliente]),
+      () => prepare([invoice()], [cliente, cliente]),
       /clientes duplicados/,
     );
     assert.throws(
-      () => preparar([factura(), factura()]),
+      () => prepare([invoice(), invoice()]),
       /comprobantes repetidos/,
     );
   });
   it("rechaza importes que no concilian y valores con más de dos decimales", () => {
     assert.throws(
-      () => preparar([factura({ total: "3412201.00" })]),
+      () => prepare([invoice({ total: "3412201.00" })]),
       /total no concilia/,
     );
-    assert.throws(() => centavos("1.001"), /decimal inválido/);
+    assert.throws(() => cents("1.001"), /decimal inválido/);
     assert.throws(
       () =>
-        preparar([
-          factura({ items: [{ ...factura().items[0], neto: "2819999.99" }] }),
+        prepare([
+          invoice({ items: [{ ...invoice().items[0], neto: "2819999.99" }] }),
         ]),
       /importe original del ítem no concilia/,
     );
   });
   it("rechaza límites que la base no admite antes de subir archivos o crear clientes", () => {
-    const item = factura().items[0];
+    const item = invoice().items[0];
     assert.throws(
       () =>
-        preparar([
-          factura({
+        prepare([
+          invoice({
             neto: "100000000.00",
             iva: "21000000.00",
             total: "121000000.00",
@@ -177,8 +177,8 @@ describe("preparación de carga histórica", () => {
     );
     assert.throws(
       () =>
-        preparar([
-          factura({
+        prepare([
+          invoice({
             neto: "0.00",
             iva: "1.00",
             total: "1.00",
@@ -189,8 +189,8 @@ describe("preparación de carga histórica", () => {
     );
     assert.throws(
       () =>
-        preparar([
-          factura({
+        prepare([
+          invoice({
             neto: "2.01",
             iva: "0.00",
             total: "2.01",
@@ -207,8 +207,8 @@ describe("preparación de carga histórica", () => {
     );
     assert.throws(
       () =>
-        preparar([
-          factura({
+        prepare([
+          invoice({
             neto: "10000000000.00",
             iva: "0.00",
             total: "10000000000.00",
@@ -227,8 +227,8 @@ describe("preparación de carga histórica", () => {
     );
   });
   it("redondea medio centavo al alza y rechaza cambios por redondear un precio bonificado", () => {
-    const resultado = preparar([
-      factura({
+    const result = prepare([
+      invoice({
         neto: "0.02",
         iva: "0.00",
         total: "0.02",
@@ -243,10 +243,10 @@ describe("preparación de carga histórica", () => {
         ],
       }),
     ]);
-    assert.equal(resultado.facturas[0].datos.items[0].precio_unitario, "0.03");
-    assert.equal(resultado.facturas[0].datos.items[0].cantidad, "0.50");
-    const bonificado = preparar([
-      factura({
+    assert.equal(result.facturas[0].datos.items[0].precio_unitario, "0.03");
+    assert.equal(result.facturas[0].datos.items[0].cantidad, "0.50");
+    const bonificado = prepare([
+      invoice({
         neto: "0.51",
         iva: "0.00",
         total: "0.51",
@@ -264,8 +264,8 @@ describe("preparación de carga histórica", () => {
     assert.equal(bonificado.facturas[0].datos.items[0].precio_unitario, "0.51");
     assert.throws(
       () =>
-        preparar([
-          factura({
+        prepare([
+          invoice({
             neto: "0.05",
             iva: "0.00",
             total: "0.05",
@@ -298,22 +298,22 @@ describe("preparación de carga histórica", () => {
     );
   });
   it("reutiliza por CUIT sin sobrescribir razón social ni datos existentes", () => {
-    const existente = {
+    const existing = {
       id: "4f62704d-6cbf-47bc-9a2b-229a23f81d08",
       cuit: cliente.cuit,
       razon_social: "Nombre conservado",
       email: "contacto@ejemplo.test",
     };
-    const copia = structuredClone(existente);
-    const plan = planificarClientes([cliente], [existente]);
-    assert.equal(plan[0].id, existente.id);
+    const copy = structuredClone(existing);
+    const plan = planificarClients([cliente], [existing]);
+    assert.equal(plan[0].id, existing.id);
     assert.equal(plan[0].existente, true);
-    assert.deepEqual(existente, copia);
+    assert.deepEqual(existing, copy);
   });
   it("detiene una coincidencia ambigua con un cliente sin CUIT", () => {
     assert.throws(
       () =>
-        planificarClientes(
+        planificarClients(
           [cliente],
           [{ id: "otro", cuit: null, razon_social: "  CLIENTE DE EJEMPLO " }],
         ),
@@ -321,17 +321,17 @@ describe("preparación de carga histórica", () => {
     );
   });
   it("construye una ruta UUID estable dentro de la carpeta del cliente sin alterar la factura", () => {
-    const preparados = preparar();
-    const clientes = planificarClientes(preparados.clientes, []);
-    const origen = structuredClone(preparados.facturas[0]);
-    const completa = completarFactura(origen, clientes);
-    assert.equal(completa.datos.cliente_id, clientes[0].id);
+    const prepared = prepare();
+    const clientes = planificarClients(prepared.clientes, []);
+    const origen = structuredClone(prepared.facturas[0]);
+    const complete = completeInvoice(origen, clientes);
+    assert.equal(complete.datos.cliente_id, clientes[0].id);
     assert.equal(
-      completa.datos.archivo.path,
-      completarFactura(origen, clientes).datos.archivo.path,
+      complete.datos.archivo.path,
+      completeInvoice(origen, clientes).datos.archivo.path,
     );
     assert.match(
-      completa.datos.archivo.path,
+      complete.datos.archivo.path,
       /^documentos\/[\da-f-]{36}\/[\da-f-]{36}\.pdf$/,
     );
     assert.equal(origen.datos.archivo.path, undefined);

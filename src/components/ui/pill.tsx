@@ -8,15 +8,15 @@ const TONOS = {
   neutro: 'bg-slate-100 text-slate-600',
 } as const
 
-export type TonoPastilla = keyof typeof TONOS
+export type TonePill = keyof typeof TONOS
 
 /** Estado con punto de color (Activo, Inactivo, Enviada…), como en las referencias de docs/diseno. */
-export function Pastilla({
-  tono = 'neutro',
+export function Pill({
+  tone = 'neutro',
   className,
   children,
 }: {
-  tono?: TonoPastilla
+  tone?: TonePill
   className?: string
   children: React.ReactNode
 }) {
@@ -24,7 +24,7 @@ export function Pastilla({
     <span
       className={cn(
         'inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium whitespace-nowrap',
-        TONOS[tono],
+        TONOS[tone],
         className,
       )}
     >

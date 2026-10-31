@@ -1,23 +1,23 @@
 import 'server-only'
 import type { Database } from '@/lib/supabase/database.types'
 import { createClient } from '@/lib/supabase/server'
-import type { ColaInicio } from './modelo'
+import type { QueueHome } from './model'
 
-export type PendienteInicio = Database['public']['Views']['v_inicio_colas']['Row']
-export type ResumenInicio = Database['public']['Functions']['inicio_resumen']['Returns'][number]
-export const PENDIENTES_POR_PAGINA = 25
+export type PendingHome = Database['public']['Views']['v_inicio_colas']['Row']
+export type ResumenHome = Database['public']['Functions']['inicio_resumen']['Returns'][number]
+export const PENDING_PER_PAGE = 25
 
-export async function leerInicio(cola?: ColaInicio, pagina = 1) {
+export async function readHome(cola?: QueueHome, pagina = 1) {
   const supabase = await createClient()
-  const [resumen, pendientes] = await Promise.all([
+  const [resumen, pendingList] = await Promise.all([
     supabase.rpc('inicio_resumen'),
     supabase.rpc('inicio_pendientes', {
       p_cola: cola,
-      p_limite: cola ? PENDIENTES_POR_PAGINA : 3,
-      p_desde: cola ? (pagina - 1) * PENDIENTES_POR_PAGINA : 0,
+      p_limite: cola ? PENDING_PER_PAGE : 3,
+      p_desde: cola ? (pagina - 1) * PENDING_PER_PAGE : 0,
     }),
   ])
   if (resumen.error) throw resumen.error
-  if (pendientes.error) throw pendientes.error
-  return { resumen: resumen.data, pendientes: pendientes.data }
+  if (pendingList.error) throw pendingList.error
+  return { resumen: resumen.data, pendingList: pendingList.data }
 }

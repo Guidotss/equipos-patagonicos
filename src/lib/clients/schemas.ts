@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { cuitOpcional, emailOpcional, textoOpcional, textoRequerido } from '@/lib/validacion'
+import { cuitOptional, emailOptional, textOptional, textRequired } from '@/lib/validation'
 
 export const CONDICIONES_IVA = {
   responsable_inscripto: 'Responsable inscripto',
@@ -8,9 +8,9 @@ export const CONDICIONES_IVA = {
   consumidor_final: 'Consumidor final',
 } as const
 
-const VALORES_IVA = ['responsable_inscripto', 'monotributo', 'exento', 'consumidor_final'] as const
+const VALUES_IVA = ['responsable_inscripto', 'monotributo', 'exento', 'consumidor_final'] as const
 
-export const CAMPOS_CLIENTE = [
+export const FIELDS_CLIENT = [
   'razon_social',
   'cuit',
   'condicion_iva',
@@ -22,29 +22,29 @@ export const CAMPOS_CLIENTE = [
   'condicion_pago',
   'notas',
 ] as const
-export type CampoCliente = (typeof CAMPOS_CLIENTE)[number]
+export type FieldClient = (typeof FIELDS_CLIENT)[number]
 
-export const esquemaCliente = z.object({
-  razon_social: textoRequerido('Ingresá la razón social'),
-  cuit: cuitOpcional,
+export const schemaClient = z.object({
+  razon_social: textRequired('Ingresá la razón social'),
+  cuit: cuitOptional,
   condicion_iva: z
-    .enum(['', ...VALORES_IVA], { error: 'Elegí una condición de IVA válida' })
-    .transform((valor) => (valor === '' ? null : valor)),
-  direccion: textoOpcional(),
-  localidad: textoOpcional(100),
-  provincia: textoOpcional(100),
-  telefono: textoOpcional(100),
-  email: emailOpcional,
-  condicion_pago: textoOpcional(),
-  notas: textoOpcional(2000),
+    .enum(['', ...VALUES_IVA], { error: 'Elegí una condición de IVA válida' })
+    .transform((value) => (value === '' ? null : value)),
+  direccion: textOptional(),
+  localidad: textOptional(100),
+  provincia: textOptional(100),
+  telefono: textOptional(100),
+  email: emailOptional,
+  condicion_pago: textOptional(),
+  notas: textOptional(2000),
 })
 
-export const CAMPOS_CONTACTO = ['nombre', 'cargo', 'email', 'telefono'] as const
-export type CampoContacto = (typeof CAMPOS_CONTACTO)[number]
+export const FIELDS_CONTACT = ['nombre', 'cargo', 'email', 'telefono'] as const
+export type FieldContact = (typeof FIELDS_CONTACT)[number]
 
-export const esquemaContacto = z.object({
-  nombre: textoRequerido('Ingresá el nombre', 150),
-  cargo: textoOpcional(150),
-  email: emailOpcional,
-  telefono: textoOpcional(100),
+export const schemaContact = z.object({
+  nombre: textRequired('Ingresá el nombre', 150),
+  cargo: textOptional(150),
+  email: emailOptional,
+  telefono: textOptional(100),
 })

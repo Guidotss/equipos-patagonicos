@@ -6,30 +6,30 @@
 
 import { revalidatePath } from 'next/cache'
 import { unstable_rethrow } from 'next/navigation'
-import { requireUsuario } from '@/lib/auth'
-import { esquemaEstadoEditor, payloadGuardar, type EstadoEditor } from '@/lib/cotizaciones/editor'
-import * as servicio from '@/lib/cotizaciones/servicio'
-import { mensajeParaUsuario, type Resultado } from '@/lib/resultado'
+import { requireUser } from '@/lib/auth'
+import { schemaStatusEditor, payloadSave, type StatusEditor } from '@/lib/quotes/editor'
+import * as service from '@/lib/quotes/service'
+import { messageForUser, type Result } from '@/lib/result'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid, textoRequerido } from '@/lib/validacion'
+import { isUuid, textRequired } from '@/lib/validation'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
-type Fallo = { ok: false; mensaje: string; errores?: Record<string, string> }
+type Fallo = { ok: false; message: string; errors?: Record<string, string> }
 
-const IDENTIFICADOR_INVALIDO = 'Identificador inválido'
+const IDENTIFICADOR_INVALID = 'Identificador inválido'
 
-function fallo(mensaje: string, errores?: Record<string, string>): Fallo {
-  return errores ? { ok: false, mensaje, errores } : { ok: false, mensaje }
+function fallo(message: string, errors?: Record<string, string>): Fallo {
+  return errors ? { ok: false, message, errors } : { ok: false, message }
 }
 
 /** Corre la operación con la sesión del usuario y convierte cualquier error en un mensaje para mostrar. */
-async function ejecutar<T>(operacion: (supabase: Supabase) => Promise<T>, mensaje?: string): Promise<Resultado<T>> {
+async function run<T>(operacion: (supabase: Supabase) => Promise<T>, message?: string): Promise<Result<T>> {
   try {
     const datos = await operacion(await createClient())
-    return mensaje ? { ok: true, datos, mensaje } : { ok: true, datos }
+    return message ? { ok: true, datos, message } : { ok: true, datos }
   } catch (error) {
     unstable_rethrow(error)
-    return fallo(mensajeParaUsuario(error))
+    return fallo(messageForUser(error))
   }
 }
 
@@ -42,137 +42,137 @@ function revalidar(...ids: string[]) {
  * Guarda el estado del editor: crea la cotización (sin id) o la actualiza con la versión que se editó.
  * Los errores de cada campo vuelven en `errores` con la clave de payloadGuardar ('cliente', 'items.2.precio'…).
  */
-export async function guardarCotizacion(
-  estado: EstadoEditor,
-): Promise<Resultado<{ id: string; numero: number; version: string }>> {
-  await requireUsuario()
-  const leido = esquemaEstadoEditor.safeParse(estado)
+export async function saveQuote(
+  estado: StatusEditor,
+): Promise<Result<{ id: string; numero: number; version: string }>> {
+  await requireUser()
+  const leido = schemaStatusEditor.safeParse(estado)
   if (!leido.success) return fallo('Los datos de la cotización no son válidos. Recargá la página y probá de nuevo.')
-  const armado = payloadGuardar(leido.data)
-  if (!armado.ok) return fallo('Revisá los datos marcados', armado.errores)
+  const armado = payloadSave(leido.data)
+  if (!armado.ok) return fallo('Revisá los datos marcados', armado.errors)
 
   const { id, version } = leido.data
-  const resultado = await ejecutar(
-    (supabase) => servicio.guardarCotizacion(supabase, armado.payload, id ?? undefined, version ?? undefined),
+  const result = await run(
+    (supabase) => service.saveQuote(supabase, armado.payload, id ?? undefined, version ?? undefined),
     'Cotización guardada',
   )
-  if (resultado.ok) revalidar(resultado.datos.id)
-  return resultado
+  if (result.ok) revalidar(result.datos.id)
+  return result
 }
 
 /** Genera el PDF, lo registra como enviado y devuelve el envío para descargarlo. */
-export async function enviarCotizacion(id: string, version: string): Promise<Resultado<{ envioId: string }>> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
+export async function sendQuote(id: string, version: string): Promise<Result<{ envioId: string }>> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
   if (typeof version !== 'string' || !version) return fallo('Falta la versión de la cotización')
-  const resultado = await ejecutar(
-    (supabase) => servicio.enviarCotizacion(supabase, id, version),
+  const result = await run(
+    (supabase) => service.sendQuote(supabase, id, version),
     'Cotización marcada como enviada',
   )
-  if (resultado.ok) revalidar(id)
-  return resultado
+  if (result.ok) revalidar(id)
+  return result
 }
 
 /** Aprueba con la fecha elegida. Si reemplaza a un presupuesto en curso, lo devuelve para ofrecer finalizarlo. */
-export async function aprobarCotizacion(
+export async function approveQuote(
   id: string,
   version: string,
   fecha: string,
-): Promise<Resultado<{ anterior: { id: string; numero: number } | null }>> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
+): Promise<Result<{ anterior: { id: string; numero: number } | null }>> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
   if (typeof version !== 'string' || !version) return fallo('Falta la versión de la cotización')
   if (typeof fecha !== 'string') return fallo('La fecha de aprobación no es válida')
-  const resultado = await ejecutar(
-    (supabase) => servicio.aprobarCotizacion(supabase, id, fecha, version),
+  const result = await run(
+    (supabase) => service.approveQuote(supabase, id, fecha, version),
     'Cotización aprobada',
   )
-  if (resultado.ok) {
+  if (result.ok) {
     revalidar(id)
     revalidatePath('/presupuestos')
   }
-  return resultado
+  return result
 }
 
 /** Finaliza el presupuesto de la cotización anterior de una renegociación. */
-export async function finalizarPresupuesto(id: string): Promise<Resultado> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
-  const resultado = await ejecutar(async (supabase) => {
-    await servicio.finalizarPresupuesto(supabase, id)
+export async function finishBudget(id: string): Promise<Result> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
+  const result = await run(async (supabase) => {
+    await service.finishBudget(supabase, id)
     return null
   }, 'Presupuesto finalizado')
-  if (resultado.ok) {
+  if (result.ok) {
     revalidar(id)
     revalidatePath('/presupuestos')
   }
-  return resultado
+  return result
 }
 
-export async function rechazarCotizacion(id: string): Promise<Resultado> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
-  const resultado = await ejecutar(async (supabase) => {
-    await servicio.rechazarCotizacion(supabase, id)
+export async function rejectQuote(id: string): Promise<Result> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
+  const result = await run(async (supabase) => {
+    await service.rejectQuote(supabase, id)
     return null
   }, 'Cotización rechazada')
-  if (resultado.ok) revalidar(id)
-  return resultado
+  if (result.ok) revalidar(id)
+  return result
 }
 
-export async function reabrirCotizacion(id: string): Promise<Resultado> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
-  const resultado = await ejecutar(async (supabase) => {
-    await servicio.reabrirCotizacion(supabase, id)
+export async function reopenQuote(id: string): Promise<Result> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
+  const result = await run(async (supabase) => {
+    await service.reopenQuote(supabase, id)
     return null
   }, 'Cotización reabierta')
-  if (resultado.ok) revalidar(id)
-  return resultado
+  if (result.ok) revalidar(id)
+  return result
 }
 
-export async function revertirAprobacion(id: string): Promise<Resultado> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
-  const resultado = await ejecutar(async (supabase) => {
-    await servicio.revertirAprobacion(supabase, id)
+export async function revertApproval(id: string): Promise<Result> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
+  const result = await run(async (supabase) => {
+    await service.revertApproval(supabase, id)
     return null
   }, 'Aprobación revertida')
-  if (resultado.ok) {
+  if (result.ok) {
     revalidar(id)
     revalidatePath('/presupuestos')
   }
-  return resultado
+  return result
 }
 
-export async function borrarCotizacion(id: string): Promise<Resultado> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
-  const resultado = await ejecutar(async (supabase) => {
-    await servicio.borrarCotizacion(supabase, id)
+export async function removeQuote(id: string): Promise<Result> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
+  const result = await run(async (supabase) => {
+    await service.removeQuote(supabase, id)
     return null
   }, 'Cotización borrada')
-  if (resultado.ok) revalidar(id)
-  return resultado
+  if (result.ok) revalidar(id)
+  return result
 }
 
 /** Copia como borrador nuevo (renegociación del mismo cliente) y devuelve su id para abrirla. */
-export async function duplicarCotizacion(id: string, clienteId?: string): Promise<Resultado<{ id: string }>> {
-  await requireUsuario()
-  if (!esUuid(id)) return fallo(IDENTIFICADOR_INVALIDO)
-  if (clienteId !== undefined && !esUuid(clienteId)) return fallo('Cliente inválido')
-  const resultado = await ejecutar((supabase) => servicio.duplicarCotizacion(supabase, id, clienteId), 'Cotización duplicada')
-  if (resultado.ok) revalidar(id, resultado.datos.id)
-  return resultado
+export async function duplicateQuote(id: string, clientId?: string): Promise<Result<{ id: string }>> {
+  await requireUser()
+  if (!isUuid(id)) return fallo(IDENTIFICADOR_INVALID)
+  if (clientId !== undefined && !isUuid(clientId)) return fallo('Cliente inválido')
+  const result = await run((supabase) => service.duplicateQuote(supabase, id, clientId), 'Cotización duplicada')
+  if (result.ok) revalidar(id, result.datos.id)
+  return result
 }
 
 /** Para el combobox de cliente: sin acentos, por razón social, CUIT o contacto; los inactivos al final. */
-export async function buscarClientes(
+export async function searchClients(
   texto: string,
-): Promise<Resultado<{ id: string; razon_social: string; cuit: string | null; activo: boolean }[]>> {
-  await requireUsuario()
+): Promise<Result<{ id: string; razon_social: string; cuit: string | null; activo: boolean }[]>> {
+  await requireUser()
   if (typeof texto !== 'string') return fallo('Búsqueda inválida')
-  return ejecutar(async (supabase) => {
+  return run(async (supabase) => {
     const { data, error } = await supabase
       .rpc('buscar_clientes', { texto: texto.slice(0, 200), limite: 20 })
       .select('id, razon_social, cuit, activo')
@@ -181,16 +181,16 @@ export async function buscarClientes(
   })
 }
 
-const esquemaRazonSocial = textoRequerido('Ingresá la razón social')
+const schemaRazonSocial = textRequired('Ingresá la razón social')
 
 /** Alta rápida desde el combobox: solo la razón social (el resto se completa después en Clientes). */
-export async function crearClienteRapido(
+export async function crearClientRapido(
   razonSocial: string,
-): Promise<Resultado<{ id: string; razon_social: string; cuit: string | null }>> {
-  await requireUsuario()
-  const leido = esquemaRazonSocial.safeParse(razonSocial)
+): Promise<Result<{ id: string; razon_social: string; cuit: string | null }>> {
+  await requireUser()
+  const leido = schemaRazonSocial.safeParse(razonSocial)
   if (!leido.success) return fallo(leido.error.issues[0].message)
-  const resultado = await ejecutar(async (supabase) => {
+  const result = await run(async (supabase) => {
     const { data, error } = await supabase
       .from('clientes')
       .insert({ razon_social: leido.data })
@@ -199,30 +199,30 @@ export async function crearClienteRapido(
     if (error) throw error
     return data
   }, 'Cliente creado')
-  if (resultado.ok) revalidatePath('/clientes')
-  return resultado
+  if (result.ok) revalidatePath('/clientes')
+  return result
 }
 
 /** Contactos del cliente (por nombre) y el último que se usó en sus cotizaciones, para preseleccionarlo. */
-export async function contactosDeCliente(
-  clienteId: string,
-): Promise<Resultado<{ contactos: { id: string; nombre: string; email: string }[]; ultimoContactoId: string | null }>> {
-  await requireUsuario()
-  if (!esUuid(clienteId)) return fallo(IDENTIFICADOR_INVALIDO)
-  return ejecutar(async (supabase) => {
-    const [contactos, ultima] = await Promise.all([
-      supabase.from('contactos').select('id, nombre, email').eq('cliente_id', clienteId).order('nombre'),
+export async function contactsOfClient(
+  clientId: string,
+): Promise<Result<{ contactos: { id: string; nombre: string; email: string }[]; lastContactId: string | null }>> {
+  await requireUser()
+  if (!isUuid(clientId)) return fallo(IDENTIFICADOR_INVALID)
+  return run(async (supabase) => {
+    const [contactos, last] = await Promise.all([
+      supabase.from('contactos').select('id, nombre, email').eq('cliente_id', clientId).order('nombre'),
       supabase
         .from('cotizaciones')
         .select('contacto_id')
-        .eq('cliente_id', clienteId)
+        .eq('cliente_id', clientId)
         .not('contacto_id', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
     ])
     if (contactos.error) throw contactos.error
-    if (ultima.error) throw ultima.error
-    return { contactos: contactos.data, ultimoContactoId: ultima.data?.contacto_id ?? null }
+    if (last.error) throw last.error
+    return { contactos: contactos.data, lastContactId: last.data?.contacto_id ?? null }
   })
 }

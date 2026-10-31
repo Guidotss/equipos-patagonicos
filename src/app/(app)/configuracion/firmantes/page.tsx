@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
-import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
-import { Firmantes, NuevoFirmante } from '@/components/configuracion/firmantes'
-import { BotonEstado } from '@/components/formulario/boton-estado'
+import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
+import { Signers, NewSigner } from '@/components/settings/signers'
+import { ButtonStatus } from '@/components/form/button-status'
 import { createClient } from '@/lib/supabase/server'
-import { cambiarEstadoFirmante } from '../actions'
+import { changeStatusSigner } from '../actions'
 
 export const metadata: Metadata = { title: 'Firmantes' }
 
-export default async function FirmantesPage() {
+export default async function SignersPage() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('firmantes')
@@ -18,26 +18,26 @@ export default async function FirmantesPage() {
 
   const firmantes = data.map((firmante) => ({
     ...firmante,
-    boton: (
-      <BotonEstado
+    button: (
+      <ButtonStatus
         activo={firmante.activo}
-        etiqueta={firmante.nombre}
-        accion={cambiarEstadoFirmante.bind(null, firmante.id, !firmante.activo)}
+        label={firmante.nombre}
+        accion={changeStatusSigner.bind(null, firmante.id, !firmante.activo)}
       />
     ),
   }))
 
   return (
     <>
-      <BarraMigas migas={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Firmantes' }]} />
-      <Contenido>
-        <EncabezadoPagina
+      <BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Firmantes' }]} />
+      <Content>
+        <HeaderPage
           titulo="Firmantes"
           descripcion="Nombre, cargo y teléfono que aparecen al pie de cada cotización."
-          acciones={<NuevoFirmante />}
+          actions={<NewSigner />}
         />
-        <Firmantes firmantes={firmantes} />
-      </Contenido>
+        <Signers firmantes={firmantes} />
+      </Content>
     </>
   )
 }

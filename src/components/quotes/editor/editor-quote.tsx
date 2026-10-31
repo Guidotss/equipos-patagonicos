@@ -5,97 +5,97 @@ import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
-import { guardarCotizacion } from '@/app/(app)/cotizaciones/actions'
-import { Contenido } from '@/components/app-shell/encabezado'
-import { GuardarPlantilla } from '@/components/cotizaciones/especiales/guardar-plantilla'
-import { HojaFormulario } from '@/components/formulario/estructura-formulario'
+import { saveQuote } from '@/app/(app)/cotizaciones/actions'
+import { Content } from '@/components/app-shell/header'
+import { SaveTemplate } from '@/components/quotes/specials/save-template'
+import { SheetForm } from '@/components/form/structure-form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { esConflicto, type AccionConfirmable } from '@/lib/cotizaciones/acciones-estado'
-import { CONTEXTO_NUEVA, type ContextoEstado } from '@/lib/cotizaciones/contexto-estado'
+import { isConflict, type ActionConfirmable } from '@/lib/quotes/actions-status'
+import { CONTEXTO_NEW, type ContextoStatus } from '@/lib/quotes/context-status'
 import {
-  hayCambios,
-  payloadGuardar,
-  pendientesEditor,
-  reducirEditor,
-  type AccionEditor,
-  type CatalogosEditor,
-  type EstadoEditor,
-} from '@/lib/cotizaciones/editor'
+  hasChanges,
+  payloadSave,
+  pendingListEditor,
+  reduceEditor,
+  type ActionEditor,
+  type CatalogsEditor,
+  type StatusEditor,
+} from '@/lib/quotes/editor'
 import {
-  erroresDeBloques,
-  erroresSinCampo,
-  esAtajoGuardar,
-  type ContactoEditor,
-  type ErroresBloque,
-} from '@/lib/cotizaciones/editor-pantalla'
-import { erroresPorClave, type ErroresItem } from '@/lib/cotizaciones/grilla'
-import { lineaVistaPrevia } from '@/lib/cotizaciones/vista-previa'
-import { AccionesEncabezado, useAccionesEstado, type EsperaServidor } from './acciones-editor'
-import { BarraInferior } from './barra-inferior'
-import { EncabezadoEditor } from './encabezado-editor'
-import { FranjasEditor } from './franjas-editor'
-import { BotonVistaPreviaCelular, ColumnaVistaPrevia, useVistaPrevia, VistaPreviaLateral } from './panel-vista-previa'
-import { TarjetaAsunto } from './tarjeta-asunto'
-import { TarjetaCliente } from './tarjeta-cliente'
-import { TarjetaDatos } from './tarjeta-datos'
-import { TarjetaItems } from './tarjeta-items'
-import { TarjetaTextos } from './tarjeta-textos'
+  errorsOfBlocks,
+  errorsWithoutField,
+  isAtajoSave,
+  type ContactEditor,
+  type ErrorsBlock,
+} from '@/lib/quotes/editor-screen'
+import { errorsByKey, type ErrorsItem } from '@/lib/quotes/grid'
+import { lineViewPreview } from '@/lib/quotes/preview'
+import { ActionsHeader, useActionsStatus, type EsperaServidor } from './actions-editor'
+import { BarBottom } from './bar-bottom'
+import { HeaderEditor } from './header-editor'
+import { BandsEditor } from './bands-editor'
+import { ButtonViewPreviewCelular, ColumnViewPreview, useViewPreview, ViewPreviewLateral } from './panel-preview'
+import { CardSubject } from './card-subject'
+import { CardClient } from './card-client'
+import { CardData } from './card-data'
+import { CardItems } from './card-items'
+import { CardTexts } from './card-texts'
 
 export type VersionGuardada = { id: string; version: string; numero: number }
 
-export function EditorCotizacion({
-  inicial,
-  catalogos: catalogosIniciales,
-  contactos: contactosIniciales,
-  hoy,
-  contexto = CONTEXTO_NUEVA,
-  accionInicial = null,
+export function EditorQuote({
+  initial,
+  catalogs: catalogsIniciales,
+  contactos: contactsIniciales,
+  today,
+  contexto = CONTEXTO_NEW,
+  actionInitial = null,
 }: {
-  inicial: EstadoEditor
-  catalogos: CatalogosEditor
+  initial: StatusEditor
+  catalogs: CatalogsEditor
   /** Contactos del cliente de `inicial` (vacío en una nueva). */
-  contactos: ContactoEditor[]
+  contactos: ContactEditor[]
   /** Hoy en Argentina ('YYYY-MM-DD'), calculado en el servidor. */
-  hoy: string
+  today: string
   /** Envíos, vencimiento, aprobación y anterior (leerContextoEstado). Una nueva no tiene. */
-  contexto?: ContextoEstado
+  contexto?: ContextoStatus
   /** ?accion= de la URL: abre esa confirmación al entrar (la página la lee con accionDesdeParametro). */
-  accionInicial?: AccionConfirmable | null
+  actionInitial?: ActionConfirmable | null
 }) {
   const router = useRouter()
-  const [catalogosBase, setCatalogosBase] = useState<CatalogosEditor | null>(null)
-  const catalogos = catalogosBase ?? catalogosIniciales
+  const [catalogsBase, setCatalogsBase] = useState<CatalogsEditor | null>(null)
+  const catalogs = catalogsBase ?? catalogsIniciales
   const [preparandoOc, setPreparandoOc] = useState(false)
-  const [estado, despachar] = useReducer(reducirEditor, inicial)
+  const [estado, despachar] = useReducer(reduceEditor, initial)
   /** Lo último guardado (o lo que vino de la página): contra esto se calculan los cambios. */
-  const [guardado, setGuardado] = useState(inicial)
-  const [contactos, setContactos] = useState(contactosIniciales)
-  const [errores, setErrores] = useState<Record<string, string>>({})
+  const [saved, setSaved] = useState(initial)
+  const [contactos, setContacts] = useState(contactsIniciales)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   /** Los errores de los ítems ('items.N.campo') por clave de ítem (ver mostrarErrores). */
-  const [erroresItems, setErroresItems] = useState<Record<string, ErroresItem>>({})
+  const [errorsItems, setErrorsItems] = useState<Record<string, ErrorsItem>>({})
   /** Los errores de los bloques de texto ('bloques.N.campo') por clave de bloque, como los de los ítems. */
-  const [erroresBloques, setErroresBloques] = useState<Record<string, ErroresBloque>>({})
-  const [aviso, setAviso] = useState<string | null>(null)
+  const [errorsBlocks, setErrorsBlocks] = useState<Record<string, ErrorsBlock>>({})
+  const [warning, setWarning] = useState<string | null>(null)
   /** Secciones de la grilla con el nombre escrito y todavía no aplicado (borrador local de TarjetaItems). */
-  const [borradoresSeccion, setBorradoresSeccion] = useState<ReadonlySet<string>>(() => new Set())
+  const [borradoresSection, setBorradoresSection] = useState<ReadonlySet<string>>(() => new Set())
   /** El `aplicar` de cada uno de esos borradores, por clave de sección: guardar los aplica antes de leer el estado. */
-  const aplicarBorrador = useRef(new Map<string, () => void>())
+  const applyDraft = useRef(new Map<string, () => void>())
   /** Qué acción corre ('guardar'; la Task 12 suma las suyas). Con una en curso se deshabilitan todas (decisión 12). */
-  const [accion, setAccion] = useState<string | null>(null)
-  const enCurso = useRef(false)
+  const [accion, setAction] = useState<string | null>(null)
+  const inCurso = useRef(false)
   const raiz = useRef<HTMLDivElement>(null)
 
-  const cambios = useMemo(() => hayCambios(guardado, estado), [guardado, estado])
+  const changes = useMemo(() => hasChanges(saved, estado), [saved, estado])
   // Un nombre de sección a medio escribir también es un cambio sin guardar: habilita Guardar y el aviso al cerrar
   // la pestaña. Guardar lo aplica antes de leer el estado (aplicarBorradoresSeccion).
-  const hayBorradorSeccion = borradoresSeccion.size > 0
-  const sinGuardar = cambios || hayBorradorSeccion
-  const pendientes = useMemo(() => pendientesEditor(estado, catalogos), [estado, catalogos])
+  const hasDraftSection = borradoresSection.size > 0
+  const withoutSave = changes || hasDraftSection
+  const pendingList = useMemo(() => pendingListEditor(estado, catalogs), [estado, catalogs])
   const editable = estado.origen === 'app' && (estado.estado === 'borrador' || estado.estado === 'enviada')
-  const sueltos = erroresSinCampo(errores)
+  const sueltos = errorsWithoutField(errors)
   /** Otro guardó mientras tanto: franja con "Recargar" (Task 12). */
-  const [conflicto, setConflicto] = useState(false)
+  const [conflict, setConflict] = useState(false)
 
   /**
    * El editor espera la versión del servidor que va a llegar en `inicial` (ver la adopción, después del hook de
@@ -107,28 +107,28 @@ export function EditorCotizacion({
   >(null)
   function esperarServidor(modo: EsperaServidor | null, versionLocal: string | null = null) {
     if (!modo) return setEspera(null)
-    setEspera(modo === 'descartar' ? { modo } : { modo, ignorar: [inicial.version, versionLocal] })
+    setEspera(modo === 'descartar' ? { modo } : { modo, ignorar: [initial.version, versionLocal] })
   }
 
   // Vista previa (Task 11): un solo estado para la columna fija (≥ 90rem) y el panel lateral (md a 90rem).
-  const vista = useVistaPrevia(estado)
-  const lineaVista = lineaVistaPrevia({
-    modo: vista.modo,
+  const view = useViewPreview(estado)
+  const lineView = lineViewPreview({
+    modo: view.modo,
     estado: estado.estado,
     origen: estado.origen,
-    desactualizada: vista.desactualizada,
-    ultimoEnvio: contexto.envios[0]?.enviada_at ?? null,
-    fechaAprobacion: contexto.fechaAprobacion,
+    desactualizada: view.desactualizada,
+    lastSend: contexto.envios[0]?.enviada_at ?? null,
+    dateApproval: contexto.dateApproval,
   })
 
-  const alCambiarBorradorSeccion = useCallback((clave: string, aplicar: (() => void) | null) => {
-    if (aplicar) aplicarBorrador.current.set(clave, aplicar)
-    else aplicarBorrador.current.delete(clave)
-    const hay = aplicar !== null
-    setBorradoresSeccion((actuales) => {
-      if (actuales.has(clave) === hay) return actuales
+  const onChangeDraftSection = useCallback((clave: string, apply: (() => void) | null) => {
+    if (apply) applyDraft.current.set(clave, apply)
+    else applyDraft.current.delete(clave)
+    const has = apply !== null
+    setBorradoresSection((actuales) => {
+      if (actuales.has(clave) === has) return actuales
       const nuevos = new Set(actuales)
-      if (hay) nuevos.add(clave)
+      if (has) nuevos.add(clave)
       else nuevos.delete(clave)
       return nuevos
     })
@@ -140,11 +140,11 @@ export function EditorCotizacion({
    * lista que haya cuando vuelve la respuesta), así la marca queda en el que la tuvo aunque mientras se guardaba o
    * después se agreguen, muevan o borren otros.
    */
-  function mostrarErrores(mensaje: string, nuevos: Record<string, string>, enviado: EstadoEditor) {
-    setAviso(mensaje)
-    setErrores(nuevos)
-    setErroresItems(erroresPorClave(nuevos, enviado.items.map((item) => item.clave)))
-    setErroresBloques(erroresDeBloques(nuevos, enviado.bloques.map((bloque) => bloque.clave)))
+  function showErrors(message: string, nuevos: Record<string, string>, sent: StatusEditor) {
+    setWarning(message)
+    setErrors(nuevos)
+    setErrorsItems(errorsByKey(nuevos, sent.items.map((item) => item.clave)))
+    setErrorsBlocks(errorsOfBlocks(nuevos, sent.bloques.map((block) => block.clave)))
   }
 
   /**
@@ -152,11 +152,11 @@ export function EditorCotizacion({
    * que el blur del campo llegue antes que el click de Guardar (no está verificado en Safari ni en iOS) ni del orden
    * de los keydown en Ctrl/⌘+S.
    */
-  function aplicarBorradoresSeccion() {
-    const porAplicar = [...aplicarBorrador.current.values()]
-    if (porAplicar.length === 0) return
+  function applyBorradoresSection() {
+    const byApply = [...applyDraft.current.values()]
+    if (byApply.length === 0) return
     flushSync(() => {
-      for (const aplicar of porAplicar) aplicar()
+      for (const apply of byApply) apply()
     })
   }
 
@@ -168,101 +168,101 @@ export function EditorCotizacion({
    * hacen la transición con el id que vuelve y navegan después (decisión 12). Con `avisar: false` no muestra el
    * toast de guardado: cuando guarda antes de una transición, el aviso es el de la transición (no dos apilados).
    */
-  function guardar(opciones: { navegar?: boolean; avisar?: boolean } = {}): Promise<VersionGuardada | null> {
-    aplicarBorradoresSeccion()
-    return guardarActual.current(opciones)
+  function save(options: { navegar?: boolean; avisar?: boolean } = {}): Promise<VersionGuardada | null> {
+    applyBorradoresSection()
+    return saveCurrent.current(options)
   }
 
-  async function guardarEstado({
+  async function saveStatus({
     navegar = true,
     avisar = true,
   }: { navegar?: boolean; avisar?: boolean } = {}): Promise<VersionGuardada | null> {
-    if (!editable || enCurso.current) return null
-    if (estado.id !== null && estado.version !== null && estado.numero !== null && !cambios) {
+    if (!editable || inCurso.current) return null
+    if (estado.id !== null && estado.version !== null && estado.numero !== null && !changes) {
       return { id: estado.id, version: estado.version, numero: estado.numero }
     }
-    const enviado = estado
-    const validacion = payloadGuardar(enviado)
-    if (!validacion.ok) {
-      mostrarErrores('Revisá los datos marcados', validacion.errores, enviado)
+    const sent = estado
+    const validation = payloadSave(sent)
+    if (!validation.ok) {
+      showErrors('Revisá los datos marcados', validation.errors, sent)
       return null
     }
-    enCurso.current = true
-    setAccion('guardar')
+    inCurso.current = true
+    setAction('guardar')
     try {
-      const resultado = await guardarCotizacion(enviado)
-      if (!resultado.ok) {
+      const result = await saveQuote(sent)
+      if (!result.ok) {
         // Otro guardó antes: no es un error de los datos, se ofrece "Recargar" (Task 12) sin tocar lo escrito.
-        if (esConflicto(resultado.mensaje)) {
-          setConflicto(true)
+        if (isConflict(result.message)) {
+          setConflict(true)
           return null
         }
-        mostrarErrores(resultado.mensaje, resultado.errores ?? {}, enviado)
+        showErrors(result.message, result.errors ?? {}, sent)
         return null
       }
-      setConflicto(false)
-      const { id, version, numero } = resultado.datos
-      const guardadoAhora: AccionEditor = { tipo: 'guardado', id, version, numero }
+      setConflict(false)
+      const { id, version, numero } = result.datos
+      const savedNow: ActionEditor = { tipo: 'guardado', id, version, numero }
       // Lo que se mandó pasa a ser lo guardado; lo tipeado mientras tanto sigue contando como cambio.
-      setGuardado(reducirEditor(enviado, guardadoAhora))
-      despachar(guardadoAhora)
-      setErrores({})
-      setErroresItems({})
-      setErroresBloques({})
-      setAviso(null)
-      if (avisar) toast.success(enviado.id === null ? `Cotización N° ${numero} creada` : 'Cotización guardada')
+      setSaved(reduceEditor(sent, savedNow))
+      despachar(savedNow)
+      setErrors({})
+      setErrorsItems({})
+      setErrorsBlocks({})
+      setWarning(null)
+      if (avisar) toast.success(sent.id === null ? `Cotización N° ${numero} creada` : 'Cotización guardada')
       // replace: "Atrás" no vuelve a una cotización nueva vacía (decisión 8).
-      if (enviado.id === null && navegar) router.replace(`/cotizaciones/${id}`)
-      return resultado.datos
+      if (sent.id === null && navegar) router.replace(`/cotizaciones/${id}`)
+      return result.datos
     } catch (error) {
       unstable_rethrow(error)
-      mostrarErrores('No se pudo guardar. Probá de nuevo en un momento.', {}, enviado)
+      showErrors('No se pudo guardar. Probá de nuevo en un momento.', {}, sent)
       return null
     } finally {
-      enCurso.current = false
-      setAccion(null)
+      inCurso.current = false
+      setAction(null)
     }
   }
 
   // guardar llama al guardarEstado del último render: después de aplicar los borradores, el que ve los nombres nuevos.
-  const guardarActual = useRef(guardarEstado)
+  const saveCurrent = useRef(saveStatus)
   useLayoutEffect(() => {
-    guardarActual.current = guardarEstado
+    saveCurrent.current = saveStatus
   })
 
   /**
    * Para el celular, antes de abrir la pestaña de la vista previa: si lo que hay no pasa la validación local, marca
    * los campos y avisa con un toast (la barra de abajo tapa el aviso de arriba). true si se puede seguir.
    */
-  function validarParaVer(): boolean {
-    const validacion = payloadGuardar(estado)
-    if (validacion.ok) return true
-    mostrarErrores('Revisá los datos marcados', validacion.errores, estado)
+  function validateForVer(): boolean {
+    const validation = payloadSave(estado)
+    if (validation.ok) return true
+    showErrors('Revisá los datos marcados', validation.errors, estado)
     toast.error('Revisá los datos marcados')
     return false
   }
 
   /** Para el celular: guarda si hace falta y devuelve el id de lo guardado (null si no se pudo). */
-  async function guardarParaVer(): Promise<string | null> {
-    const guardada = await guardar()
+  async function saveForVer(): Promise<string | null> {
+    const guardada = await save()
     return guardada?.id ?? null
   }
 
   // Acciones de estado (Task 12): con una en curso se deshabilitan todos los botones, Guardar incluido.
-  const acciones = useAccionesEstado({
+  const actions = useActionsStatus({
     estado,
     contexto,
-    pendientes,
-    hayCambiosSinGuardar: sinGuardar,
-    guardar,
+    pendingList,
+    hasChangesWithoutSave: withoutSave,
+    guardar: save,
     accion: preparandoOc ? 'preparar_oc' : accion,
-    setAccion,
-    conflicto,
-    setConflicto,
+    setAction,
+    conflict,
+    setConflict,
     esperarServidor,
-    accionInicial,
+    actionInitial,
   })
-  const ocupado = acciones.ocupado || preparandoOc
+  const busy = actions.busy || preparandoOc
 
   // Después de una transición (o de "Recargar") el servidor manda otra versión en `inicial`: el editor la toma. Se
   // ajusta durante el render (como recomienda React para un estado que depende de una prop), no en un efecto.
@@ -272,103 +272,103 @@ export function EditorCotizacion({
   // la del refresco, que es la actual.
   const llegoLaVersion =
     espera?.modo === 'descartar'
-      ? !acciones.recargando
-      : espera !== null && inicial.version !== null && !espera.ignorar.includes(inicial.version)
+      ? !actions.recargando
+      : espera !== null && initial.version !== null && !espera.ignorar.includes(initial.version)
   if (espera && llegoLaVersion) {
     // Recargar descarta lo local. Después de una transición, lo que se haya tipeado mientras corría queda encima del
     // estado y la versión nuevos.
     const tomado =
-      espera.modo === 'descartar' || !cambios ? inicial : { ...estado, estado: inicial.estado, version: inicial.version }
+      espera.modo === 'descartar' || !changes ? initial : { ...estado, estado: initial.estado, version: initial.version }
     setEspera(null)
-    setGuardado(inicial)
+    setSaved(initial)
     despachar({ tipo: 'reemplazar', estado: tomado })
     // Los contactos son los del cliente del estado tomado: los de `inicial` (la página los vuelve a leer en cada
     // render), salvo que lo local que queda encima tenga otro cliente: ahí siguen los de ese, que son los que hay.
-    if (tomado.cliente?.id === inicial.cliente?.id) setContactos(contactosIniciales)
+    if (tomado.cliente?.id === initial.cliente?.id) setContacts(contactsIniciales)
     // Lo que marcaba la versión anterior (errores, aviso, conflicto) no corresponde a la que se toma.
-    setErrores({})
-    setErroresItems({})
-    setErroresBloques({})
-    setAviso(null)
-    setConflicto(false)
+    setErrors({})
+    setErrorsItems({})
+    setErrorsBlocks({})
+    setWarning(null)
+    setConflict(false)
   }
 
   // Con errores, el foco va al primer campo marcado (como FormularioAccion). Si los dejó el guardado previo a una
   // transición, el contenido sigue deshabilitado hasta que la transición termina: el foco espera a ese momento.
-  const errorPorEnfocar = useRef(false)
+  const errorByEnfocar = useRef(false)
   useEffect(() => {
-    if (Object.keys(errores).length > 0) errorPorEnfocar.current = true
-  }, [errores])
+    if (Object.keys(errors).length > 0) errorByEnfocar.current = true
+  }, [errors])
   useEffect(() => {
-    if (!errorPorEnfocar.current || acciones.enTransicion) return
-    errorPorEnfocar.current = false
+    if (!errorByEnfocar.current || actions.inTransicion) return
+    errorByEnfocar.current = false
     raiz.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
-  }, [errores, acciones.enTransicion])
+  }, [errors, actions.inTransicion])
 
   // Ctrl/⌘+S guarda (y nunca abre el "Guardar como…" del navegador). Con una acción en curso (guardar, una de estado
   // o la recarga) no hace nada, igual que el botón deshabilitado (decisión 12): guardar cambiaría la versión que esa
   // acción ya mandó.
-  const alTeclear = useEffectEvent((evento: KeyboardEvent) => {
-    if (esAtajoGuardar(evento)) {
+  const onTeclear = useEffectEvent((evento: KeyboardEvent) => {
+    if (isAtajoSave(evento)) {
       evento.preventDefault()
-      if (!ocupado) void guardar()
+      if (!busy) void save()
     }
   })
   useEffect(() => {
-    const escuchar = (evento: KeyboardEvent) => alTeclear(evento)
+    const escuchar = (evento: KeyboardEvent) => onTeclear(evento)
     window.addEventListener('keydown', escuchar)
     return () => window.removeEventListener('keydown', escuchar)
   }, [])
 
   // Cerrar o recargar la pestaña con cambios sin guardar pide confirmación al navegador.
   useEffect(() => {
-    if (!sinGuardar) return
+    if (!withoutSave) return
     const avisar = (evento: BeforeUnloadEvent) => {
       evento.preventDefault()
       evento.returnValue = ''
     }
     window.addEventListener('beforeunload', avisar)
     return () => window.removeEventListener('beforeunload', avisar)
-  }, [sinGuardar])
+  }, [withoutSave])
 
   return (
     <div ref={raiz}>
-      <Contenido className="pb-28 min-[90rem]:pb-8">
-        <EncabezadoEditor
+      <Content className="pb-28 min-[90rem]:pb-8">
+        <HeaderEditor
           estado={estado}
-          hoy={hoy}
+          today={today}
           editable={editable}
-          cambios={sinGuardar}
+          changes={withoutSave}
           guardando={accion === 'guardar'}
-          ocupado={ocupado}
-          alGuardar={() => void guardar()}
-          acciones={<><GuardarPlantilla estado={estado} disabled={ocupado} antesDeAbrir={aplicarBorradoresSeccion} /><AccionesEncabezado estado={estado} contexto={contexto} pendientes={pendientes} acciones={acciones} /></>}
+          busy={busy}
+          onSave={() => void save()}
+          actions={<><SaveTemplate estado={estado} disabled={busy} antesOfAbrir={applyBorradoresSection} /><ActionsHeader estado={estado} contexto={contexto} pendingList={pendingList} actions={actions} /></>}
         />
-        <FranjasEditor
+        <BandsEditor
           estado={estado}
           contexto={contexto}
-          pendientes={pendientes}
-          acciones={acciones}
-          hayCambiosSinGuardar={cambios}
-          hoy={hoy}
+          pendingList={pendingList}
+          actions={actions}
+          hasChangesWithoutSave={changes}
+          today={today}
         />
-        {estado.id && estado.estado === 'enviada' ? <div className="mb-4"><Button type="button" variant="outline" disabled={ocupado} onClick={async () => {
+        {estado.id && estado.estado === 'enviada' ? <div className="mb-4"><Button type="button" variant="outline" disabled={busy} onClick={async () => {
           if (preparandoOc) return
           setPreparandoOc(true)
           try {
-            const guardada = await guardar({ navegar: false, avisar: false })
+            const guardada = await save({ navegar: false, avisar: false })
             if (guardada) router.push(`/documentos/nuevo?cotizacion=${guardada.id}&tipo=orden_compra&version=${encodeURIComponent(guardada.version)}`)
             else setPreparandoOc(false)
           } catch (error) { setPreparandoOc(false); unstable_rethrow(error); toast.error('No se pudo preparar la orden de compra') }
         }}>Aprobar y cargar orden de compra</Button></div> : null}
-        {aviso ? (
+        {warning ? (
           <Alert variant="destructive">
             <AlertDescription>
-              <p>{aviso}</p>
+              <p>{warning}</p>
               {sueltos.length ? (
                 <ul className="list-disc pl-5">
-                  {sueltos.map((mensaje) => (
-                    <li key={mensaje}>{mensaje}</li>
+                  {sueltos.map((message) => (
+                    <li key={message}>{message}</li>
                   ))}
                 </ul>
               ) : null}
@@ -379,61 +379,61 @@ export function EditorCotizacion({
           {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). Mientras corre
               una transición, también: no se tipea sobre algo que se está enviando, aprobando o rechazando. */}
           <fieldset
-            disabled={!editable || acciones.enTransicion || preparandoOc}
+            disabled={!editable || actions.inTransicion || preparandoOc}
             className="min-w-0 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
           >
             <legend className="sr-only">Contenido de la cotización</legend>
-            <HojaFormulario>
-              <TarjetaCliente
+            <SheetForm>
+              <CardClient
                 estado={estado}
                 contactos={contactos}
-                errores={errores}
+                errors={errors}
                 despachar={despachar}
-                alCambiarContactos={setContactos}
-                alCambiarCatalogos={setCatalogosBase}
+                onChangeContacts={setContacts}
+                onChangeCatalogs={setCatalogsBase}
               />
-              <TarjetaDatos
+              <CardData
                 estado={estado}
-                catalogos={catalogos}
-                pendientes={pendientes}
-                errores={errores}
+                catalogs={catalogs}
+                pendingList={pendingList}
+                errors={errors}
                 despachar={despachar}
               />
-              <TarjetaAsunto estado={estado} errores={errores} despachar={despachar} />
-              <TarjetaItems
+              <CardSubject estado={estado} errors={errors} despachar={despachar} />
+              <CardItems
                 items={estado.items}
                 formato={estado.formato}
                 mostrarTotal={estado.mostrarTotal}
-                errores={erroresItems}
+                errors={errorsItems}
                 despachar={despachar}
-                alCambiarBorradorSeccion={alCambiarBorradorSeccion}
+                onChangeDraftSection={onChangeDraftSection}
               />
-              <TarjetaTextos
+              <CardTexts
                 bloques={estado.bloques}
-                plantilla={catalogos.plantillas.find((plantilla) => plantilla.id === estado.plantillaId) ?? null}
-                errores={erroresBloques}
+                plantilla={catalogs.plantillas.find((template) => template.id === estado.templateId) ?? null}
+                errors={errorsBlocks}
                 despachar={despachar}
               />
-            </HojaFormulario>
+            </SheetForm>
           </fieldset>
-          <ColumnaVistaPrevia vista={vista} linea={lineaVista} />
+          <ColumnViewPreview view={view} line={lineView} />
         </div>
-      </Contenido>
-      <BarraInferior
+      </Content>
+      <BarBottom
         editable={editable}
-        esNueva={estado.id === null}
-        cambios={sinGuardar}
+        isNew={estado.id === null}
+        changes={withoutSave}
         guardando={accion === 'guardar'}
-        ocupado={ocupado}
-        alGuardar={() => void guardar()}
-        vistaPrevia={
+        busy={busy}
+        onSave={() => void save()}
+        viewPreview={
           <>
-            <VistaPreviaLateral vista={vista} linea={lineaVista} />
-            <BotonVistaPreviaCelular
-              modo={vista.modo}
-              ocupado={ocupado}
-              validar={validarParaVer}
-              guardarParaVer={guardarParaVer}
+            <ViewPreviewLateral view={view} line={lineView} />
+            <ButtonViewPreviewCelular
+              modo={view.modo}
+              busy={busy}
+              validate={validateForVer}
+              saveForVer={saveForVer}
             />
           </>
         }

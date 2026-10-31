@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { frasesConVariables } from './frases'
+import { phrasesWithVariables } from './phrases'
 
 const plantillas = [
   {
@@ -12,13 +12,13 @@ const plantillas = [
 
 describe('frasesConVariables', () => {
   it('devuelve las oraciones que usan esas variables, sin viñetas, negritas ni repetidas', () => {
-    expect(frasesConVariables(plantillas, ['capacidad', 'equipo_descripcion'])).toEqual([
+    expect(phrasesWithVariables(plantillas, ['capacidad', 'equipo_descripcion'])).toEqual([
       'Grúa de {{capacidad}} TN en {{ubicacion}}.',
       '{{equipo_descripcion}}',
     ])
   })
 
   it('devuelve una lista vacía si ninguna plantilla las usa', () => {
-    expect(frasesConVariables(plantillas, ['indice_base'])).toEqual([])
+    expect(phrasesWithVariables(plantillas, ['indice_base'])).toEqual([])
   })
 })

@@ -40,11 +40,11 @@ describe('variablesDesconocidas', () => {
 
 describe('resolverVariables', () => {
   it('reemplaza las variables con valor y reporta las faltantes sin tocarlas', () => {
-    const resultado = resolverVariables('Grúa de {{capacidad}} TN en {{ubicacion}}. Pago: {{forma_pago}}', {
+    const result = resolverVariables('Grúa de {{capacidad}} TN en {{ubicacion}}. Pago: {{forma_pago}}', {
       capacidad: '70',
       ubicacion: '   ',
     })
-    expect(resultado).toEqual({
+    expect(result).toEqual({
       texto: 'Grúa de 70 TN en {{ubicacion}}. Pago: {{forma_pago}}',
       faltantes: ['ubicacion', 'forma_pago'],
     })

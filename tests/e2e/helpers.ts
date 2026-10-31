@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test'
-import { E2E_EMAIL, E2E_PASSWORD } from './credenciales'
+import { E2E_EMAIL, E2E_PASSWORD } from './credentials'
 
-export async function iniciarSesion(page: Page) {
+export async function iniciarSession(page: Page) {
   await page.goto('/login')
   await page.getByLabel('Email').fill(E2E_EMAIL)
   await page.getByLabel('Contraseña').fill(E2E_PASSWORD)

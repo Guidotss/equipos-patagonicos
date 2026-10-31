@@ -10,23 +10,23 @@ const status = JSON.parse(
   }),
 );
 
-const primero = (...claves) => claves.map((c) => status[c]).find(Boolean);
+const first = (...keys) => keys.map((c) => status[c]).find(Boolean);
 
 const env = {
-  NEXT_PUBLIC_SUPABASE_URL: primero("API_URL"),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: primero("PUBLISHABLE_KEY", "ANON_KEY"),
-  SUPABASE_SECRET_KEY: primero("SECRET_KEY", "SERVICE_ROLE_KEY"),
-  SUPABASE_DB_URL: primero("DB_URL"),
+  NEXT_PUBLIC_SUPABASE_URL: first("API_URL"),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: first("PUBLISHABLE_KEY", "ANON_KEY"),
+  SUPABASE_SECRET_KEY: first("SECRET_KEY", "SERVICE_ROLE_KEY"),
+  SUPABASE_DB_URL: first("DB_URL"),
 };
 
-for (const [clave, valor] of Object.entries(env)) {
-  if (!valor) throw new Error(`No encontré ${clave} en "supabase status"`);
+for (const [clave, value] of Object.entries(env)) {
+  if (!value) throw new Error(`No encontré ${clave} en "supabase status"`);
 }
 
 writeFileSync(
   ".env.local",
   Object.entries(env)
-    .map(([clave, valor]) => `${clave}=${valor}`)
+    .map(([clave, value]) => `${clave}=${value}`)
     .join("\n") + "\n",
 );
 console.log(".env.local actualizado");

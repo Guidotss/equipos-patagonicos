@@ -1,16 +1,16 @@
 import { renderToBuffer } from '@react-pdf/renderer'
-import type { DocumentoCotizacion } from '@/lib/cotizaciones/documento'
-import { CotizacionJornada } from './cotizacion-jornada'
-import { CotizacionMensual } from './cotizacion-mensual'
-import { registrarFuentes } from './fuentes'
+import type { DocumentQuote } from '@/lib/quotes/document'
+import { QuoteDaily } from './quote-daily'
+import { QuoteMonthly } from './quote-monthly'
+import { registerFonts } from './fonts'
 
-export type OpcionesRender = {
+export type OptionsRender = {
   /** Vista previa: las {{variables}} sin completar salen con fondo amarillo. */
-  resaltarVariables?: boolean
+  highlightVariables?: boolean
 }
 
-export async function renderizarCotizacion(doc: DocumentoCotizacion, opciones: OpcionesRender = {}): Promise<Buffer> {
-  registrarFuentes()
-  const Componente = doc.formato === 'mensual' ? CotizacionMensual : CotizacionJornada
-  return renderToBuffer(<Componente doc={doc} resaltar={opciones.resaltarVariables ?? false} />)
+export async function renderizarQuote(doc: DocumentQuote, options: OptionsRender = {}): Promise<Buffer> {
+  registerFonts()
+  const Componente = doc.formato === 'mensual' ? QuoteMonthly : QuoteDaily
+  return renderToBuffer(<Componente doc={doc} highlight={options.highlightVariables ?? false} />)
 }

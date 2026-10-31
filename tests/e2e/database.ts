@@ -1,12 +1,12 @@
 // tests/e2e/base-datos.ts
 // Acceso exclusivo al proyecto descartable preparado por el runner.
 import pg from 'pg'
-import { validarEntornoPruebas } from '../../scripts/pruebas-entorno.mjs'
+import { validateEnvTests } from '../../scripts/test-env.mjs'
 
-validarEntornoPruebas()
+validateEnvTests()
 
-export async function conBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
-  validarEntornoPruebas()
+export async function withBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
+  validateEnvTests()
   const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
   await db.connect()
   try {
@@ -17,7 +17,7 @@ export async function conBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> 
 }
 
 /** Todos los datos que usa la plantilla por jornada de la semilla, completos. */
-export const DATOS_COMPLETOS = {
+export const DATA_COMPLETOS = {
   ubicacion: 'Loma Campana, Añelo',
   horario: 'lunes a sábado de 8 a 17 hs',
   duracion_estimada: '10 jornadas',
@@ -31,13 +31,13 @@ export const DATOS_COMPLETOS = {
  * la ruta del PDF lo dibuja en el momento). Para probar lo que falta (Task 12): `datos` reemplaza los datos y
  * `precioMovilizacion: null` deja el segundo ítem sin precio.
  */
-export async function crearCotizacionCompleta(
+export async function crearQuoteComplete(
   db: pg.Client,
   {
     estado = 'borrador',
-    datos = DATOS_COMPLETOS,
-    precioMovilizacion = 2800000,
-  }: { estado?: 'borrador' | 'aprobada'; datos?: Record<string, string>; precioMovilizacion?: number | null } = {},
+    datos = DATA_COMPLETOS,
+    priceMovilizacion = 2800000,
+  }: { estado?: 'borrador' | 'aprobada'; datos?: Record<string, string>; priceMovilizacion?: number | null } = {},
 ): Promise<{ id: string; numero: number }> {
   const { rows } = await db.query<{ id: string; numero: string }>(
     `insert into public.cotizaciones
@@ -54,7 +54,7 @@ export async function crearCotizacionCompleta(
     `insert into public.cotizacion_items (cotizacion_id, orden, seccion, descripcion, precio_unitario, unidad) values
        ($1, 1, 'Precios Jornada', 'Alquiler jornada de Grúa Telescópica de {{capacidad}} TN (lunes a sábado)', 1950000, 'JORNADA'),
        ($1, 2, 'Precios Jornada', 'Movilización y desmovilización de Grúa Telescópica', $2::numeric, 'VIAJE')`,
-    [id, precioMovilizacion],
+    [id, priceMovilizacion],
   )
   if (estado === 'aprobada') {
     await db.query(
@@ -67,6 +67,6 @@ export async function crearCotizacionCompleta(
 }
 
 /** Borra las cotizaciones (con sus ítems y envíos). Los PDF que hayan quedado en Storage no se tocan. */
-export async function borrarCotizaciones(db: pg.Client, ids: string[]) {
+export async function removeQuotes(db: pg.Client, ids: string[]) {
   await db.query('delete from public.cotizaciones where id = any($1::uuid[])', [ids])
 }

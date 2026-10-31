@@ -1,44 +1,44 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { BarraMigas } from '@/components/app-shell/encabezado'
-import { ContactoForm } from '@/components/clientes/contacto-form'
+import { BarCrumbs } from '@/components/app-shell/header'
+import { ContactForm } from '@/components/clients/contact-form'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
-import { actualizarContacto, borrarContacto } from '../../../actions'
+import { isUuid } from '@/lib/validation'
+import { actualizarContact, removeContact } from '../../../actions'
 
 export const metadata: Metadata = { title: 'Contacto' }
 
-export default async function ContactoPage({ params }: { params: Promise<{ id: string; contactoId: string }> }) {
-  const { id, contactoId } = await params
-  if (!esUuid(id) || !esUuid(contactoId)) notFound()
+export default async function ContactPage({ params }: { params: Promise<{ id: string; contactoId: string }> }) {
+  const { id, contactoId: contactId } = await params
+  if (!isUuid(id) || !isUuid(contactId)) notFound()
 
   const supabase = await createClient()
   const { data: contacto, error } = await supabase
     .from('contactos')
     .select('nombre, cargo, email, telefono, clientes(razon_social)')
-    .eq('id', contactoId)
+    .eq('id', contactId)
     .eq('cliente_id', id)
     .maybeSingle()
   if (error) throw error
   if (!contacto) notFound()
 
-  const { clientes: cliente, ...inicial } = contacto
+  const { clientes: cliente, ...initial } = contacto
 
   return (
     <>
-      <BarraMigas
-        migas={[
+      <BarCrumbs
+        crumbs={[
           { texto: 'Clientes', href: '/clientes' },
           { texto: cliente.razon_social, href: `/clientes/${id}` },
           { texto: contacto.nombre },
         ]}
       />
-      <ContactoForm
-        accion={actualizarContacto.bind(null, id, contactoId)}
-        borrar={borrarContacto.bind(null, id, contactoId)}
-        clienteId={id}
+      <ContactForm
+        accion={actualizarContact.bind(null, id, contactId)}
+        borrar={removeContact.bind(null, id, contactId)}
+        clientId={id}
         razonSocial={cliente.razon_social}
-        inicial={inicial}
+        initial={initial}
       />
     </>
   )

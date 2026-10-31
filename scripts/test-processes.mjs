@@ -1,16 +1,16 @@
 import { spawn } from "node:child_process";
 import { appendFile, readFile } from "node:fs/promises";
 import net from "node:net";
-import { PUERTOS_PRUEBAS } from "./pruebas-entorno.mjs";
+import { PORTS_TESTS } from './test-env.mjs';
 
-export async function comprobarPuertos(suite) {
-  const puertos = [
-    PUERTOS_PRUEBAS.api,
-    PUERTOS_PRUEBAS.db,
-    PUERTOS_PRUEBAS.shadow,
+export async function checkPorts(suite) {
+  const ports = [
+    PORTS_TESTS.api,
+    PORTS_TESTS.db,
+    PORTS_TESTS.shadow,
   ];
-  if (suite === "e2e") puertos.push(PUERTOS_PRUEBAS.app);
-  for (const port of puertos) {
+  if (suite === "e2e") ports.push(PORTS_TESTS.app);
+  for (const port of ports) {
     await new Promise((resolve, reject) => {
       const server = net.createServer();
       server.once("error", () =>
@@ -27,7 +27,7 @@ export async function comprobarPuertos(suite) {
   }
 }
 
-function señalGrupo(child, signal) {
+function signalGroup(child, signal) {
   if (!child.pid) return;
   try {
     if (process.platform === "win32") child.kill(signal);
@@ -38,7 +38,7 @@ function señalGrupo(child, signal) {
 }
 
 /** Captura la salida sensible; solo las suites tienen stdio heredado. Cada hijo tiene su propio grupo. */
-export function ejecutarProceso(
+export function runProcess(
   command,
   args,
   { cwd, env, signal, visible = false, logPath } = {},
@@ -52,20 +52,20 @@ export function ejecutarProceso(
       stdio: visible ? "inherit" : ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
-    let salida = "";
+    let output = "";
     let timer;
     const abortar = () => {
-      señalGrupo(child, "SIGTERM");
-      timer = setTimeout(() => señalGrupo(child, "SIGKILL"), 5000);
+      signalGroup(child, "SIGTERM");
+      timer = setTimeout(() => signalGroup(child, "SIGKILL"), 5000);
       timer.unref();
     };
     signal?.addEventListener("abort", abortar, { once: true });
     child.stdout?.on("data", (data) => {
       stdout += data;
-      salida += data;
+      output += data;
     });
     child.stderr?.on("data", (data) => {
-      salida += data;
+      output += data;
     });
     child.once("error", reject);
     child.once("close", async (code, killedBy) => {
@@ -73,8 +73,8 @@ export function ejecutarProceso(
       clearTimeout(timer);
       // Playwright suele terminar su webServer; este grupo también cubre salidas fallidas y señales.
       try {
-        señalGrupo(child, "SIGKILL");
-        if (logPath) await appendFile(logPath, salida, { mode: 0o600 });
+        signalGroup(child, "SIGKILL");
+        if (logPath) await appendFile(logPath, output, { mode: 0o600 });
         if (code !== 0 && !visible)
           return reject(
             new Error(
@@ -90,7 +90,7 @@ export function ejecutarProceso(
 }
 
 /** El webServer de Playwright puede tener otro grupo; su launcher registra el grupo propio de Next. */
-export async function detenerAplicacion(archivo, runId, appDir) {
+export async function stopAplicacion(archivo, runId, appDir) {
   let state;
   try {
     state = JSON.parse(await readFile(archivo, "utf8"));
@@ -106,7 +106,7 @@ export async function detenerAplicacion(archivo, runId, appDir) {
   ) {
     throw new Error("El proceso de Next no pertenece a esta ejecución");
   }
-  const enviar = (signal) => {
+  const send = (signal) => {
     try {
       process.kill(-state.pid, signal);
       return true;
@@ -115,7 +115,7 @@ export async function detenerAplicacion(archivo, runId, appDir) {
       throw error;
     }
   };
-  if (!enviar("SIGTERM")) return;
+  if (!send("SIGTERM")) return;
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  enviar("SIGKILL");
+  send("SIGKILL");
 }

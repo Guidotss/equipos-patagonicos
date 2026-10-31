@@ -2,25 +2,25 @@
 
 import type { LucideIcon } from 'lucide-react'
 import { useCallback, useState } from 'react'
-import { Campo } from '@/components/formulario/campo'
-import { SeccionFormulario, useHojaFormulario } from '@/components/formulario/estructura-formulario'
+import { Field } from '@/components/form/field'
+import { SectionForm, useSheetForm } from '@/components/form/structure-form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { valorCampo, type EstadoFormulario } from '@/lib/formularios'
-import { esVariable, partirVariables, VARIABLES } from '@/lib/plantillas/variables'
+import { valueField, type StatusForm } from '@/lib/forms'
+import { isVariable, partirVariables, VARIABLES } from '@/lib/templates/variables'
 import { cn } from '@/lib/utils'
 
 /** Piezas de las pantallas de alta/edición (docs/diseno/referencias/09-empresa.png y 10-edicion.png). */
 
-export type DefinicionCampo = {
+export type DefinitionField = {
   campo: string
-  etiqueta: string
+  label: string
   placeholder?: string
-  ayuda?: string
+  help?: string
   /** Ocupa las dos columnas. */
   ancho?: boolean
   /** Con filas es un textarea. */
-  filas?: number
+  rows?: number
   props?: React.ComponentProps<typeof Input>
 }
 
@@ -29,101 +29,101 @@ export type DefinicionCampo = {
  * abajo ("Así sale…"). `compacta` (el editor de cotización, referencia 03) achica el relleno, la separación y el título
  * para que entren más tarjetas en la primera pantalla.
  */
-export function Tarjeta({
-  icono: Icono,
-  titulo,
+export function Card({
+  icon: Icon,
+  titulo: title,
   descripcion,
-  acciones,
-  franja,
+  actions,
+  band,
   compacta = false,
   children,
 }: {
-  icono?: LucideIcon | ((props: { className?: string }) => React.ReactNode)
+  icon?: LucideIcon | ((props: { className?: string }) => React.ReactNode)
   titulo: string
   descripcion?: string
   /** Botones chicos a la derecha del título (por ejemplo "Restaurar desde la plantilla"). */
-  acciones?: React.ReactNode
-  franja?: React.ReactNode
+  actions?: React.ReactNode
+  band?: React.ReactNode
   /** Cuerpo con p-4 y space-y-3, y título text-base. */
   compacta?: boolean
   children: React.ReactNode
 }) {
-  const enHoja = useHojaFormulario()
-  if (enHoja) {
+  const inSheet = useSheetForm()
+  if (inSheet) {
     return (
-      <SeccionFormulario titulo={titulo} descripcion={descripcion} acciones={acciones} franja={franja} apilada={compacta}>
+      <SectionForm titulo={title} descripcion={descripcion} actions={actions} band={band} stacked={compacta}>
         {children}
-      </SeccionFormulario>
+      </SectionForm>
     )
   }
   return (
     <section className="@container overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       <div className={compacta ? 'space-y-3 p-4' : 'space-y-4 p-5 sm:p-6'}>
         <div className={cn('flex gap-3', descripcion ? 'items-start' : 'items-center')}>
-          {Icono ? (
+          {Icon ? (
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-primary">
-              <Icono className="size-5" aria-hidden />
+              <Icon className="size-5" aria-hidden />
             </span>
           ) : null}
           <div className="min-w-0 flex-1 space-y-0.5">
-            <h2 className={cn('leading-tight font-medium', compacta ? 'text-base' : 'text-lg')}>{titulo}</h2>
+            <h2 className={cn('leading-tight font-medium', compacta ? 'text-base' : 'text-lg')}>{title}</h2>
             {descripcion ? <p className="text-sm text-muted-foreground">{descripcion}</p> : null}
           </div>
-          {acciones ? <div className="-my-1 flex shrink-0 items-center gap-1">{acciones}</div> : null}
+          {actions ? <div className="-my-1 flex shrink-0 items-center gap-1">{actions}</div> : null}
         </div>
         {children}
       </div>
-      {franja ? <div className="space-y-1 border-t bg-muted/60 px-5 py-4 text-sm sm:px-6">{franja}</div> : null}
+      {band ? <div className="space-y-1 border-t bg-muted/60 px-5 py-4 text-sm sm:px-6">{band}</div> : null}
     </section>
   )
 }
 
 /** Campos en dos columnas según el ancho de la tarjeta (container query), no de la ventana. */
-export function CamposGrilla({
+export function FieldsGrid({
   estado,
-  inicial,
-  campos,
-  prefijo,
+  initial,
+  fields,
+  prefix,
 }: {
-  estado: EstadoFormulario
-  inicial?: Partial<Record<string, string | null>>
-  campos: DefinicionCampo[]
+  estado: StatusForm
+  initial?: Partial<Record<string, string | null>>
+  fields: DefinitionField[]
   /** Antepone "<prefijo>-" al id de cada campo (el name no cambia). */
-  prefijo?: string
+  prefix?: string
 }) {
   return (
     <div className="grid gap-4 md:gap-y-3 @md:grid-cols-2">
-      {campos.map(({ campo, etiqueta, placeholder, ayuda, ancho, filas, props }) => {
-        const id = prefijo ? `${prefijo}-${campo}` : campo
+      {fields.map(({ campo: field, label, placeholder, help, ancho, rows, props }) => {
+        const id = prefix ? `${prefix}-${field}` : field
         return (
-          <Campo
-            key={campo}
+          <Field
+            key={field}
             id={id}
-            etiqueta={etiqueta}
-            ayuda={ayuda}
-            error={estado.errores[campo]}
-            className={ancho || filas ? '@md:col-span-2' : undefined}
+            label={label}
+            help={help}
+            error={estado.errors[field]}
+            className={ancho || rows ? '@md:col-span-2' : undefined}
           >
-            {filas ? (
+            {rows ? (
               <Textarea
                 id={id}
-                name={campo}
-                rows={filas}
+                name={field}
+                rows={rows}
                 placeholder={placeholder}
-                defaultValue={valorCampo(estado, inicial, campo)}
-                aria-invalid={Boolean(estado.errores[campo])}
+                defaultValue={valueField(estado, initial, field)}
+                aria-invalid={Boolean(estado.errors[field])}
               />
             ) : (
               <Input
                 id={id}
-                name={campo}
+                name={field}
                 placeholder={placeholder}
-                defaultValue={valorCampo(estado, inicial, campo)}
-                aria-invalid={Boolean(estado.errores[campo])}
+                defaultValue={valueField(estado, initial, field)}
+                aria-invalid={Boolean(estado.errors[field])}
                 {...props}
               />
             )}
-          </Campo>
+          </Field>
         )
       })}
     </div>
@@ -131,16 +131,16 @@ export function CamposGrilla({
 }
 
 /** Dato de esta pantalla dentro de una franja "Así sale…". */
-export function Resaltado({ children }: { children: React.ReactNode }) {
+export function Highlight({ children }: { children: React.ReactNode }) {
   return <mark className="rounded-sm bg-primary/10 px-0.5 text-inherit">{children}</mark>
 }
 
-export function FranjaVista({ icono: Icono, titulo, children }: { icono: LucideIcon; titulo: string; children: React.ReactNode }) {
+export function BandView({ icon: Icon, titulo: title, children }: { icon: LucideIcon; titulo: string; children: React.ReactNode }) {
   return (
     <>
       <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground">
-        <Icono className="size-3.5" aria-hidden />
-        {titulo}
+        <Icon className="size-3.5" aria-hidden />
+        {title}
       </p>
       {children}
     </>
@@ -151,15 +151,15 @@ export function FranjaVista({ icono: Icono, titulo, children }: { icono: LucideI
  * Oraciones de plantillas (frasesConVariables) completadas con lo escrito: las variables de `valores` van resaltadas
  * ("—" si están vacías) y las que dependen de cada cotización quedan como "[Horario]".
  */
-export function FrasesResueltas({ frases, valores }: { frases: string[]; valores: Partial<Record<string, string>> }) {
-  return frases.map((frase) => (
-    <p key={frase} className="[overflow-wrap:anywhere]">
-      {partirVariables(frase).map((parte, indice) => {
-        if (indice % 2 === 0) return parte
-        if (parte in valores) return <Resaltado key={indice}>{valores[parte] || '—'}</Resaltado>
+export function PhrasesResolved({ phrases, values }: { phrases: string[]; values: Partial<Record<string, string>> }) {
+  return phrases.map((phrase) => (
+    <p key={phrase} className="[overflow-wrap:anywhere]">
+      {partirVariables(phrase).map((parte, index) => {
+        if (index % 2 === 0) return parte
+        if (parte in values) return <Highlight key={index}>{values[parte] || '—'}</Highlight>
         return (
-          <span key={indice} className="text-muted-foreground">
-            [{esVariable(parte) ? VARIABLES[parte] : parte}]
+          <span key={index} className="text-muted-foreground">
+            [{isVariable(parte) ? VARIABLES[parte] : parte}]
           </span>
         )
       })}
@@ -172,23 +172,23 @@ export function FrasesResueltas({ frases, valores }: { frases: string[]; valores
  * Va en el contenedor de los campos: <div ref={sincronizar} onInput={alEscribir}>. sincronizar lee el form al montar
  * (el navegador puede restaurar lo escrito al volver con "Atrás" sin disparar input).
  */
-export function useVistaEnVivo<C extends string>(campos: readonly C[], inicial: Partial<Record<string, string | null>>) {
-  const [vista, setVista] = useState(
-    () => Object.fromEntries(campos.map((campo) => [campo, (inicial[campo] ?? '').trim()])) as Record<C, string>,
+export function useViewInLive<C extends string>(fields: readonly C[], initial: Partial<Record<string, string | null>>) {
+  const [view, setView] = useState(
+    () => Object.fromEntries(fields.map((field) => [field, (initial[field] ?? '').trim()])) as Record<C, string>,
   )
 
-  function alEscribir(evento: React.FormEvent<HTMLElement>) {
+  function onEscribir(evento: React.FormEvent<HTMLElement>) {
     const { name, value } = evento.target as HTMLInputElement
-    if ((campos as readonly string[]).includes(name)) setVista((previa) => ({ ...previa, [name]: value.trim() }))
+    if ((fields as readonly string[]).includes(name)) setView((preview) => ({ ...preview, [name]: value.trim() }))
   }
 
   const sincronizar = useCallback(
-    (contenedor: HTMLElement | null) => {
-      const form = contenedor?.closest('form')
+    (container: HTMLElement | null) => {
+      const form = container?.closest('form')
       if (!form) return
-      setVista(
+      setView(
         Object.fromEntries(
-          campos.map((campo) => [campo, (form.elements.namedItem(campo) as HTMLInputElement | null)?.value.trim() ?? '']),
+          fields.map((field) => [field, (form.elements.namedItem(field) as HTMLInputElement | null)?.value.trim() ?? '']),
         ) as Record<C, string>,
       )
     },
@@ -197,5 +197,5 @@ export function useVistaEnVivo<C extends string>(campos: readonly C[], inicial: 
     [],
   )
 
-  return { vista, alEscribir, sincronizar }
+  return { view, onEscribir, sincronizar }
 }

@@ -1,27 +1,27 @@
 // src/lib/plantillas/edicion.test.ts
 import { describe, expect, it } from 'vitest'
-import { parsearFormato } from './formato'
+import { parsearFormat } from './format'
 import {
   alternarNegrita,
   alternarVineta,
-  bloqueDePlantilla,
+  blockOfTemplate,
   extenderAVariables,
   limpiarPegado,
-  mismosBloques,
-  nivelDeLinea,
+  mismosBlocks,
+  nivelOfLine,
   pegar,
   quitarSangria,
   tramoCambiado,
-} from './edicion'
+} from './editing'
 
 describe('nivelDeLinea', () => {
   it('usa las mismas marcas que parsearFormato', () => {
-    expect(nivelDeLinea('texto')).toBe(0)
-    expect(nivelDeLinea('- texto')).toBe(1)
-    expect(nivelDeLinea('• texto')).toBe(1)
-    expect(nivelDeLinea('  - texto')).toBe(2)
-    expect(nivelDeLinea('\t- texto')).toBe(0)
-    expect(nivelDeLinea('-30 días')).toBe(0)
+    expect(nivelOfLine('texto')).toBe(0)
+    expect(nivelOfLine('- texto')).toBe(1)
+    expect(nivelOfLine('• texto')).toBe(1)
+    expect(nivelOfLine('  - texto')).toBe(2)
+    expect(nivelOfLine('\t- texto')).toBe(0)
+    expect(nivelOfLine('-30 días')).toBe(0)
   })
 })
 
@@ -51,7 +51,7 @@ describe('alternarNegrita', () => {
   it('línea por línea, dejando afuera la marca de viñeta (el formato no cruza saltos)', () => {
     const negrita = alternarNegrita('- uno\n- dos', { inicio: 0, fin: 11 })
     expect(negrita).toEqual({ texto: '- **uno**\n- **dos**', seleccion: { inicio: 0, fin: 19 } })
-    expect(parsearFormato(negrita.texto).map((nodo) => nodo.segmentos)).toEqual([
+    expect(parsearFormat(negrita.texto).map((nodo) => nodo.segmentos)).toEqual([
       [{ texto: 'uno', negrita: true }],
       [{ texto: 'dos', negrita: true }],
     ])
@@ -63,22 +63,22 @@ describe('alternarNegrita', () => {
   })
 
   it('una selección que empieza dentro de una negrita y termina afuera la extiende, sin ** sueltos', () => {
-    const edicion = alternarNegrita('**hola** mundo', { inicio: 2, fin: 14 })
-    expect(edicion).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
-    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
+    const editing = alternarNegrita('**hola** mundo', { inicio: 2, fin: 14 })
+    expect(editing).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
+    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
   })
 
   it('una selección que empieza afuera y termina dentro de una negrita la extiende, sin ** sueltos', () => {
-    const edicion = alternarNegrita('hola **mundo**', { inicio: 0, fin: 9 })
-    expect(edicion).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
-    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
+    const editing = alternarNegrita('hola **mundo**', { inicio: 0, fin: 9 })
+    expect(editing).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
+    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
   })
 
   it('extender la negrita de la forma de pago de la plantilla por jornada hasta el final', () => {
     const texto = '**Forma de pago:** {{forma_pago}}.'
-    const edicion = alternarNegrita(texto, { inicio: texto.indexOf('pago:'), fin: texto.length })
-    expect(edicion.texto).toBe('**Forma de pago: {{forma_pago}}.**')
-    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([
+    const editing = alternarNegrita(texto, { inicio: texto.indexOf('pago:'), fin: texto.length })
+    expect(editing.texto).toBe('**Forma de pago: {{forma_pago}}.**')
+    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([
       { texto: 'Forma de pago: {{forma_pago}}.', negrita: true },
     ])
   })
@@ -92,8 +92,8 @@ describe('alternarNegrita', () => {
 
   it('entre dos negritas, pone en negrita lo elegido sin desparejar los ** de al lado', () => {
     // El "**" del final ya era texto suelto y sigue siéndolo.
-    const edicion = alternarNegrita('**x**y**', { inicio: 5, fin: 6 })
-    expect(parsearFormato(edicion.texto)[0].segmentos).toEqual([
+    const editing = alternarNegrita('**x**y**', { inicio: 5, fin: 6 })
+    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([
       { texto: 'x', negrita: true },
       { texto: 'y', negrita: true },
       { texto: '**', negrita: false },
@@ -110,9 +110,9 @@ describe('alternarNegrita', () => {
   })
 
   it('varias líneas con los dos bordes dentro de negritas: extiende las dos, sin ** sueltos', () => {
-    const edicion = alternarNegrita('**uno** x\ny **dos**', { inicio: 3, fin: 16 })
-    expect(edicion).toEqual({ texto: '**uno x**\n**y dos**', seleccion: { inicio: 0, fin: 19 } })
-    expect(parsearFormato(edicion.texto).map((nodo) => nodo.segmentos)).toEqual([
+    const editing = alternarNegrita('**uno** x\ny **dos**', { inicio: 3, fin: 16 })
+    expect(editing).toEqual({ texto: '**uno x**\n**y dos**', seleccion: { inicio: 0, fin: 19 } })
+    expect(parsearFormat(editing.texto).map((nodo) => nodo.segmentos)).toEqual([
       [{ texto: 'uno x', negrita: true }],
       [{ texto: 'y dos', negrita: true }],
     ])
@@ -255,37 +255,37 @@ describe('tramoCambiado', () => {
 })
 
 describe('bloques de la plantilla', () => {
-  const plantilla = [
-    { titulo: 'Equipo ofrecido', contenido: '{{equipo_descripcion}}', oculto: false },
-    { titulo: 'Alcance', contenido: 'Horario de {{horario}}.', oculto: false },
-    { titulo: '', contenido: '**Forma de pago:** {{forma_pago}}.', oculto: false },
+  const template = [
+    { titulo: 'Equipo ofrecido', contenido: '{{equipo_descripcion}}', hidden: false },
+    { titulo: 'Alcance', contenido: 'Horario de {{horario}}.', hidden: false },
+    { titulo: '', contenido: '**Forma de pago:** {{forma_pago}}.', hidden: false },
   ]
 
   it('bloqueDePlantilla busca por título (también el bloque sin título)', () => {
     const bloques = [{ titulo: 'Otro' }, { titulo: ' Alcance ' }, { titulo: '' }]
-    expect(bloqueDePlantilla(plantilla, bloques, 1)).toEqual(plantilla[1])
-    expect(bloqueDePlantilla(plantilla, bloques, 2)).toEqual(plantilla[2])
-    expect(bloqueDePlantilla(plantilla, bloques, 0)).toBeNull()
+    expect(blockOfTemplate(template, bloques, 1)).toEqual(template[1])
+    expect(blockOfTemplate(template, bloques, 2)).toEqual(template[2])
+    expect(blockOfTemplate(template, bloques, 0)).toBeNull()
   })
 
   it('bloqueDePlantilla empareja los títulos repetidos por orden de aparición', () => {
-    const conRepetidos = [
-      { titulo: '', contenido: 'Primero sin título', oculto: false },
-      { titulo: 'Alcance', contenido: 'Alcance', oculto: false },
-      { titulo: '', contenido: 'Segundo sin título', oculto: false },
+    const withRepetidos = [
+      { titulo: '', contenido: 'Primero sin título', hidden: false },
+      { titulo: 'Alcance', contenido: 'Alcance', hidden: false },
+      { titulo: '', contenido: 'Segundo sin título', hidden: false },
     ]
     const bloques = [{ titulo: '' }, { titulo: '' }, { titulo: 'Alcance' }, { titulo: '' }]
-    expect(bloqueDePlantilla(conRepetidos, bloques, 0)).toEqual(conRepetidos[0])
-    expect(bloqueDePlantilla(conRepetidos, bloques, 1)).toEqual(conRepetidos[2])
-    expect(bloqueDePlantilla(conRepetidos, bloques, 2)).toEqual(conRepetidos[1])
+    expect(blockOfTemplate(withRepetidos, bloques, 0)).toEqual(withRepetidos[0])
+    expect(blockOfTemplate(withRepetidos, bloques, 1)).toEqual(withRepetidos[2])
+    expect(blockOfTemplate(withRepetidos, bloques, 2)).toEqual(withRepetidos[1])
     // La plantilla tiene dos sin título: el tercero no tiene con qué restaurarse.
-    expect(bloqueDePlantilla(conRepetidos, bloques, 3)).toBeNull()
+    expect(blockOfTemplate(withRepetidos, bloques, 3)).toBeNull()
   })
 
   it('mismosBloques: no hay nada que restaurar si son los mismos, en orden y visibles', () => {
-    expect(mismosBloques(plantilla, plantilla)).toBe(true)
-    expect(mismosBloques([plantilla[1], plantilla[0], plantilla[2]], plantilla)).toBe(false)
-    expect(mismosBloques([{ ...plantilla[0], oculto: true }, plantilla[1], plantilla[2]], plantilla)).toBe(false)
-    expect(mismosBloques(plantilla.slice(1), plantilla)).toBe(false)
+    expect(mismosBlocks(template, template)).toBe(true)
+    expect(mismosBlocks([template[1], template[0], template[2]], template)).toBe(false)
+    expect(mismosBlocks([{ ...template[0], hidden: true }, template[1], template[2]], template)).toBe(false)
+    expect(mismosBlocks(template.slice(1), template)).toBe(false)
   })
 })

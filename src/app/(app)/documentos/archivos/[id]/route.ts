@@ -1,12 +1,12 @@
-import { requireUsuario } from '@/lib/auth'
+import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { urlDescarga } from '@/lib/documentos/servicio'
-import { esUuid } from '@/lib/validacion'
+import { urlDownload } from '@/lib/documents/service'
+import { isUuid } from '@/lib/validation'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireUsuario()
+  await requireUser()
   const { id } = await params
-  if (!esUuid(id)) return new Response('Archivo no encontrado', { status: 404 })
+  if (!isUuid(id)) return new Response('Archivo no encontrado', { status: 404 })
   const supabase = await createClient()
   const { data: archivo, error } = await supabase
     .from('documento_archivos')
@@ -15,5 +15,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .maybeSingle()
   if (error) throw error
   if (!archivo) return new Response('Archivo no encontrado', { status: 404 })
-  return Response.redirect(await urlDescarga(supabase, archivo.path, archivo.nombre_original), 303)
+  return Response.redirect(await urlDownload(supabase, archivo.path, archivo.nombre_original), 303)
 }

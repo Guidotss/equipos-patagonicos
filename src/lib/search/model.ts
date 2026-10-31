@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const GRUPOS_BUSQUEDA = {
+export const GROUPS_SEARCH = {
   clientes: 'Clientes',
   cotizaciones: 'Cotizaciones',
   orden_compra: 'Órdenes de compra',
@@ -9,17 +9,17 @@ export const GRUPOS_BUSQUEDA = {
   orden_pago: 'Órdenes de pago',
 } as const
 
-export type GrupoBusqueda = keyof typeof GRUPOS_BUSQUEDA
+export type GroupSearch = keyof typeof GROUPS_SEARCH
 
-export const esquemaBusqueda = z.string().max(200, 'La búsqueda admite hasta 200 caracteres.').trim()
+export const schemaSearch = z.string().max(200, 'La búsqueda admite hasta 200 caracteres.').trim()
 
-export function esGrupoBusqueda(valor: unknown): valor is GrupoBusqueda {
-  return typeof valor === 'string' && Object.hasOwn(GRUPOS_BUSQUEDA, valor)
+export function isGroupSearch(value: unknown): value is GroupSearch {
+  return typeof value === 'string' && Object.hasOwn(GROUPS_SEARCH, value)
 }
 
-export function hrefBusqueda(q: string, grupo?: GrupoBusqueda, pagina = 1): string {
-  const parametros = new URLSearchParams({ q })
-  if (grupo) parametros.set('grupo', grupo)
-  if (pagina > 1) parametros.set('pagina', String(pagina))
-  return `/buscar?${parametros}`
+export function hrefSearch(q: string, grupo?: GroupSearch, pagina = 1): string {
+  const params = new URLSearchParams({ q })
+  if (grupo) params.set('grupo', grupo)
+  if (pagina > 1) params.set('pagina', String(pagina))
+  return `/buscar?${params}`
 }

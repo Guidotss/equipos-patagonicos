@@ -2,53 +2,53 @@ import { Plus, Search, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { BarraMigas, Contenido, EncabezadoPagina } from '@/components/app-shell/encabezado'
-import { TablaClientes } from '@/components/clientes/tabla-clientes'
-import { MarcoListado } from '@/components/listados/marco-listado'
-import { PaginacionListado } from '@/components/listados/paginacion-listado'
+import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
+import { TableClients } from '@/components/clients/table-clients'
+import { FrameListing } from '@/components/listings/frame-listing'
+import { PaginationListing } from '@/components/listings/pagination-listing'
 import { Button } from '@/components/ui/button'
-import { Conteo } from '@/components/ui/conteo'
+import { Count } from '@/components/ui/count'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Clientes' }
 
-const TAMANO_PAGINA = 25
-const LIMITE_CLIENTES = 200
+const SIZE_PAGE = 25
+const LIMITE_CLIENTS = 200
 
-function hrefClientes(q: string, pagina = 1) {
-  const parametros = new URLSearchParams()
-  if (q) parametros.set('q', q)
-  if (pagina > 1) parametros.set('pagina', String(pagina))
-  return `/clientes${parametros.size ? `?${parametros.toString()}` : ''}`
+function hrefClients(q: string, pagina = 1) {
+  const params = new URLSearchParams()
+  if (q) params.set('q', q)
+  if (pagina > 1) params.set('pagina', String(pagina))
+  return `/clientes${params.size ? `?${params.toString()}` : ''}`
 }
 
-export default async function ClientesPage({
+export default async function ClientsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const parametros = await searchParams
-  const q = (Array.isArray(parametros.q) ? parametros.q[0] : parametros.q) ?? ''
-  const numeroPagina = Array.isArray(parametros.pagina) ? parametros.pagina[0] : parametros.pagina
-  const pagina = numeroPagina && /^[1-9]\d{0,4}$/.test(numeroPagina) ? Number(numeroPagina) : 1
+  const params = await searchParams
+  const q = (Array.isArray(params.q) ? params.q[0] : params.q) ?? ''
+  const numberPage = Array.isArray(params.pagina) ? params.pagina[0] : params.pagina
+  const pagina = numberPage && /^[1-9]\d{0,4}$/.test(numberPage) ? Number(numberPage) : 1
   const supabase = await createClient()
-  const { data: clientes, error } = await supabase.rpc('buscar_clientes', { texto: q, limite: LIMITE_CLIENTES })
+  const { data: clientes, error } = await supabase.rpc('buscar_clientes', { texto: q, limite: LIMITE_CLIENTS })
   if (error) throw error
-  const paginas = Math.max(1, Math.ceil(clientes.length / TAMANO_PAGINA))
-  if (pagina > paginas) redirect(hrefClientes(q, paginas))
-  const inicio = (pagina - 1) * TAMANO_PAGINA
-  const clientesPagina = clientes.slice(inicio, inicio + TAMANO_PAGINA)
+  const pages = Math.max(1, Math.ceil(clientes.length / SIZE_PAGE))
+  if (pagina > pages) redirect(hrefClients(q, pages))
+  const home = (pagina - 1) * SIZE_PAGE
+  const clientsPage = clientes.slice(home, home + SIZE_PAGE)
 
   return (
     <>
-      <BarraMigas migas={[{ texto: 'Clientes' }]} />
-      <Contenido>
-        <EncabezadoPagina
-          compacto
+      <BarCrumbs crumbs={[{ texto: 'Clientes' }]} />
+      <Content>
+        <HeaderPage
+          compact
           titulo="Clientes"
-          extra={<Conteo>{clientes.length}</Conteo>}
-          acciones={
+          extra={<Count>{clientes.length}</Count>}
+          actions={
             <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
               <Link href="/clientes/nuevo">
                 <Plus aria-hidden />
@@ -58,8 +58,8 @@ export default async function ClientesPage({
           }
         />
 
-        <MarcoListado
-          herramientas={
+        <FrameListing
+          tools={
             <form action="/clientes" method="get" role="search" className="flex flex-wrap items-center gap-3">
               <div className="relative min-w-0 flex-1 basis-64 @min-[44rem]/listado:max-w-lg">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -82,16 +82,16 @@ export default async function ClientesPage({
           }
           pie={
             <>
-              {clientes.length === LIMITE_CLIENTES ? (
+              {clientes.length === LIMITE_CLIENTS ? (
                 <p className="border-t px-4 py-3 text-sm text-muted-foreground">
                   Se muestran hasta 200 coincidencias. Acotá la búsqueda para encontrar un cliente.
                 </p>
               ) : null}
-              <PaginacionListado
+              <PaginationListing
                 total={clientes.length}
                 pagina={pagina}
-                tamano={TAMANO_PAGINA}
-                href={(numero) => hrefClientes(q, numero)}
+                tamano={SIZE_PAGE}
+                href={(numero) => hrefClients(q, numero)}
               />
             </>
           }
@@ -107,10 +107,10 @@ export default async function ClientesPage({
               </Button>
             </div>
           ) : (
-            <TablaClientes clientes={clientesPagina} />
+            <TableClients clientes={clientsPage} />
           )}
-        </MarcoListado>
-      </Contenido>
+        </FrameListing>
+      </Content>
     </>
   )
 }

@@ -2,22 +2,22 @@ import { cloneElement, isValidElement } from 'react'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
-export function Campo({
+export function Field({
   id,
-  etiqueta,
+  label,
   error,
-  ayuda,
+  help,
   className,
   children,
 }: {
   id: string
-  etiqueta: string
+  label: string
   error?: string
-  ayuda?: string
+  help?: string
   className?: string
   children: React.ReactNode
 }) {
-  const descripcion = error ? `${id}-error` : ayuda ? `${id}-ayuda` : undefined
+  const descripcion = error ? `${id}-error` : help ? `${id}-ayuda` : undefined
   const control = isValidElement<{ 'aria-describedby'?: string; 'aria-invalid'?: boolean }>(children)
     ? cloneElement(children, {
         'aria-describedby': [...new Set([children.props['aria-describedby'], descripcion].filter(Boolean))].join(' ') || undefined,
@@ -28,15 +28,15 @@ export function Campo({
   return (
     <div className={cn('space-y-1.5 md:space-y-1', className)}>
       <Label htmlFor={id} className="text-[13px]/none font-normal text-muted-foreground">
-        {etiqueta}
+        {label}
       </Label>
       {control}
       {error ? (
         <p id={`${id}-error`} className="text-sm text-destructive">
           {error}
         </p>
-      ) : ayuda ? (
-        <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">{ayuda}</p>
+      ) : help ? (
+        <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">{help}</p>
       ) : null}
     </div>
   )

@@ -2,45 +2,45 @@
 
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import type { AccionFormulario, EstadoFormulario } from '@/lib/formularios'
-import { FormularioAccion } from './formulario-accion'
+import type { ActionForm, StatusForm } from '@/lib/forms'
+import { FormAction } from './form-action'
 
 /** Diálogo con un formulario adentro. Se cierra solo cuando la acción sale bien. */
-export function DialogoFormulario({
-  titulo,
+export function DialogForm({
+  titulo: title,
   descripcion,
   disparador,
   accion,
-  textoBoton,
+  textButton,
   children,
 }: {
   titulo: string
   descripcion?: string
   disparador: React.ReactNode
-  accion: AccionFormulario
-  textoBoton: string
-  children: (estado: EstadoFormulario) => React.ReactNode
+  accion: ActionForm
+  textButton: string
+  children: (estado: StatusForm) => React.ReactNode
 }) {
-  const [abierto, setAbierto] = useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
-    <Dialog open={abierto} onOpenChange={setAbierto}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{titulo}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           {descripcion ? <DialogDescription>{descripcion}</DialogDescription> : null}
         </DialogHeader>
         {/* Se monta solo abierto: cada apertura arranca con el estado limpio. */}
-        {abierto ? (
-          <FormularioAccion
+        {open ? (
+          <FormAction
             accion={accion}
-            textoBoton={textoBoton}
+            textButton={textButton}
             className="space-y-4"
-            alGuardar={() => setAbierto(false)}
+            onSave={() => setOpen(false)}
           >
             {children}
-          </FormularioAccion>
+          </FormAction>
         ) : null}
       </DialogContent>
     </Dialog>

@@ -4,9 +4,9 @@ import { Copy, Ellipsis, FileDown, FileText, LoaderCircle, SquarePen } from 'luc
 import Link from 'next/link'
 import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { DuplicarCliente } from '@/components/cotizaciones/especiales/duplicar-cliente'
+import { DuplicateClient } from '@/components/quotes/specials/duplicate-client'
 import { toast } from 'sonner'
-import { duplicarCotizacion } from '@/app/(app)/cotizaciones/actions'
+import { duplicateQuote } from '@/app/(app)/cotizaciones/actions'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,14 +15,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { TransicionLista } from '@/lib/cotizaciones/acciones-estado'
+import type { TransicionList } from '@/lib/quotes/actions-status'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /**
  * Acciones de una fila de la lista. En la tabla: PDF (salvo un presupuesto directo) y ⋯; en el celular,
  * todo dentro del ⋯. Las transiciones del ⋯ llevan al editor con su confirmación abierta (`?accion=`).
  */
-export function AccionesFila({
+export function ActionsRow({
   id,
   numero,
   tienePdf,
@@ -33,24 +33,24 @@ export function AccionesFila({
   numero: number
   tienePdf: boolean
   /** Las del ⋯ según el estado (transicionesDeLista, Task 12): abren el editor con la confirmación abierta. */
-  transiciones?: TransicionLista[]
+  transiciones?: TransicionList[]
   variante?: 'tabla' | 'movil'
 }) {
   const router = useRouter()
   const [duplicando, iniciarDuplicado] = useTransition()
   const pdf = `/cotizaciones/${id}/pdf`
-  const [otroCliente, setOtroCliente] = useState(false)
+  const [otroClient, setOtroClient] = useState(false)
 
-  function duplicar() {
+  function duplicate() {
     iniciarDuplicado(async () => {
       try {
-        const resultado = await duplicarCotizacion(id)
-        if (!resultado.ok) {
-          toast.error(resultado.mensaje)
+        const result = await duplicateQuote(id)
+        if (!result.ok) {
+          toast.error(result.message)
           return
         }
         toast.success(`Se creó un borrador a partir de la ${numero}`)
-        router.push(`/cotizaciones/${resultado.datos.id}`)
+        router.push(`/cotizaciones/${result.datos.id}`)
       } catch (error) {
         unstable_rethrow(error)
         toast.error('No se pudo duplicar la cotización. Probá de nuevo.')
@@ -97,20 +97,20 @@ export function AccionesFila({
             </a>
           </DropdownMenuItem>
         ) : null}
-        <DropdownMenuItem disabled={duplicando} onSelect={duplicar}>
+        <DropdownMenuItem disabled={duplicando} onSelect={duplicate}>
           <Copy aria-hidden />
           Duplicar
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={duplicando} onSelect={() => setOtroCliente(true)}><Copy aria-hidden />Duplicar a otro cliente</DropdownMenuItem>
+        <DropdownMenuItem disabled={duplicando} onSelect={() => setOtroClient(true)}><Copy aria-hidden />Duplicar a otro cliente</DropdownMenuItem>
         {transiciones.length > 0 ? <DropdownMenuSeparator /> : null}
-        {transiciones.map(({ accion, etiqueta }) => (
+        {transiciones.map(({ accion, label }) => (
           <DropdownMenuItem key={accion} asChild variant={accion === 'borrar' ? 'destructive' : 'default'}>
-            <Link href={`/cotizaciones/${id}?accion=${accion}`}>{etiqueta}</Link>
+            <Link href={`/cotizaciones/${id}?accion=${accion}`}>{label}</Link>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-    <DuplicarCliente id={id} abierto={otroCliente} alCerrar={() => setOtroCliente(false)} />
+    <DuplicateClient id={id} open={otroClient} onCerrar={() => setOtroClient(false)} />
     </>
   )
 

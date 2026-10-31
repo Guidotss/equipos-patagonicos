@@ -10,8 +10,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="flex min-h-svh flex-col bg-background lg:flex-row">
       {/* Panel de marca: en celular es una franja arriba del formulario (docs/diseno/referencias/08-login.png). */}
-      <section className="relative flex flex-col justify-between gap-8 overflow-hidden bg-linear-to-br from-portada-desde to-portada-hasta px-6 py-6 text-white lg:w-1/2 lg:px-14 lg:py-7">
-        <div aria-hidden className="absolute inset-0 bg-[url(/portada-ganchos.svg)] bg-size-[180px_175px] opacity-70" />
+      <section className="relative flex flex-col justify-between gap-8 overflow-hidden bg-linear-to-br from-cover-from to-cover-to px-6 py-6 text-white lg:w-1/2 lg:px-14 lg:py-7">
+        <div aria-hidden className="absolute inset-0 bg-[url(/cover-hooks.svg)] bg-size-[180px_175px] opacity-70" />
         <div className="relative w-fit rounded-xl bg-white px-3.5 py-3 shadow-lg shadow-black/10 lg:-ml-8 lg:py-4">
           <Image
             src="/logo-equipos-patagonicos.png"

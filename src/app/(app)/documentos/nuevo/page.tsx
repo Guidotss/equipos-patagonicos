@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { BarraMigas, Contenido } from '@/components/app-shell/encabezado'
-import { EncabezadoFormulario } from '@/components/formulario/estructura-formulario'
-import { DocumentoForm } from '@/components/documentos/documento-form'
-import { TIPOS_DOCUMENTO, type TipoDocumento } from '@/lib/documentos/esquemas'
-import { contextoDocumento } from '@/lib/documentos/lecturas'
-import type { OpcionPresupuesto } from '@/lib/documentos/pantallas'
+import { BarCrumbs, Content } from '@/components/app-shell/header'
+import { HeaderForm } from '@/components/form/structure-form'
+import { DocumentForm } from '@/components/documents/document-form'
+import { TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
+import { contextoDocument } from '@/lib/documents/queries'
+import type { OptionBudget } from '@/lib/documents/screens'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
+import { isUuid } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Subir documento' }
-export default async function NuevoDocumentoPage({
+export default async function NewDocumentPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -23,12 +23,12 @@ export default async function NuevoDocumentoPage({
     .neq('presupuesto_estado', 'anulado')
     .order('numero', { ascending: false })
   if (error) throw error
-  const opciones = data as OpcionPresupuesto[]
-  let presupuesto =
-    typeof consulta.presupuesto === 'string' ? opciones.find((item) => item.id === consulta.presupuesto) : undefined
-  let cotizacion: { id: string; version: string } | undefined
+  const options = data as OptionBudget[]
+  let budget =
+    typeof consulta.presupuesto === 'string' ? options.find((item) => item.id === consulta.presupuesto) : undefined
+  let quote: { id: string; version: string } | undefined
   if (typeof consulta.cotizacion === 'string') {
-    if (!esUuid(consulta.cotizacion)) notFound()
+    if (!isUuid(consulta.cotizacion)) notFound()
     const { data: original, error } = await supabase
       .from('cotizaciones')
       .select('id, updated_at, numero, cliente_id, asunto, estado, cliente:clientes(razon_social)')
@@ -36,7 +36,7 @@ export default async function NuevoDocumentoPage({
       .maybeSingle()
     if (error) throw error
     if (!original || original.estado !== 'enviada') notFound()
-    presupuesto = {
+    budget = {
       id: original.id,
       numero: original.numero,
       cliente_id: original.cliente_id,
@@ -44,35 +44,35 @@ export default async function NuevoDocumentoPage({
       cliente_razon_social: original.cliente.razon_social,
       presupuesto_estado: 'en_curso',
     }
-    opciones.unshift(presupuesto)
-    cotizacion = { id: original.id, version: typeof consulta.version === 'string' ? consulta.version : original.updated_at }
+    options.unshift(budget)
+    quote = { id: original.id, version: typeof consulta.version === 'string' ? consulta.version : original.updated_at }
   }
-  const tipo = cotizacion
+  const tipo = quote
     ? 'orden_compra'
-    : typeof consulta.tipo === 'string' && Object.hasOwn(TIPOS_DOCUMENTO, consulta.tipo)
-      ? (consulta.tipo as TipoDocumento)
+    : typeof consulta.tipo === 'string' && Object.hasOwn(TIPOS_DOCUMENT, consulta.tipo)
+      ? (consulta.tipo as TipoDocument)
       : 'remito'
-  const contexto = presupuesto ? await contextoDocumento(supabase, presupuesto.cliente_id) : undefined
+  const contexto = budget ? await contextoDocument(supabase, budget.cliente_id) : undefined
   return (
     <>
-      <BarraMigas migas={[{ texto: 'Presupuestos', href: '/presupuestos' }, { texto: 'Subir documento' }]} />
-      <Contenido className="max-w-6xl">
-        <EncabezadoFormulario
+      <BarCrumbs crumbs={[{ texto: 'Presupuestos', href: '/presupuestos' }, { texto: 'Subir documento' }]} />
+      <Content className="max-w-6xl">
+        <HeaderForm
           titulo="Subir documento"
           descripcion={
-            cotizacion
-              ? `Cotización N° ${presupuesto!.numero} · ${presupuesto!.cliente_razon_social}`
+            quote
+              ? `Cotización N° ${budget!.numero} · ${budget!.cliente_razon_social}`
               : 'Elegí un presupuesto y adjuntá los documentos del cliente.'
           }
         />
-        <DocumentoForm
-          opciones={opciones}
-          presupuestoId={presupuesto?.id}
-          contextoInicial={contexto}
+        <DocumentForm
+          options={options}
+          budgetId={budget?.id}
+          contextoInitial={contexto}
           tipo={tipo}
-          cotizacion={cotizacion}
+          cotizacion={quote}
         />
-      </Contenido>
+      </Content>
     </>
   )
 }

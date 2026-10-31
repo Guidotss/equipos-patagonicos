@@ -1,6 +1,6 @@
-import { BarraMigas } from '@/components/app-shell/encabezado'
-import { FormularioEspecial } from '@/components/cotizaciones/especiales/formulario-especial'
-import { hoyArgentina } from '@/lib/format/fechas'
-export default function PresupuestoDirectoPage() {
-  return <><BarraMigas migas={[{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: 'Presupuesto directo' }]} /><FormularioEspecial origen="directa" hoy={hoyArgentina()} /></>
+import { BarCrumbs } from '@/components/app-shell/header'
+import { FormSpecial } from '@/components/quotes/specials/form-special'
+import { todayArgentina } from '@/lib/format/dates'
+export default function BudgetDirectoPage() {
+  return <><BarCrumbs crumbs={[{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: 'Presupuesto directo' }]} /><FormSpecial origen="directa" today={todayArgentina()} /></>
 }

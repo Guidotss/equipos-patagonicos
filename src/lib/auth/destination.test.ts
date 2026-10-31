@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { destinoSeguro } from './destino'
+import { destinationSeguro } from './destination'
 
 describe('destinoSeguro', () => {
   it('acepta rutas internas', () => {
-    expect(destinoSeguro('/clientes')).toBe('/clientes')
-    expect(destinoSeguro('/cotizaciones?estado=enviada')).toBe('/cotizaciones?estado=enviada')
+    expect(destinationSeguro('/clientes')).toBe('/clientes')
+    expect(destinationSeguro('/cotizaciones?estado=enviada')).toBe('/cotizaciones?estado=enviada')
   })
 
   it.each([
@@ -23,7 +23,7 @@ describe('destinoSeguro', () => {
     '/.//malicioso.com',
     '/a/..//malicioso.com',
     '/%2e%2e//malicioso.com',
-  ])('manda a / ante %j', (destino) => {
-    expect(destinoSeguro(destino)).toBe('/')
+  ])('manda a / ante %j', (destination) => {
+    expect(destinationSeguro(destination)).toBe('/')
   })
 })

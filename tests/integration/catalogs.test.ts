@@ -1,19 +1,19 @@
 // tests/integration/catalogos.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { leerBloques, leerItemsPlantilla } from '@/lib/plantillas/contenido'
-import { variablesDesconocidas } from '@/lib/plantillas/variables'
-import { borrarUsuario, crearUsuario, sql } from './helpers'
+import { readBlocks, readItemsTemplate } from '@/lib/templates/content'
+import { variablesDesconocidas } from '@/lib/templates/variables'
+import { removeUser, crearUser, sql } from './helpers'
 
 const MARCA = `test-${crypto.randomUUID().slice(0, 8)}`
 const creados: string[] = []
-let admin: Awaited<ReturnType<typeof crearUsuario>>
-let operador: Awaited<ReturnType<typeof crearUsuario>>
-let inactivo: Awaited<ReturnType<typeof crearUsuario>>
+let admin: Awaited<ReturnType<typeof crearUser>>
+let operador: Awaited<ReturnType<typeof crearUser>>
+let inactivo: Awaited<ReturnType<typeof crearUser>>
 
 beforeAll(async () => {
-  admin = await crearUsuario({ activo: true, rol: 'admin' })
-  operador = await crearUsuario({ activo: true, rol: 'operador' })
-  inactivo = await crearUsuario({ activo: false })
+  admin = await crearUser({ activo: true, rol: 'admin' })
+  operador = await crearUser({ activo: true, rol: 'operador' })
+  inactivo = await crearUser({ activo: false })
   creados.push(admin.id, operador.id, inactivo.id)
 })
 
@@ -21,7 +21,7 @@ afterAll(async () => {
   await sql('delete from public.firmantes where nombre like $1', [`%${MARCA}%`])
   await sql('delete from public.equipos where nombre like $1', [`%${MARCA}%`])
   await sql('delete from public.plantillas where nombre like $1', [`%${MARCA}%`])
-  for (const id of creados) await borrarUsuario(id)
+  for (const id of creados) await removeUser(id)
 })
 
 describe('empresa_config', () => {
@@ -34,19 +34,19 @@ describe('empresa_config', () => {
     expect(visto.error).toBeNull()
     expect(visto.data).toHaveLength(1)
 
-    const oculto = await inactivo.client.from('empresa_config').select('razon_social')
-    expect(oculto.data).toEqual([])
+    const hidden = await inactivo.client.from('empresa_config').select('razon_social')
+    expect(hidden.data).toEqual([])
   })
 
   it('solo un admin la modifica', async () => {
     const [{ telefono: original }] = await sql<{ telefono: string }>('select telefono from public.empresa_config')
 
-    const porOperador = await operador.client.from('empresa_config').update({ telefono: '1' }).eq('id', true).select()
-    expect(porOperador.data ?? []).toEqual([])
+    const byOperador = await operador.client.from('empresa_config').update({ telefono: '1' }).eq('id', true).select()
+    expect(byOperador.data ?? []).toEqual([])
 
-    const porAdmin = await admin.client.from('empresa_config').update({ telefono: '0299 - 1234567' }).eq('id', true).select()
-    expect(porAdmin.error).toBeNull()
-    expect(porAdmin.data?.[0]?.telefono).toBe('0299 - 1234567')
+    const byAdmin = await admin.client.from('empresa_config').update({ telefono: '0299 - 1234567' }).eq('id', true).select()
+    expect(byAdmin.error).toBeNull()
+    expect(byAdmin.data?.[0]?.telefono).toBe('0299 - 1234567')
 
     await sql('update public.empresa_config set telefono = $1', [original])
   })
@@ -82,8 +82,8 @@ describe('firmantes, equipos y plantillas', () => {
       .single()
     expect(modificado.data?.activo).toBe(false)
 
-    const rechazado = await inactivo.client.from('firmantes').insert({ nombre: `Intruso ${MARCA}` })
-    expect(rechazado.error?.code).toBe('42501')
+    const rejected = await inactivo.client.from('firmantes').insert({ nombre: `Intruso ${MARCA}` })
+    expect(rejected.error?.code).toBe('42501')
   })
 
   it('nadie puede borrar (se desactivan)', async () => {
@@ -97,8 +97,8 @@ describe('firmantes, equipos y plantillas', () => {
   })
 
   it('valida capacidad positiva y nombre de plantilla único', async () => {
-    const capacidad = await operador.client.from('equipos').insert({ nombre: `Equipo ${MARCA} 2`, capacidad_tn: 0 })
-    expect(capacidad.error?.code).toBe('23514')
+    const capacity = await operador.client.from('equipos').insert({ nombre: `Equipo ${MARCA} 2`, capacidad_tn: 0 })
+    expect(capacity.error?.code).toBe('23514')
 
     const nombre = `Plantilla ${MARCA}`
     await operador.client.from('plantillas').insert({ nombre, formato: 'mensual' })
@@ -109,10 +109,10 @@ describe('firmantes, equipos y plantillas', () => {
 
 describe('datos iniciales', () => {
   it('cargan la empresa, los dos firmantes y los dos equipos', async () => {
-    const [empresa] = await sql<{ razon_social: string; ciudad: string }>(
+    const [company] = await sql<{ razon_social: string; ciudad: string }>(
       'select razon_social, ciudad from public.empresa_config',
     )
-    expect(empresa).toEqual({ razon_social: 'Equipos Patagónicos', ciudad: 'Neuquén' })
+    expect(company).toEqual({ razon_social: 'Equipos Patagónicos', ciudad: 'Neuquén' })
 
     const firmantes = await sql<{ nombre: string }>(
       `select nombre from public.firmantes where nombre in ('Julio Rojas', 'Thomas Cravero') order by nombre`,
@@ -132,11 +132,11 @@ describe('datos iniciales', () => {
     )
     expect(plantillas.map((p) => p.formato)).toEqual(['jornada', 'mensual'])
 
-    for (const plantilla of plantillas) {
-      const bloques = leerBloques(plantilla.bloques)
-      const items = leerItemsPlantilla(plantilla.items)
-      const textos = [plantilla.asunto, plantilla.intro, ...bloques.flatMap((b) => [b.titulo, b.contenido]), ...items.map((i) => i.descripcion)]
-      expect(variablesDesconocidas(textos.join('\n'))).toEqual([])
+    for (const template of plantillas) {
+      const bloques = readBlocks(template.bloques)
+      const items = readItemsTemplate(template.items)
+      const texts = [template.asunto, template.intro, ...bloques.flatMap((b) => [b.titulo, b.contenido]), ...items.map((i) => i.descripcion)]
+      expect(variablesDesconocidas(texts.join('\n'))).toEqual([])
     }
   })
 })

@@ -1,23 +1,23 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { BarraMigas, Contenido, EncabezadoFicha } from '@/components/app-shell/encabezado'
-import { ClienteForm } from '@/components/clientes/cliente-form'
-import { Contactos } from '@/components/clientes/contactos'
-import { HistorialComercial } from '@/components/clientes/historial-comercial'
-import { BotonEstado } from '@/components/formulario/boton-estado'
-import { Pastilla } from '@/components/ui/pastilla'
-import { CONDICIONES_IVA } from '@/lib/clientes/esquemas'
+import { BarCrumbs, Content, HeaderFicha } from '@/components/app-shell/header'
+import { ClientForm } from '@/components/clients/client-form'
+import { Contacts } from '@/components/clients/contacts'
+import { HistoryCommercial } from '@/components/clients/history-commercial'
+import { ButtonStatus } from '@/components/form/button-status'
+import { Pill } from '@/components/ui/pill'
+import { CONDICIONES_IVA } from '@/lib/clients/schemas'
 import { formatCuit } from '@/lib/cuit'
-import { iniciales } from '@/lib/format/texto'
+import { iniciales } from '@/lib/format/text'
 import { createClient } from '@/lib/supabase/server'
-import { esUuid } from '@/lib/validacion'
-import { actualizarCliente, cambiarEstadoCliente } from '../actions'
+import { isUuid } from '@/lib/validation'
+import { actualizarClient, changeStatusClient } from '../actions'
 
 export const metadata: Metadata = { title: 'Cliente' }
 
-export default async function ClientePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!esUuid(id)) notFound()
+  if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
   const { data: cliente, error } = await supabase
@@ -29,7 +29,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
   if (error) throw error
   if (!cliente) notFound()
 
-  const datosClave = [
+  const dataKey = [
     cliente.cuit ? `CUIT ${formatCuit(cliente.cuit)}` : null,
     CONDICIONES_IVA[cliente.condicion_iva as keyof typeof CONDICIONES_IVA] ?? null,
     [cliente.localidad, cliente.provincia].filter(Boolean).join(', ') || null,
@@ -37,33 +37,33 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <BarraMigas migas={[{ texto: 'Clientes', href: '/clientes' }, { texto: cliente.razon_social }]} />
-      <EncabezadoFicha
+      <BarCrumbs crumbs={[{ texto: 'Clientes', href: '/clientes' }, { texto: cliente.razon_social }]} />
+      <HeaderFicha
         titulo={cliente.razon_social}
         recuadro={iniciales(cliente.razon_social, 1)}
-        estado={cliente.activo ? <Pastilla tono="exito">Activo</Pastilla> : <Pastilla>Inactivo</Pastilla>}
-        datos={datosClave.length > 0 ? datosClave.join(' • ') : null}
-        acciones={
-          <BotonEstado
+        estado={cliente.activo ? <Pill tone="exito">Activo</Pill> : <Pill>Inactivo</Pill>}
+        datos={dataKey.length > 0 ? dataKey.join(' • ') : null}
+        actions={
+          <ButtonStatus
             activo={cliente.activo}
-            etiqueta={cliente.razon_social}
-            accion={cambiarEstadoCliente.bind(null, id, !cliente.activo)}
+            label={cliente.razon_social}
+            accion={changeStatusClient.bind(null, id, !cliente.activo)}
           />
         }
       />
 
-      <Contenido className="grid max-w-6xl items-start gap-6 space-y-0 pb-28 lg:grid-cols-2">
+      <Content className="grid max-w-6xl items-start gap-6 space-y-0 pb-28 lg:grid-cols-2">
         <section aria-label="Datos del cliente" className="min-w-0 lg:col-span-2">
-          <ClienteForm
-            accion={actualizarCliente.bind(null, id)}
-            inicial={{ ...cliente, cuit: cliente.cuit ? formatCuit(cliente.cuit) : '' }}
-            textoBoton="Guardar cambios"
+          <ClientForm
+            accion={actualizarClient.bind(null, id)}
+            initial={{ ...cliente, cuit: cliente.cuit ? formatCuit(cliente.cuit) : '' }}
+            textButton="Guardar cambios"
           />
         </section>
 
-        <Contactos clienteId={id} contactos={cliente.contactos} />
-        <section className="min-w-0"><HistorialComercial clienteId={id} /></section>
-      </Contenido>
+        <Contacts clientId={id} contactos={cliente.contactos} />
+        <section className="min-w-0"><HistoryCommercial clientId={id} /></section>
+      </Content>
     </>
   )
 }

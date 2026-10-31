@@ -3,56 +3,56 @@ import path from "node:path";
 import { isDeepStrictEqual, parseArgs } from "node:util";
 import { createClient } from "@supabase/supabase-js";
 import {
-  claveFactura,
-  completarFactura,
+  keyInvoice,
+  completeInvoice,
   hash,
-  planificarClientes,
-  prepararRevision,
-} from "./historicos/preparar.mjs";
-import { registrarFactura } from "./historicos/ejecutar.mjs";
+  planificarClients,
+  prepareReview,
+} from './historical/prepare.mjs';
+import { registerInvoice } from './historical/execute.mjs';
 
-const { values: opciones } = parseArgs({
+const { values: options } = parseArgs({
   options: {
-    revision: { type: "string" },
+    review: { type: "string" },
     "project-ref": { type: "string" },
-    informe: { type: "string" },
+    report: { type: "string" },
     lote: { type: "string" },
     apply: { type: "boolean", default: false },
-    esperados: { type: "string" },
+    expected: { type: "string" },
   },
 });
-const verificar = (condicion, mensaje) => {
-  if (!condicion) throw new Error(mensaje);
+const verify = (condition, message) => {
+  if (!condition) throw new Error(message);
 };
-const resultado = (respuesta, contexto) => {
-  if (respuesta.error)
-    throw new Error(`${contexto}: ${respuesta.error.message}`);
-  return respuesta.data;
+const result = (response, contexto) => {
+  if (response.error)
+    throw new Error(`${contexto}: ${response.error.message}`);
+  return response.data;
 };
 
 function conectar() {
-  verificar(
-    opciones.revision &&
-      opciones["project-ref"] &&
-      opciones.informe &&
-      opciones.lote,
-    "Uso: node --env-file=<archivo> scripts/importar-historicos.mjs --revision <json> --project-ref <ref> --lote <lote> --informe <json> [--apply]",
+  verify(
+    options.review &&
+      options["project-ref"] &&
+      options.report &&
+      options.lote,
+    "Uso: node --env-file=<archivo> scripts/import-historical.mjs --revision <json> --project-ref <ref> --lote <lote> --informe <json> [--apply]",
   );
   const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
-  verificar(
-    url.origin === `https://${opciones["project-ref"]}.supabase.co`,
+  verify(
+    url.origin === `https://${options["project-ref"]}.supabase.co`,
     "La URL no corresponde al proyecto esperado",
   );
-  verificar(process.env.SUPABASE_SECRET_KEY, "Falta SUPABASE_SECRET_KEY");
+  verify(process.env.SUPABASE_SECRET_KEY, "Falta SUPABASE_SECRET_KEY");
   return createClient(url.origin, process.env.SUPABASE_SECRET_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
-async function leerClientes(supabase) {
+async function readClients(supabase) {
   const clientes = [];
   for (let desde = 0; ; desde += 1000) {
-    const tanda = resultado(
+    const tanda = result(
       await supabase
         .from("clientes")
         .select("id,cuit,razon_social,activo")
@@ -65,15 +65,15 @@ async function leerClientes(supabase) {
   }
 }
 
-async function guardarInforme(ruta, informe) {
-  await mkdir(path.dirname(ruta), { recursive: true, mode: 0o700 });
-  const temporal = `${ruta}.tmp`;
-  await writeFile(temporal, JSON.stringify(informe, null, 2), { mode: 0o600 });
-  await rename(temporal, ruta);
+async function saveReport(path, report) {
+  await mkdir(path.dirname(path), { recursive: true, mode: 0o700 });
+  const temp = `${path}.tmp`;
+  await writeFile(temp, JSON.stringify(report, null, 2), { mode: 0o600 });
+  await rename(temp, path);
 }
 
-async function validarConflictos(supabase, facturas) {
-  const respuesta = await supabase
+async function validateConflicts(supabase, facturas) {
+  const response = await supabase
     .from("facturas_historicas")
     .select("factura_id,clave_origen,entrada")
     .in(
@@ -81,64 +81,64 @@ async function validarConflictos(supabase, facturas) {
       facturas.map((f) => f.clave),
     );
   if (
-    respuesta.error &&
-    ["PGRST205", "42P01"].includes(respuesta.error.code) &&
-    !opciones.apply
+    response.error &&
+    ["PGRST205", "42P01"].includes(response.error.code) &&
+    !options.apply
   )
-    return { migracion_pendiente: true };
-  const historial = resultado(
-    respuesta,
+    return { migration_pending: true };
+  const history = result(
+    response,
     "Leer importaciones históricas; verificá que la migración esté aplicada",
   );
-  const normalizarNumero = (numero) =>
+  const normalizeNumber = (numero) =>
     numero
       .replace(/[^a-z0-9]/gi, "")
       .replace(/^0+/, "")
       .toLowerCase();
-  const documentos = resultado(
+  const documentos = result(
     await supabase
       .from("documentos")
       .select("id,numero,numero_normalizado,tipo_comprobante")
       .eq("tipo", "factura")
       .in(
         "numero_normalizado",
-        facturas.map((f) => normalizarNumero(f.datos.numero)),
+        facturas.map((f) => normalizeNumber(f.datos.numero)),
       ),
     "Buscar facturas existentes",
   );
-  for (const factura of facturas) {
-    const anterior = historial.find(
+  for (const invoice of facturas) {
+    const previous = history.find(
       (registro) =>
         registro.clave_origen ===
-        claveFactura(factura.datos.emisor_cuit, factura.datos.numero),
+        keyInvoice(invoice.datos.emisor_cuit, invoice.datos.numero),
     );
-    verificar(
-      !anterior || isDeepStrictEqual(anterior.entrada, factura.datos),
-      `La factura ${factura.datos.numero} ya se importó con otros datos`,
+    verify(
+      !previous || isDeepStrictEqual(previous.entrada, invoice.datos),
+      `La factura ${invoice.datos.numero} ya se importó con otros datos`,
     );
-    verificar(
+    verify(
       !documentos.some(
-        (documento) =>
-          documento.numero_normalizado ===
-            normalizarNumero(factura.datos.numero) &&
-          documento.tipo_comprobante === "FA" &&
-          documento.id !== anterior?.factura_id,
+        (document) =>
+          document.numero_normalizado ===
+            normalizeNumber(invoice.datos.numero) &&
+          document.tipo_comprobante === "FA" &&
+          document.id !== previous?.factura_id,
       ),
-      `La factura ${factura.datos.numero} ya existe fuera de esta importación`,
+      `La factura ${invoice.datos.numero} ya existe fuera de esta importación`,
     );
   }
-  return { migracion_pendiente: false, ya_importadas: historial.length };
+  return { migration_pending: false, ya_importadas: history.length };
 }
 
-async function crearCliente(supabase, cliente) {
+async function crearClient(supabase, cliente) {
   if (cliente.existente) return cliente;
-  const respuesta = await supabase
+  const response = await supabase
     .from("clientes")
     .insert({ id: cliente.id, ...cliente.datos })
     .select("id")
     .single();
-  if (respuesta.error?.code === "23505") {
-    const existente = resultado(
+  if (response.error?.code === "23505") {
+    const existing = result(
       await supabase
         .from("clientes")
         .select("id")
@@ -146,135 +146,135 @@ async function crearCliente(supabase, cliente) {
         .single(),
       "Releer cliente concurrente",
     );
-    return { ...cliente, id: existente.id, existente: true };
+    return { ...cliente, id: existing.id, existente: true };
   }
-  resultado(respuesta, "Crear cliente");
+  result(response, "Crear cliente");
   return cliente;
 }
 
-async function ejecutar() {
+async function run() {
   const supabase = conectar();
-  const rutaRevision = path.resolve(opciones.revision);
-  const bytesRevision = await readFile(rutaRevision);
-  const revision = JSON.parse(bytesRevision);
-  verificar(
-    Array.isArray(revision.facturas),
+  const pathReview = path.resolve(options.review);
+  const bytesReview = await readFile(pathReview);
+  const review = JSON.parse(bytesReview);
+  verify(
+    Array.isArray(review.facturas),
     "La revisión no contiene facturas",
   );
-  const elegibles = revision.facturas.filter(
-    (factura) =>
-      factura.observaciones?.length === 0 && factura.naturaleza === "Servicios",
+  const eligible = review.facturas.filter(
+    (invoice) =>
+      invoice.observaciones?.length === 0 && invoice.naturaleza === "Servicios",
   );
   const archivos = new Map(
     await Promise.all(
-      elegibles.map(async (factura) => [
-        factura.path,
-        await readFile(factura.path),
+      eligible.map(async (invoice) => [
+        invoice.path,
+        await readFile(invoice.path),
       ]),
     ),
   );
-  const preparado = prepararRevision(revision, {
+  const prepared = prepareReview(review, {
     archivos,
-    lote: opciones.lote,
+    lote: options.lote,
   });
-  const cantidades = `${preparado.clientes.length},${preparado.facturas.length},${preparado.excluidas.length}`;
-  verificar(
-    !opciones.apply || opciones.esperados,
+  const quantities = `${prepared.clientes.length},${prepared.facturas.length},${prepared.excluidas.length}`;
+  verify(
+    !options.apply || options.expected,
     "Para aplicar, indicá --esperados <clientes,facturas,excluidas> según la simulación revisada",
   );
-  verificar(
-    !opciones.esperados || opciones.esperados === cantidades,
-    `Las cantidades cambiaron: ${cantidades}; revisá nuevamente la simulación`,
+  verify(
+    !options.expected || options.expected === quantities,
+    `Las cantidades cambiaron: ${quantities}; revisá nuevamente la simulación`,
   );
-  const previstos = planificarClientes(
-    preparado.clientes,
-    await leerClientes(supabase),
+  const planned = planificarClients(
+    prepared.clientes,
+    await readClients(supabase),
   );
-  let facturas = preparado.facturas.map((factura) =>
-    completarFactura(factura, previstos),
+  let facturas = prepared.facturas.map((invoice) =>
+    completeInvoice(invoice, planned),
   );
-  const conflictos = await validarConflictos(supabase, facturas);
-  const rutaInforme = path.resolve(opciones.informe);
-  verificar(
-    rutaInforme !== rutaRevision && path.extname(rutaInforme) === ".json",
+  const conflicts = await validateConflicts(supabase, facturas);
+  const pathReport = path.resolve(options.report);
+  verify(
+    pathReport !== pathReview && path.extname(pathReport) === ".json",
     "El informe debe ser otro archivo JSON, distinto de la revisión original",
   );
-  const informe = {
-    modo: opciones.apply ? "aplicar" : "simulacion",
-    proyecto: opciones["project-ref"],
-    lote: opciones.lote,
-    revision_sha256: hash(bytesRevision),
+  const report = {
+    modo: options.apply ? "aplicar" : "simulacion",
+    project: options["project-ref"],
+    lote: options.lote,
+    review_sha256: hash(bytesReview),
     iniciado_at: new Date().toISOString(),
     control: {
-      clientes: preparadosCantidad(previstos),
+      clientes: preparedQuantity(planned),
       facturas: facturas.length,
-      excluidas: preparado.excluidas.length,
-      total_ars: preparado.total,
-      ...conflictos,
+      excluidas: prepared.excluidas.length,
+      total_ars: prepared.total,
+      ...conflicts,
     },
-    clientes: previstos.map((cliente) => ({
+    clientes: planned.map((cliente) => ({
       id: cliente.id,
       cuit: cliente.datos.cuit,
       estado: cliente.existente ? "existente" : "previsto",
     })),
-    excluidas: preparado.excluidas,
+    excluidas: prepared.excluidas,
     archivos: [],
     facturas: [],
     estado: "preparado",
   };
-  await guardarInforme(rutaInforme, informe);
-  console.log(JSON.stringify(informe.control));
-  if (!opciones.apply) {
-    console.log(`Simulación guardada: ${rutaInforme}`);
+  await saveReport(pathReport, report);
+  console.log(JSON.stringify(report.control));
+  if (!options.apply) {
+    console.log(`Simulación guardada: ${pathReport}`);
     return;
   }
   try {
     const clientes = [];
-    for (const cliente of previstos) {
-      const creado = await crearCliente(supabase, cliente);
+    for (const cliente of planned) {
+      const creado = await crearClient(supabase, cliente);
       clientes.push(creado);
-      informe.clientes.find((fila) => fila.cuit === cliente.datos.cuit).estado =
+      report.clientes.find((row) => row.cuit === cliente.datos.cuit).estado =
         creado.existente ? "reutilizado" : "creado";
-      informe.clientes.find((fila) => fila.cuit === cliente.datos.cuit).id =
+      report.clientes.find((row) => row.cuit === cliente.datos.cuit).id =
         creado.id;
-      await guardarInforme(rutaInforme, informe);
+      await saveReport(pathReport, report);
     }
-    facturas = preparado.facturas.map((factura) =>
-      completarFactura(factura, clientes),
+    facturas = prepared.facturas.map((invoice) =>
+      completeInvoice(invoice, clientes),
     );
-    await validarConflictos(supabase, facturas);
-    for (const [indice, factura] of facturas.entries()) {
-      const registro = await registrarFactura({
+    await validateConflicts(supabase, facturas);
+    for (const [index, invoice] of facturas.entries()) {
+      const registro = await registerInvoice({
         supabase,
-        factura,
-        informe,
-        guardar: () => guardarInforme(rutaInforme, informe),
+        factura: invoice,
+        report,
+        guardar: () => saveReport(pathReport, report),
       });
       console.log(
-        `${indice + 1}/${facturas.length}: ${factura.datos.numero} ${registro.ya_importada ? "reutilizada" : "importada"}`,
+        `${index + 1}/${facturas.length}: ${invoice.datos.numero} ${registro.ya_imported ? "reutilizada" : "importada"}`,
       );
     }
-    informe.estado = "completo";
-    informe.finalizado_at = new Date().toISOString();
-    await guardarInforme(rutaInforme, informe);
+    report.estado = "completo";
+    report.finished_at = new Date().toISOString();
+    await saveReport(pathReport, report);
   } catch (error) {
-    informe.estado = "interrumpido";
-    informe.error = error.message;
-    await guardarInforme(rutaInforme, informe);
+    report.estado = "interrumpido";
+    report.error = error.message;
+    await saveReport(pathReport, report);
     throw error;
   }
-  console.log(`Carga completa. Informe: ${rutaInforme}`);
+  console.log(`Carga completa. Informe: ${pathReport}`);
 }
 
-function preparadosCantidad(clientes) {
+function preparedQuantity(clientes) {
   return {
     total: clientes.length,
-    existentes: clientes.filter((cliente) => cliente.existente).length,
+    existing: clientes.filter((cliente) => cliente.existente).length,
     nuevos: clientes.filter((cliente) => !cliente.existente).length,
   };
 }
 
-ejecutar().catch((error) => {
+run().catch((error) => {
   console.error(`Carga detenida: ${error.message}`);
   process.exitCode = 1;
 });

@@ -1,22 +1,22 @@
 import { extractText, getDocumentProxy } from 'unpdf'
 import { describe, expect, it } from 'vitest'
-import { armarDocumento } from '@/lib/cotizaciones/documento'
-import { EJEMPLO_JORNADA, EJEMPLO_MENSUAL } from '@/lib/cotizaciones/ejemplos'
-import { renderizarCotizacion } from './render'
+import { buildDocument } from '@/lib/quotes/document'
+import { EXAMPLE_DAILY, EXAMPLE_MONTHLY } from '@/lib/quotes/examples'
+import { renderizarQuote } from './render'
 
-async function textoDelPdf(pdf: Buffer): Promise<string> {
-  const documento = await getDocumentProxy(new Uint8Array(pdf))
-  const { text } = await extractText(documento, { mergePages: true })
+async function textOfPdf(pdf: Buffer): Promise<string> {
+  const document = await getDocumentProxy(new Uint8Array(pdf))
+  const { text } = await extractText(document, { mergePages: true })
   return text.replace(/\s+/g, ' ')
 }
 
 describe('PDF mensual', () => {
   it('replica los datos de la cotización 112523', async () => {
-    const pdf = await renderizarCotizacion(armarDocumento(EJEMPLO_MENSUAL))
+    const pdf = await renderizarQuote(buildDocument(EXAMPLE_MONTHLY))
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
 
-    const texto = await textoDelPdf(pdf)
-    for (const esperado of [
+    const texto = await textOfPdf(pdf)
+    for (const expected of [
       'Neuquén, 15 de julio de 2026.',
       'Milicic S.A.',
       'Atte. Yanina Colman',
@@ -35,7 +35,7 @@ describe('PDF mensual', () => {
       'T. Planas 5168 - Neuquén - Argentina',
       'www.equipospatagonicos.com.ar',
     ]) {
-      expect(texto).toContain(esperado)
+      expect(texto).toContain(expected)
     }
     expect(texto).not.toContain('{{')
   }, 20_000)
@@ -43,8 +43,8 @@ describe('PDF mensual', () => {
 
 describe('PDF por jornada', () => {
   it('replica los datos de la cotización 112711', async () => {
-    const texto = await textoDelPdf(await renderizarCotizacion(armarDocumento(EJEMPLO_JORNADA)))
-    for (const esperado of [
+    const texto = await textOfPdf(await renderizarQuote(buildDocument(EXAMPLE_DAILY)))
+    for (const expected of [
       'Neuquén, 22 de octubre de 2026.',
       'Señores',
       'VERTICE SERVICIOS INTEGRALES S.R.L.',
@@ -59,7 +59,7 @@ describe('PDF por jornada', () => {
       'Forma de pago: a 30 - 45 días F.F.',
       'Thomas Cravero',
     ]) {
-      expect(texto).toContain(esperado)
+      expect(texto).toContain(expected)
     }
     expect(texto.indexOf('Alcance:')).toBeLessThan(texto.indexOf('Precios Jornada:'))
     expect(texto.indexOf('Precios Jornada Adicional:')).toBeLessThan(texto.indexOf('Forma de pago'))
@@ -68,43 +68,43 @@ describe('PDF por jornada', () => {
 
 describe('bloques ocultos', () => {
   it('un bloque oculto no sale en el PDF (por jornada y mensual)', async () => {
-    const jornada = {
-      ...EJEMPLO_JORNADA,
+    const daily = {
+      ...EXAMPLE_DAILY,
       cotizacion: {
-        ...EJEMPLO_JORNADA.cotizacion,
-        bloques: EJEMPLO_JORNADA.cotizacion.bloques.map((bloque) =>
-          bloque.titulo === 'Alcance' ? { ...bloque, oculto: true } : bloque,
+        ...EXAMPLE_DAILY.cotizacion,
+        bloques: EXAMPLE_DAILY.cotizacion.bloques.map((block) =>
+          block.titulo === 'Alcance' ? { ...block, hidden: true } : block,
         ),
       },
     }
-    const textoJornada = await textoDelPdf(await renderizarCotizacion(armarDocumento(jornada)))
-    expect(textoJornada).toContain('Equipo ofrecido:')
-    expect(textoJornada).toContain('Forma de pago: a 30 - 45 días F.F.')
-    expect(textoJornada).not.toContain('Alcance')
-    expect(textoJornada).not.toContain('Prestación mínima 8 hs')
+    const textDaily = await textOfPdf(await renderizarQuote(buildDocument(daily)))
+    expect(textDaily).toContain('Equipo ofrecido:')
+    expect(textDaily).toContain('Forma de pago: a 30 - 45 días F.F.')
+    expect(textDaily).not.toContain('Alcance')
+    expect(textDaily).not.toContain('Prestación mínima 8 hs')
 
-    const mensual = {
-      ...EJEMPLO_MENSUAL,
+    const monthly = {
+      ...EXAMPLE_MONTHLY,
       cotizacion: {
-        ...EJEMPLO_MENSUAL.cotizacion,
-        bloques: EJEMPLO_MENSUAL.cotizacion.bloques.map((bloque) =>
-          bloque.titulo === 'RENEGOCIACIÓN DE TARIFAS' ? { ...bloque, oculto: true } : bloque,
+        ...EXAMPLE_MONTHLY.cotizacion,
+        bloques: EXAMPLE_MONTHLY.cotizacion.bloques.map((block) =>
+          block.titulo === 'RENEGOCIACIÓN DE TARIFAS' ? { ...block, hidden: true } : block,
         ),
       },
     }
-    const textoMensual = await textoDelPdf(await renderizarCotizacion(armarDocumento(mensual)))
-    expect(textoMensual).toContain('CONDICIONES PARA LA CONTRATACIÓN DE SERVICIOS')
-    expect(textoMensual).not.toContain('RENEGOCIACIÓN DE TARIFAS')
-    expect(textoMensual).not.toContain('con base en junio 2026')
+    const textMonthly = await textOfPdf(await renderizarQuote(buildDocument(monthly)))
+    expect(textMonthly).toContain('CONDICIONES PARA LA CONTRATACIÓN DE SERVICIOS')
+    expect(textMonthly).not.toContain('RENEGOCIACIÓN DE TARIFAS')
+    expect(textMonthly).not.toContain('con base en junio 2026')
   }, 20_000)
 })
 
 describe('cotización sin guardar', () => {
   it('sin número, el PDF muestra {{numero}} en su lugar', async () => {
-    const mensual = { ...EJEMPLO_MENSUAL, cotizacion: { ...EJEMPLO_MENSUAL.cotizacion, numero: null } }
-    expect(await textoDelPdf(await renderizarCotizacion(armarDocumento(mensual)))).toContain('Cotización N° {{numero}}')
+    const monthly = { ...EXAMPLE_MONTHLY, cotizacion: { ...EXAMPLE_MONTHLY.cotizacion, numero: null } }
+    expect(await textOfPdf(await renderizarQuote(buildDocument(monthly)))).toContain('Cotización N° {{numero}}')
 
-    const jornada = { ...EJEMPLO_JORNADA, cotizacion: { ...EJEMPLO_JORNADA.cotizacion, numero: null } }
-    expect(await textoDelPdf(await renderizarCotizacion(armarDocumento(jornada)))).toContain('Cotización N° {{numero}}')
+    const daily = { ...EXAMPLE_DAILY, cotizacion: { ...EXAMPLE_DAILY.cotizacion, numero: null } }
+    expect(await textOfPdf(await renderizarQuote(buildDocument(daily)))).toContain('Cotización N° {{numero}}')
   }, 20_000)
 })
