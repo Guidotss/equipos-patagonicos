@@ -4,7 +4,7 @@ import type { StatusEditor } from '@/lib/quotes/editor/types'
 import {
   messageErrorViewPreview,
   modeViewPreview,
-  viewDesactualizada,
+  isPreviewOutdated,
   type ModeViewPreview,
 } from '@/lib/quotes/preview'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
@@ -20,36 +20,36 @@ class ErrorResponse extends Error {
 }
 
 export type ViewPreview = {
-  modo: ModeViewPreview
+  mode: ModeViewPreview
   /** blob: de la última vista previa generada, o la ruta del PDF guardado. */
   url: string | null
-  cargando: boolean
+  loading: boolean
   error: string | null
   /** Lo que hay en pantalla cambió después de generarla. */
-  desactualizada: boolean
-  actualizar: () => void
+  outdated: boolean
+  refresh: () => void
 }
 
 /**
- * Estado de la vista previa. Vive en EditorCotizacion y lo comparten la columna fija y el panel lateral, así hay un
+ * Estado de la vista previa. Vive en EditorQuote y lo comparten la columna fija y el panel lateral, así hay un
  * solo PDF generado y un solo blob que liberar. Se genera con el botón, no en cada tecla (decisión 16); en
  * escritorio, donde la columna está a la vista, la primera vez que se puede se genera sola.
  */
-export function useQuotePreview(estado: StatusEditor): ViewPreview {
-  const modo = modeViewPreview(estado)
-  const [generada, setGenerada] = useState<{ url: string; con: StatusEditor } | null>(null)
-  const [cargando, setCargando] = useState(false)
+export function useQuotePreview(state: StatusEditor): ViewPreview {
+  const mode = modeViewPreview(state)
+  const [generated, setGenerated] = useState<{ url: string; state: StatusEditor } | null>(null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const pedido = useRef<AbortController | null>(null)
-  const urlViva = useRef<string | null>(null)
-  const intentada = useRef(false)
+  const request = useRef<AbortController | null>(null)
+  const activeUrl = useRef<string | null>(null)
+  const attempted = useRef(false)
 
-  const actualizar = useCallback(() => {
-    pedido.current?.abort()
-    const controlador = new AbortController()
-    pedido.current = controlador
-    const sent = estado
-    setCargando(true)
+  const refresh = useCallback(() => {
+    request.current?.abort()
+    const controller = new AbortController()
+    request.current = controller
+    const sent = state
+    setLoading(true)
     setError(null)
     void (async () => {
       try {
@@ -57,7 +57,7 @@ export function useQuotePreview(estado: StatusEditor): ViewPreview {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ estado: sent }),
-          signal: controlador.signal,
+          signal: controller.signal,
           // Sin sesión, el proxy no deja llegar el pedido a la ruta y redirige al login. Seguir ese redirect daría
           // un 200 con el HTML del login, que se dibujaría en la hoja: se corta acá y se toma como sesión vencida.
           redirect: 'manual',
@@ -69,61 +69,61 @@ export function useQuotePreview(estado: StatusEditor): ViewPreview {
           throw new ErrorResponse(response.status)
         }
         const pdf = await response.blob()
-        if (controlador.signal.aborted) return
+        if (controller.signal.aborted) return
         // El blob anterior se libera recién cuando hay uno nuevo: el <iframe> lo sigue mostrando hasta entonces.
         const url = URL.createObjectURL(pdf)
-        if (urlViva.current) URL.revokeObjectURL(urlViva.current)
-        urlViva.current = url
-        setGenerada({ url, con: sent })
+        if (activeUrl.current) URL.revokeObjectURL(activeUrl.current)
+        activeUrl.current = url
+        setGenerated({ url, state: sent })
       } catch (e) {
-        if (controlador.signal.aborted) return
+        if (controller.signal.aborted) return
         if (!(e instanceof ErrorResponse)) console.error(e)
         setError(messageErrorViewPreview(e instanceof ErrorResponse ? e.status : null))
       } finally {
-        if (pedido.current === controlador) {
-          pedido.current = null
-          setCargando(false)
+        if (request.current === controller) {
+          request.current = null
+          setLoading(false)
         }
       }
     })()
-  }, [estado])
+  }, [state])
 
   // El ancho se mira acá y no con un estado (useSyncExternalStore): en el servidor no se conoce, y el render extra
   // al hidratar volvería a dibujar todo el editor y los inputs controlados pisarían lo tipeado antes de hidratar.
   useEffect(() => {
-    if (intentada.current || modo.tipo !== 'generada' || !isPreviewDesktop()) return
-    intentada.current = true
-    actualizar()
+    if (attempted.current || mode.type !== 'generada' || !isPreviewDesktop()) return
+    attempted.current = true
+    refresh()
   })
 
   // Si la ventana pasa al ancho de escritorio (se agranda o se gira la tableta), la columna aparece: con la hoja vacía
   // se genera como al entrar. Sin esto esperaría al próximo render del editor.
-  const onPasarAEscritorio = useEffectEvent(() => {
-    if (modo.tipo !== 'generada' || generada || cargando || error) return
-    intentada.current = true
-    actualizar()
+  const onDesktopEnter = useEffectEvent(() => {
+    if (mode.type !== 'generada' || generated || loading || error) return
+    attempted.current = true
+    refresh()
   })
   useEffect(() => {
-    const consulta = window.matchMedia(PREVIEW_DESKTOP_QUERY)
-    const escuchar = (evento: MediaQueryListEvent) => {
-      if (evento.matches) onPasarAEscritorio()
+    const query = window.matchMedia(PREVIEW_DESKTOP_QUERY)
+    const listen = (event: MediaQueryListEvent) => {
+      if (event.matches) onDesktopEnter()
     }
-    consulta.addEventListener('change', escuchar)
-    return () => consulta.removeEventListener('change', escuchar)
+    query.addEventListener('change', listen)
+    return () => query.removeEventListener('change', listen)
   }, [])
 
   useEffect(
     () => () => {
-      pedido.current?.abort()
+      request.current?.abort()
       // En desarrollo, StrictMode desmonta y vuelve a montar: el pedido automático abortado se tiene que repetir.
-      intentada.current = false
-      if (urlViva.current) URL.revokeObjectURL(urlViva.current)
-      urlViva.current = null
+      attempted.current = false
+      if (activeUrl.current) URL.revokeObjectURL(activeUrl.current)
+      activeUrl.current = null
     },
     [],
   )
 
-  const desactualizada = useMemo(() => viewDesactualizada(generada?.con ?? null, estado), [generada, estado])
-  const url = modo.tipo === 'generada' ? (generada?.url ?? null) : modo.tipo === 'guardada' ? modo.url : null
-  return { modo, url, cargando, error, desactualizada, actualizar }
+  const outdated = useMemo(() => isPreviewOutdated(generated?.state ?? null, state), [generated, state])
+  const url = mode.type === 'generada' ? (generated?.url ?? null) : mode.type === 'guardada' ? mode.url : null
+  return { mode, url, loading, error, outdated, refresh }
 }

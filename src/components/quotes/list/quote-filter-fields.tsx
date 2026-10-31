@@ -7,9 +7,9 @@ import { useId } from 'react'
 
 import type { ClientFilter, DateRange } from './quote-filter-model'
 
-const ETIQUETA = 'text-[13px]/none font-normal text-muted-foreground'
+const LABEL_CLASS = 'text-[13px]/none font-normal text-muted-foreground'
 
-export function WarningRango() {
+export function DateRangeWarning() {
   return <p className="text-sm text-destructive">“Hasta” es anterior a “Desde”.</p>
 }
 
@@ -17,22 +17,22 @@ export function OptionsStatus() {
   return (
     <>
       <NativeSelectOption value="">Todos los estados</NativeSelectOption>
-      {STATUSES_FILTER.map((estado) => (
-        <NativeSelectOption key={estado} value={estado}>
-          {STATUSES_QUOTE[estado].label}
+      {STATUSES_FILTER.map((state) => (
+        <NativeSelectOption key={state} value={state}>
+          {STATUSES_QUOTE[state].label}
         </NativeSelectOption>
       ))}
     </>
   )
 }
 
-export function OptionsClient({ clientes }: { clientes: ClientFilter[] }) {
+export function OptionsClient({ clients }: { clients: ClientFilter[] }) {
   return (
     <>
       <NativeSelectOption value="">Todos los clientes</NativeSelectOption>
-      {clientes.map((cliente) => (
-        <NativeSelectOption key={cliente.id} value={cliente.id}>
-          {cliente.razon_social}
+      {clients.map((client) => (
+        <NativeSelectOption key={client.id} value={client.id}>
+          {client.razon_social}
         </NativeSelectOption>
       ))}
     </>
@@ -40,43 +40,43 @@ export function OptionsClient({ clientes }: { clientes: ClientFilter[] }) {
 }
 
 /** Desde y Hasta como date nativos (sin calendario: no suma dependencias). */
-export function FieldsRango({
-  rango,
+export function DateRangeFields({
+  range,
   onChange,
-  alto,
+  tall,
 }: {
-  rango: DateRange
-  onChange: (rango: DateRange) => void
-  alto: string
+  range: DateRange
+  onChange: (range: DateRange) => void
+  tall: string
 }) {
   const idFrom = useId()
   const idTo = useId()
   return (
     <div className="grid grid-cols-2 gap-2">
       <div className="space-y-1">
-        <Label htmlFor={idFrom} className={ETIQUETA}>
+        <Label htmlFor={idFrom} className={LABEL_CLASS}>
           Desde
         </Label>
         <Input
           id={idFrom}
           type="date"
-          value={rango.desde}
-          max={rango.hasta || undefined}
-          onChange={(evento) => onChange({ ...rango, desde: evento.target.value })}
-          className={alto}
+          value={range.from}
+          max={range.to || undefined}
+          onChange={(event) => onChange({ ...range, from: event.target.value })}
+          className={tall}
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor={idTo} className={ETIQUETA}>
+        <Label htmlFor={idTo} className={LABEL_CLASS}>
           Hasta
         </Label>
         <Input
           id={idTo}
           type="date"
-          value={rango.hasta}
-          min={rango.desde || undefined}
-          onChange={(evento) => onChange({ ...rango, hasta: evento.target.value })}
-          className={alto}
+          value={range.to}
+          min={range.from || undefined}
+          onChange={(event) => onChange({ ...range, to: event.target.value })}
+          className={tall}
         />
       </div>
     </div>

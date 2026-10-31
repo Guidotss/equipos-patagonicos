@@ -20,7 +20,7 @@ export function formatAmountDaily(monto: number): string {
 }
 
 /** "$ 1.950.000,50": montos en pantalla (facturas, órdenes de pago). */
-export function formatMoneda(monto: number): string {
+export function formatCurrency(monto: number): string {
   return `$ ${withDecimals.format(monto)}`
 }
 

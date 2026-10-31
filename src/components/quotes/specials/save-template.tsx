@@ -9,27 +9,27 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input'
 import type { StatusEditor } from '@/lib/quotes/editor/types'
 
-export function SaveTemplate({ estado, disabled, antesOfAbrir }: { estado: StatusEditor; disabled?: boolean; antesOfAbrir?: () => void }) {
+export function SaveTemplate({ state, disabled, beforeOpen }: { state: StatusEditor; disabled?: boolean; beforeOpen?: () => void }) {
   const [open, setOpen] = useState(false)
-  const [nombre, setName] = useState('')
+  const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const inCurso = useRef(false)
+  const inProgress = useRef(false)
   async function save(e: React.FormEvent) {
     e.preventDefault()
-    if (inCurso.current) return
-    inCurso.current = true; setBusy(true)
+    if (inProgress.current) return
+    inProgress.current = true; setBusy(true)
     try {
-      const r = await saveTemplateEditor(estado, nombre)
+      const r = await saveTemplateEditor(state, name)
       if (!r.ok) { setMessage(r.message); return }
       toast.success('Plantilla guardada'); setOpen(false)
     } catch { setMessage('No se pudo guardar. Probá nuevamente.') }
-    finally { inCurso.current = false; setBusy(false) }
+    finally { inProgress.current = false; setBusy(false) }
   }
-  return <Dialog open={open} onOpenChange={(open) => { if (open) antesOfAbrir?.(); setOpen(open) }}>
+  return <Dialog open={open} onOpenChange={(open) => { if (open) beforeOpen?.(); setOpen(open) }}>
     <DialogTrigger asChild><Button variant="outline" disabled={disabled}>Guardar como plantilla</Button></DialogTrigger>
     <DialogContent><DialogHeader><DialogTitle>Guardar como plantilla</DialogTitle><DialogDescription>Se guardan los textos y los ítems sin precios ni datos del cliente.</DialogDescription></DialogHeader>
-      <form onSubmit={save} className="flex flex-col gap-4"><Field id="nombre-nueva-plantilla" label="Nombre de la plantilla"><Input id="nombre-nueva-plantilla" maxLength={100} value={nombre} onChange={(e) => setName(e.target.value)} disabled={busy} required /></Field>
+      <form onSubmit={save} className="flex flex-col gap-4"><Field id="nombre-nueva-plantilla" label="Nombre de la plantilla"><Input id="nombre-nueva-plantilla" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} required /></Field>
         {message ? <p role="alert" className="text-sm text-destructive">{message}</p> : null}
         <Button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Crear plantilla'}</Button>
       </form>

@@ -3,7 +3,7 @@ import { MESSAGE_CONFLICT } from '../editor/constants'
 import { ErrorQuote } from './contracts'
 import type { Row } from './source'
 
-const ABIERTAS = ['borrador', 'enviada']
+const OPEN_STATUSES = ['borrador', 'enviada']
 
 // Lo que la base va a rechazar y ya se ve en la fila cargada se revisa antes de generar y subir el PDF,
 // con los mismos mensajes: un PDF subido no se puede borrar desde la app y quedaría huérfano. La base
@@ -29,7 +29,7 @@ export function requirePrices(row: Row) {
 }
 
 export function requireSendable(row: Row) {
-  if (!ABIERTAS.includes(row.estado)) {
+  if (!OPEN_STATUSES.includes(row.estado)) {
     throw new ErrorQuote('Solo se puede enviar una cotización en borrador o ya enviada')
   }
   if (row.origen !== 'app') {
@@ -38,9 +38,9 @@ export function requireSendable(row: Row) {
   requirePrices(row)
 }
 
-export function requireApprovable(row: Row, fecha: string) {
-  if (!ABIERTAS.includes(row.estado)) throw new ErrorQuote('Solo se puede aprobar una cotización en borrador o enviada')
-  if (!z.iso.date().safeParse(fecha).success) throw new ErrorQuote('La fecha de aprobación no es válida')
-  if (fecha < row.fecha) throw new ErrorQuote('La fecha de aprobación no puede ser anterior a la cotización')
+export function requireApprovable(row: Row, date: string) {
+  if (!OPEN_STATUSES.includes(row.estado)) throw new ErrorQuote('Solo se puede aprobar una cotización en borrador o enviada')
+  if (!z.iso.date().safeParse(date).success) throw new ErrorQuote('La fecha de aprobación no es válida')
+  if (date < row.fecha) throw new ErrorQuote('La fecha de aprobación no puede ser anterior a la cotización')
   if (row.origen !== 'importada') requirePrices(row)
 }

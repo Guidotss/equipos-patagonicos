@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { BarCrumbs, Content } from '@/components/app-shell/header'
 import { HeaderForm } from '@/components/form/structure-form'
 import { DocumentForm } from '@/components/documents/document-form'
-import { TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
+import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import { contextoDocument } from '@/lib/documents/queries'
 import type { OptionBudget } from '@/lib/documents/screens'
 import { createClient } from '@/lib/supabase/server'
@@ -49,8 +49,8 @@ export default async function NewDocumentPage({
   }
   const tipo = quote
     ? 'orden_compra'
-    : typeof consulta.tipo === 'string' && Object.hasOwn(TIPOS_DOCUMENT, consulta.tipo)
-      ? (consulta.tipo as TipoDocument)
+    : typeof consulta.tipo === 'string' && Object.hasOwn(DOCUMENT_TYPES, consulta.tipo)
+      ? (consulta.tipo as DocumentType)
       : 'remito'
   const contexto = budget ? await contextoDocument(supabase, budget.cliente_id) : undefined
   return (
@@ -68,9 +68,9 @@ export default async function NewDocumentPage({
         <DocumentForm
           options={options}
           budgetId={budget?.id}
-          contextoInitial={contexto}
-          tipo={tipo}
-          cotizacion={quote}
+          initialContext={contexto}
+          type={tipo}
+          quote={quote}
         />
       </Content>
     </>

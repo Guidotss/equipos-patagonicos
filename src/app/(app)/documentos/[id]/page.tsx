@@ -6,7 +6,7 @@ import { HeaderForm } from '@/components/form/structure-form'
 import { ActionsDocument } from '@/components/documents/actions-document'
 import { DocumentForm } from '@/components/documents/document-form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
+import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import { contextoDocument } from '@/lib/documents/queries'
 import { numberDocument } from '@/lib/documents/screens'
 import { createClient } from '@/lib/supabase/server'
@@ -48,7 +48,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       />
       <Content className="max-w-6xl">
         <HeaderForm
-          titulo={`${TIPOS_DOCUMENT[document.tipo as TipoDocument]} · ${numberDocument(document)}`}
+          titulo={`${DOCUMENT_TYPES[document.tipo as DocumentType]} · ${numberDocument(document)}`}
         />
         {document.deleted_at ? (
           <>
@@ -89,11 +89,11 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
           <DocumentForm
             options={contexto.budgets}
             budgetId={budgetId}
-            contextoInitial={contexto}
+            initialContext={contexto}
             document={document}
             filesExisting={archivos.data!}
-            vinculos={vinculos.data!.map((item) => item.cotizacion_id)}
-            aplicacionesIniciales={aplicaciones.data!}
+            linkedBudgetIds={vinculos.data!.map((item) => item.cotizacion_id)}
+            initialAllocations={aplicaciones.data!}
           />
         )}
       </Content>

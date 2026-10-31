@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { UNIDADES } from '@/lib/templates/content'
+import { UNITS } from '@/lib/templates/content'
 
 /** Variables que se cargan por cotización (jsonb `datos`). El resto sale del equipo, la empresa o la cotización. */
 export const FIELDS_DATA = [
@@ -46,6 +46,6 @@ export const schemaItem = z.object({
     .nonnegative('El precio no puede ser negativo')
     .max(999_999_999_999, 'El precio es demasiado grande')
     .nullable(),
-  unidad: z.enum(UNIDADES, { error: 'Elegí la unidad' }),
+  unidad: z.enum(UNITS, { error: 'Elegí la unidad' }),
 })
 export type ItemQuote = z.infer<typeof schemaItem>

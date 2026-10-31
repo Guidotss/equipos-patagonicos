@@ -1,8 +1,8 @@
-// src/lib/cotizaciones/lista-vista.ts
+// src/lib/quotes/list-view.ts
 // Lo que dibujan la tabla y la lista del celular a partir de una fila de buscar_cotizaciones, más la paginación y
 // el filtro de fechas. Puro: se prueba con Vitest.
-import { formatDateCorta, sumarDays } from '@/lib/format/dates'
-import { FORMATOS, type Format } from '@/lib/templates/content'
+import { formatShortDate, addDays } from '@/lib/format/dates'
+import { FORMATS, type Format } from '@/lib/templates/content'
 import { statusVisible, PER_PAGE, resumenQuote } from './list'
 
 /** Una fila de buscar_cotizaciones con las columnas que pide la lista (src/app/(app)/cotizaciones/page.tsx). */
@@ -50,13 +50,13 @@ export function rowQuote(row: RowViewList): RowQuote {
     id: row.id,
     numero: row.numero,
     origen: row.origen === 'importada' ? 'Cargada' : row.origen === 'directa' ? 'Directa' : null,
-    fecha: formatDateCorta(row.fecha),
+    fecha: formatShortDate(row.fecha),
     cliente: row.cliente_razon_social,
     trabajo: resumenQuote(row),
-    formato: row.origen === 'app' ? (FORMATOS[row.formato as Format] ?? row.formato) : '—',
+    formato: row.origen === 'app' ? (FORMATS[row.formato as Format] ?? row.formato) : '—',
     estado: row.estado,
     vencida: row.vencida === true,
-    venceEl: withVencimiento && row.vence_el ? formatDateCorta(row.vence_el) : null,
+    venceEl: withVencimiento && row.vence_el ? formatShortDate(row.vence_el) : null,
     tienePdf: row.origen !== 'directa',
   }
 }
@@ -72,31 +72,31 @@ export function rowsMostradas(pagina: number, total: number): { desde: number; h
   return { desde: (pagina - 1) * PER_PAGE + 1, hasta: Math.min(pagina * PER_PAGE, total) }
 }
 
-export type AtajoDates = { label: string; desde: string; hasta: string }
+export type DateShortcut = { label: string; desde: string; hasta: string }
 
-function primerDay(iso: string): string {
+function firstDay(iso: string): string {
   return `${iso.slice(0, 7)}-01`
 }
 
 function lastDay(iso: string): string {
   // 31 días después del día 1 siempre cae en el mes siguiente; el día anterior a su día 1 es el último de este.
-  return sumarDays(primerDay(sumarDays(primerDay(iso), 31)), -1)
+  return addDays(firstDay(addDays(firstDay(iso), 31)), -1)
 }
 
 /** Rangos de un clic del filtro de fechas. `hoy` es la fecha argentina (hoyArgentina). */
-export function atajosDates(today: string): AtajoDates[] {
-  const finMonthPrevious = sumarDays(primerDay(today), -1)
+export function dateShortcuts(today: string): DateShortcut[] {
+  const previousMonthEnd = addDays(firstDay(today), -1)
   return [
-    { label: 'Este mes', desde: primerDay(today), hasta: lastDay(today) },
-    { label: 'Mes anterior', desde: primerDay(finMonthPrevious), hasta: finMonthPrevious },
-    { label: 'Últimos 90 días', desde: sumarDays(today, -89), hasta: today },
+    { label: 'Este mes', desde: firstDay(today), hasta: lastDay(today) },
+    { label: 'Mes anterior', desde: firstDay(previousMonthEnd), hasta: previousMonthEnd },
+    { label: 'Últimos 90 días', desde: addDays(today, -89), hasta: today },
   ]
 }
 
 /** Texto del botón de fechas: "01/10/2026 – 31/10/2026", "Desde 01/10/2026", "Hasta …" o "Cualquier fecha". */
-export function textRangoDates(desde: string, hasta: string): string {
-  if (desde && hasta) return `${formatDateCorta(desde)} – ${formatDateCorta(hasta)}`
-  if (desde) return `Desde ${formatDateCorta(desde)}`
-  if (hasta) return `Hasta ${formatDateCorta(hasta)}`
+export function formatDateRange(from: string, to: string): string {
+  if (from && to) return `${formatShortDate(from)} – ${formatShortDate(to)}`
+  if (from) return `Desde ${formatShortDate(from)}`
+  if (to) return `Hasta ${formatShortDate(to)}`
   return 'Cualquier fecha'
 }

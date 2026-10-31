@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { TemplateForm } from '@/components/settings/template-form'
 import { ButtonStatus } from '@/components/form/button-status'
-import { FORMATOS, readBlocks, readItemsTemplate, type Format } from '@/lib/templates/content'
+import { FORMATS, readBlocks, readItemsTemplate, type Format } from '@/lib/templates/content'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 import { changeStatusTemplate, renameTemplate } from '../../actions'
@@ -33,7 +33,7 @@ export default async function TemplatePage({ params }: { params: Promise<{ id: s
         accion={renameTemplate.bind(null, id)}
         plantilla={{
           nombre: template.nombre,
-          formato: FORMATOS[template.formato as Format] ?? template.formato,
+          formato: FORMATS[template.formato as Format] ?? template.formato,
           activa: template.activa,
           validez_dias: template.validez_dias,
           asunto: template.asunto,

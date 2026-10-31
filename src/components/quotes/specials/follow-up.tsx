@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { actualizarFollowUp } from '@/app/(app)/cotizaciones/specials-actions'
+import { updateFollowUp } from '@/app/(app)/cotizaciones/specials-actions'
 import { Field } from '@/components/form/field'
 import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,7 @@ export function FollowUp({ id, version, notas, fecha }: { id: string; version: s
       if (busy) return
       const fd = new FormData(e.currentTarget); setBusy(true); setMessage('')
       try {
-        const r = await actualizarFollowUp(id, version, String(fd.get('notas') ?? ''), String(fd.get('fecha') ?? ''))
+        const r = await updateFollowUp(id, version, String(fd.get('notas') ?? ''), String(fd.get('fecha') ?? ''))
         if (!r.ok) setMessage(r.message)
         else { toast.success(r.message); router.refresh() }
       } catch { setMessage('No se pudo guardar. Probá nuevamente.') }

@@ -1,7 +1,7 @@
-// src/lib/cotizaciones/grilla.test.ts
+// src/lib/quotes/grid.test.ts
 import { describe, expect, it } from 'vitest'
 import {
-  destinationFoco,
+  focusDestination,
   errorsByKey,
   rowsGrid,
   readQuantity,
@@ -9,16 +9,16 @@ import {
   normalizePrice,
   totalGeneral,
   totalLine,
-  vecinoOnQuitar,
+  neighborOnRemove,
 } from './grid'
 
-const item = (clave: string, seccion = '', cantidad = '1', price = '') => ({ clave, seccion, cantidad, precio: price })
+const item = (key: string, section = '', quantity = '1', price = '') => ({ clave: key, seccion: section, cantidad: quantity, precio: price })
 
 describe('filasGrilla', () => {
   it('sin secciones son solo ítems', () => {
     expect(rowsGrid([item('a'), item('b')])).toEqual([
-      { tipo: 'item', index: 0 },
-      { tipo: 'item', index: 1 },
+      { type: 'item', index: 0 },
+      { type: 'item', index: 1 },
     ])
   })
 
@@ -26,19 +26,19 @@ describe('filasGrilla', () => {
     expect(
       rowsGrid([item('a', 'Precios Jornada'), item('b', 'Precios Jornada'), item('c', 'Precios Jornada Adicional')]),
     ).toEqual([
-      { tipo: 'seccion', clave: 'a', index: 0, seccion: 'Precios Jornada', numero: 1 },
-      { tipo: 'item', index: 0 },
-      { tipo: 'item', index: 1 },
-      { tipo: 'seccion', clave: 'c', index: 2, seccion: 'Precios Jornada Adicional', numero: 2 },
-      { tipo: 'item', index: 2 },
+      { type: 'seccion', key: 'a', index: 0, section: 'Precios Jornada', number: 1 },
+      { type: 'item', index: 0 },
+      { type: 'item', index: 1 },
+      { type: 'seccion', key: 'c', index: 2, section: 'Precios Jornada Adicional', number: 2 },
+      { type: 'item', index: 2 },
     ])
   })
 
   it('un ítem sin sección entre dos grupos lleva su propio encabezado, como en el PDF', () => {
-    expect(rowsGrid([item('a', 'X'), item('b'), item('c', 'X')]).filter((row) => row.tipo === 'seccion')).toEqual([
-      { tipo: 'seccion', clave: 'a', index: 0, seccion: 'X', numero: 1 },
-      { tipo: 'seccion', clave: 'b', index: 1, seccion: '', numero: 2 },
-      { tipo: 'seccion', clave: 'c', index: 2, seccion: 'X', numero: 3 },
+    expect(rowsGrid([item('a', 'X'), item('b'), item('c', 'X')]).filter((row) => row.type === 'seccion')).toEqual([
+      { type: 'seccion', key: 'a', index: 0, section: 'X', number: 1 },
+      { type: 'seccion', key: 'b', index: 1, section: '', number: 2 },
+      { type: 'seccion', key: 'c', index: 2, section: 'X', number: 3 },
     ])
   })
 })
@@ -107,27 +107,27 @@ describe('destinoFoco', () => {
   const items = [item('a', 'X'), item('b', 'X'), item('c', 'Y'), item('d', 'Y')]
 
   it('la fila siguiente (después de agregar con Enter o duplicar)', () => {
-    expect(destinationFoco({ tipo: 'siguiente', clave: 'a' }, items)).toEqual({ clave: 'b', campo: 'descripcion' })
-    expect(destinationFoco({ tipo: 'siguiente', clave: 'd' }, items)).toBeNull()
-    expect(destinationFoco({ tipo: 'siguiente', clave: 'z' }, items)).toBeNull()
+    expect(focusDestination({ type: 'siguiente', key: 'a' }, items)).toEqual({ key: 'b', field: 'descripcion' })
+    expect(focusDestination({ type: 'siguiente', key: 'd' }, items)).toBeNull()
+    expect(focusDestination({ type: 'siguiente', key: 'z' }, items)).toBeNull()
   })
 
   it('una fila puntual, la última o el nombre de la última sección', () => {
-    expect(destinationFoco({ tipo: 'item', clave: 'c' }, items)).toEqual({ clave: 'c', campo: 'descripcion' })
-    expect(destinationFoco({ tipo: 'item', clave: 'z' }, items)).toBeNull()
-    expect(destinationFoco({ tipo: 'ultimo' }, items)).toEqual({ clave: 'd', campo: 'descripcion' })
-    expect(destinationFoco({ tipo: 'ultimo' }, [])).toBeNull()
-    expect(destinationFoco({ tipo: 'seccionUltima' }, items)).toEqual({ clave: 'c', campo: 'seccion' })
+    expect(focusDestination({ type: 'item', key: 'c' }, items)).toEqual({ key: 'c', field: 'descripcion' })
+    expect(focusDestination({ type: 'item', key: 'z' }, items)).toBeNull()
+    expect(focusDestination({ type: 'ultimo' }, items)).toEqual({ key: 'd', field: 'descripcion' })
+    expect(focusDestination({ type: 'ultimo' }, [])).toBeNull()
+    expect(focusDestination({ type: 'seccionUltima' }, items)).toEqual({ key: 'c', field: 'seccion' })
   })
 })
 
 describe('vecinoAlQuitar', () => {
   it('el anterior; si era el primero, el siguiente; si era el único, ninguno', () => {
     const items = [item('a'), item('b'), item('c')]
-    expect(vecinoOnQuitar(items, 'b')).toBe('a')
-    expect(vecinoOnQuitar(items, 'a')).toBe('b')
-    expect(vecinoOnQuitar([item('a')], 'a')).toBeNull()
-    expect(vecinoOnQuitar(items, 'z')).toBeNull()
+    expect(neighborOnRemove(items, 'b')).toBe('a')
+    expect(neighborOnRemove(items, 'a')).toBe('b')
+    expect(neighborOnRemove([item('a')], 'a')).toBeNull()
+    expect(neighborOnRemove(items, 'z')).toBeNull()
   })
 })
 

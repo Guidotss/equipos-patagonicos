@@ -1,63 +1,63 @@
-import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  LABEL_IN_CURSO,
+  ACTION_PROGRESS_LABEL,
   approvesVersionNoSent,
   errorDateApproval,
   reasonBlock,
   statusOnRevert,
 } from '@/lib/quotes/actions-status'
-import type { ContextoStatus } from '@/lib/quotes/context-status'
+import type { StatusContext } from '@/lib/quotes/context-status'
 import { type PendingList, type StatusEditor } from '@/lib/quotes/editor/types'
 import { TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import type { ActionsStatus } from './quote-actions.types'
 
 /** El texto del botón mientras corre esta acción (otra acción en curso solo deshabilita). */
-function textInCurso(actions: ActionsStatus, accion: keyof typeof LABEL_IN_CURSO): string | undefined {
-  return actions.inCurso === accion ? LABEL_IN_CURSO[accion] : undefined
+function progressText(actions: ActionsStatus, action: keyof typeof ACTION_PROGRESS_LABEL): string | undefined {
+  return actions.currentAction === action ? ACTION_PROGRESS_LABEL[action] : undefined
 }
 
 function ConfirmApproval({
-  estado,
-  contexto,
+  state,
+  context,
   pendingList,
   actions,
   hasChangesWithoutSave,
   today,
 }: {
-  estado: StatusEditor
-  contexto: ContextoStatus
+  state: StatusEditor
+  context: StatusContext
   pendingList: PendingList
   actions: ActionsStatus
   hasChangesWithoutSave: boolean
   today: string
 }) {
   // Hoy por defecto; si la cotización tiene fecha futura, su fecha (no se aprueba antes de cotizar).
-  const [fecha, setDate] = useState(today < estado.fecha ? estado.fecha : today)
-  const error = errorDateApproval(fecha, estado.fecha)
+  const [date, setDate] = useState(today < state.fecha ? state.fecha : today)
+  const error = errorDateApproval(date, state.fecha)
   // Lo que falta se vuelve a mirar con la confirmación abierta: si se vacía un campo, Aprobar se deshabilita.
   const block = reasonBlock('aprobar', pendingList)
-  const warning = approvesVersionNoSent(estado, contexto, hasChangesWithoutSave)
+  const warning = approvesVersionNoSent(state, context, hasChangesWithoutSave)
   // Una nueva todavía no tiene número: aprobar la guarda primero (decisión 12).
-  const nueva = estado.numero === null
+  const newQuote = state.numero === null
 
   return (
-    <ConfirmationInLugar
+    <InlineConfirmation
       tone="exito"
-      pregunta={nueva ? '¿Guardar y aprobar la cotización?' : `¿Aprobar la cotización N° ${estado.numero}?`}
+      pregunta={newQuote ? '¿Guardar y aprobar la cotización?' : `¿Aprobar la cotización N° ${state.numero}?`}
       detail={
-        nueva
+        newQuote
           ? 'Se guarda con un número nuevo, queda como presupuesto y ya no se modifica.'
           : 'Queda como presupuesto y ya no se modifica.'
       }
       textConfirm="Aprobar"
-      textPending={textInCurso(actions, 'aprobar')}
+      textPending={progressText(actions, 'aprobar')}
       pendiente={actions.busy}
       confirmDeshabilitado={error !== null || block !== null}
-      onConfirm={() => void actions.aprobar(fecha)}
-      onCancelar={actions.cancelar}
+      onConfirm={() => void actions.approve(date)}
+      onCancelar={actions.cancel}
     >
       <div className="basis-full space-y-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -67,9 +67,9 @@ function ConfirmApproval({
           <Input
             id="fecha-aprobacion"
             type="date"
-            value={fecha}
-            min={estado.fecha}
-            onChange={(evento) => setDate(evento.target.value)}
+            value={date}
+            min={state.fecha}
+            onChange={(event) => setDate(event.target.value)}
             aria-invalid={error !== null}
             aria-describedby={error ? 'fecha-aprobacion-error' : undefined}
             className="h-8 w-40 bg-background"
@@ -88,40 +88,40 @@ function ConfirmApproval({
           </p>
         ) : null}
       </div>
-    </ConfirmationInLugar>
+    </InlineConfirmation>
   )
 }
 
 export function QuoteActionConfirmation({
-  estado,
-  contexto,
+  state,
+  context,
   pendingList,
   actions,
   hasChangesWithoutSave,
   today,
 }: {
-  estado: StatusEditor
-  contexto: ContextoStatus
+  state: StatusEditor
+  context: StatusContext
   pendingList: PendingList
   actions: ActionsStatus
   hasChangesWithoutSave: boolean
   today: string
 }) {
   const { confirmation } = actions
-  if (!confirmation || confirmation.tipo === 'recargar') return null
-  const numero = estado.numero
+  if (!confirmation || confirmation.type === 'recargar') return null
+  const number = state.numero
   const shared = {
     pendiente: actions.busy,
-    onCancelar: actions.cancelar,
+    onCancelar: actions.cancel,
     onConfirm: () => void actions.confirm(),
   }
 
-  switch (confirmation.tipo) {
+  switch (confirmation.type) {
     case 'aprobar':
       return (
         <ConfirmApproval
-          estado={estado}
-          contexto={contexto}
+          state={state}
+          context={context}
           pendingList={pendingList}
           actions={actions}
           hasChangesWithoutSave={hasChangesWithoutSave}
@@ -130,73 +130,73 @@ export function QuoteActionConfirmation({
       )
     case 'rechazar':
       return (
-        <ConfirmationInLugar
+        <InlineConfirmation
           {...shared}
           tone="aviso"
-          pregunta={`¿Marcar la cotización N° ${numero} como rechazada?`}
+          pregunta={`¿Marcar la cotización N° ${number} como rechazada?`}
           detail="Se puede reabrir después."
           textConfirm="Rechazar"
-          textPending={textInCurso(actions, 'rechazar')}
+          textPending={progressText(actions, 'rechazar')}
         />
       )
     case 'reabrir':
       return (
-        <ConfirmationInLugar
+        <InlineConfirmation
           {...shared}
           tone="neutro"
-          pregunta={`¿Reabrir la cotización N° ${numero}?`}
+          pregunta={`¿Reabrir la cotización N° ${number}?`}
           detail="Vuelve a borrador y se puede editar."
           textConfirm="Reabrir"
-          textPending={textInCurso(actions, 'reabrir')}
+          textPending={progressText(actions, 'reabrir')}
         />
       )
     case 'revertir':
       return (
-        <ConfirmationInLugar
+        <InlineConfirmation
           {...shared}
           tone="aviso"
-          pregunta={`¿Revertir la aprobación de la cotización N° ${numero}?`}
-          detail={`Vuelve a ${statusOnRevert(contexto)} y deja de ser un presupuesto. El PDF aprobado queda guardado.`}
+          pregunta={`¿Revertir la aprobación de la cotización N° ${number}?`}
+          detail={`Vuelve a ${statusOnRevert(context)} y deja de ser un presupuesto. El PDF aprobado queda guardado.`}
           textConfirm="Revertir"
-          textPending={textInCurso(actions, 'revertir')}
+          textPending={progressText(actions, 'revertir')}
         />
       )
     case 'borrar':
       return (
-        <ConfirmationInLugar
+        <InlineConfirmation
           {...shared}
           tone="peligro"
-          pregunta={`¿Eliminar el borrador N° ${numero}?`}
+          pregunta={`¿Eliminar el borrador N° ${number}?`}
           detail="No se puede deshacer."
           textConfirm="Eliminar"
-          textPending={textInCurso(actions, 'borrar')}
+          textPending={progressText(actions, 'borrar')}
         />
       )
     case 'duplicar':
       return (
-        <ConfirmationInLugar
+        <InlineConfirmation
           tone="aviso"
           pregunta="Tenés cambios sin guardar."
           detail="«Duplicar lo guardado» copia la última versión guardada y descarta estos cambios."
           textConfirm="Guardar y duplicar"
-          textPending={textInCurso(actions, 'duplicar')}
-          alternativa={{ texto: 'Duplicar lo guardado', onChoose: () => void actions.duplicar(false) }}
+          textPending={progressText(actions, 'duplicar')}
+          alternativa={{ texto: 'Duplicar lo guardado', onChoose: () => void actions.duplicate(false) }}
           pendiente={actions.busy}
-          onConfirm={() => void actions.duplicar(true)}
-          onCancelar={actions.cancelar}
+          onConfirm={() => void actions.duplicate(true)}
+          onCancelar={actions.cancel}
         />
       )
     case 'finalizar':
       return (
-        <ConfirmationInLugar
+        <InlineConfirmation
           {...shared}
           tone="exito"
-          pregunta={`Esta cotización reemplaza a la N° ${confirmation.anterior.numero}, que sigue en curso como presupuesto.`}
+          pregunta={`Esta cotización reemplaza a la N° ${confirmation.previous.numero}, que sigue en curso como presupuesto.`}
           detail="Si el trabajo sigue con esta, finalizá el anterior."
-          textConfirm={`Finalizar el presupuesto N° ${confirmation.anterior.numero}`}
-          textPending={actions.inCurso === 'finalizar' ? 'Finalizando…' : undefined}
+          textConfirm={`Finalizar el presupuesto N° ${confirmation.previous.numero}`}
+          textPending={actions.currentAction === 'finalizar' ? 'Finalizando…' : undefined}
           textCancelar="Dejarlo en curso"
-          onConfirm={() => void actions.finalizar()}
+          onConfirm={() => void actions.finish()}
         />
       )
   }

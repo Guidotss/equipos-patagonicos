@@ -3,10 +3,10 @@ import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { formatAmountTable, parsePrice } from '@/lib/format/amounts'
-import type { Despachar } from '@/lib/quotes/editor-screen'
+import type { EditorDispatch } from '@/lib/quotes/editor-screen'
 import type { ItemEditor } from '@/lib/quotes/editor/types'
 import { normalizePrice, totalLine, type ErrorsItem, type FieldGrid } from '@/lib/quotes/grid'
-import { UNIDADES, type Unit } from '@/lib/templates/content'
+import { UNITS, type Unit } from '@/lib/templates/content'
 import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -22,23 +22,23 @@ export function RowItem({
   index,
   quantityItems,
   errors,
-  despachar,
+  dispatch,
   onEnter,
   onMove,
   onDuplicate,
-  onQuitar,
+  onRemove,
   editPrices,
 }: {
   item: ItemEditor
   index: number
   quantityItems: number
-  /** Los errores de guardado de esta fila (por clave, no por posición: ver TarjetaItems). */
+  /** Los errores de guardado de esta fila (por clave, no por posición: ver CardItems). */
   errors: ErrorsItem
-  despachar: Despachar
+  dispatch: EditorDispatch
   onEnter: () => void
-  onMove: (paso: -1 | 1) => void
+  onMove: (step: -1 | 1) => void
   onDuplicate: () => void
-  onQuitar: () => void
+  onRemove: () => void
   editPrices: boolean
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -46,24 +46,24 @@ export function RowItem({
     attributes: { roleDescription: 'ítem ordenable' },
   })
   // Mientras se escribe el precio se ve tal cual; fuera del campo, con formato ("1.950.000,00"), venga de donde venga
-  // (lo cargado de la base llega como "1.950.000", textoPrecio de la Task 3). Se pasa a "escribiendo" con la primera
+  // (lo cargado de la base llega como "1.950.000", textPrice de la Task 3). Se pasa a "escribiendo" con la primera
   // tecla y no al enfocar: si el texto cambiara al entrar con Tab, React reasignaría el valor, se perdería la
   // selección del navegador y lo tipeado se agregaría al precio en vez de reemplazarlo.
-  const [editandoPrice, setEditandoPrice] = useState(false)
-  const numero = index + 1
+  const [editingPrice, setEditingPrice] = useState(false)
+  const number = index + 1
   const id = `item-${item.clave}`
   const error = (field: FieldItem) => errors[field]
   const messages = (['descripcion', 'cantidad', 'precio', 'unidad'] as const).map(error).filter(Boolean)
-  const describir = (field: FieldItem) => (error(field) ? `${id}-error` : undefined)
-  const priceMalWritten = item.precio.trim() !== '' && parsePrice(item.precio) === null
+  const describe = (field: FieldItem) => (error(field) ? `${id}-error` : undefined)
+  const invalidPrice = item.precio.trim() !== '' && parsePrice(item.precio) === null
   const total = totalLine(item)
   const change = (changes: Partial<Omit<ItemEditor, 'clave'>>) =>
-    despachar({ tipo: 'item', clave: item.clave, changes })
+    dispatch({ tipo: 'item', clave: item.clave, changes })
 
   // Enter (sin Shift, que deja escribir un salto en la descripción) agrega una fila debajo y la enfoca.
-  function onTeclear(evento: React.KeyboardEvent) {
-    if (evento.key !== 'Enter' || evento.shiftKey || evento.nativeEvent.isComposing) return
-    evento.preventDefault()
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+    event.preventDefault()
     onEnter()
   }
 
@@ -82,7 +82,7 @@ export function RowItem({
         quantityItems={quantityItems}
         onMove={onMove}
         onDuplicate={onDuplicate}
-        onQuitar={onQuitar}
+        onRemove={onRemove}
         attributes={attributes}
         listeners={listeners}
         setActivatorNodeRef={setActivatorNodeRef}
@@ -95,14 +95,14 @@ export function RowItem({
         </Label>
         <Textarea
           id={`${id}-descripcion`}
-          aria-label={`Descripción del ítem ${numero}`}
+          aria-label={`Descripción del ítem ${number}`}
           rows={1}
           value={item.descripcion}
           placeholder="Descripción"
-          onChange={(evento) => change({ descripcion: evento.target.value })}
-          onKeyDown={onTeclear}
+          onChange={(event) => change({ descripcion: event.target.value })}
+          onKeyDown={onKeyDown}
           aria-invalid={Boolean(error('descripcion'))}
-          aria-describedby={describir('descripcion')}
+          aria-describedby={describe('descripcion')}
           className="min-h-11 resize-none border-input bg-background px-2.5 py-2.5 shadow-none @min-[44rem]:min-h-10 @min-[44rem]:py-2"
         />
       </div>
@@ -115,13 +115,13 @@ export function RowItem({
           </Label>
           <Input
             id={`${id}-cantidad`}
-            aria-label={`Cantidad del ítem ${numero}`}
+            aria-label={`Cantidad del ítem ${number}`}
             inputMode="decimal"
             value={item.cantidad}
-            onChange={(evento) => change({ cantidad: evento.target.value })}
-            onKeyDown={onTeclear}
+            onChange={(event) => change({ cantidad: event.target.value })}
+            onKeyDown={onKeyDown}
             aria-invalid={Boolean(error('cantidad'))}
-            aria-describedby={describir('cantidad')}
+            aria-describedby={describe('cantidad')}
             className={cn(ITEM_INPUT_CLASS, 'px-2 tabular-nums', ITEM_NUMBER_CLASS)}
           />
         </div>
@@ -132,22 +132,22 @@ export function RowItem({
             </Label>
             <Input
               id={`${id}-precio`}
-              aria-label={`Precio del ítem ${numero}`}
+              aria-label={`Precio del ítem ${number}`}
               inputMode="decimal"
-              value={editandoPrice ? item.precio : normalizePrice(item.precio)}
+              value={editingPrice ? item.precio : normalizePrice(item.precio)}
               placeholder="Sin precio"
-              onChange={(evento) => {
-                setEditandoPrice(true)
-                change({ precio: evento.target.value })
+              onChange={(event) => {
+                setEditingPrice(true)
+                change({ precio: event.target.value })
               }}
               onBlur={() => {
-                setEditandoPrice(false)
+                setEditingPrice(false)
                 const normal = normalizePrice(item.precio)
                 if (normal !== item.precio) change({ precio: normal })
               }}
-              onKeyDown={onTeclear}
-              aria-invalid={Boolean(error('precio')) || priceMalWritten}
-              aria-describedby={describir('precio')}
+              onKeyDown={onKeyDown}
+              aria-invalid={Boolean(error('precio')) || invalidPrice}
+              aria-describedby={describe('precio')}
               className={cn(
                 ITEM_INPUT_CLASS,
                 'px-2 text-right tabular-nums',
@@ -163,17 +163,17 @@ export function RowItem({
           </Label>
           <NativeSelect
             id={`${id}-unidad`}
-            aria-label={`Unidad del ítem ${numero}`}
+            aria-label={`Unidad del ítem ${number}`}
             value={item.unidad}
-            onChange={(evento) => change({ unidad: evento.target.value as Unit })}
+            onChange={(event) => change({ unidad: event.target.value as Unit })}
             aria-invalid={Boolean(error('unidad'))}
-            aria-describedby={describir('unidad')}
+            aria-describedby={describe('unidad')}
             // La columna de 6rem mantiene "JORNADA" completa con su flecha.
             className="w-full [&_[data-slot=native-select-icon]]:right-1.5 [&_select]:h-11 [&_select]:bg-background [&_select]:pr-6 [&_select]:pl-2 @min-[44rem]:[&_select]:h-10 @min-[44rem]:[&_select]:text-xs"
           >
-            {UNIDADES.map((unidad) => (
-              <NativeSelectOption key={unidad} value={unidad}>
-                {unidad}
+            {UNITS.map((unit) => (
+              <NativeSelectOption key={unit} value={unit}>
+                {unit}
               </NativeSelectOption>
             ))}
           </NativeSelect>
@@ -183,7 +183,7 @@ export function RowItem({
             <p className="text-sm font-medium @min-[44rem]:hidden">Total del ítem</p>
             <output
               htmlFor={`${id}-cantidad ${id}-precio`}
-              aria-label={`Total del ítem ${numero}`}
+              aria-label={`Total del ítem ${number}`}
               className={cn(
                 'flex min-h-11 items-center justify-end rounded-lg bg-muted/60 px-2 text-right text-sm font-semibold tabular-nums @min-[44rem]:min-h-10 @min-[44rem]:bg-transparent @min-[44rem]:px-0',
                 ITEM_NUMBER_CLASS,

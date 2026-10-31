@@ -5,8 +5,8 @@ export function isPreviewDesktop(): boolean {
   return window.matchMedia(PREVIEW_DESKTOP_QUERY).matches
 }
 
-export function subscribePreviewDesktop(avisar: () => void) {
-  const consulta = window.matchMedia(PREVIEW_DESKTOP_QUERY)
-  consulta.addEventListener('change', avisar)
-  return () => consulta.removeEventListener('change', avisar)
+export function subscribePreviewDesktop(notify: () => void) {
+  const query = window.matchMedia(PREVIEW_DESKTOP_QUERY)
+  query.addEventListener('change', notify)
+  return () => query.removeEventListener('change', notify)
 }

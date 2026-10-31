@@ -3,7 +3,7 @@ import { Field } from '@/components/form/field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { TIPOS_DOCUMENT } from '@/lib/documents/schemas'
+import { DOCUMENT_TYPES } from '@/lib/documents/schemas'
 import type { OptionBudget } from '@/lib/documents/screens'
 import { FileText } from 'lucide-react'
 
@@ -16,17 +16,17 @@ export function DocumentBudgetTypeSection({
   searchBudget,
   setSearchBudget,
   errors,
-  seleccionados,
+  selectedBudgetIds,
   chooseBudget,
   values,
   changeField,
-  optionsVisible,
+  visibleOptions,
 }: Pick<DocumentFormProps, 'document'> & {
-  quote: DocumentFormProps['cotizacion']
-  optionsVisible: OptionBudget[]
+  quote: DocumentFormProps['quote']
+  visibleOptions: OptionBudget[]
 } & Pick<
     DocumentFormState,
-    'searchBudget' | 'setSearchBudget' | 'errors' | 'seleccionados' | 'chooseBudget' | 'values' | 'changeField'
+    'searchBudget' | 'setSearchBudget' | 'errors' | 'selectedBudgetIds' | 'chooseBudget' | 'values' | 'changeField'
   >) {
   return (
     <Card
@@ -41,19 +41,19 @@ export function DocumentBudgetTypeSection({
                 id="buscar-presupuesto"
                 placeholder="Número, cliente o trabajo"
                 value={searchBudget}
-                onChange={(evento) => setSearchBudget(evento.target.value)}
+                onChange={(event) => setSearchBudget(event.target.value)}
               />
             </Field>
             <Field id="presupuesto" label="Presupuesto" error={errors.budgets}>
               <NativeSelect
                 id="presupuesto"
                 className="w-full"
-                value={seleccionados[0] ?? ''}
-                onChange={(evento) => void chooseBudget(evento.target.value)}
+                value={selectedBudgetIds[0] ?? ''}
+                onChange={(event) => void chooseBudget(event.target.value)}
                 required
               >
                 <NativeSelectOption value="">Elegí un presupuesto</NativeSelectOption>
-                {optionsVisible.map((item) => (
+                {visibleOptions.map((item) => (
                   <NativeSelectOption key={item.id} value={item.id}>
                     {item.numero} · {item.cliente_razon_social} · {item.asunto}
                     {item.presupuesto_estado === 'finalizado' ? ' · Finalizado' : ''}
@@ -61,7 +61,7 @@ export function DocumentBudgetTypeSection({
                 ))}
               </NativeSelect>
             </Field>
-            {optionsVisible.length === 0 ? (
+            {visibleOptions.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay presupuestos con esa búsqueda.</p>
             ) : null}
           </div>
@@ -79,7 +79,7 @@ export function DocumentBudgetTypeSection({
             disabled={Boolean(quote)}
             aria-label="Tipo de documento"
           >
-            {Object.entries(TIPOS_DOCUMENT).map(([value, label]) => (
+            {Object.entries(DOCUMENT_TYPES).map(([value, label]) => (
               <ToggleGroupItem key={value} value={value} className="h-17 flex-col gap-1 text-xs">
                 <FileText aria-hidden />
                 {label}

@@ -4,20 +4,20 @@ import { useCallback, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 
 export function useSectionDrafts() {
-  /** Secciones de la grilla con el nombre escrito y todavía no aplicado (borrador local de TarjetaItems). */
-  const [borradoresSection, setBorradoresSection] = useState<ReadonlySet<string>>(() => new Set())
+  /** Secciones de la grilla con el nombre escrito y todavía no aplicado (borrador local de CardItems). */
+  const [sectionDrafts, setSectionDrafts] = useState<ReadonlySet<string>>(() => new Set())
   /** El `aplicar` de cada uno de esos borradores, por clave de sección: guardar los aplica antes de leer el estado. */
   const applyDraft = useRef(new Map<string, () => void>())
-  const onChangeDraftSection = useCallback((clave: string, apply: (() => void) | null) => {
-    if (apply) applyDraft.current.set(clave, apply)
-    else applyDraft.current.delete(clave)
+  const onChangeDraftSection = useCallback((key: string, apply: (() => void) | null) => {
+    if (apply) applyDraft.current.set(key, apply)
+    else applyDraft.current.delete(key)
     const has = apply !== null
-    setBorradoresSection((actuales) => {
-      if (actuales.has(clave) === has) return actuales
-      const nuevos = new Set(actuales)
-      if (has) nuevos.add(clave)
-      else nuevos.delete(clave)
-      return nuevos
+    setSectionDrafts((current) => {
+      if (current.has(key) === has) return current
+      const next = new Set(current)
+      if (has) next.add(key)
+      else next.delete(key)
+      return next
     })
   }, [])
 
@@ -26,13 +26,13 @@ export function useSectionDrafts() {
    * que el blur del campo llegue antes que el click de Guardar (no está verificado en Safari ni en iOS) ni del orden
    * de los keydown en Ctrl/⌘+S.
    */
-  function applyBorradoresSection() {
-    const byApply = [...applyDraft.current.values()]
-    if (byApply.length === 0) return
+  function applySectionDrafts() {
+    const pendingDrafts = [...applyDraft.current.values()]
+    if (pendingDrafts.length === 0) return
     flushSync(() => {
-      for (const apply of byApply) apply()
+      for (const apply of pendingDrafts) apply()
     })
   }
 
-  return { hasDraftSection: borradoresSection.size > 0, onChangeDraftSection, applyBorradoresSection }
+  return { hasDraftSection: sectionDrafts.size > 0, onChangeDraftSection, applySectionDrafts }
 }

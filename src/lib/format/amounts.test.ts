@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatMoneda, formatAmountDaily, formatAmountTable, parsePrice } from './amounts'
+import { formatCurrency, formatAmountDaily, formatAmountTable, parsePrice } from './amounts'
 
 describe('formatMontoTabla', () => {
   it('usa punto de miles y coma decimal con 2 decimales, como la tabla mensual', () => {
@@ -23,7 +23,7 @@ describe('formatMontoJornada', () => {
 
 describe('formatMoneda', () => {
   it('formatea montos de pantalla con signo y 2 decimales', () => {
-    expect(formatMoneda(1_950_000.5)).toBe('$ 1.950.000,50')
+    expect(formatCurrency(1_950_000.5)).toBe('$ 1.950.000,50')
   })
 })
 

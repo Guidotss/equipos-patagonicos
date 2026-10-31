@@ -6,21 +6,21 @@ import { BarCrumbs, Content } from '@/components/app-shell/header'
 import { Button } from '@/components/ui/button'
 import { FollowUp } from '@/components/quotes/specials/follow-up'
 import { ActionsSpecials } from '@/components/quotes/specials/actions-specials'
-import { QuoteSoloQuery } from '@/components/quotes/quote-read-only'
+import { ReadOnlyQuote } from '@/components/quotes/quote-read-only'
 import { EditorQuote } from '@/components/quotes/editor/editor-quote'
 import { actionFromParam } from '@/lib/quotes/actions-status'
-import { readContextoStatus } from '@/lib/quotes/context-status'
+import { readStatusContext } from '@/lib/quotes/context-status'
 import { SELECT_EDITOR } from '@/lib/quotes/editor/constants'
 import { statusFromRow } from '@/lib/quotes/editor/state'
 import { readCatalogsEditor, readContacts } from '@/lib/quotes/queries-editor'
-import { todayArgentina, sumarDays } from '@/lib/format/dates'
+import { todayArgentina, addDays } from '@/lib/format/dates'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Cotización' }
 
 /** FilaEditor (Task 3) más el id del cliente, para leer sus contactos. */
-const COLUMNAS = `${SELECT_EDITOR}, cliente_id, notas` as const
+const COLUMNS = `${SELECT_EDITOR}, cliente_id, notas` as const
 
 export default async function QuotePage({
   params,
@@ -33,7 +33,7 @@ export default async function QuotePage({
   if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
-  const { data: row, error } = await supabase.from('cotizaciones').select(COLUMNAS).eq('id', id).maybeSingle()
+  const { data: row, error } = await supabase.from('cotizaciones').select(COLUMNS).eq('id', id).maybeSingle()
   if (error) throw error
   if (!row) notFound()
 
@@ -45,14 +45,14 @@ export default async function QuotePage({
     return (
       <>
         <BarCrumbs crumbs={crumbs} />
-        <QuoteSoloQuery
+        <ReadOnlyQuote
           cotizacion={{
             id: row.id,
             numero: row.numero,
             origen: row.origen === 'directa' ? 'directa' : 'importada',
             estado: row.estado,
             // Como v_cotizaciones: el día del vencimiento todavía no cuenta.
-            vencida: row.estado === 'enviada' && sumarDays(row.fecha, row.validez_dias) < today,
+            vencida: row.estado === 'enviada' && addDays(row.fecha, row.validez_dias) < today,
             fecha: row.fecha,
             cliente: row.cliente.razon_social,
             asunto: row.asunto,
@@ -69,16 +69,16 @@ export default async function QuotePage({
     )
   }
 
-  const [catalogs, contactos, contexto] = await Promise.all([
+  const [catalogs, contacts, context] = await Promise.all([
     readCatalogsEditor(supabase, {
       templateId: row.plantilla_id,
       equipoId: row.equipo_id,
       firmanteId: row.firmante_id,
     }),
     readContacts(supabase, row.cliente_id),
-    readContextoStatus(supabase, id),
+    readStatusContext(supabase, id),
   ])
-  if (!contexto) notFound()
+  if (!context) notFound()
   const initial = statusFromRow(row)
 
   return (
@@ -87,9 +87,9 @@ export default async function QuotePage({
       <EditorQuote
         initial={initial}
         catalogs={catalogs}
-        contactos={contactos}
+        contacts={contacts}
         today={todayArgentina()}
-        contexto={contexto}
+        context={context}
         actionInitial={actionInitial}
       />
       {row.estado === 'aprobada' || row.estado === 'rechazada' ? <Content className="max-w-5xl pt-0">

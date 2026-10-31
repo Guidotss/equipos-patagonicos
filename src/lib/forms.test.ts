@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { errorsByPath, success, falloBase, falloValidation, readFields, valueField } from './forms'
+import { errorsByPath, success, databaseFailure, validationFailure, readFields, valueField } from './forms'
 
 describe('leerCampos', () => {
   it('lee los campos pedidos y usa "" para los que faltan o son archivos', () => {
@@ -18,7 +18,7 @@ describe('falloValidacion', () => {
     const result = schema.safeParse(values)
     if (result.success) throw new Error('debería fallar')
 
-    expect(falloValidation(result.error, values)).toEqual({
+    expect(validationFailure(result.error, values)).toEqual({
       ok: false,
       message: 'Revisá los datos marcados',
       errors: { nombre: 'Ingresá el nombre', email: 'Email inválido' },
@@ -93,19 +93,19 @@ describe('falloBase', () => {
   const values = { cuit: '30719529670' }
 
   it('traduce los códigos de Postgres a mensajes', () => {
-    expect(falloBase({ code: '23505', message: 'dup' }, values).message).toBe('Ya existe un registro con esos datos')
-    expect(falloBase({ code: '42501', message: 'rls' }, values).message).toBe(
+    expect(databaseFailure({ code: '23505', message: 'dup' }, values).message).toBe('Ya existe un registro con esos datos')
+    expect(databaseFailure({ code: '42501', message: 'rls' }, values).message).toBe(
       'No tenés permiso para hacer esta operación',
     )
-    expect(falloBase({ code: 'P0001', message: 'Mensaje de la regla' }, values).message).toBe('Mensaje de la regla')
-    expect(falloBase({ code: 'XX000', message: 'raro' }, values).message).toBe(
+    expect(databaseFailure({ code: 'P0001', message: 'Mensaje de la regla' }, values).message).toBe('Mensaje de la regla')
+    expect(databaseFailure({ code: 'XX000', message: 'raro' }, values).message).toBe(
       'No se pudo guardar. Probá de nuevo en un momento.',
     )
-    expect(falloBase({ code: '22003', message: 'overflow' }, values).message).toBe('Algún número es demasiado grande')
+    expect(databaseFailure({ code: '22003', message: 'overflow' }, values).message).toBe('Algún número es demasiado grande')
   })
 
   it('marca el campo cuando el duplicado tiene un campo asociado', () => {
-    const result = falloBase({ code: '23505', message: 'dup' }, values, {
+    const result = databaseFailure({ code: '23505', message: 'dup' }, values, {
       campo: 'cuit',
       message: 'Ya existe un cliente con ese CUIT',
     })

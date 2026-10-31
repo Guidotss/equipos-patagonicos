@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { EditorQuote } from '@/components/quotes/editor/editor-quote'
 import { statusNew } from '@/lib/quotes/editor/state'
-import { signerByDefecto } from '@/lib/quotes/editor-screen'
+import { defaultSigner } from '@/lib/quotes/editor-screen'
 import { readCatalogsEditor, readLastSigner, readContacts } from '@/lib/quotes/queries-editor'
 import { todayArgentina } from '@/lib/format/dates'
 import { createClient } from '@/lib/supabase/server'
@@ -19,7 +19,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
   const today = todayArgentina()
   const initial = statusNew({
     plantilla: catalogs.plantillas.find((p) => p.id === params.plantilla) ?? catalogs.plantillas[0] ?? null,
-    firmanteId: signerByDefecto(catalogs.firmantes, lastSigner),
+    firmanteId: defaultSigner(catalogs.firmantes, lastSigner),
     today,
   })
   if (params.cliente && isUuid(params.cliente)) {
@@ -27,12 +27,12 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
     if (error) throw error
     initial.cliente = data
   }
-  const contactos = initial.cliente ? await readContacts(supabase, initial.cliente.id) : []
+  const contacts = initial.cliente ? await readContacts(supabase, initial.cliente.id) : []
 
   return (
     <>
       <BarCrumbs crumbs={[{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: 'Nueva' }]} />
-      <EditorQuote initial={initial} catalogs={catalogs} contactos={contactos} today={today} />
+      <EditorQuote initial={initial} catalogs={catalogs} contacts={contacts} today={today} />
     </>
   )
 }

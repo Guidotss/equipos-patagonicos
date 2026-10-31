@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
-import { messageErrorBase } from '@/lib/forms'
+import { databaseErrorMessage } from '@/lib/forms'
 import type { Result } from '@/lib/result'
 import { createClient } from '@/lib/supabase/server'
 
@@ -20,7 +20,7 @@ export async function changeStatusBudget(entrada: unknown): Promise<Result> {
   const { error } = await (
     await createClient()
   ).rpc('cambiar_estado_presupuesto', { p_id: datos.data.id, p_estado: datos.data.estado, p_motivo: datos.data.motivo })
-  if (error) return { ok: false, message: messageErrorBase(error) }
+  if (error) return { ok: false, message: databaseErrorMessage(error) }
   revalidatePath('/presupuestos', 'layout')
   revalidatePath('/')
   return { ok: true, datos: null }

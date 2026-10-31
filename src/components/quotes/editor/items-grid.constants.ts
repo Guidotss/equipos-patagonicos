@@ -23,4 +23,4 @@ export const DRAG_SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
  * Avisa que el nombre de una sección (por la clave de su primer ítem) tiene un borrador sin aplicar, con la función que
  * lo aplica, o que dejó de tenerlo (null).
  */
-export type OnChangeDraftSection = (clave: string, apply: (() => void) | null) => void
+export type OnChangeDraftSection = (key: string, apply: (() => void) | null) => void

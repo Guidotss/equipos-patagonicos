@@ -1,6 +1,6 @@
 // tests/integration/cotizaciones-contexto.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { readContextoStatus } from '@/lib/quotes/context-status'
+import { readStatusContext } from '@/lib/quotes/context-status'
 import { approveQuote, sendQuote } from '@/lib/quotes/service'
 import { ITEMS_DAILY, idsOfExample } from './quotes-helpers'
 import { adminClient, removeUser, crearUser, sql } from './helpers'
@@ -47,12 +47,12 @@ async function nueva(): Promise<string> {
 
 describe('leerContextoEstado', () => {
   it('una cotización inexistente da null', async () => {
-    expect(await readContextoStatus(activo.client, crypto.randomUUID())).toBeNull()
+    expect(await readStatusContext(activo.client, crypto.randomUUID())).toBeNull()
   })
 
   it('un borrador recién creado no tiene envíos, aprobación ni anterior', async () => {
     const id = await nueva()
-    expect(await readContextoStatus(activo.client, id)).toEqual({
+    expect(await readStatusContext(activo.client, id)).toEqual({
       envios: [],
       vencida: false,
       venceEl: '2026-11-21',
@@ -66,7 +66,7 @@ describe('leerContextoEstado', () => {
     const first = await sendQuote(activo.client, id)
     const segundo = await sendQuote(activo.client, id)
 
-    const contexto = await readContextoStatus(activo.client, id)
+    const contexto = await readStatusContext(activo.client, id)
     expect(contexto?.envios.map((envio) => envio.id)).toEqual([segundo.envioId, first.envioId])
     expect(contexto?.vencida).toBe(false)
   })
@@ -76,7 +76,7 @@ describe('leerContextoEstado', () => {
     await sendQuote(activo.client, id)
     await sql(`update public.cotizaciones set fecha = '2020-01-01', validez_dias = 1 where id = $1`, [id])
 
-    const contexto = await readContextoStatus(activo.client, id)
+    const contexto = await readStatusContext(activo.client, id)
     expect(contexto?.vencida).toBe(true)
     expect(contexto?.venceEl).toBe('2020-01-02')
   })
@@ -84,13 +84,13 @@ describe('leerContextoEstado', () => {
   it('una aprobada tiene su fecha y la duplicada conoce a la anterior', async () => {
     const id = await nueva()
     await approveQuote(activo.client, id, '2026-10-23')
-    expect((await readContextoStatus(activo.client, id))?.dateApproval).toBe('2026-10-23')
+    expect((await readStatusContext(activo.client, id))?.dateApproval).toBe('2026-10-23')
 
     const { data: copy, error } = await activo.client.rpc('duplicar_cotizacion', { p_id: id })
     if (error) throw error
     creadas.push(copy)
     const [{ numero }] = await sql<{ numero: string }>('select numero from public.cotizaciones where id = $1', [id])
 
-    expect((await readContextoStatus(activo.client, copy))?.anterior).toEqual({ id, numero: Number(numero) })
+    expect((await readStatusContext(activo.client, copy))?.anterior).toEqual({ id, numero: Number(numero) })
   })
 })

@@ -20,7 +20,7 @@ export function ItemRowControls({
   quantityItems,
   onMove,
   onDuplicate,
-  onQuitar,
+  onRemove,
   attributes,
   listeners,
   setActivatorNodeRef,
@@ -30,22 +30,22 @@ export function ItemRowControls({
   quantityItems: number
   onMove: (step: -1 | 1) => void
   onDuplicate: () => void
-  onQuitar: () => void
+  onRemove: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   // Un clic sin mover abre el menú; el clic que llega al soltar después de arrastrar con el puntero, no. Arrastrar con
   // el teclado (Espacio) no termina en un clic: no marca nada, y el próximo clic (el de un lector de pantalla) abre.
-  const huboArrastre = useRef(false)
-  const withPuntero = useRef(false)
+  const wasDragging = useRef(false)
+  const withPointer = useRef(false)
   // El menú estaba abierto al apoyar en el agarre: Radix lo cierra (es un clic afuera del menú) y el clic no lo reabre.
-  const menuOpenOnApoyar = useRef(false)
+  const menuOpenOnPointerDown = useRef(false)
   // Duplicar y Eliminar llevan el foco a otra fila: el menú no lo devuelve al agarre al cerrarse.
-  const mantenerFoco = useRef(false)
+  const keepFocus = useRef(false)
   useEffect(() => {
-    if (isDragging && withPuntero.current) huboArrastre.current = true
+    if (isDragging && withPointer.current) wasDragging.current = true
   }, [isDragging])
 
-  const numero = index + 1
+  const number = index + 1
   return (
     <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen} modal={false}>
       <DropdownMenuTrigger asChild>
@@ -54,37 +54,37 @@ export function ItemRowControls({
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label={`Opciones del ítem ${numero}`}
+          aria-label={`Opciones del ítem ${number}`}
           title="Arrastrá para mover; hacé clic para ver las opciones"
           className="relative z-10 col-start-2 row-start-1 size-11 cursor-grab touch-none justify-self-end text-muted-foreground active:cursor-grabbing @min-[44rem]:col-start-1 @min-[44rem]:row-start-auto @min-[44rem]:mt-1.5 @min-[44rem]:size-7"
           {...attributes}
-          onPointerDown={(evento) => {
-            huboArrastre.current = false
-            withPuntero.current = true
-            menuOpenOnApoyar.current = menuOpen
+          onPointerDown={(event) => {
+            wasDragging.current = false
+            withPointer.current = true
+            menuOpenOnPointerDown.current = menuOpen
             // El preventDefault de abajo no deja que el foco se mueva solo: se pasa acá al agarre para que un nombre
             // de sección a medio escribir se aplique (con su blur) antes de que el arrastre cambie el primer ítem
             // del grupo y el encabezado, con su borrador, se vuelva a montar.
-            evento.currentTarget.focus()
-            listeners?.onPointerDown?.(evento)
+            event.currentTarget.focus()
+            listeners?.onPointerDown?.(event)
             // Sin esto Radix abriría el menú al apoyar, antes de saber si es un arrastre.
-            evento.preventDefault()
+            event.preventDefault()
           }}
-          onKeyDown={(evento) => {
-            if (!isDragging) withPuntero.current = false
-            listeners?.onKeyDown?.(evento)
+          onKeyDown={(event) => {
+            if (!isDragging) withPointer.current = false
+            listeners?.onKeyDown?.(event)
             // Mientras se arrastra con el teclado, las flechas y Espacio son del arrastre, no del menú.
-            if (isDragging) evento.preventDefault()
+            if (isDragging) event.preventDefault()
           }}
           onClick={() => {
             // Solo se ignoran el clic que sigue a un arrastre y el que cerró el menú abierto (si no, se cerraría y
             // se volvería a abrir). Los de detail 0 abren: así activa un lector de pantalla en modo exploración. El
             // teclado no duplica: Enter abre en el keydown (Radix) y lo previene, así que no genera clic, y el
             // keydown de Espacio lo previene el arrastre.
-            const ignorar = huboArrastre.current || menuOpenOnApoyar.current
-            huboArrastre.current = false
-            menuOpenOnApoyar.current = false
-            if (!ignorar) setMenuOpen(true)
+            const ignoreClick = wasDragging.current || menuOpenOnPointerDown.current
+            wasDragging.current = false
+            menuOpenOnPointerDown.current = false
+            if (!ignoreClick) setMenuOpen(true)
           }}
         >
           <GripVertical aria-hidden />
@@ -93,10 +93,10 @@ export function ItemRowControls({
       <DropdownMenuContent
         align="start"
         className="w-44"
-        onCloseAutoFocus={(evento) => {
-          if (!mantenerFoco.current) return
-          mantenerFoco.current = false
-          evento.preventDefault()
+        onCloseAutoFocus={(event) => {
+          if (!keepFocus.current) return
+          keepFocus.current = false
+          event.preventDefault()
         }}
       >
         <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(-1)}>
@@ -109,7 +109,7 @@ export function ItemRowControls({
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
-            mantenerFoco.current = true
+            keepFocus.current = true
             onDuplicate()
           }}
         >
@@ -120,8 +120,8 @@ export function ItemRowControls({
         <DropdownMenuItem
           variant="destructive"
           onSelect={() => {
-            mantenerFoco.current = true
-            onQuitar()
+            keepFocus.current = true
+            onRemove()
           }}
         >
           <Trash2 aria-hidden />

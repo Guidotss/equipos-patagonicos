@@ -4,7 +4,7 @@ import { ActionsDocument } from '@/components/documents/actions-document'
 import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/pill'
-import { TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
+import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import {
   STATUSES_COBRO,
   numberDocument,
@@ -12,10 +12,10 @@ import {
   type Document,
   type Invoice,
 } from '@/lib/documents/screens'
-import { formatMoneda } from '@/lib/format/amounts'
-import { formatDateCorta } from '@/lib/format/dates'
+import { formatCurrency } from '@/lib/format/amounts'
+import { formatShortDate } from '@/lib/format/dates'
 
-const TITULOS: Record<TipoDocument, string> = {
+const TITULOS: Record<DocumentType, string> = {
   orden_compra: 'Órdenes de compra',
   remito: 'Remitos',
   factura: 'Facturas',
@@ -39,7 +39,7 @@ export function SectionsDocuments({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      {(Object.keys(TIPOS_DOCUMENT) as TipoDocument[]).map((tipo) => {
+      {(Object.keys(DOCUMENT_TYPES) as DocumentType[]).map((tipo) => {
         const list = documentos.filter((item) => item.tipo === tipo)
         const activos = list.filter((item) => !item.deleted_at)
         return (
@@ -52,7 +52,7 @@ export function SectionsDocuments({
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/presupuestos/${budgetId}?nuevo=${tipo}#nuevo-documento`}>
                     <Plus data-icon="inline-start" />
-                    Agregar<span className="sr-only"> {TIPOS_DOCUMENT[tipo]}</span>
+                    Agregar<span className="sr-only"> {DOCUMENT_TYPES[tipo]}</span>
                   </Link>
                 </Button>
               ) : undefined
@@ -102,19 +102,19 @@ export function SectionsDocuments({
                             ) : null}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {document.fecha ? formatDateCorta(document.fecha) : 'Sin fecha'}
+                            {document.fecha ? formatShortDate(document.fecha) : 'Sin fecha'}
                             {document.monto
-                              ? ` · ${tipo === 'factura' ? 'Total ' : ''}${formatMoneda(document.monto)}`
+                              ? ` · ${tipo === 'factura' ? 'Total ' : ''}${formatCurrency(document.monto)}`
                               : ''}
-                            {invoice ? ` · Saldo ${formatMoneda(invoice.saldo ?? 0)}` : ''}
+                            {invoice ? ` · Saldo ${formatCurrency(invoice.saldo ?? 0)}` : ''}
                             {document.fecha_vencimiento
-                              ? ` · Vence ${formatDateCorta(document.fecha_vencimiento)}`
+                              ? ` · Vence ${formatShortDate(document.fecha_vencimiento)}`
                               : ''}
                           </p>
                           {document.periodo_desde || document.periodo_hasta ? (
                             <p className="text-sm text-muted-foreground">
-                              Período {document.periodo_desde ? formatDateCorta(document.periodo_desde) : '—'} –{' '}
-                              {document.periodo_hasta ? formatDateCorta(document.periodo_hasta) : '—'}
+                              Período {document.periodo_desde ? formatShortDate(document.periodo_desde) : '—'} –{' '}
+                              {document.periodo_hasta ? formatShortDate(document.periodo_hasta) : '—'}
                             </p>
                           ) : null}
                           {pagos.length ? (
@@ -123,7 +123,7 @@ export function SectionsDocuments({
                               {pagos
                                 .map((pago) => {
                                   const item = documentos.find((item) => item.id === pago.factura_id)
-                                  return `${item ? numberDocument(item) : 'factura vinculada'} (${formatMoneda(pago.monto_aplicado)})`
+                                  return `${item ? numberDocument(item) : 'factura vinculada'} (${formatCurrency(pago.monto_aplicado)})`
                                 })
                                 .join(', ')}
                             </p>

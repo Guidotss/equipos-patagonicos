@@ -3,6 +3,9 @@ import type { NameVariable } from '@/lib/templates/variables'
 import type { DataQuote, FieldData } from '../data'
 import type { SourceDocument } from '../document'
 
+// Estas claves pertenecen al contrato existente que intercambian el navegador y el servidor para guardar y previsualizar.
+// Se conservan para mantener la compatibilidad; los identificadores de funciones y variables se escriben en inglés.
+
 /** Una fila de la grilla. Cantidad y precio quedan como texto mientras se escriben ("39.000.000", "1,5"). */
 export type ItemEditor = {
   clave: string

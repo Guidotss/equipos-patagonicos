@@ -16,5 +16,5 @@ export default async function EditTemplatePage({ params }: { params: Promise<{ i
   if (!data) notFound()
   const template = { ...data, formato: data.formato as Format, items: readItemsTemplate(data.items), bloques: readBlocks(data.bloques) }
   const initial = statusNew({ plantilla: template, firmanteId: '', today: todayArgentina() })
-  return <><BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Plantillas', href: '/configuracion/plantillas' }, { texto: 'Editar contenido' }]} /><EditorTemplate id={id} nombre={data.nombre} initial={initial} plantilla={template} /></>
+  return <><BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Plantillas', href: '/configuracion/plantillas' }, { texto: 'Editar contenido' }]} /><EditorTemplate id={id} name={data.nombre} initial={initial} template={template} /></>
 }

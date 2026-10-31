@@ -5,44 +5,44 @@ import { HeaderPage } from '@/components/app-shell/header'
 import { StatusQuote } from '@/components/quotes/status-quote'
 import { Button } from '@/components/ui/button'
 import type { StatusEditor } from '@/lib/quotes/editor/types'
-import { resumenHeader } from '@/lib/quotes/editor-screen'
+import { headerSummary } from '@/lib/quotes/editor-screen'
 import { cn } from '@/lib/utils'
 
 export function HeaderEditor({
-  estado,
+  state,
   today,
   editable,
   changes,
-  guardando,
+  saving,
   busy,
   onSave,
   actions,
 }: {
-  estado: StatusEditor
+  state: StatusEditor
   today: string
   editable: boolean
   changes: boolean
-  guardando: boolean
+  saving: boolean
   /** Alguna acción corre: todos los botones de acción quedan deshabilitados (decisión 12). */
   busy: boolean
   onSave: () => void
   /** Botones de transición y menú ⋯ (Task 12), a la derecha de Guardar. Botones size="lg" (h-9). */
   actions?: React.ReactNode
 }) {
-  const resumen = resumenHeader(estado, today)
+  const summary = headerSummary(state, today)
 
   return (
     <HeaderPage
       compact
-      titulo={resumen.titulo}
-      extra={<StatusQuote estado={estado.estado} vencida={resumen.vence?.vencida ?? false} />}
+      titulo={summary.title}
+      extra={<StatusQuote estado={state.estado} vencida={summary.expiration?.expired ?? false} />}
       descripcion={
         <>
-          {resumen.detail}
-          {resumen.vence ? (
+          {summary.detail}
+          {summary.expiration ? (
             <>
               {' · '}
-              <span className={cn(resumen.vence.vencida && 'text-amber-700')}>{resumen.vence.texto}</span>
+              <span className={cn(summary.expiration.expired && 'text-amber-700')}>{summary.expiration.text}</span>
             </>
           ) : null}
         </>
@@ -56,10 +56,10 @@ export function HeaderEditor({
               variant="outline"
               size="lg"
               onClick={onSave}
-              disabled={busy || (estado.id !== null && !changes)}
+              disabled={busy || (state.id !== null && !changes)}
               className="hidden min-[90rem]:inline-flex"
             >
-              {guardando ? 'Guardando…' : 'Guardar'}
+              {saving ? 'Guardando…' : 'Guardar'}
             </Button>
           ) : null}
           {actions}

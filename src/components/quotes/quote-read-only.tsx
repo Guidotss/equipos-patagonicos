@@ -1,11 +1,11 @@
-// src/components/cotizaciones/cotizacion-solo-lectura.tsx
+// src/components/quotes/quote-read-only.tsx
 
 import { ArrowLeft, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { Content, HeaderPage } from '@/components/app-shell/header'
 import { StatusQuote } from '@/components/quotes/status-quote'
 import { Button } from '@/components/ui/button'
-import { formatDateCorta } from '@/lib/format/dates'
+import { formatShortDate } from '@/lib/format/dates'
 
 const ORIGEN = {
   importada: 'Cargada desde un PDF.',
@@ -13,7 +13,7 @@ const ORIGEN = {
 } as const
 
 /** Cotización cargada o presupuesto directo: no se editan (decisión 24). La vista completa llega en el plan 3C. */
-export function QuoteSoloQuery({
+export function ReadOnlyQuote({
   cotizacion: quote,
 }: {
   cotizacion: {
@@ -34,7 +34,7 @@ export function QuoteSoloQuery({
         compact
         titulo={`Cotización N° ${quote.numero}`}
         extra={<StatusQuote estado={quote.estado} vencida={quote.vencida} />}
-        descripcion={`${quote.cliente} · ${formatDateCorta(quote.fecha)}`}
+        descripcion={`${quote.cliente} · ${formatShortDate(quote.fecha)}`}
         actions={
           quote.tienePdf ? (
             <Button asChild variant="outline" size="lg">

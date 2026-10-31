@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FORMATOS, UNIDADES, readBlocks, readItemsTemplate } from './content'
+import { FORMATS, UNITS, readBlocks, readItemsTemplate } from './content'
 
 describe('leerBloques', () => {
   it('acepta una lista de {titulo, contenido} y los deja visibles', () => {
@@ -47,7 +47,7 @@ describe('leerItemsPlantilla', () => {
 
 describe('catálogos', () => {
   it('expone los formatos y las unidades del diseño', () => {
-    expect(Object.keys(FORMATOS)).toEqual(['mensual', 'jornada'])
-    expect(UNIDADES).toEqual(['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'])
+    expect(Object.keys(FORMATS)).toEqual(['mensual', 'jornada'])
+    expect(UNITS).toEqual(['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'])
   })
 })

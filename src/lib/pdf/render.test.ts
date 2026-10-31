@@ -2,7 +2,7 @@ import { extractText, getDocumentProxy } from 'unpdf'
 import { describe, expect, it } from 'vitest'
 import { buildDocument } from '@/lib/quotes/document'
 import { EXAMPLE_DAILY, EXAMPLE_MONTHLY } from '@/lib/quotes/examples'
-import { renderizarQuote } from './render'
+import { renderQuote } from './render'
 
 async function textOfPdf(pdf: Buffer): Promise<string> {
   const document = await getDocumentProxy(new Uint8Array(pdf))
@@ -12,7 +12,7 @@ async function textOfPdf(pdf: Buffer): Promise<string> {
 
 describe('PDF mensual', () => {
   it('replica los datos de la cotización 112523', async () => {
-    const pdf = await renderizarQuote(buildDocument(EXAMPLE_MONTHLY))
+    const pdf = await renderQuote(buildDocument(EXAMPLE_MONTHLY))
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
 
     const texto = await textOfPdf(pdf)
@@ -43,7 +43,7 @@ describe('PDF mensual', () => {
 
 describe('PDF por jornada', () => {
   it('replica los datos de la cotización 112711', async () => {
-    const texto = await textOfPdf(await renderizarQuote(buildDocument(EXAMPLE_DAILY)))
+    const texto = await textOfPdf(await renderQuote(buildDocument(EXAMPLE_DAILY)))
     for (const expected of [
       'Neuquén, 22 de octubre de 2026.',
       'Señores',
@@ -77,7 +77,7 @@ describe('bloques ocultos', () => {
         ),
       },
     }
-    const textDaily = await textOfPdf(await renderizarQuote(buildDocument(daily)))
+    const textDaily = await textOfPdf(await renderQuote(buildDocument(daily)))
     expect(textDaily).toContain('Equipo ofrecido:')
     expect(textDaily).toContain('Forma de pago: a 30 - 45 días F.F.')
     expect(textDaily).not.toContain('Alcance')
@@ -92,7 +92,7 @@ describe('bloques ocultos', () => {
         ),
       },
     }
-    const textMonthly = await textOfPdf(await renderizarQuote(buildDocument(monthly)))
+    const textMonthly = await textOfPdf(await renderQuote(buildDocument(monthly)))
     expect(textMonthly).toContain('CONDICIONES PARA LA CONTRATACIÓN DE SERVICIOS')
     expect(textMonthly).not.toContain('RENEGOCIACIÓN DE TARIFAS')
     expect(textMonthly).not.toContain('con base en junio 2026')
@@ -102,9 +102,9 @@ describe('bloques ocultos', () => {
 describe('cotización sin guardar', () => {
   it('sin número, el PDF muestra {{numero}} en su lugar', async () => {
     const monthly = { ...EXAMPLE_MONTHLY, cotizacion: { ...EXAMPLE_MONTHLY.cotizacion, numero: null } }
-    expect(await textOfPdf(await renderizarQuote(buildDocument(monthly)))).toContain('Cotización N° {{numero}}')
+    expect(await textOfPdf(await renderQuote(buildDocument(monthly)))).toContain('Cotización N° {{numero}}')
 
     const daily = { ...EXAMPLE_DAILY, cotizacion: { ...EXAMPLE_DAILY.cotizacion, numero: null } }
-    expect(await textOfPdf(await renderizarQuote(buildDocument(daily)))).toContain('Cotización N° {{numero}}')
+    expect(await textOfPdf(await renderQuote(buildDocument(daily)))).toContain('Cotización N° {{numero}}')
   }, 20_000)
 })

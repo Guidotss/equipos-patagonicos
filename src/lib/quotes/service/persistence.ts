@@ -15,7 +15,7 @@ export async function saveQuote(
   id?: string,
   version?: string,
 ): Promise<{ id: string; numero: number; version: string }> {
-  const { data: guardada, error } = await supabase.rpc('guardar_cotizacion_versionada', {
+  const { data: savedQuote, error } = await supabase.rpc('guardar_cotizacion_versionada', {
     p_datos: payload.p_datos as Json,
     p_items: payload.p_items as Json,
     p_id: id,
@@ -23,7 +23,7 @@ export async function saveQuote(
   })
   if (error) throw mapRpcError(error)
 
-  const row = guardada[0]
+  const row = savedQuote[0]
   if (!row) throw new Error('El guardado no devolvió su versión')
   return row
 }

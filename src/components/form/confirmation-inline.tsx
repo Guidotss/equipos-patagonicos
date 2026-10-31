@@ -17,17 +17,17 @@ const TONOS = {
  * Adónde vuelve el foco al cerrarse lo decide quien la abre (alCancelar / alConfirmar). Mientras la acción corre
  * (`pendiente`) los botones se deshabilitan y el foco queda en el grupo, no en el body.
  */
-export function ConfirmationInLugar({
-  pregunta,
+export function InlineConfirmation({
+  pregunta: question,
   detail,
   textConfirm,
   textPending,
-  textCancelar = 'Cancelar',
+  textCancelar: cancelText = 'Cancelar',
   tone = 'aviso',
   pendiente: pending = false,
-  confirmDeshabilitado = false,
+  confirmDeshabilitado: confirmDisabled = false,
   onConfirm,
-  onCancelar,
+  onCancelar: onCancel,
   alternativa,
   children,
   className,
@@ -52,13 +52,13 @@ export function ConfirmationInLugar({
   className?: string
 }) {
   const id = useId()
-  const grupo = useRef<HTMLDivElement>(null)
+  const group = useRef<HTMLDivElement>(null)
   const enfocar = useCallback((button: HTMLButtonElement | null) => button?.focus(), [])
 
   // Con la acción en curso, Cancelar y el botón que se tocó quedan deshabilitados y el navegador mandaría el foco al
   // body: lo toma el grupo (si estaba adentro), que sigue escuchando Escape para cuando Cancelar se habilite de nuevo.
   useLayoutEffect(() => {
-    const element = grupo.current
+    const element = group.current
     if (!pending || !element) return
     const activo = document.activeElement
     if (activo === null || activo === document.body || element.contains(activo)) element.focus()
@@ -66,14 +66,14 @@ export function ConfirmationInLugar({
 
   return (
     <div
-      ref={grupo}
+      ref={group}
       role="group"
       tabIndex={-1}
       aria-labelledby={`${id}-pregunta`}
-      onKeyDown={(evento) => {
-        if (evento.key === 'Escape' && !pending) {
-          evento.stopPropagation()
-          onCancelar()
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && !pending) {
+          event.stopPropagation()
+          onCancel()
         }
       }}
       className={cn(
@@ -84,14 +84,14 @@ export function ConfirmationInLugar({
     >
       <div className="min-w-0 flex-1 basis-64 space-y-0.5">
         <p id={`${id}-pregunta`} className="font-medium [overflow-wrap:anywhere]">
-          {pregunta}
+          {question}
         </p>
         {detail ? <p className="text-muted-foreground">{detail}</p> : null}
       </div>
       {children}
       <div className="ml-auto flex flex-wrap justify-end gap-2">
-        <Button ref={enfocar} type="button" variant="outline" onClick={onCancelar} disabled={pending}>
-          {textCancelar}
+        <Button ref={enfocar} type="button" variant="outline" onClick={onCancel} disabled={pending}>
+          {cancelText}
         </Button>
         {alternativa ? (
           <Button type="button" variant="outline" onClick={alternativa.onChoose} disabled={pending}>
@@ -101,7 +101,7 @@ export function ConfirmationInLugar({
         <Button
           type="button"
           onClick={onConfirm}
-          disabled={pending || confirmDeshabilitado}
+          disabled={pending || confirmDisabled}
           className={
             tone === 'peligro' ? 'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/30' : undefined
           }

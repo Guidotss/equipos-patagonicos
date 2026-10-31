@@ -14,21 +14,21 @@ import { type FiltersList } from '@/lib/quotes/list'
 import { SlidersHorizontal } from 'lucide-react'
 import { useId, useState } from 'react'
 
-import { FieldsRango, OptionsClient, OptionsStatus, WarningRango } from './quote-filter-fields'
+import { DateRangeFields, OptionsClient, OptionsStatus, DateRangeWarning } from './quote-filter-fields'
 import { readFilterStatus, isInvalidDateRange, type ClientFilter, type MobileQuoteFilters } from './quote-filter-model'
 
-const ETIQUETA = 'text-[13px]/none font-normal text-muted-foreground'
+const LABEL_CLASS = 'text-[13px]/none font-normal text-muted-foreground'
 
 /** En pantallas angostas: un botón "Filtros" que abre una hoja desde abajo con estado, cliente y fechas. */
 export function FiltersMobile({
   filters,
-  clientes,
-  activos,
+  clients,
+  active,
   onApply,
 }: {
   filters: FiltersList
-  clientes: ClientFilter[]
-  activos: number
+  clients: ClientFilter[]
+  active: number
   onApply: (changes: MobileQuoteFilters) => void
 }) {
   const idStatus = useId()
@@ -40,11 +40,12 @@ export function FiltersMobile({
     desde: filters.desde,
     hasta: filters.hasta,
   })
+  const dateRange = { from: sheet.desde, to: sheet.hasta }
 
-  function onAbrir(abrir: boolean) {
-    if (abrir)
+  function onOpenChange(open: boolean) {
+    if (open)
       setSheet({ estado: filters.estado, cliente: filters.cliente, desde: filters.desde, hasta: filters.hasta })
-    setOpen(abrir)
+    setOpen(open)
   }
 
   function apply(changes: MobileQuoteFilters) {
@@ -53,14 +54,14 @@ export function FiltersMobile({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onAbrir}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
         <Button type="button" variant="outline" className="h-11 gap-1.5 px-3 text-sm @min-[44rem]/listado:hidden">
           <SlidersHorizontal aria-hidden />
           Filtros
-          {activos > 0 ? (
+          {active > 0 ? (
             <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-xs text-primary-foreground">
-              {activos}
+              {active}
             </span>
           ) : null}
         </Button>
@@ -72,33 +73,37 @@ export function FiltersMobile({
         </SheetHeader>
         <div className="space-y-3 px-4">
           <div className="space-y-1">
-            <Label htmlFor={idStatus} className={ETIQUETA}>
+            <Label htmlFor={idStatus} className={LABEL_CLASS}>
               Estado
             </Label>
             <NativeSelect
               id={idStatus}
               value={sheet.estado}
-              onChange={(evento) => setSheet({ ...sheet, estado: readFilterStatus(evento.target.value) })}
+              onChange={(event) => setSheet({ ...sheet, estado: readFilterStatus(event.target.value) })}
               className="w-full [&>select]:h-10"
             >
               <OptionsStatus />
             </NativeSelect>
           </div>
           <div className="space-y-1">
-            <Label htmlFor={idClient} className={ETIQUETA}>
+            <Label htmlFor={idClient} className={LABEL_CLASS}>
               Cliente
             </Label>
             <NativeSelect
               id={idClient}
               value={sheet.cliente}
-              onChange={(evento) => setSheet({ ...sheet, cliente: evento.target.value })}
+              onChange={(event) => setSheet({ ...sheet, cliente: event.target.value })}
               className="w-full [&>select]:h-10"
             >
-              <OptionsClient clientes={clientes} />
+              <OptionsClient clients={clients} />
             </NativeSelect>
           </div>
-          <FieldsRango rango={sheet} onChange={(rango) => setSheet({ ...sheet, ...rango })} alto="h-10" />
-          {isInvalidDateRange(sheet) ? <WarningRango /> : null}
+          <DateRangeFields
+            range={dateRange}
+            onChange={({ from, to }) => setSheet({ ...sheet, desde: from, hasta: to })}
+            tall="h-10"
+          />
+          {isInvalidDateRange(dateRange) ? <DateRangeWarning /> : null}
         </div>
         <SheetFooter className="flex-row border-t">
           <Button
@@ -112,7 +117,7 @@ export function FiltersMobile({
           <Button
             type="button"
             className="h-10 flex-1"
-            disabled={isInvalidDateRange(sheet)}
+            disabled={isInvalidDateRange(dateRange)}
             onClick={() => apply(sheet)}
           >
             Ver resultados

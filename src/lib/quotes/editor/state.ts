@@ -1,4 +1,4 @@
-import { UNIDADES, readBlocks, type Block } from '@/lib/templates/content'
+import { UNITS, readBlocks, type Block } from '@/lib/templates/content'
 import { readData } from '../data'
 import { EDITOR_STATUSES, EDITOR_FORMATS, EDITOR_ORIGINS } from './constants'
 import { textPrice, textQuantity } from './numbers'
@@ -6,13 +6,13 @@ import { newKey } from './keys'
 import type { BlockEditor, RowEditor, StatusEditor, TemplateEditor } from './types'
 
 /** La base garantiza estos valores (CHECK): uno distinto es un error de programación. */
-function unoOf<const T extends readonly string[]>(value: string, options: T, error: string): T[number] {
+function oneOf<const T extends readonly string[]>(value: string, options: T, error: string): T[number] {
   if (!options.includes(value)) throw new Error(`${error}: ${value}`)
   return value as T[number]
 }
 
-export function createEditorBlocks(bloques: Block[]): BlockEditor[] {
-  return bloques.map((block) => ({
+export function createEditorBlocks(blocks: Block[]): BlockEditor[] {
+  return blocks.map((block) => ({
     clave: newKey(),
     titulo: block.titulo,
     contenido: block.contenido,
@@ -54,12 +54,12 @@ export function statusFromRow(row: RowEditor): StatusEditor {
     id: row.id,
     version: row.updated_at,
     numero: row.numero,
-    estado: unoOf(row.estado, EDITOR_STATUSES, 'Estado desconocido'),
-    origen: unoOf(row.origen, EDITOR_ORIGINS, 'Origen desconocido'),
+    estado: oneOf(row.estado, EDITOR_STATUSES, 'Estado desconocido'),
+    origen: oneOf(row.origen, EDITOR_ORIGINS, 'Origen desconocido'),
     cliente: { id: row.cliente.id, razon_social: row.cliente.razon_social, cuit: row.cliente.cuit },
     contactoId: row.contacto_id ?? '',
     templateId: row.plantilla_id ?? '',
-    formato: unoOf(row.formato, EDITOR_FORMATS, 'Formato desconocido'),
+    formato: oneOf(row.formato, EDITOR_FORMATS, 'Formato desconocido'),
     equipoId: row.equipo_id ?? '',
     firmanteId: row.firmante_id ?? '',
     fecha: row.fecha,
@@ -78,7 +78,7 @@ export function statusFromRow(row: RowEditor): StatusEditor {
         descripcion: item.descripcion,
         cantidad: textQuantity(item.cantidad),
         precio: item.precio_unitario === null ? '' : textPrice(item.precio_unitario),
-        unidad: unoOf(item.unidad, UNIDADES, 'Unidad desconocida'),
+        unidad: oneOf(item.unidad, UNITS, 'Unidad desconocida'),
       })),
     bloques: createEditorBlocks(readBlocks(row.bloques)),
     replacesA: row.reemplaza_a,
@@ -89,9 +89,9 @@ export function statusFromRow(row: RowEditor): StatusEditor {
  * Precarga lo que trae la plantilla: formato, asunto, introducción, textos, validez e ítems sin precio.
  * Cliente, contacto, equipo, firmante, fecha, datos, próxima actualización y "mostrar total" no cambian.
  */
-export function applyTemplate(estado: StatusEditor, template: TemplateEditor): StatusEditor {
+export function applyTemplate(state: StatusEditor, template: TemplateEditor): StatusEditor {
   return {
-    ...estado,
+    ...state,
     templateId: template.id,
     formato: template.formato,
     asunto: template.asunto,

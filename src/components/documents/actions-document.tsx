@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { changeVoidingDocument } from '@/app/(app)/documentos/actions'
-import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { Button } from '@/components/ui/button'
 
 export function ActionsDocument({ id, anulado: voided }: { id: string; anulado: boolean }) {
@@ -49,7 +49,7 @@ export function ActionsDocument({ id, anulado: voided }: { id: string; anulado: 
           {voided ? 'Restaurar' : 'Anular'}
         </Button>
       ) : (
-        <ConfirmationInLugar
+        <InlineConfirmation
           pregunta="¿Anular este documento?"
           detail="Los archivos se conservan. Si es un pago, su importe vuelve al saldo de las facturas."
           textConfirm="Confirmar anulación"

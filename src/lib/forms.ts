@@ -8,20 +8,20 @@ export type StatusForm = {
   values?: Record<string, string>
 }
 
-export type ActionForm = (estado: StatusForm, formData: FormData) => Promise<StatusForm>
+export type ActionForm = (state: StatusForm, formData: FormData) => Promise<StatusForm>
 
 export const STATUS_INITIAL: StatusForm = { ok: false, message: null, errors: {} }
 
 export function readFields<const K extends string>(formData: FormData, fields: readonly K[]): Record<K, string> {
-  const datos = {} as Record<K, string>
+  const data = {} as Record<K, string>
   for (const field of fields) {
     const value = formData.get(field)
-    datos[field] = typeof value === 'string' ? value : ''
+    data[field] = typeof value === 'string' ? value : ''
   }
-  return datos
+  return data
 }
 
-export function falloValidation(error: ZodError, values: Record<string, string>): StatusForm {
+export function validationFailure(error: ZodError, values: Record<string, string>): StatusForm {
   const errors: Record<string, string> = {}
   for (const issue of error.issues) {
     const field = String(issue.path[0] ?? '')
@@ -45,9 +45,9 @@ export function errorsByPath(error: ZodError): Record<string, string> {
   return Object.fromEntries(errors)
 }
 
-type ErrorBase = { code?: string; message: string }
+type DatabaseError = { code?: string; message: string }
 
-export function messageErrorBase(error: ErrorBase): string {
+export function databaseErrorMessage(error: DatabaseError): string {
   switch (error.code) {
     case '23505':
       return 'Ya existe un registro con esos datos'
@@ -65,15 +65,15 @@ export function messageErrorBase(error: ErrorBase): string {
 }
 
 /** Error de Postgres/PostgREST. Si es un duplicado y se indica el campo, el error va a ese campo. */
-export function falloBase(
-  error: ErrorBase,
+export function databaseFailure(
+  error: DatabaseError,
   values: Record<string, string>,
-  duplicado?: { campo: string; message: string },
+  duplicate?: { campo: string; message: string },
 ): StatusForm {
-  if (error.code === '23505' && duplicado) {
-    return { ok: false, message: duplicado.message, errors: { [duplicado.campo]: duplicado.message }, values }
+  if (error.code === '23505' && duplicate) {
+    return { ok: false, message: duplicate.message, errors: { [duplicate.campo]: duplicate.message }, values }
   }
-  return { ok: false, message: messageErrorBase(error), errors: {}, values }
+  return { ok: false, message: databaseErrorMessage(error), errors: {}, values }
 }
 
 export function success(message: string): StatusForm {
@@ -81,9 +81,9 @@ export function success(message: string): StatusForm {
 }
 
 export function valueField(
-  estado: StatusForm,
+  state: StatusForm,
   initial: Partial<Record<string, string | null>> | undefined,
   field: string,
 ): string {
-  return estado.values?.[field] ?? initial?.[field] ?? ''
+  return state.values?.[field] ?? initial?.[field] ?? ''
 }

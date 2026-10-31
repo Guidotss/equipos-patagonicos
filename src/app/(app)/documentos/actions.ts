@@ -4,11 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { unstable_rethrow } from 'next/navigation'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
-import { approveWithOrderCompra, ErrorQuote } from '@/lib/quotes/service'
+import { approveWithPurchaseOrder, ErrorQuote } from '@/lib/quotes/service'
 import { contextoDocument } from '@/lib/documents/queries'
 import { schemaSaveDocument } from '@/lib/documents/screens'
 import { ErrorDocument, prepareUpload, registerDocument } from '@/lib/documents/service'
-import { errorsByPath, messageErrorBase } from '@/lib/forms'
+import { errorsByPath, databaseErrorMessage } from '@/lib/forms'
 import type { Result } from '@/lib/result'
 import { createClient } from '@/lib/supabase/server'
 
@@ -16,7 +16,7 @@ function fallo(error: unknown): Result<never> {
   unstable_rethrow(error)
   if (error instanceof ErrorDocument || error instanceof ErrorQuote) return { ok: false, message: error.message }
   if (typeof error === 'object' && error && 'code' in error && 'message' in error) {
-    return { ok: false, message: messageErrorBase(error as { code: string; message: string }) }
+    return { ok: false, message: databaseErrorMessage(error as { code: string; message: string }) }
   }
   console.error(error)
   return { ok: false, message: 'No se pudo completar la operación. Podés reintentar sin perder los datos.' }
@@ -49,7 +49,7 @@ export async function prepareFile(entrada: unknown): Promise<Result<{ path: stri
   }
 }
 
-export async function readContextoDocument(clientId: unknown) {
+export async function readDocumentContext(clientId: unknown) {
   await requireUser()
   const id = z.uuid().safeParse(clientId)
   if (!id.success) return { ok: false as const, message: 'Cliente inválido' }
@@ -88,7 +88,7 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
       })
       if (error) throw error
     } else if (datos.cotizacion) {
-      id = await approveWithOrderCompra(
+      id = await approveWithPurchaseOrder(
         supabase,
         datos.cotizacion.id,
         datos.cotizacion.version,

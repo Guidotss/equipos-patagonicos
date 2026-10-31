@@ -1,10 +1,10 @@
 import { z } from 'zod'
 
-export const FORMATOS = { mensual: 'Mensual', jornada: 'Por jornada' } as const
-export type Format = keyof typeof FORMATOS
+export const FORMATS = { mensual: 'Mensual', jornada: 'Por jornada' } as const
+export type Format = keyof typeof FORMATS
 
-export const UNIDADES = ['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'] as const
-export type Unit = (typeof UNIDADES)[number]
+export const UNITS = ['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'] as const
+export type Unit = (typeof UNITS)[number]
 
 /**
  * Un bloque de texto de la plantilla o de la cotización. Se leen las marcas actuales y las guardadas como
@@ -25,7 +25,7 @@ export type Block = z.infer<typeof schemaBlock>
 export const schemaItemTemplate = z.object({
   seccion: z.string(),
   descripcion: z.string(),
-  unidad: z.enum(UNIDADES),
+  unidad: z.enum(UNITS),
   cantidad: z.number().positive(),
 })
 export type ItemTemplate = z.infer<typeof schemaItemTemplate>

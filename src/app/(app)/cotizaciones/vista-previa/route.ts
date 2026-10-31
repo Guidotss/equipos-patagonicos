@@ -27,11 +27,11 @@ export async function POST(request: Request) {
   } catch {
     return new Response('Pedido inválido', { status: 400 })
   }
-  const entrada = schemaEntry.safeParse(body)
-  if (!entrada.success) return new Response('Pedido inválido', { status: 400 })
+  const input = schemaEntry.safeParse(body)
+  if (!input.success) return new Response('Pedido inválido', { status: 400 })
 
   const supabase = await createClient()
-  const pdf = await viewPreview(supabase, entrada.data)
+  const pdf = await viewPreview(supabase, input.data)
   return new Response(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',

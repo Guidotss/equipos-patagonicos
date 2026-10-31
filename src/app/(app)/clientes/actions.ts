@@ -6,10 +6,10 @@ import { requireUser } from '@/lib/auth'
 import { FIELDS_CLIENT, FIELDS_CONTACT, schemaClient, schemaContact } from '@/lib/clients/schemas'
 import {
   success,
-  falloBase,
-  falloValidation,
+  databaseFailure,
+  validationFailure,
   readFields,
-  messageErrorBase,
+  databaseErrorMessage,
   type StatusForm,
 } from '@/lib/forms'
 import { createClient } from '@/lib/supabase/server'
@@ -25,11 +25,11 @@ export async function crearClient(_previous: StatusForm, formData: FormData): Pr
   await requireUser()
   const values = readFields(formData, FIELDS_CLIENT)
   const datos = schemaClient.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { data, error } = await supabase.from('clientes').insert(datos.data).select('id').single()
-  if (error) return falloBase(error, values, CUIT_REPETIDO)
+  if (error) return databaseFailure(error, values, CUIT_REPETIDO)
 
   revalidatePath('/clientes')
   redirect(`/clientes/${data.id}`)
@@ -44,11 +44,11 @@ export async function actualizarClient(
   requireUuid(id)
   const values = readFields(formData, FIELDS_CLIENT)
   const datos = schemaClient.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('clientes').update(datos.data).eq('id', id)
-  if (error) return falloBase(error, values, CUIT_REPETIDO)
+  if (error) return databaseFailure(error, values, CUIT_REPETIDO)
 
   revalidatePath('/clientes')
   revalidatePath(`/clientes/${id}`)
@@ -60,7 +60,7 @@ export async function changeStatusClient(id: string, activo: boolean): Promise<v
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('clientes').update({ activo }).eq('id', id)
-  if (error) throw new Error(messageErrorBase(error))
+  if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/clientes')
   revalidatePath(`/clientes/${id}`)
 }
@@ -74,11 +74,11 @@ export async function crearContact(
   requireUuid(clientId)
   const values = readFields(formData, FIELDS_CONTACT)
   const datos = schemaContact.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('contactos').insert({ ...datos.data, cliente_id: clientId })
-  if (error) return falloBase(error, values)
+  if (error) return databaseFailure(error, values)
 
   revalidatePath(`/clientes/${clientId}`)
   return success('Contacto agregado')
@@ -94,7 +94,7 @@ export async function actualizarContact(
   requireUuid(clientId, contactId)
   const values = readFields(formData, FIELDS_CONTACT)
   const datos = schemaContact.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -102,7 +102,7 @@ export async function actualizarContact(
     .update(datos.data)
     .eq('id', contactId)
     .eq('cliente_id', clientId)
-  if (error) return falloBase(error, values)
+  if (error) return databaseFailure(error, values)
 
   revalidatePath(`/clientes/${clientId}`)
   return success('Contacto guardado')
@@ -113,6 +113,6 @@ export async function removeContact(clientId: string, contactId: string): Promis
   requireUuid(clientId, contactId)
   const supabase = await createClient()
   const { error } = await supabase.from('contactos').delete().eq('id', contactId).eq('cliente_id', clientId)
-  if (error) throw new Error(messageErrorBase(error))
+  if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath(`/clientes/${clientId}`)
 }

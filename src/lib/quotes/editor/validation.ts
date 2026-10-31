@@ -1,7 +1,7 @@
 import { parsePrice } from '@/lib/format/amounts'
 import { isDate, isMonth } from '@/lib/format/dates'
 import { errorsByPath } from '@/lib/forms'
-import { UNIDADES } from '@/lib/templates/content'
+import { UNITS } from '@/lib/templates/content'
 import { isUuid } from '@/lib/validation'
 import { z } from 'zod'
 import { schemaData, schemaItem } from '../data'
@@ -13,9 +13,9 @@ const textFree = z.string().max(20_000)
 const idOptional = z.union([z.literal(''), z.uuid()])
 
 /**
- * La forma de EstadoEditor, sin reglas de negocio (un precio mal escrito o la falta de cliente pasan). Sirve para
+ * La forma de StatusEditor, sin reglas de negocio (un precio mal escrito o la falta de cliente pasan). Sirve para
  * rechazar con 400 un cuerpo que no es un estado del editor (POST /cotizaciones/vista-previa) antes de usarlo; las
- * reglas para guardar están en payloadGuardar. Los ids son uuid o '' porque el servidor los relee de la base.
+ * reglas para guardar están en payloadSave. Los ids son uuid o '' porque el servidor los relee de la base.
  */
 export const schemaStatusEditor = z.object({
   id: z.uuid().nullable(),
@@ -53,7 +53,7 @@ export const schemaStatusEditor = z.object({
         descripcion: textFree,
         cantidad: z.string().max(30),
         precio: z.string().max(30),
-        unidad: z.enum(UNIDADES),
+        unidad: z.enum(UNITS),
       }),
     )
     .max(500),
@@ -77,8 +77,8 @@ function uuidOptional(message: string) {
     .transform((value) => value || null)
 }
 
-const clientChosen = z.unknown().transform((cliente, ctx) => {
-  const id = cliente !== null && typeof cliente === 'object' ? (cliente as { id?: unknown }).id : undefined
+const clientChosen = z.unknown().transform((client, ctx) => {
+  const id = client !== null && typeof client === 'object' ? (client as { id?: unknown }).id : undefined
   if (typeof id === 'string' && isUuid(id)) return id
   ctx.addIssue({ code: 'custom', message: 'Elegí el cliente' })
   return z.NEVER
@@ -86,21 +86,21 @@ const clientChosen = z.unknown().transform((cliente, ctx) => {
 
 const quantityWritten = z
   .string('Ingresá la cantidad')
-  .transform((texto, ctx) => {
-    const cantidad = parsePrice(texto)
-    if (cantidad === null) {
-      ctx.addIssue({ code: 'custom', message: texto.trim() ? 'Cantidad inválida' : 'Ingresá la cantidad' })
+  .transform((text, ctx) => {
+    const quantity = parsePrice(text)
+    if (quantity === null) {
+      ctx.addIssue({ code: 'custom', message: text.trim() ? 'Cantidad inválida' : 'Ingresá la cantidad' })
       return z.NEVER
     }
-    return cantidad
+    return quantity
   })
   .pipe(schemaItem.shape.cantidad)
 
 const priceWritten = z
   .string('Precio inválido')
-  .transform((texto, ctx) => {
-    if (texto.trim() === '') return null
-    const price = parsePrice(texto)
+  .transform((text, ctx) => {
+    if (text.trim() === '') return null
+    const price = parsePrice(text)
     if (price === null) {
       ctx.addIssue({ code: 'custom', message: 'Precio inválido' })
       return z.NEVER
@@ -109,7 +109,7 @@ const priceWritten = z
   })
   .pipe(schemaItem.shape.precio_unitario)
 
-// Las reglas de cada celda son las de esquemaItem; las claves de error usan los nombres de la grilla
+// Las reglas de cada celda son las de schemaItem; las claves de error usan los nombres de la grilla
 // ('items.2.precio'), no los de la base ('precio_unitario').
 const schemaItemEditor = z
   .object({
@@ -140,7 +140,7 @@ const schemaBlockEditor = z.object({
   hidden: z.boolean(),
 })
 
-// Las claves son las de EstadoEditor, así erroresPorRuta devuelve 'cliente', 'validezDias', 'items.2.precio'…
+// Las claves son las de StatusEditor, así errorsByPath devuelve 'cliente', 'validezDias', 'items.2.precio'…
 const schemaEditor = z.object({
   cliente: clientChosen,
   contactoId: uuidOptional('Contacto inválido'),
@@ -154,7 +154,7 @@ const schemaEditor = z.object({
     .trim()
     .regex(/^\d{1,3}$/, MESSAGE_VALIDITY)
     .transform(Number)
-    .refine((dias) => dias >= 1 && dias <= 365, MESSAGE_VALIDITY),
+    .refine((days) => days >= 1 && days <= 365, MESSAGE_VALIDITY),
   mostrarTotal: z.boolean(),
   proximaActualizacion: z.string(MESSAGE_MONTH).refine((month) => month === '' || isMonth(month), MESSAGE_MONTH),
   asunto: z.string().trim().max(500, 'Máximo 500 caracteres'),
@@ -175,9 +175,9 @@ const schemaEditor = z.object({
  * con oculto: true. Lo usan la Server Action (que no confía en lo que manda el navegador) y hayCambios.
  */
 export function payloadSave(
-  estado: StatusEditor,
+  state: StatusEditor,
 ): { ok: true; payload: PayloadSave } | { ok: false; errors: Record<string, string> } {
-  const result = schemaEditor.safeParse(estado)
+  const result = schemaEditor.safeParse(state)
   if (!result.success) return { ok: false, errors: errorsByPath(result.error) }
   const valid = result.data
   return {
@@ -209,13 +209,13 @@ export function payloadSave(
 }
 
 /** Huella de lo que se guardaría. Con algo a medio escribir (un precio inválido, sin cliente) se usa el contenido. */
-function fingerprint(estado: StatusEditor): string {
-  const result = payloadSave(estado)
+function fingerprint(state: StatusEditor): string {
+  const result = payloadSave(state)
   if (result.ok) return `payload:${JSON.stringify(result.payload)}`
   return `estado:${JSON.stringify({
-    ...estado,
-    items: estado.items.map((item) => [item.seccion, item.descripcion, item.cantidad, item.precio, item.unidad]),
-    bloques: estado.bloques.map((block) => [block.titulo, block.contenido, block.hidden]),
+    ...state,
+    items: state.items.map((item) => [item.seccion, item.descripcion, item.cantidad, item.precio, item.unidad]),
+    bloques: state.bloques.map((block) => [block.titulo, block.contenido, block.hidden]),
   })}`
 }
 
@@ -223,6 +223,6 @@ function fingerprint(estado: StatusEditor): string {
  * true si guardar cambiaría algo. Compara lo que se mandaría a la base, no las claves ni cómo está escrito
  * ("39000000" y "39.000.000" son el mismo precio).
  */
-export function hasChanges(saved: StatusEditor, actual: StatusEditor): boolean {
-  return fingerprint(saved) !== fingerprint(actual)
+export function hasChanges(saved: StatusEditor, current: StatusEditor): boolean {
+  return fingerprint(saved) !== fingerprint(current)
 }

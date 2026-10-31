@@ -5,39 +5,39 @@ import { nextUpdateInText } from './next-update'
 import type { CatalogsEditor, PendingList, StatusEditor } from './types'
 
 /**
- * El FuenteDocumento del estado sin guardar, para armarDocumento (pendientes en el navegador, vista previa en el
+ * El SourceDocument del estado sin guardar, para buildDocument (pendientes en el navegador, vista previa en el
  * servidor). Equipo y firmante salen de los catálogos; el contacto lo pasa quien llama (null alcanza para las
  * variables). Lo que está a medio escribir no rompe: fecha inválida → hoy, validez inválida → 0, cantidad
  * inválida → 1, precio inválido → sin precio.
  */
 export function sourceFromEditor(
-  estado: StatusEditor,
+  state: StatusEditor,
   catalogs: CatalogsEditor,
-  contacto: { nombre: string; email: string } | null,
+  contact: { nombre: string; email: string } | null,
 ): SourceDocument {
-  const equipo = catalogs.equipos.find((candidate) => candidate.id === estado.equipoId)
-  const firmante = catalogs.firmantes.find((candidate) => candidate.id === estado.firmanteId)
-  const validity = Number(estado.validezDias.trim())
+  const equipment = catalogs.equipos.find((candidate) => candidate.id === state.equipoId)
+  const signer = catalogs.firmantes.find((candidate) => candidate.id === state.firmanteId)
+  const validity = Number(state.validezDias.trim())
   return {
     cotizacion: {
-      numero: estado.numero,
-      fecha: isDate(estado.fecha) ? estado.fecha : todayArgentina(),
-      formato: estado.formato,
-      asunto: estado.asunto,
-      intro: estado.intro,
+      numero: state.numero,
+      fecha: isDate(state.fecha) ? state.fecha : todayArgentina(),
+      formato: state.formato,
+      asunto: state.asunto,
+      intro: state.intro,
       validez_dias: Number.isInteger(validity) && validity > 0 ? validity : 0,
-      mostrar_total: estado.mostrarTotal,
+      mostrar_total: state.mostrarTotal,
       datos: {
-        ...estado.datos,
-        proxima_actualizacion: nextUpdateInText(estado.proximaActualizacion, estado.datos.proxima_actualizacion),
+        ...state.datos,
+        proxima_actualizacion: nextUpdateInText(state.proximaActualizacion, state.datos.proxima_actualizacion),
       },
-      bloques: estado.bloques.map(({ titulo: title, contenido: content, hidden }) => ({
+      bloques: state.bloques.map(({ titulo: title, contenido: content, hidden }) => ({
         titulo: title,
         contenido: content,
         hidden,
       })),
     },
-    items: estado.items.map((item, index) => ({
+    items: state.items.map((item, index) => ({
       orden: index + 1,
       seccion: item.seccion,
       descripcion: item.descripcion,
@@ -45,23 +45,23 @@ export function sourceFromEditor(
       precio_unitario: parsePrice(item.precio),
       unidad: item.unidad,
     })),
-    cliente: { razon_social: estado.cliente?.razon_social ?? '', cuit: estado.cliente?.cuit ?? null },
-    contacto,
-    equipo: equipo ? { capacidad_tn: equipo.capacidad_tn, descripcion: equipo.descripcion } : null,
-    firmante: firmante ? { nombre: firmante.nombre, cargo: firmante.cargo, telefono: firmante.telefono } : null,
+    cliente: { razon_social: state.cliente?.razon_social ?? '', cuit: state.cliente?.cuit ?? null },
+    contacto: contact,
+    equipo: equipment ? { capacidad_tn: equipment.capacidad_tn, descripcion: equipment.descripcion } : null,
+    firmante: signer ? { nombre: signer.nombre, cargo: signer.cargo, telefono: signer.telefono } : null,
     empresa: catalogs.empresa,
   }
 }
 
-/** Lo que falta para poder enviar o aprobar, calculado con el mismo armarDocumento que dibuja el PDF. */
-export function pendingListEditor(estado: StatusEditor, catalogs: CatalogsEditor): PendingList {
-  const document = buildDocument(sourceFromEditor(estado, catalogs, null))
+/** Lo que falta para poder enviar o aprobar, calculado con el mismo buildDocument que dibuja el PDF. */
+export function pendingListEditor(state: StatusEditor, catalogs: CatalogsEditor): PendingList {
+  const document = buildDocument(sourceFromEditor(state, catalogs, null))
   return {
     // Sin guardar todavía no hay número: se asigna al guardar, no es algo que el usuario tenga que completar.
-    variables: document.faltantes.filter((nombre) => nombre !== 'numero' || estado.id !== null),
+    variables: document.faltantes.filter((name) => name !== 'numero' || state.id !== null),
     desconocidas: document.desconocidas,
-    itemsWithoutPrice: estado.items.filter((item) => parsePrice(item.precio) === null).length,
-    withoutItems: estado.items.length === 0,
+    itemsWithoutPrice: state.items.filter((item) => parsePrice(item.precio) === null).length,
+    withoutItems: state.items.length === 0,
   }
 }
 

@@ -3,5 +3,5 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type QuoteServiceClient = SupabaseClient<Database>
 
-/** An error whose message can be shown to the user. */
+/** Error cuyo mensaje se puede mostrar al usuario. */
 export class ErrorQuote extends Error {}

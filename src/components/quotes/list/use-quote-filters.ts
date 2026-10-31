@@ -2,24 +2,24 @@
 
 import { STATUSES_QUOTE } from '@/components/quotes/status-quote'
 import { hrefWithFilters, readFilters, type FiltersList } from '@/lib/quotes/list'
-import { textRangoDates } from '@/lib/quotes/list-view'
+import { formatDateRange } from '@/lib/quotes/list-view'
 import { useRouter } from 'next/navigation'
 import { useEffect, useOptimistic, useRef, useTransition } from 'react'
 
 import type { ClientFilter } from './quote-filter-model'
 
-export function useQuoteFilters(filters: FiltersList, clientes: ClientFilter[]) {
+export function useQuoteFilters(filters: FiltersList, clients: ClientFilter[]) {
   const router = useRouter()
-  const [pending, iniciarNavigation] = useTransition()
+  const [pending, startNavigation] = useTransition()
   // Los de la URL, o los recién elegidos mientras se navega hacia ellos. Sin navegación pendiente son `filtros`, así
   // que los selects siguen a la URL cuando cambia desde afuera (chips, "Limpiar filtros", atrás del navegador).
-  const [vigentes, adelantar] = useOptimistic(
+  const [activeFilters, applyOptimistic] = useOptimistic(
     filters,
-    (actuales: FiltersList, changes: Partial<FiltersList>): FiltersList => ({ ...actuales, ...changes }),
+    (current: FiltersList, changes: Partial<FiltersList>): FiltersList => ({ ...current, ...changes }),
   )
   const search = useRef<HTMLInputElement>(null)
   // La última búsqueda de la URL que se reflejó en el buscador.
-  const qReflejada = useRef(filters.q)
+  const reflectedQuery = useRef(filters.q)
 
   // Si la búsqueda cambia desde afuera ("Limpiar filtros", atrás o adelante del navegador), el buscador vuelve a leer
   // la URL aunque tenga el foco, salvo que se haya tipeado algo distinto de lo que mostraba: eso no se pisa. Se decide
@@ -27,34 +27,34 @@ export function useQuoteFilters(filters: FiltersList, clientes: ClientFilter[]) 
   useEffect(() => {
     const field = search.current
     // El texto se normaliza como el de la URL (espacios, largo máximo) para compararlo con la búsqueda que mostraba.
-    if (field && readFilters({ q: field.value }).q === qReflejada.current) field.value = filters.q
-    qReflejada.current = filters.q
+    if (field && readFilters({ q: field.value }).q === reflectedQuery.current) field.value = filters.q
+    reflectedQuery.current = filters.q
   }, [filters.q])
 
   function apply(changes: Partial<FiltersList>) {
-    iniciarNavigation(() => {
-      adelantar(changes)
+    startNavigation(() => {
+      applyOptimistic(changes)
       // Sobre `vigentes`: dos cambios seguidos no se pisan aunque el primero todavía no haya llegado a la URL.
-      router.push(hrefWithFilters(vigentes, changes), { scroll: false })
+      router.push(hrefWithFilters(activeFilters, changes), { scroll: false })
     })
   }
 
   // Los chips siguen la selección optimista mientras llega la navegación.
-  const chips: { clave: string; texto: string; quitar: Partial<FiltersList> }[] = []
-  if (vigentes.q) {
-    chips.push({ clave: 'busqueda', texto: `Búsqueda: ${vigentes.q}`, quitar: { q: '' } })
+  const chips: { key: string; text: string; remove: Partial<FiltersList> }[] = []
+  if (activeFilters.q) {
+    chips.push({ key: 'busqueda', text: `Búsqueda: ${activeFilters.q}`, remove: { q: '' } })
   }
-  if (vigentes.estado) {
-    chips.push({ clave: 'estado', texto: STATUSES_QUOTE[vigentes.estado].label, quitar: { estado: '' } })
+  if (activeFilters.estado) {
+    chips.push({ key: 'estado', text: STATUSES_QUOTE[activeFilters.estado].label, remove: { estado: '' } })
   }
-  if (vigentes.cliente) {
-    const cliente = clientes.find((c) => c.id === vigentes.cliente)
-    chips.push({ clave: 'cliente', texto: cliente?.razon_social ?? 'Cliente', quitar: { cliente: '' } })
+  if (activeFilters.cliente) {
+    const client = clients.find((c) => c.id === activeFilters.cliente)
+    chips.push({ key: 'cliente', text: client?.razon_social ?? 'Cliente', remove: { cliente: '' } })
   }
-  if (vigentes.desde || vigentes.hasta) {
-    const texto = textRangoDates(vigentes.desde, vigentes.hasta)
-    chips.push({ clave: 'fechas', texto, quitar: { desde: '', hasta: '' } })
+  if (activeFilters.desde || activeFilters.hasta) {
+    const text = formatDateRange(activeFilters.desde, activeFilters.hasta)
+    chips.push({ key: 'fechas', text, remove: { desde: '', hasta: '' } })
   }
 
-  return { pending, vigentes, search, apply, chips }
+  return { pending, activeFilters, search, apply, chips }
 }

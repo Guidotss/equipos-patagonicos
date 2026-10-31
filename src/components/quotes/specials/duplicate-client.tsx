@@ -4,14 +4,14 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { duplicateQuote } from '@/app/(app)/cotizaciones/actions'
-import { SelectorClient, type ClientBuscado } from '@/components/quotes/editor/selector-client'
+import { SelectorClient, type ClientSearchResult } from '@/components/quotes/editor/selector-client'
 import { Field } from '@/components/form/field'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export function DuplicateClient({ id, open, onCerrar }: { id: string; open: boolean; onCerrar: () => void }) {
   const router = useRouter()
-  const [cliente, setClient] = useState<ClientBuscado | null>(null)
+  const [cliente, setClient] = useState<ClientSearchResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const inCurso = useRef(false)

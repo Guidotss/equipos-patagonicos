@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { partirVariables, resolverVariables, variablesDesconocidas, variablesUsadas } from './variables'
+import { partirVariables, resolverVariables, variablesDesconocidas, usedVariables } from './variables'
 
 describe('partirVariables', () => {
   it('deja los nombres recortados en las posiciones impares', () => {
@@ -19,7 +19,7 @@ describe('partirVariables', () => {
 
 describe('variablesUsadas', () => {
   it('lista cada variable una sola vez, admitiendo espacios dentro de las llaves', () => {
-    expect(variablesUsadas('Grúa de {{capacidad}} TN en {{ ubicacion }}; {{capacidad}} TN')).toEqual([
+    expect(usedVariables('Grúa de {{capacidad}} TN en {{ ubicacion }}; {{capacidad}} TN')).toEqual([
       'capacidad',
       'ubicacion',
     ])

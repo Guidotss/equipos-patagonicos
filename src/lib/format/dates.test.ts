@@ -5,10 +5,10 @@ import {
   isDate,
   isMonth,
   dateInLetters,
-  formatDateCorta,
+  formatShortDate,
   todayArgentina,
   monthInLetters,
-  sumarDays,
+  addDays,
 } from './dates'
 
 describe('fechaEnLetras', () => {
@@ -26,9 +26,9 @@ describe('fechaEnLetras', () => {
   it('rechaza fechas que no existen en el calendario', () => {
     expect(() => dateInLetters('2026-02-30')).toThrow('Fecha inválida')
     expect(() => dateInLetters('2027-02-29')).toThrow('Fecha inválida')
-    expect(() => formatDateCorta('2026-04-31')).toThrow('Fecha inválida')
-    expect(() => sumarDays('2026-02-30', 0)).toThrow('Fecha inválida')
-    expect(() => sumarDays('0050-01-01', 1)).toThrow('Fecha inválida')
+    expect(() => formatShortDate('2026-04-31')).toThrow('Fecha inválida')
+    expect(() => addDays('2026-02-30', 0)).toThrow('Fecha inválida')
+    expect(() => addDays('0050-01-01', 1)).toThrow('Fecha inválida')
   })
 
   it('acepta el 29 de febrero en año bisiesto', () => {
@@ -44,7 +44,7 @@ describe('encabezadoFecha', () => {
 
 describe('formatFechaCorta', () => {
   it('usa dd/mm/aaaa', () => {
-    expect(formatDateCorta('2026-07-24')).toBe('24/07/2026')
+    expect(formatShortDate('2026-07-24')).toBe('24/07/2026')
   })
 })
 
@@ -60,9 +60,9 @@ describe('hoyArgentina', () => {
 
 describe('sumarDias y diasEntre', () => {
   it('suma días cruzando meses y años', () => {
-    expect(sumarDays('2026-10-22', 30)).toBe('2026-11-21')
-    expect(sumarDays('2026-12-20', 15)).toBe('2027-01-04')
-    expect(sumarDays('2026-03-01', -1)).toBe('2026-02-28')
+    expect(addDays('2026-10-22', 30)).toBe('2026-11-21')
+    expect(addDays('2026-12-20', 15)).toBe('2027-01-04')
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
   })
 
   it('cuenta días entre dos fechas', () => {

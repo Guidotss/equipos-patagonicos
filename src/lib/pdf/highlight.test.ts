@@ -1,10 +1,10 @@
-// src/lib/pdf/resaltar.test.ts
+// src/lib/pdf/highlight.test.ts
 import { extractText, getDocumentProxy, getResolvedPDFJS } from 'unpdf'
 import { describe, expect, it } from 'vitest'
 import { buildDocument } from '@/lib/quotes/document'
 import { EXAMPLE_DAILY, EXAMPLE_MONTHLY } from '@/lib/quotes/examples'
 import { AMARILLO_VARIABLE } from './styles'
-import { renderizarQuote } from './render'
+import { renderQuote } from './render'
 
 async function textOfPdf(pdf: Buffer): Promise<string> {
   const document = await getDocumentProxy(new Uint8Array(pdf))
@@ -33,19 +33,19 @@ const WITHOUT_DATA = { ...EXAMPLE_MONTHLY, cotizacion: { ...EXAMPLE_MONTHLY.coti
 
 describe('resaltar variables (vista previa)', () => {
   it('con resaltarVariables pinta de amarillo las variables sin completar y las deja en el texto', async () => {
-    const pdf = await renderizarQuote(buildDocument(WITHOUT_DATA), { highlightVariables: true })
+    const pdf = await renderQuote(buildDocument(WITHOUT_DATA), { highlightVariables: true })
     expect(await textOfPdf(pdf)).toContain('{{ubicacion}}')
     expect(await coloresOfRelleno(pdf)).toContain(AMARILLO)
   }, 20_000)
 
   it('sin la opción (el PDF que se envía o se aprueba) no pinta nada', async () => {
-    const pdf = await renderizarQuote(buildDocument(WITHOUT_DATA))
+    const pdf = await renderQuote(buildDocument(WITHOUT_DATA))
     expect(await textOfPdf(pdf)).toContain('{{ubicacion}}')
     expect(await coloresOfRelleno(pdf)).not.toContain(AMARILLO)
   }, 20_000)
 
   it('un documento completo no tiene nada que resaltar y el texto sale corrido', async () => {
-    const pdf = await renderizarQuote(buildDocument(EXAMPLE_DAILY), { highlightVariables: true })
+    const pdf = await renderQuote(buildDocument(EXAMPLE_DAILY), { highlightVariables: true })
     expect(await coloresOfRelleno(pdf)).not.toContain(AMARILLO)
     expect(await textOfPdf(pdf)).toContain(
       'Cotización N° 112711 alquiler de 1 (una) Grúa Telescópica capacidad 40 TN con operador.',
@@ -54,7 +54,7 @@ describe('resaltar variables (vista previa)', () => {
 
   it('sin número (una cotización sin guardar) muestra {{numero}} resaltado', async () => {
     const withoutNumber = { ...EXAMPLE_MONTHLY, cotizacion: { ...EXAMPLE_MONTHLY.cotizacion, numero: null } }
-    const pdf = await renderizarQuote(buildDocument(withoutNumber), { highlightVariables: true })
+    const pdf = await renderQuote(buildDocument(withoutNumber), { highlightVariables: true })
     expect(await textOfPdf(pdf)).toContain('Cotización N° {{numero}}')
     expect(await coloresOfRelleno(pdf)).toContain(AMARILLO)
   }, 20_000)

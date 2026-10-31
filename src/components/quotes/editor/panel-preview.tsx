@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { urlPdfCurrent, urlVisor, type ModeViewPreview } from '@/lib/quotes/preview'
+import { urlPdfCurrent, viewerUrl, type ModeViewPreview } from '@/lib/quotes/preview'
 import { cn } from '@/lib/utils'
 import { CircleAlert, ExternalLink, FileText, RefreshCw } from 'lucide-react'
 import { useId, useState, useSyncExternalStore } from 'react'
@@ -14,10 +14,10 @@ export { useQuotePreview as useViewPreview } from './use-quote-preview'
 export type { ViewPreview } from './use-quote-preview'
 
 /** Hoja vacía con líneas tenues: mientras se genera la primera vista previa o antes de pedirla. */
-function SheetEmpty({ cargando }: { cargando: boolean }) {
+function SheetEmpty({ loading }: { loading: boolean }) {
   return (
     <div className="absolute inset-0 p-[9%]">
-      <div aria-hidden className={cn('space-y-2.5', cargando && 'animate-pulse')}>
+      <div aria-hidden className={cn('space-y-2.5', loading && 'animate-pulse')}>
         <div className="ml-auto h-6 w-2/5 rounded-sm bg-slate-100" />
         <div className="h-2 w-1/2 rounded-sm bg-slate-100" />
         <div className="h-2 w-3/5 rounded-sm bg-slate-100" />
@@ -27,7 +27,7 @@ function SheetEmpty({ cargando }: { cargando: boolean }) {
         <div className="h-2 w-11/12 rounded-sm bg-slate-100" />
         <div className="h-2 w-4/5 rounded-sm bg-slate-100" />
       </div>
-      {cargando ? null : (
+      {loading ? null : (
         <p className="absolute inset-x-6 bottom-[30%] text-center text-[13px] text-muted-foreground">
           Tocá «Actualizar vista previa» para ver cómo sale el PDF.
         </p>
@@ -43,7 +43,7 @@ function SheetEmpty({ cargando }: { cargando: boolean }) {
 export function PanelViewPreview({
   view,
   line,
-  showVisor = true,
+  showVisor: showViewer = true,
   className,
 }: {
   view: ViewPreview
@@ -54,7 +54,7 @@ export function PanelViewPreview({
   className?: string
 }) {
   const idTitle = useId()
-  const { modo } = view
+  const { mode } = view
 
   return (
     <section aria-labelledby={idTitle} className={cn('space-y-3', className)}>
@@ -66,9 +66,9 @@ export function PanelViewPreview({
             Vista previa
           </h2>
           <div className="flex shrink-0 items-center gap-1">
-            {modo.tipo === 'generada' ? (
-              <Button type="button" variant="outline" size="sm" onClick={view.actualizar} disabled={view.cargando}>
-                <RefreshCw className={cn(view.cargando && 'animate-spin')} aria-hidden />
+            {mode.type === 'generada' ? (
+              <Button type="button" variant="outline" size="sm" onClick={view.refresh} disabled={view.loading}>
+                <RefreshCw className={cn(view.loading && 'animate-spin')} aria-hidden />
                 Actualizar vista previa
               </Button>
             ) : null}
@@ -88,14 +88,14 @@ export function PanelViewPreview({
           </div>
         </div>
         {line ? (
-          <p className={cn('text-[13px] text-muted-foreground', view.desactualizada && 'text-amber-700')}>{line}</p>
+          <p className={cn('text-[13px] text-muted-foreground', view.outdated && 'text-amber-700')}>{line}</p>
         ) : null}
       </div>
       <p role="status" className="sr-only">
-        {view.cargando ? 'Generando la vista previa…' : ''}
+        {view.loading ? 'Generando la vista previa…' : ''}
       </p>
 
-      {modo.tipo === 'sin-pdf' ? (
+      {mode.type === 'sin-pdf' ? (
         <div className="rounded-xl border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
           Un presupuesto directo no tiene PDF.
         </div>
@@ -108,7 +108,7 @@ export function PanelViewPreview({
             >
               <CircleAlert className="size-6 text-destructive" aria-hidden />
               <p>{view.error}</p>
-              <Button type="button" variant="outline" size="sm" onClick={view.actualizar} disabled={view.cargando}>
+              <Button type="button" variant="outline" size="sm" onClick={view.refresh} disabled={view.loading}>
                 Reintentar
               </Button>
             </div>
@@ -116,26 +116,26 @@ export function PanelViewPreview({
             <div
               className={cn(
                 'relative aspect-[210/297] w-full overflow-hidden rounded-[2px] bg-white shadow-md ring-1 ring-black/5 transition-opacity',
-                (view.desactualizada || (view.cargando && view.url)) && 'opacity-60',
+                (view.outdated || (view.loading && view.url)) && 'opacity-60',
               )}
             >
               {view.url ? (
                 // Un <iframe> nuevo por PDF (key): cambiarle el src agregaría entradas al historial y "Atrás"
                 // navegaría dentro del panel en vez de salir del editor.
-                showVisor ? (
+                showViewer ? (
                   <iframe
                     key={view.url}
-                    src={urlVisor(view.url)}
+                    src={viewerUrl(view.url)}
                     title="Vista previa del PDF"
                     className="absolute inset-0 size-full border-0"
                   />
                 ) : null
-              ) : modo.tipo === 'sin-cliente' ? (
+              ) : mode.type === 'sin-cliente' ? (
                 <p className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
                   Elegí el cliente para ver cómo sale el PDF.
                 </p>
               ) : (
-                <SheetEmpty cargando={view.cargando} />
+                <SheetEmpty loading={view.loading} />
               )}
             </div>
           )}
@@ -149,15 +149,15 @@ export function PanelViewPreview({
  * La columna fija del editor (≥ 90rem). Más angosta queda oculta (display: none), pero un <iframe> oculto igual se
  * carga: bajaría el PDF para nada (y, en un navegador sin visor embebido, como el de algunos celulares, lo
  * descargaría sin que nadie lo pida). Por eso el visor se dibuja recién cuando la columna se ve. El ancho se mira
- * acá y no en EditorCotizacion: el render extra al hidratar (en el servidor no se conoce) queda en esta columna.
+ * acá y no en EditorQuote: el render extra al hidratar (en el servidor no se conoce) queda en esta columna.
  */
 export function ColumnViewPreview({ view, line }: { view: ViewPreview; line: string }) {
-  const seVe = useSyncExternalStore(subscribePreviewDesktop, isPreviewDesktop, () => false)
+  const visible = useSyncExternalStore(subscribePreviewDesktop, isPreviewDesktop, () => false)
   return (
     // 56 px de migas + 16: la columna acompaña el scroll debajo de la barra (relev-visual §3.8).
     // pt-5.5: el título "Vista previa" queda a la altura del de la tarjeta Cliente (borde + p-6).
     <aside className="sticky top-18 hidden self-start min-[90rem]:block">
-      <PanelViewPreview view={view} line={line} showVisor={seVe} className="pt-5.5" />
+      <PanelViewPreview view={view} line={line} showVisor={visible} className="pt-5.5" />
     </aside>
   )
 }
@@ -166,12 +166,12 @@ export function ColumnViewPreview({ view, line }: { view: ViewPreview; line: str
  * Entre md y 90rem no hay columna: la barra inferior abre el mismo panel en un Sheet lateral.
  * Si todavía no se generó ninguna, se genera al abrirlo.
  */
-export function ViewPreviewLateral({ view, line }: { view: ViewPreview; line: string }) {
-  if (view.modo.tipo === 'sin-pdf') return null
+export function PreviewSidebar({ view, line }: { view: ViewPreview; line: string }) {
+  if (view.mode.type === 'sin-pdf') return null
   return (
     <Sheet
-      onOpenChange={(abierta) => {
-        if (abierta && view.modo.tipo === 'generada' && !view.url && !view.cargando) view.actualizar()
+      onOpenChange={(opened) => {
+        if (opened && view.mode.type === 'generada' && !view.url && !view.loading) view.refresh()
       }}
     >
       <SheetTrigger asChild>
@@ -196,27 +196,27 @@ export function ViewPreviewLateral({ view, line }: { view: ViewPreview; line: st
  * En el celular la vista previa es el PDF en otra pestaña (diseño §6): se guarda y se abre la versión actual.
  * `guardarParaVer` devuelve el id de la cotización ya guardada, o null si no se pudo guardar.
  */
-export function ButtonViewPreviewCelular({
-  modo,
+export function MobilePreviewButton({
+  mode,
   busy,
   validate,
-  saveForVer,
+  saveForPreview,
 }: {
-  modo: ModeViewPreview
+  mode: ModeViewPreview
   /** Hay una acción en curso. Este botón guarda, así que espera como los demás (decisión 12). */
   busy: boolean
   /** La validación local de lo que se guardaría: si no pasa, marca los campos, avisa y devuelve false. */
   validate: () => boolean
-  saveForVer: () => Promise<string | null>
+  saveForPreview: () => Promise<string | null>
 }) {
-  const [abriendo, setAbriendo] = useState(false)
-  if (modo.tipo === 'sin-pdf') return null
+  const [opening, setOpening] = useState(false)
+  if (mode.type === 'sin-pdf') return null
 
-  const clases = 'h-10 px-3.5 text-[15px] md:hidden'
-  if (modo.tipo === 'guardada') {
+  const classes = 'h-10 px-3.5 text-[15px] md:hidden'
+  if (mode.type === 'guardada') {
     return (
-      <Button asChild variant="outline" size="lg" className={clases}>
-        <a href={modo.url} target="_blank" rel="noopener">
+      <Button asChild variant="outline" size="lg" className={classes}>
+        <a href={mode.url} target="_blank" rel="noopener">
           <FileText aria-hidden />
           Vista previa
         </a>
@@ -224,38 +224,38 @@ export function ButtonViewPreviewCelular({
     )
   }
 
-  async function abrir() {
+  async function open() {
     // Lo que no se puede guardar (sin cliente, una validez fuera de rango…) no abre una pestaña en blanco que habría
     // que cerrar enseguida: se marcan los campos y se avisa.
     if (!validate()) return
     // La pestaña se abre en el clic: abierta después de guardar, el navegador la bloquearía por no venir del usuario.
-    const pestana = window.open('', '_blank')
-    setAbriendo(true)
+    const tab = window.open('', '_blank')
+    setOpening(true)
     try {
-      const id = await saveForVer()
+      const id = await saveForPreview()
       if (!id) {
-        pestana?.close()
+        tab?.close()
         return
       }
-      if (pestana) {
-        pestana.opener = null
-        pestana.location.href = urlPdfCurrent(id)
+      if (tab) {
+        tab.opener = null
+        tab.location.href = urlPdfCurrent(id)
       } else {
         toast.info('El navegador bloqueó la pestaña nueva: permitila para ver la vista previa.')
       }
     } catch (error) {
       // Un redirect que relanza guardar (la sesión venció) o algo inesperado: la pestaña en blanco no queda abierta.
-      pestana?.close()
+      tab?.close()
       throw error
     } finally {
-      setAbriendo(false)
+      setOpening(false)
     }
   }
 
   return (
-    <Button type="button" variant="outline" size="lg" className={clases} onClick={abrir} disabled={abriendo || busy}>
+    <Button type="button" variant="outline" size="lg" className={classes} onClick={open} disabled={opening || busy}>
       <FileText aria-hidden />
-      {abriendo ? 'Guardando…' : 'Vista previa'}
+      {opening ? 'Guardando…' : 'Vista previa'}
     </Button>
   )
 }

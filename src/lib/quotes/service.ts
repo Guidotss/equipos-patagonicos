@@ -1,9 +1,9 @@
-// Server-side quote lifecycle orchestration. All operations receive the session's Supabase client.
-// No server-only marker: the integration suite imports this module directly.
+// Coordina el ciclo de las cotizaciones en el servidor. Todas las operaciones reciben el cliente de Supabase de la sesión.
+// Sin la marca server-only: las pruebas de integración importan este módulo directamente.
 import type { DataDocument } from '@/lib/documents/schemas'
-import type { FileSubido } from '@/lib/documents/service'
+import type { UploadedFile } from '@/lib/documents/service'
 import { todayArgentina } from '@/lib/format/dates'
-import { renderizarQuote } from '@/lib/pdf/render'
+import { renderQuote } from '@/lib/pdf/render'
 
 import { ErrorQuote, type QuoteServiceClient as Client } from './service/contracts'
 import { documentComplete, uploadPdf } from './service/pdf'
@@ -24,28 +24,28 @@ export {
 } from './service/persistence'
 
 /** El snapshot se sube antes; la aprobación y el alta de la OC se confirman juntas o se revierten juntas. */
-export async function approveWithOrderCompra(
+export async function approveWithPurchaseOrder(
   supabase: Client,
   id: string,
   version: string,
-  datos: DataDocument,
-  archivos: FileSubido[],
+  documentData: DataDocument,
+  files: UploadedFile[],
 ): Promise<string> {
   const { fila: row, source } = await requireQuoteSource(supabase, id)
   requireVersion(row, version)
-  requireApprovable(row, datos.fecha ?? todayArgentina())
-  if (datos.tipo !== 'orden_compra') throw new ErrorQuote('Elegí una orden de compra')
+  requireApprovable(row, documentData.fecha ?? todayArgentina())
+  if (documentData.tipo !== 'orden_compra') throw new ErrorQuote('Elegí una orden de compra')
   let path: string | undefined
   if (row.origen === 'app') {
     path = `cotizaciones/${id}/aprobada-${crypto.randomUUID()}.pdf`
-    await uploadPdf(supabase, path, await renderizarQuote(documentComplete(source)))
+    await uploadPdf(supabase, path, await renderQuote(documentComplete(source)))
   }
   const { data, error } = await supabase.rpc('aprobar_con_orden_compra', {
     p_id: id,
     p_updated_at: version,
     p_pdf_path: path ?? '',
-    p_documento: datos,
-    p_archivos: archivos,
+    p_documento: documentData,
+    p_archivos: files,
   })
   if (error) throw mapRpcError(error)
   return data
@@ -61,20 +61,20 @@ export async function sendQuote(supabase: Client, id: string, version?: string):
   requireVersion(row, version)
   requireSendable(row)
 
-  const pdf = await renderizarQuote(documentComplete(source))
+  const pdf = await renderQuote(documentComplete(source))
   const path = `cotizaciones/${id}/enviada-${Date.now()}.pdf`
   await uploadPdf(supabase, path, pdf)
   await executeRpc(supabase.rpc('marcar_enviada', { p_id: id, p_updated_at: row.updated_at, p_pdf_path: path }))
 
   // La ruta lleva la hora en milisegundos y no se pisa: identifica el envío que se acaba de registrar.
-  const { data: envio, error } = await supabase
+  const { data: delivery, error } = await supabase
     .from('cotizacion_envios')
     .select('id')
     .eq('cotizacion_id', id)
     .eq('pdf_path', path)
     .single()
   if (error) throw error
-  return { envioId: envio.id }
+  return { envioId: delivery.id }
 }
 
 /**
@@ -87,17 +87,17 @@ export async function sendQuote(supabase: Client, id: string, version?: string):
 export async function approveQuote(
   supabase: Client,
   id: string,
-  fecha?: string,
+  date?: string,
   version?: string,
 ): Promise<{ anterior: { id: string; numero: number } | null }> {
   const { fila: row, source } = await requireQuoteSource(supabase, id)
   requireVersion(row, version)
-  const dateApproval = fecha ?? todayArgentina()
+  const dateApproval = date ?? todayArgentina()
   requireApprovable(row, dateApproval)
 
   let path: string | undefined
   if (row.origen !== 'importada') {
-    const pdf = await renderizarQuote(documentComplete(source))
+    const pdf = await renderQuote(documentComplete(source))
     path = `cotizaciones/${id}/aprobada-${Date.now()}.pdf`
     await uploadPdf(supabase, path, pdf)
   }

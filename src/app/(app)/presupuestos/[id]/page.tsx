@@ -8,9 +8,9 @@ import { ActionsBudget } from '@/components/budgets/actions-budget'
 import { SectionsDocuments } from '@/components/budgets/sections-documents'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Pill } from '@/components/ui/pill'
-import { TIPOS_DOCUMENT, type TipoDocument } from '@/lib/documents/schemas'
+import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import { contextoDocument } from '@/lib/documents/queries'
-import { formatMoneda } from '@/lib/format/amounts'
+import { formatCurrency } from '@/lib/format/amounts'
 import { STATUSES_BUDGET } from '@/lib/budgets/list'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
@@ -49,8 +49,8 @@ export default async function BudgetPage({
   if (archivos.error) throw archivos.error
   if (aplicaciones.error) throw aplicaciones.error
   const nuevo =
-    typeof consulta.nuevo === 'string' && Object.hasOwn(TIPOS_DOCUMENT, consulta.nuevo)
-      ? (consulta.nuevo as TipoDocument)
+    typeof consulta.nuevo === 'string' && Object.hasOwn(DOCUMENT_TYPES, consulta.nuevo)
+      ? (consulta.nuevo as DocumentType)
       : null
   const deliveryNoteId = typeof consulta.remito === 'string' && isUuid(consulta.remito) ? consulta.remito : undefined
   const invoiceId = typeof consulta.factura === 'string' && isUuid(consulta.factura) ? consulta.factura : undefined
@@ -106,7 +106,7 @@ export default async function BudgetPage({
           <div className="col-span-2 rounded-xl border bg-card px-4 py-3 shadow-tarjeta sm:col-span-4 lg:col-span-1">
             <p className="text-xs text-muted-foreground">Saldo a cobrar</p>
             <p className="text-2xl font-semibold tabular-nums" data-testid="saldo-presupuesto">
-              {formatMoneda(budget.saldo ?? 0)}
+              {formatCurrency(budget.saldo ?? 0)}
             </p>
           </div>
         </div>
@@ -115,8 +115,8 @@ export default async function BudgetPage({
             key={`${nuevo}-${deliveryNoteId}-${invoiceId}`}
             budgetId={id}
             options={contexto.budgets}
-            contextoInitial={contexto}
-            tipo={nuevo}
+            initialContext={contexto}
+            type={nuevo}
             deliveryNoteId={deliveryNoteId}
             invoiceId={invoiceId}
           />

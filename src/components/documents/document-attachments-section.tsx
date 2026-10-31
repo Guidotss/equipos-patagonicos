@@ -8,44 +8,44 @@ import type { DocumentFormState } from './use-document-form'
 
 export function DocumentAttachmentsSection({
   filesExisting,
-  quitar,
-  setQuitar,
+  removedFileIds: remove,
+  setRemovedFileIds,
   clientId,
   pending,
   onChangeFiles,
   errors,
 }: { filesExisting: NonNullable<DocumentFormProps['filesExisting']> } & Pick<
   DocumentFormState,
-  'quitar' | 'setQuitar' | 'clientId' | 'pending' | 'onChangeFiles' | 'errors'
+  'removedFileIds' | 'setRemovedFileIds' | 'clientId' | 'pending' | 'onChangeFiles' | 'errors'
 >) {
   return (
     <Card titulo="Adjuntar archivos">
       <div className="flex flex-col gap-3">
         {filesExisting.length ? (
           <ul className="flex flex-col gap-2">
-            {filesExisting.map((archivo) => (
+            {filesExisting.map((file) => (
               <li
-                key={archivo.id}
+                key={file.id}
                 className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
               >
                 <a
-                  href={`/documentos/archivos/${archivo.id}`}
+                  href={`/documentos/archivos/${file.id}`}
                   target="_blank"
                   className={
-                    quitar.includes(archivo.id)
+                    remove.includes(file.id)
                       ? 'truncate text-muted-foreground line-through'
                       : 'truncate text-primary underline underline-offset-4'
                   }
                 >
-                  {archivo.nombre_original}
+                  {file.nombre_original}
                 </a>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setQuitar((list) => changeList(list, archivo.id, !list.includes(archivo.id)))}
+                  onClick={() => setRemovedFileIds((list) => changeList(list, file.id, !list.includes(file.id)))}
                 >
-                  {quitar.includes(archivo.id) ? 'Conservar' : 'Quitar'}
+                  {remove.includes(file.id) ? 'Conservar' : 'Quitar'}
                 </Button>
               </li>
             ))}

@@ -5,7 +5,7 @@ import { SheetForm } from '@/components/form/structure-form'
 import { SaveTemplate } from '@/components/quotes/specials/save-template'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { CONTEXTO_NEW } from '@/lib/quotes/context-status'
+import { NEW_CONTEXT } from '@/lib/quotes/context-status'
 import { ActionsHeader } from './actions-editor'
 import { BandsEditor } from './bands-editor'
 import { BarBottom } from './bar-bottom'
@@ -15,71 +15,71 @@ import { CardItems } from './card-items'
 import { CardSubject } from './card-subject'
 import { CardTexts } from './card-texts'
 import { HeaderEditor } from './header-editor'
-import { ButtonViewPreviewCelular, ColumnViewPreview, ViewPreviewLateral } from './panel-preview'
+import { MobilePreviewButton, ColumnViewPreview, PreviewSidebar } from './panel-preview'
 
 import type { QuoteEditorProps } from './quote-editor.types'
 import { useQuoteEditor } from './use-quote-editor'
-export type { QuoteGuardada as VersionGuardada } from './quote-actions.types'
+export type { SavedQuote as VersionGuardada } from './quote-actions.types'
 
 export function EditorQuote(props: QuoteEditorProps) {
-  const { today, contexto = CONTEXTO_NEW } = props
+  const { today, context = NEW_CONTEXT } = props
   const {
-    estado,
+    state,
     catalogs,
-    contactos,
+    contacts,
     errors,
     errorsItems,
     errorsBlocks,
     warning,
-    sueltos,
+    unassignedErrors,
     changes,
     withoutSave,
     pendingList,
     editable,
-    preparandoOc,
-    accion,
+    preparingPurchaseOrder,
+    action,
     busy,
     actions,
     view,
     lineView,
-    raiz,
+    root,
     save,
-    applyBorradoresSection,
-    validateForVer,
-    saveForVer,
-    despachar,
+    applySectionDrafts,
+    validateForPreview,
+    saveForPreview,
+    dispatch,
     setContacts,
     setCatalogsBase,
     onChangeDraftSection,
     preparePurchaseOrder,
   } = useQuoteEditor(props)
   return (
-    <div ref={raiz}>
+    <div ref={root}>
       <Content className="pb-28 min-[90rem]:pb-8">
         <HeaderEditor
-          estado={estado}
+          state={state}
           today={today}
           editable={editable}
           changes={withoutSave}
-          guardando={accion === 'guardar'}
+          saving={action === 'guardar'}
           busy={busy}
           onSave={() => void save()}
           actions={
             <>
-              <SaveTemplate estado={estado} disabled={busy} antesOfAbrir={applyBorradoresSection} />
-              <ActionsHeader estado={estado} contexto={contexto} pendingList={pendingList} actions={actions} />
+              <SaveTemplate state={state} disabled={busy} beforeOpen={applySectionDrafts} />
+              <ActionsHeader state={state} context={context} pendingList={pendingList} actions={actions} />
             </>
           }
         />
         <BandsEditor
-          estado={estado}
-          contexto={contexto}
+          state={state}
+          context={context}
           pendingList={pendingList}
           actions={actions}
           hasChangesWithoutSave={changes}
           today={today}
         />
-        {estado.id && estado.estado === 'enviada' ? (
+        {state.id && state.estado === 'enviada' ? (
           <div className="mb-4">
             <Button type="button" variant="outline" disabled={busy} onClick={preparePurchaseOrder}>
               Aprobar y cargar orden de compra
@@ -90,9 +90,9 @@ export function EditorQuote(props: QuoteEditorProps) {
           <Alert variant="destructive">
             <AlertDescription>
               <p>{warning}</p>
-              {sueltos.length ? (
+              {unassignedErrors.length ? (
                 <ul className="list-disc pl-5">
-                  {sueltos.map((message) => (
+                  {unassignedErrors.map((message) => (
                     <li key={message}>{message}</li>
                   ))}
                 </ul>
@@ -104,40 +104,40 @@ export function EditorQuote(props: QuoteEditorProps) {
           {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). Mientras corre
               una transición, también: no se tipea sobre algo que se está enviando, aprobando o rechazando. */}
           <fieldset
-            disabled={!editable || actions.inTransicion || preparandoOc}
+            disabled={!editable || actions.transitioning || preparingPurchaseOrder}
             className="min-w-0 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
           >
             <legend className="sr-only">Contenido de la cotización</legend>
             <SheetForm>
               <CardClient
-                estado={estado}
-                contactos={contactos}
+                state={state}
+                contacts={contacts}
                 errors={errors}
-                despachar={despachar}
+                dispatch={dispatch}
                 onChangeContacts={setContacts}
                 onChangeCatalogs={setCatalogsBase}
               />
               <CardData
-                estado={estado}
+                state={state}
                 catalogs={catalogs}
                 pendingList={pendingList}
                 errors={errors}
-                despachar={despachar}
+                dispatch={dispatch}
               />
-              <CardSubject estado={estado} errors={errors} despachar={despachar} />
+              <CardSubject state={state} errors={errors} dispatch={dispatch} />
               <CardItems
-                items={estado.items}
-                formato={estado.formato}
-                mostrarTotal={estado.mostrarTotal}
+                items={state.items}
+                format={state.formato}
+                showTotal={state.mostrarTotal}
                 errors={errorsItems}
-                despachar={despachar}
+                dispatch={dispatch}
                 onChangeDraftSection={onChangeDraftSection}
               />
               <CardTexts
-                bloques={estado.bloques}
-                plantilla={catalogs.plantillas.find((template) => template.id === estado.templateId) ?? null}
+                blocks={state.bloques}
+                template={catalogs.plantillas.find((template) => template.id === state.templateId) ?? null}
                 errors={errorsBlocks}
-                despachar={despachar}
+                dispatch={dispatch}
               />
             </SheetForm>
           </fieldset>
@@ -146,15 +146,15 @@ export function EditorQuote(props: QuoteEditorProps) {
       </Content>
       <BarBottom
         editable={editable}
-        isNew={estado.id === null}
+        isNew={state.id === null}
         changes={withoutSave}
-        guardando={accion === 'guardar'}
+        guardando={action === 'guardar'}
         busy={busy}
         onSave={() => void save()}
         viewPreview={
           <>
-            <ViewPreviewLateral view={view} line={lineView} />
-            <ButtonViewPreviewCelular modo={view.modo} busy={busy} validate={validateForVer} saveForVer={saveForVer} />
+            <PreviewSidebar view={view} line={lineView} />
+            <MobilePreviewButton mode={view.mode} busy={busy} validate={validateForPreview} saveForPreview={saveForPreview} />
           </>
         }
       />

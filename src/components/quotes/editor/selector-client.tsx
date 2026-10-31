@@ -5,23 +5,23 @@ import { ChevronsUpDown, Plus } from 'lucide-react'
 import { unstable_rethrow } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { searchClients, crearClientRapido } from '@/app/(app)/cotizaciones/actions'
+import { searchClients, createQuickClient } from '@/app/(app)/cotizaciones/actions'
 import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Pill } from '@/components/ui/pill'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { mismoName } from '@/lib/quotes/editor-screen'
+import { sameName } from '@/lib/quotes/editor-screen'
 import { formatCuit } from '@/lib/cuit'
 import { cn } from '@/lib/utils'
 
-export type ClientBuscado = { id: string; razon_social: string; cuit: string | null; activo: boolean }
+export type ClientSearchResult = { id: string; razon_social: string; cuit: string | null; activo: boolean }
 
 const DEMORA_SEARCH = 250
 
 const MESSAGE_FALLO_SEARCH = 'No se pudo buscar. Probá de nuevo en un momento.'
 
 /** La lista que devolvió la búsqueda de un texto, o la marca de que falló (entonces no hay lista). */
-type Search = { texto: string; results: ClientBuscado[]; fallo: boolean }
+type Search = { texto: string; results: ClientSearchResult[]; fallo: boolean }
 
 /**
  * Combobox de cliente (decisión 18): busca con buscar_clientes (sin acentos, por CUIT y por contacto), muestra los
@@ -36,7 +36,7 @@ export function SelectorClient({
   id: string
   cliente: { id: string; razon_social: string } | null
   error?: string
-  onChoose: (cliente: ClientBuscado) => void
+  onChoose: (cliente: ClientSearchResult) => void
 }) {
   const [open, setOpen] = useState(false)
   const [texto, setText] = useState('')
@@ -86,7 +86,7 @@ export function SelectorClient({
     findClients(value, DEMORA_SEARCH)
   }
 
-  function choose(chosen: ClientBuscado) {
+  function choose(chosen: ClientSearchResult) {
     setOpen(false)
     onChoose(chosen)
   }
@@ -97,7 +97,7 @@ export function SelectorClient({
     if (!razonSocial || creando) return
     setCreando(true)
     try {
-      const result = await crearClientRapido(razonSocial)
+      const result = await createQuickClient(razonSocial)
       if (!result.ok) {
         toast.error(result.message)
         return
@@ -125,7 +125,7 @@ export function SelectorClient({
     onDay &&
     !fallo &&
     razonSocial !== '' &&
-    !results.some((otro) => mismoName(otro.razon_social, razonSocial))
+    !results.some((otro) => sameName(otro.razon_social, razonSocial))
 
   return (
     <Popover open={open} onOpenChange={onAbrir}>

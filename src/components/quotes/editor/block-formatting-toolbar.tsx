@@ -1,23 +1,23 @@
 import { Button } from '@/components/ui/button'
-import { alternarNegrita, alternarVineta, quitarSangria, type Editing, type Seleccion } from '@/lib/templates/editing'
+import { toggleBold, toggleBullet, removeIndent, type Editing, type TextSelection } from '@/lib/templates/editing'
 import { Bold, List, ListIndentDecrease, ListIndentIncrease, type LucideIcon } from 'lucide-react'
 
-type Herramienta = {
+type FormattingTool = {
   label: string
-  atajo?: string
+  shortcut?: string
   Icon: LucideIcon
-  aplicar: (texto: string, seleccion: Seleccion) => Editing
+  apply: (text: string, selection: TextSelection) => Editing
 }
 
-/** Solo lo que entiende parsearFormato y dibuja el PDF (decisión 5): sin itálica ni lista numerada. */
-const HERRAMIENTAS: Herramienta[] = [
-  { label: 'Negrita', atajo: 'Ctrl+B', Icon: Bold, aplicar: alternarNegrita },
-  { label: 'Viñeta', Icon: List, aplicar: (texto, seleccion) => alternarVineta(texto, seleccion, 1) },
-  { label: 'Subviñeta', Icon: ListIndentIncrease, aplicar: (texto, seleccion) => alternarVineta(texto, seleccion, 2) },
-  { label: 'Quitar sangría', Icon: ListIndentDecrease, aplicar: quitarSangria },
+/** Solo lo que entiende el formato de texto y dibuja el PDF (decisión 5): sin itálica ni lista numerada. */
+const TOOLS: FormattingTool[] = [
+  { label: 'Negrita', shortcut: 'Ctrl+B', Icon: Bold, apply: toggleBold },
+  { label: 'Viñeta', Icon: List, apply: (text, selection) => toggleBullet(text, selection, 1) },
+  { label: 'Subviñeta', Icon: ListIndentIncrease, apply: (text, selection) => toggleBullet(text, selection, 2) },
+  { label: 'Quitar sangría', Icon: ListIndentDecrease, apply: removeIndent },
 ]
 
-const ICONO = 'text-muted-foreground'
+const ICON_CLASS = 'text-muted-foreground'
 
 export function BlockFormattingToolbar({
   number,
@@ -26,27 +26,26 @@ export function BlockFormattingToolbar({
 }: {
   number: number
   id: string
-  edit: (operation: (text: string, selection: Seleccion) => Editing) => void
+  edit: (operation: (text: string, selection: TextSelection) => Editing) => void
 }) {
-  const numero = number
   return (
     <div
       role="group"
-      aria-label={`Formato del bloque ${numero}`}
+      aria-label={`Formato del bloque ${number}`}
       aria-controls={`${id}-contenido`}
       className="flex gap-0.5 border-b bg-muted/30 px-1.5 py-1"
     >
-      {HERRAMIENTAS.map(({ label, atajo, Icon, aplicar: apply }) => (
+      {TOOLS.map(({ label, shortcut, Icon, apply }) => (
         <Button
           key={label}
           type="button"
           variant="ghost"
           size="icon-sm"
-          className={ICONO}
+          className={ICON_CLASS}
           aria-label={label}
-          title={atajo ? `${label} (${atajo})` : label}
+          title={shortcut ? `${label} (${shortcut})` : label}
           // Sin esto el clic le saca el foco y la selección al texto.
-          onMouseDown={(evento) => evento.preventDefault()}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => edit(apply)}
         >
           <Icon aria-hidden />

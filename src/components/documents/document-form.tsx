@@ -17,33 +17,33 @@ import {
 import { useDocumentForm } from './use-document-form'
 
 export function DocumentForm(props: DocumentFormProps) {
-  const { options, budgetId = '', document, filesExisting = [], aplicacionesIniciales = [], cotizacion: quote } = props
+  const { options, budgetId = '', document, filesExisting = [], initialAllocations = [], quote } = props
   const form = useDocumentForm(props)
   const {
     pending,
-    contexto,
-    seleccionados,
-    setSeleccionados,
+    context,
+    selectedBudgetIds,
+    setSelectedBudgetIds,
     clientId,
-    cargando,
+    loading,
     searchBudget,
     setSearchBudget,
     values,
-    remitos,
+    deliveryNotes,
     setDeliveryNotes,
-    aplicaciones,
-    quitar,
-    setQuitar,
-    subiendo,
+    allocations,
+    removedFileIds: remove,
+    setRemovedFileIds,
+    uploading,
     message,
     errors,
     onChangeFiles,
     changeField,
     chooseBudget,
-    changeAplicacion,
+    changeAllocation,
     save,
   } = form
-  const { duplicado, budgetsClient, deliveryNotesDisponibles, invoicesAnuladas, optionsVisible } =
+  const { duplicate, clientBudgets, availableDeliveryNotes, voidedInvoices, visibleOptions } =
     documentFormSelections({ ...form, options, document })
   const back = budgetId ? `/presupuestos/${budgetId}` : '/presupuestos'
 
@@ -61,7 +61,7 @@ export function DocumentForm(props: DocumentFormProps) {
           </AlertDescription>
         </Alert>
       ) : null}
-      <fieldset disabled={pending || cargando} className="min-w-0">
+      <fieldset disabled={pending || loading} className="min-w-0">
         <legend className="sr-only">Contenido del documento</legend>
         <SheetForm>
           <DocumentBudgetTypeSection
@@ -70,16 +70,16 @@ export function DocumentForm(props: DocumentFormProps) {
             searchBudget={searchBudget}
             setSearchBudget={setSearchBudget}
             errors={errors}
-            seleccionados={seleccionados}
+            selectedBudgetIds={selectedBudgetIds}
             chooseBudget={chooseBudget}
             values={values}
             changeField={changeField}
-            optionsVisible={optionsVisible}
+            visibleOptions={visibleOptions}
           />
           <DocumentAttachmentsSection
             filesExisting={filesExisting}
-            quitar={quitar}
-            setQuitar={setQuitar}
+            removedFileIds={remove}
+            setRemovedFileIds={setRemovedFileIds}
             clientId={clientId}
             pending={pending}
             onChangeFiles={onChangeFiles}
@@ -89,30 +89,30 @@ export function DocumentForm(props: DocumentFormProps) {
             values={values}
             changeField={changeField}
             errors={errors}
-            contexto={contexto}
-            duplicado={duplicado}
+            context={context}
+            duplicate={duplicate}
           />
-          {!quote && budgetsClient.length ? (
+          {!quote && clientBudgets.length ? (
             <LinkedBudgetsSection
-              budgetsClient={budgetsClient}
-              seleccionados={seleccionados}
-              setSeleccionados={setSeleccionados}
+              clientBudgets={clientBudgets}
+              selectedBudgetIds={selectedBudgetIds}
+              setSelectedBudgetIds={setSelectedBudgetIds}
             />
           ) : null}
           {values.tipo === 'factura' ? (
             <InvoiceDeliveryNotesSection
-              deliveryNotesDisponibles={deliveryNotesDisponibles}
-              remitos={remitos}
+              availableDeliveryNotes={availableDeliveryNotes}
+              deliveryNotes={deliveryNotes}
               setDeliveryNotes={setDeliveryNotes}
             />
           ) : null}
           {values.tipo === 'orden_pago' ? (
             <PaymentAllocationsSection
-              invoicesAnuladas={invoicesAnuladas}
-              aplicaciones={aplicaciones}
-              changeAplicacion={changeAplicacion}
-              contexto={contexto}
-              aplicacionesIniciales={aplicacionesIniciales}
+              voidedInvoices={voidedInvoices}
+              allocations={allocations}
+              changeAllocation={changeAllocation}
+              context={context}
+              initialAllocations={initialAllocations}
             />
           ) : null}
         </SheetForm>
@@ -128,12 +128,12 @@ export function DocumentForm(props: DocumentFormProps) {
         back={back}
         textButton={document ? 'Guardar cambios' : quote ? 'Aprobar y guardar OC' : 'Guardar documento'}
         pendiente={pending}
-        disabled={subiendo || cargando || !clientId}
+        disabled={uploading || loading || !clientId}
       >
-        {subiendo || cargando ? (
+        {uploading || loading ? (
           <span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
             <LoaderCircle aria-hidden className="size-4 animate-spin" />
-            <span className="sr-only sm:not-sr-only">{subiendo ? 'Subiendo archivos…' : 'Cargando documentos…'}</span>
+            <span className="sr-only sm:not-sr-only">{uploading ? 'Subiendo archivos…' : 'Cargando documentos…'}</span>
           </span>
         ) : null}
       </ActionsForm>

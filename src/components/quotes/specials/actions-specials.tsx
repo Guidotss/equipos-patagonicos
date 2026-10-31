@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { approveQuote, removeQuote, reopenQuote, rejectQuote, revertApproval } from '@/app/(app)/cotizaciones/actions'
-import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -38,7 +38,7 @@ export function ActionsSpecials({ id, version, estado, origen, today, actionInit
   }
   return <div className="flex flex-col gap-3">
     <div className="flex flex-wrap gap-2">{options.map((a) => <Button key={a} variant="outline" onClick={() => setAction(a)} disabled={busy}>{ETIQUETAS[a]}</Button>)}</div>
-    {accion ? <ConfirmationInLugar pregunta={`¿${ETIQUETAS[accion]} esta cotización?`} textConfirm={ETIQUETAS[accion]} pendiente={busy} tone={accion === 'borrar' ? 'peligro' : 'aviso'} onCancelar={() => setAction(null)} onConfirm={() => void confirm()}>{accion === 'aprobar' ? <label className="flex flex-col gap-1 text-sm">Fecha de aprobación<Input type="date" value={fecha} onChange={(e) => setDate(e.target.value)} /></label> : null}</ConfirmationInLugar> : null}
+    {accion ? <InlineConfirmation pregunta={`¿${ETIQUETAS[accion]} esta cotización?`} textConfirm={ETIQUETAS[accion]} pendiente={busy} tone={accion === 'borrar' ? 'peligro' : 'aviso'} onCancelar={() => setAction(null)} onConfirm={() => void confirm()}>{accion === 'aprobar' ? <label className="flex flex-col gap-1 text-sm">Fecha de aprobación<Input type="date" value={fecha} onChange={(e) => setDate(e.target.value)} /></label> : null}</InlineConfirmation> : null}
     {message ? <p role="alert" className="text-sm text-destructive">{message}</p> : null}
   </div>
 }

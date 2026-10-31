@@ -6,16 +6,16 @@ import {
   contactInitial,
   errorsOfBlocks,
   errorsWithoutField,
-  isAtajoSave,
+  isSaveShortcut,
   isDateIso,
-  signerByDefecto,
+  defaultSigner,
   idFieldVariable,
-  mismoName,
-  resumenHeader,
+  sameName,
+  headerSummary,
   textNextUpdate,
 } from './editor-screen'
 
-const PLANTILLA: TemplateEditor = {
+const TEMPLATE: TemplateEditor = {
   id: '6f1c1d2e-0000-4000-8000-000000000001',
   nombre: 'Por jornada - Grúa con operador',
   formato: 'jornada',
@@ -29,19 +29,19 @@ const PLANTILLA: TemplateEditor = {
   items: [{ seccion: 'Precios Jornada', descripcion: 'Jornada de grúa', unidad: 'JORNADA', cantidad: 1 }],
 }
 
-const CLIENTE = {
+const CLIENT = {
   id: '6f1c1d2e-0000-4000-8000-000000000002',
   razon_social: 'VERTICE SERVICIOS INTEGRALES S.R.L.',
   cuit: '30719529670',
 }
 
 /** Una cotización nueva con la plantilla aplicada y un cliente elegido. */
-function nueva(): StatusEditor {
-  const estado = statusNew({ plantilla: PLANTILLA, firmanteId: '', today: '2026-10-25' })
-  return reduceEditor(estado, { tipo: 'cliente', cliente: CLIENTE, contactoId: '' })
+function newQuote(): StatusEditor {
+  const state = statusNew({ plantilla: TEMPLATE, firmanteId: '', today: '2026-10-25' })
+  return reduceEditor(state, { tipo: 'cliente', cliente: CLIENT, contactoId: '' })
 }
 
-const FIRMANTES = [
+const SIGNERS = [
   { id: 'a', nombre: 'Thomas Cravero', cargo: '', telefono: '', activo: true },
   { id: 'b', nombre: 'Julio Rojas', cargo: '', telefono: '', activo: true },
   { id: 'c', nombre: 'Ana Inactiva', cargo: '', telefono: '', activo: false },
@@ -49,26 +49,26 @@ const FIRMANTES = [
 
 describe('firmantePorDefecto', () => {
   it('es el de la última cotización si sigue activo', () => {
-    expect(signerByDefecto(FIRMANTES, 'a')).toBe('a')
+    expect(defaultSigner(SIGNERS, 'a')).toBe('a')
   })
 
   it('si no, el primero activo por nombre; sin firmantes activos, ninguno', () => {
-    expect(signerByDefecto(FIRMANTES, 'c')).toBe('b')
-    expect(signerByDefecto(FIRMANTES, null)).toBe('b')
-    expect(signerByDefecto([], null)).toBe('')
+    expect(defaultSigner(SIGNERS, 'c')).toBe('b')
+    expect(defaultSigner(SIGNERS, null)).toBe('b')
+    expect(defaultSigner([], null)).toBe('')
   })
 })
 
 describe('contactoInicial', () => {
-  const contactos = [
+  const contacts = [
     { id: 'x', nombre: 'Yanina Colman', email: '' },
     { id: 'y', nombre: 'Carlos Díaz', email: '' },
   ]
 
   it('el último usado si sigue siendo del cliente; si no, el primero por nombre', () => {
-    expect(contactInitial(contactos, 'x')).toBe('x')
-    expect(contactInitial(contactos, 'otro')).toBe('y')
-    expect(contactInitial(contactos, null)).toBe('y')
+    expect(contactInitial(contacts, 'x')).toBe('x')
+    expect(contactInitial(contacts, 'otro')).toBe('y')
+    expect(contactInitial(contacts, null)).toBe('y')
   })
 
   it('sin contactos queda "Sin Atte."', () => {
@@ -78,17 +78,17 @@ describe('contactoInicial', () => {
 
 describe('camposDatosVisibles', () => {
   it('muestra los campos que usa el texto visible, en el orden de CAMPOS_DATOS', () => {
-    expect(fieldsDataVisible(nueva())).toEqual(['ubicacion', 'horario', 'indice_base'])
+    expect(fieldsDataVisible(newQuote())).toEqual(['ubicacion', 'horario', 'indice_base'])
   })
 
   it('un bloque oculto no cuenta', () => {
-    const estado = nueva()
-    const hidden = reduceEditor(estado, { tipo: 'bloque', clave: estado.bloques[1].clave, changes: { hidden: true } })
+    const state = newQuote()
+    const hidden = reduceEditor(state, { tipo: 'bloque', clave: state.bloques[1].clave, changes: { hidden: true } })
     expect(fieldsDataVisible(hidden)).toEqual(['ubicacion', 'horario'])
   })
 
   it('un campo con valor se sigue mostrando aunque el texto no lo use', () => {
-    const withValue = reduceEditor(nueva(), { tipo: 'dato', campo: 'forma_pago', value: '30 días F.F.' })
+    const withValue = reduceEditor(newQuote(), { tipo: 'dato', campo: 'forma_pago', value: '30 días F.F.' })
     expect(fieldsDataVisible(withValue)).toEqual(['ubicacion', 'horario', 'forma_pago', 'indice_base'])
   })
 })
@@ -126,49 +126,49 @@ describe('esFechaIso', () => {
 
 describe('resumenEncabezado', () => {
   it('una nueva todavía no tiene número', () => {
-    expect(resumenHeader(nueva(), '2026-10-25')).toEqual({
-      titulo: 'Nueva cotización',
+    expect(headerSummary(newQuote(), '2026-10-25')).toEqual({
+      title: 'Nueva cotización',
       detail: 'Por jornada · 25/10/2026',
-      vence: null,
+      expiration: null,
     })
   })
 
   it('"Vence el" solo en enviadas; el día del vencimiento todavía no está vencida', () => {
-    const sent = { ...nueva(), numero: 112712, estado: 'enviada' as const, fecha: '2026-10-01', validezDias: '30' }
-    expect(resumenHeader(sent, '2026-10-31').vence).toEqual({ texto: 'Vence el 31/10/2026', vencida: false })
-    expect(resumenHeader(sent, '2026-11-01').vence).toEqual({ texto: 'Venció el 31/10/2026', vencida: true })
-    expect(resumenHeader({ ...sent, estado: 'borrador' }, '2026-11-01')).toMatchObject({
-      titulo: 'Cotización N° 112712',
-      vence: null,
+    const sent = { ...newQuote(), numero: 112712, estado: 'enviada' as const, fecha: '2026-10-01', validezDias: '30' }
+    expect(headerSummary(sent, '2026-10-31').expiration).toEqual({ text: 'Vence el 31/10/2026', expired: false })
+    expect(headerSummary(sent, '2026-11-01').expiration).toEqual({ text: 'Venció el 31/10/2026', expired: true })
+    expect(headerSummary({ ...sent, estado: 'borrador' }, '2026-11-01')).toMatchObject({
+      title: 'Cotización N° 112712',
+      expiration: null,
     })
   })
 
   it('una fecha o una validez inválidas no rompen el encabezado', () => {
-    const rota = { ...nueva(), estado: 'enviada' as const, fecha: '', validezDias: 'abc' }
-    expect(resumenHeader(rota, '2026-10-25')).toEqual({ titulo: 'Nueva cotización', detail: 'Por jornada', vence: null })
+    const invalid = { ...newQuote(), estado: 'enviada' as const, fecha: '', validezDias: 'abc' }
+    expect(headerSummary(invalid, '2026-10-25')).toEqual({ title: 'Nueva cotización', detail: 'Por jornada', expiration: null })
   })
 })
 
 describe('cambiosDeContenido', () => {
   it('recién aplicada la plantilla no hay nada que pisar', () => {
-    expect(changesOfContent(nueva(), PLANTILLA)).toBe(false)
+    expect(changesOfContent(newQuote(), TEMPLATE)).toBe(false)
   })
 
   it('los datos y el cliente no cuentan: la plantilla no los toca', () => {
-    expect(changesOfContent(reduceEditor(nueva(), { tipo: 'dato', campo: 'ubicacion', value: 'Añelo' }), PLANTILLA)).toBe(
+    expect(changesOfContent(reduceEditor(newQuote(), { tipo: 'dato', campo: 'ubicacion', value: 'Añelo' }), TEMPLATE)).toBe(
       false,
     )
   })
 
   it('el asunto o un precio escritos a mano sí', () => {
-    const estado = nueva()
-    expect(changesOfContent(reduceEditor(estado, { tipo: 'campo', campo: 'asunto', value: 'Otro' }), PLANTILLA)).toBe(true)
-    const withPrice = reduceEditor(estado, { tipo: 'item', clave: estado.items[0].clave, changes: { precio: '1.950.000' } })
-    expect(changesOfContent(withPrice, PLANTILLA)).toBe(true)
+    const state = newQuote()
+    expect(changesOfContent(reduceEditor(state, { tipo: 'campo', campo: 'asunto', value: 'Otro' }), TEMPLATE)).toBe(true)
+    const withPrice = reduceEditor(state, { tipo: 'item', clave: state.items[0].clave, changes: { precio: '1.950.000' } })
+    expect(changesOfContent(withPrice, TEMPLATE)).toBe(true)
   })
 
   it('sin plantilla actual, hay cambios si hay algo escrito', () => {
-    const empty = { ...nueva(), asunto: '', intro: '', items: [], bloques: [] }
+    const empty = { ...newQuote(), asunto: '', intro: '', items: [], bloques: [] }
     expect(changesOfContent(empty, null)).toBe(false)
     expect(changesOfContent({ ...empty, intro: 'Hola' }, null)).toBe(true)
   })
@@ -209,30 +209,30 @@ describe('erroresDeBloques', () => {
 })
 
 describe('esAtajoGuardar', () => {
-  const tecla = (key: string, modificadores: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
+  const key = (key: string, modifiers: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
     key,
     ctrlKey: false,
     metaKey: false,
     altKey: false,
-    ...modificadores,
+    ...modifiers,
   })
 
   it('Ctrl+S o ⌘+S, también con Mayús', () => {
-    expect(isAtajoSave(tecla('s', { ctrlKey: true }))).toBe(true)
-    expect(isAtajoSave(tecla('s', { metaKey: true }))).toBe(true)
-    expect(isAtajoSave(tecla('S', { ctrlKey: true }))).toBe(true)
+    expect(isSaveShortcut(key('s', { ctrlKey: true }))).toBe(true)
+    expect(isSaveShortcut(key('s', { metaKey: true }))).toBe(true)
+    expect(isSaveShortcut(key('S', { ctrlKey: true }))).toBe(true)
   })
 
   it('no con Alt, sin Ctrl/⌘ ni con otra tecla', () => {
-    expect(isAtajoSave(tecla('s', { ctrlKey: true, altKey: true }))).toBe(false)
-    expect(isAtajoSave(tecla('s'))).toBe(false)
-    expect(isAtajoSave(tecla('Enter', { ctrlKey: true }))).toBe(false)
+    expect(isSaveShortcut(key('s', { ctrlKey: true, altKey: true }))).toBe(false)
+    expect(isSaveShortcut(key('s'))).toBe(false)
+    expect(isSaveShortcut(key('Enter', { ctrlKey: true }))).toBe(false)
   })
 })
 
 describe('mismoNombre', () => {
   it('ignora tildes, mayúsculas y espacios de más', () => {
-    expect(mismoName('Grúas  Ñandú S.A.', 'gruas nandu s.a. ')).toBe(true)
-    expect(mismoName('Grúas Ñandú S.A.', 'Grúas Ñandú S.R.L.')).toBe(false)
+    expect(sameName('Grúas  Ñandú S.A.', 'gruas nandu s.a. ')).toBe(true)
+    expect(sameName('Grúas Ñandú S.A.', 'Grúas Ñandú S.R.L.')).toBe(false)
   })
 })

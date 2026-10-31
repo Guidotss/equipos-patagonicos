@@ -25,7 +25,7 @@ export function isVariable(nombre: string): nombre is NameVariable {
   return Object.hasOwn(VARIABLES, nombre)
 }
 
-export function variablesUsadas(texto: string): string[] {
+export function usedVariables(texto: string): string[] {
   return [...new Set(Array.from(texto.matchAll(PATRON_VARIABLE), (m) => m[1].trim()))]
 }
 
@@ -35,7 +35,7 @@ export function partirVariables(texto: string): string[] {
 }
 
 export function variablesDesconocidas(texto: string): string[] {
-  return variablesUsadas(texto).filter((nombre) => !isVariable(nombre))
+  return usedVariables(texto).filter((nombre) => !isVariable(nombre))
 }
 
 /** Reemplaza las variables conocidas que tienen valor; las vacías quedan como {{x}} y se informan. */

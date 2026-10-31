@@ -3,25 +3,25 @@ import { parsePrice } from '@/lib/format/amounts'
 import { isUuid } from '@/lib/validation'
 import { isDate } from '@/lib/format/dates'
 
-export const TIPOS_DOCUMENT = {
+export const DOCUMENT_TYPES = {
   orden_compra: 'Orden de compra',
   remito: 'Remito',
   factura: 'Factura',
   orden_pago: 'Orden de pago',
 } as const
-export type TipoDocument = keyof typeof TIPOS_DOCUMENT
+export type DocumentType = keyof typeof DOCUMENT_TYPES
 
-export const TIPOS_COMPROBANTE = {
+export const INVOICE_TYPES = {
   FA: 'Factura A',
   FCE_A: 'Factura de crédito electrónica MiPyME A',
   FB: 'Factura B',
   ND: 'Nota de débito',
   NC: 'Nota de crédito',
 } as const
-export type TipoComprobante = keyof typeof TIPOS_COMPROBANTE
+export type TipoComprobante = keyof typeof INVOICE_TYPES
 
 function isTipoComprobante(value: string): value is TipoComprobante {
-  return Object.hasOwn(TIPOS_COMPROBANTE, value)
+  return Object.hasOwn(INVOICE_TYPES, value)
 }
 
 const dateOptional = z
@@ -46,7 +46,7 @@ const amountOptional = z
 
 export const schemaDocument = z
   .object({
-    tipo: z.enum(Object.keys(TIPOS_DOCUMENT) as [TipoDocument, ...TipoDocument[]], {
+    tipo: z.enum(Object.keys(DOCUMENT_TYPES) as [DocumentType, ...DocumentType[]], {
       error: 'Elegí el tipo de documento',
     }),
     numero: z.string().trim().max(50, 'Máximo 50 caracteres'),

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { resumenQuote } from './list'
 import {
-  atajosDates,
+  dateShortcuts,
   rowQuote,
   rowsMostradas,
-  textRangoDates,
+  formatDateRange,
   totalPages,
   type RowViewList,
 } from './list-view'
@@ -84,7 +84,7 @@ describe('totalPaginas y filasMostradas', () => {
 
 describe('atajosFechas', () => {
   it('este mes, el anterior y los últimos 90 días (contando hoy)', () => {
-    expect(atajosDates('2026-10-25')).toEqual([
+    expect(dateShortcuts('2026-10-25')).toEqual([
       { label: 'Este mes', desde: '2026-10-01', hasta: '2026-10-31' },
       { label: 'Mes anterior', desde: '2026-09-01', hasta: '2026-09-30' },
       { label: 'Últimos 90 días', desde: '2026-07-28', hasta: '2026-10-25' },
@@ -92,20 +92,20 @@ describe('atajosFechas', () => {
   })
 
   it('cruza el año y respeta febrero (también el bisiesto)', () => {
-    expect(atajosDates('2027-01-15').slice(0, 2)).toEqual([
+    expect(dateShortcuts('2027-01-15').slice(0, 2)).toEqual([
       { label: 'Este mes', desde: '2027-01-01', hasta: '2027-01-31' },
       { label: 'Mes anterior', desde: '2026-12-01', hasta: '2026-12-31' },
     ])
-    expect(atajosDates('2026-02-14')[0]).toMatchObject({ desde: '2026-02-01', hasta: '2026-02-28' })
-    expect(atajosDates('2028-03-10')[1]).toMatchObject({ desde: '2028-02-01', hasta: '2028-02-29' })
+    expect(dateShortcuts('2026-02-14')[0]).toMatchObject({ desde: '2026-02-01', hasta: '2026-02-28' })
+    expect(dateShortcuts('2028-03-10')[1]).toMatchObject({ desde: '2028-02-01', hasta: '2028-02-29' })
   })
 })
 
 describe('textoRangoFechas', () => {
   it('describe el rango como se ve en el botón', () => {
-    expect(textRangoDates('', '')).toBe('Cualquier fecha')
-    expect(textRangoDates('2026-10-01', '2026-10-31')).toBe('01/10/2026 – 31/10/2026')
-    expect(textRangoDates('2026-10-01', '')).toBe('Desde 01/10/2026')
-    expect(textRangoDates('', '2026-10-31')).toBe('Hasta 31/10/2026')
+    expect(formatDateRange('', '')).toBe('Cualquier fecha')
+    expect(formatDateRange('2026-10-01', '2026-10-31')).toBe('01/10/2026 – 31/10/2026')
+    expect(formatDateRange('2026-10-01', '')).toBe('Desde 01/10/2026')
+    expect(formatDateRange('', '2026-10-31')).toBe('Hasta 31/10/2026')
   })
 })

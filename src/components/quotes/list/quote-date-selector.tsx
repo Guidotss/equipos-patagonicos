@@ -1,79 +1,79 @@
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { todayArgentina } from '@/lib/format/dates'
-import { atajosDates, textRangoDates, type AtajoDates } from '@/lib/quotes/list-view'
+import { dateShortcuts, formatDateRange, type DateShortcut } from '@/lib/quotes/list-view'
 import { cn } from '@/lib/utils'
 import { CalendarDays } from 'lucide-react'
 import { useState } from 'react'
 
-import { FieldsRango, WarningRango } from './quote-filter-fields'
+import { DateRangeFields, DateRangeWarning } from './quote-filter-fields'
 import { isInvalidDateRange, type DateRange } from './quote-filter-model'
 
 /** Botón con el rango que abre un popover con Desde, Hasta y atajos. Sin rango por defecto (decisión 23). */
 export function SelectorDates({
-  desde,
-  hasta,
+  from,
+  to,
   onApply,
   className,
 }: {
-  desde: string
-  hasta: string
-  onApply: (rango: DateRange) => void
+  from: string
+  to: string
+  onApply: (range: DateRange) => void
   className?: string
 }) {
   const [open, setOpen] = useState(false)
-  const [rango, setRango] = useState<DateRange>({ desde, hasta })
-  const [atajos, setAtajos] = useState<AtajoDates[]>([])
-  const texto = textRangoDates(desde, hasta)
+  const [range, setRange] = useState<DateRange>({ from, to })
+  const [shortcuts, setShortcuts] = useState<DateShortcut[]>([])
+  const text = formatDateRange(from, to)
 
-  function onAbrir(abrir: boolean) {
-    if (abrir) {
-      setRango({ desde, hasta })
+  function onOpenChange(open: boolean) {
+    if (open) {
+      setRange({ from, to })
       // Se calculan al abrir y no al dibujar: "hoy" no puede cambiar entre el servidor y el navegador.
-      setAtajos(atajosDates(todayArgentina()))
+      setShortcuts(dateShortcuts(todayArgentina()))
     }
-    setOpen(abrir)
+    setOpen(open)
   }
 
-  function apply(nuevo: DateRange) {
+  function apply(next: DateRange) {
     setOpen(false)
-    onApply(nuevo)
+    onApply(next)
   }
 
   return (
-    <Popover open={open} onOpenChange={onAbrir}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="outline"
-          aria-label={`Fechas: ${texto}`}
+          aria-label={`Fechas: ${text}`}
           className={cn('h-10 w-full justify-between bg-background px-3 font-normal', className)}
         >
-          <span className={cn('truncate tabular-nums', !desde && !hasta && 'text-muted-foreground')}>{texto}</span>
+          <span className={cn('truncate tabular-nums', !from && !to && 'text-muted-foreground')}>{text}</span>
           <CalendarDays className="text-muted-foreground" aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" aria-label="Rango de fechas" className="w-80 gap-3 p-3">
-        <FieldsRango rango={rango} onChange={setRango} alto="h-10" />
+        <DateRangeFields range={range} onChange={setRange} tall="h-10" />
         <div className="flex flex-wrap gap-1.5">
-          {atajos.map((atajo) => (
+          {shortcuts.map((shortcut) => (
             <Button
-              key={atajo.label}
+              key={shortcut.label}
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => apply({ desde: atajo.desde, hasta: atajo.hasta })}
+              onClick={() => apply({ from: shortcut.desde, to: shortcut.hasta })}
             >
-              {atajo.label}
+              {shortcut.label}
             </Button>
           ))}
         </div>
-        {isInvalidDateRange(rango) ? <WarningRango /> : null}
+        {isInvalidDateRange(range) ? <DateRangeWarning /> : null}
         <div className="flex justify-end gap-2 border-t pt-3">
-          <Button type="button" variant="ghost" size="sm" onClick={() => apply({ desde: '', hasta: '' })}>
+          <Button type="button" variant="ghost" size="sm" onClick={() => apply({ from: '', to: '' })}>
             Limpiar
           </Button>
-          <Button type="button" size="sm" disabled={isInvalidDateRange(rango)} onClick={() => apply(rango)}>
+          <Button type="button" size="sm" disabled={isInvalidDateRange(range)} onClick={() => apply(range)}>
             Aplicar
           </Button>
         </div>

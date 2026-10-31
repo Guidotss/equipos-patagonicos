@@ -4,7 +4,7 @@ import { ActionsRow } from '@/components/quotes/list/actions-row'
 import { RowListing } from '@/components/listings/row-listing'
 import { TableListing } from '@/components/listings/table-listing'
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { transicionesOfList } from '@/lib/quotes/actions-status'
+import { listTransitions } from '@/lib/quotes/actions-status'
 import type { RowQuote } from '@/lib/quotes/list-view'
 import { cn } from '@/lib/utils'
 
@@ -55,7 +55,7 @@ export function TableQuotes({ rows }: { rows: RowQuote[] }) {
                 id={row.id}
                 numero={row.numero}
                 tienePdf={row.tienePdf}
-                transiciones={transicionesOfList(row)}
+                transiciones={listTransitions(row)}
               />
             </TableCell>
           </RowListing>

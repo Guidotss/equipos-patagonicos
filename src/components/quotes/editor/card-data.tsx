@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import type { FieldData } from '@/lib/quotes/data'
-import { ID_FIELD, fieldsDataVisible, idFieldData, textNextUpdate, type Despachar } from '@/lib/quotes/editor-screen'
+import { ID_FIELD, fieldsDataVisible, idFieldData, textNextUpdate, type EditorDispatch } from '@/lib/quotes/editor-screen'
 import type { CatalogsEditor, PendingList, StatusEditor } from '@/lib/quotes/editor/types'
 import { VARIABLES } from '@/lib/templates/variables'
 import { cn } from '@/lib/utils'
@@ -16,26 +16,26 @@ import { InputDate } from './editor-date-input'
 import { SelectorTemplate } from './template-selector'
 
 /** Las mismas clases que la etiqueta de Campo, para los campos que no pueden usarlo (marca superpuesta, selects). */
-const ETIQUETA = 'text-[13px]/none font-normal text-muted-foreground'
-const FALTA = '[&_select]:border-brand-yellow [&_select]:bg-brand-yellow/10'
+const LABEL_CLASS = 'text-[13px]/none font-normal text-muted-foreground'
+const MISSING_CLASS = '[&_select]:border-brand-yellow [&_select]:bg-brand-yellow/10'
 
 /** Un dato que alimenta una variable. Vacío y usado por el texto: la marca {{x}} encima (nunca como valor). */
 function FieldData({
-  campo: field,
+  field,
   value,
   missingComplete,
   error,
   placeholder,
   help,
-  despachar,
+  dispatch,
 }: {
-  campo: FieldData
+  field: FieldData
   value: string
   missingComplete: boolean
   error?: string
   placeholder?: string
   help?: string
-  despachar: Despachar
+  dispatch: EditorDispatch
 }) {
   const id = idFieldData(field)
   const mark = missingComplete && value === ''
@@ -46,7 +46,7 @@ function FieldData({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor={id} className={ETIQUETA}>
+      <Label htmlFor={id} className={LABEL_CLASS}>
         {VARIABLES[field]}
       </Label>
       <div className="relative">
@@ -55,7 +55,7 @@ function FieldData({
           value={value}
           maxLength={500}
           placeholder={mark ? undefined : placeholder}
-          onChange={(evento) => despachar({ tipo: 'dato', campo: field, value: evento.target.value })}
+          onChange={(event) => dispatch({ tipo: 'dato', campo: field, value: event.target.value })}
           aria-invalid={Boolean(error)}
           aria-describedby={descriptions}
         />
@@ -88,11 +88,11 @@ function FieldData({
 
 function HelpEquipment({
   catalogs,
-  estado,
+  state,
   missing,
 }: {
   catalogs: CatalogsEditor
-  estado: StatusEditor
+  state: StatusEditor
   missing: Set<string>
 }) {
   if (catalogs.equipos.length === 0) {
@@ -106,14 +106,14 @@ function HelpEquipment({
     )
   }
   if (!missing.has('capacidad') && !missing.has('equipo_descripcion')) return null
-  if (estado.equipoId === '') {
+  if (state.equipoId === '') {
     return (
       <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">
         El texto usa la capacidad y la descripción del equipo.
       </p>
     )
   }
-  const datos =
+  const data =
     missing.has('capacidad') && missing.has('equipo_descripcion')
       ? 'la capacidad y la descripción'
       : missing.has('capacidad')
@@ -121,53 +121,53 @@ function HelpEquipment({
         : 'la descripción'
   return (
     <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">
-      Completá {datos} del equipo en Configuración › Equipos.
+      Completá {data} del equipo en Configuración › Equipos.
     </p>
   )
 }
 
 export function CardData({
-  estado,
+  state,
   catalogs,
   pendingList,
   errors,
-  despachar,
+  dispatch,
 }: {
-  estado: StatusEditor
+  state: StatusEditor
   catalogs: CatalogsEditor
   pendingList: PendingList
   errors: Record<string, string>
-  despachar: Despachar
+  dispatch: EditorDispatch
 }) {
   const missing = new Set<string>(pendingList.variables)
-  const missingEquipment = estado.equipoId === '' && (missing.has('capacidad') || missing.has('equipo_descripcion'))
+  const missingEquipment = state.equipoId === '' && (missing.has('capacidad') || missing.has('equipo_descripcion'))
   const textNext = textNextUpdate(
-    estado.proximaActualizacion,
-    estado.datos.proxima_actualizacion,
+    state.proximaActualizacion,
+    state.datos.proxima_actualizacion,
     catalogs.empresa.proxima_actualizacion,
   )
-  const missingNext = missing.has('proxima_actualizacion') && estado.proximaActualizacion === ''
-  const errorNext = errors.proximaActualizacion ?? errors['datos.proxima_actualizacion']
+  const missingNext = missing.has('proxima_actualizacion') && state.proximaActualizacion === ''
+  const nextUpdateError = errors.proximaActualizacion ?? errors['datos.proxima_actualizacion']
 
   return (
     <Card compacta titulo="Datos de esta cotización">
-      {estado.id === null ? (
+      {state.id === null ? (
         <SelectorTemplate
-          estado={estado}
-          plantillas={catalogs.plantillas}
+          state={state}
+          templates={catalogs.plantillas}
           error={errors.templateId ?? errors.formato}
-          despachar={despachar}
+          dispatch={dispatch}
         />
       ) : null}
       <div className="grid gap-x-4 gap-y-3 @md:grid-cols-2">
         <div className="space-y-1">
-          <Label htmlFor={ID_FIELD.equipo} className={ETIQUETA}>
+          <Label htmlFor={ID_FIELD.equipo} className={LABEL_CLASS}>
             Equipo
           </Label>
           <NativeSelect
             id={ID_FIELD.equipo}
-            value={estado.equipoId}
-            onChange={(evento) => despachar({ tipo: 'campo', campo: 'equipoId', value: evento.target.value })}
+            value={state.equipoId}
+            onChange={(event) => dispatch({ tipo: 'campo', campo: 'equipoId', value: event.target.value })}
             aria-invalid={Boolean(errors.equipoId)}
             aria-describedby={
               errors.equipoId
@@ -179,13 +179,13 @@ export function CardData({
             // Menos lugar para la flecha: "Grúa telescópica XCMG 70 TN" no se corta contra ella a 1200 px.
             className={cn(
               'w-full [&_[data-slot=native-select-icon]]:right-2 [&_select]:pr-7',
-              missingEquipment && FALTA,
+              missingEquipment && MISSING_CLASS,
             )}
           >
             <NativeSelectOption value="">Elegí un equipo</NativeSelectOption>
-            {catalogs.equipos.map((equipo) => (
-              <NativeSelectOption key={equipo.id} value={equipo.id}>
-                {equipo.activo ? equipo.nombre : `${equipo.nombre} (inactivo)`}
+            {catalogs.equipos.map((equipment) => (
+              <NativeSelectOption key={equipment.id} value={equipment.id}>
+                {equipment.activo ? equipment.nombre : `${equipment.nombre} (inactivo)`}
               </NativeSelectOption>
             ))}
           </NativeSelect>
@@ -194,39 +194,39 @@ export function CardData({
               {errors.equipoId}
             </p>
           ) : (
-            <HelpEquipment catalogs={catalogs} estado={estado} missing={missing} />
+            <HelpEquipment catalogs={catalogs} state={state} missing={missing} />
           )}
         </div>
 
-        {fieldsDataVisible(estado).map((field) => (
+        {fieldsDataVisible(state).map((field) => (
           <FieldData
             key={field}
-            campo={field}
-            value={estado.datos[field]}
+            field={field}
+            value={state.datos[field]}
             missingComplete={missing.has(field)}
             error={errors[`datos.${field}`]}
             placeholder={field === 'indice_base' ? catalogs.empresa.indice_base || undefined : undefined}
             help={
               field === 'indice_base' && catalogs.empresa.indice_base ? 'Vacío: se usa el de la empresa.' : undefined
             }
-            despachar={despachar}
+            dispatch={dispatch}
           />
         ))}
 
         <Field
           id={ID_FIELD.proximaActualizacion}
           label="Próxima actualización"
-          error={errorNext}
+          error={nextUpdateError}
           help={textNext ? `En el PDF: «${textNext}»` : undefined}
         >
           <Input
             id={ID_FIELD.proximaActualizacion}
             type="month"
-            value={estado.proximaActualizacion}
-            onChange={(evento) =>
-              despachar({ tipo: 'campo', campo: 'proximaActualizacion', value: evento.target.value })
+            value={state.proximaActualizacion}
+            onChange={(event) =>
+              dispatch({ tipo: 'campo', campo: 'proximaActualizacion', value: event.target.value })
             }
-            aria-invalid={Boolean(errorNext)}
+            aria-invalid={Boolean(nextUpdateError)}
             className={cn(missingNext && 'border-brand-yellow bg-brand-yellow/10')}
           />
         </Field>
@@ -237,8 +237,8 @@ export function CardData({
             <InputDate
               id={ID_FIELD.fecha}
               required
-              value={estado.fecha}
-              despachar={despachar}
+              value={state.fecha}
+              dispatch={dispatch}
               aria-invalid={Boolean(errors.fecha)}
             />
           </Field>
@@ -246,28 +246,28 @@ export function CardData({
             <Input
               id={ID_FIELD.validity}
               inputMode="numeric"
-              value={estado.validezDias}
-              onChange={(evento) => despachar({ tipo: 'campo', campo: 'validezDias', value: evento.target.value })}
+              value={state.validezDias}
+              onChange={(event) => dispatch({ tipo: 'campo', campo: 'validezDias', value: event.target.value })}
               aria-invalid={Boolean(errors.validezDias)}
               className="tabular-nums"
             />
           </Field>
           <div className="space-y-1">
-            <Label htmlFor={ID_FIELD.firmante} className={ETIQUETA}>
+            <Label htmlFor={ID_FIELD.firmante} className={LABEL_CLASS}>
               Firma
             </Label>
             <NativeSelect
               id={ID_FIELD.firmante}
-              value={estado.firmanteId}
-              onChange={(evento) => despachar({ tipo: 'campo', campo: 'firmanteId', value: evento.target.value })}
+              value={state.firmanteId}
+              onChange={(event) => dispatch({ tipo: 'campo', campo: 'firmanteId', value: event.target.value })}
               aria-invalid={Boolean(errors.firmanteId)}
               aria-describedby={errors.firmanteId ? `${ID_FIELD.firmante}-error` : undefined}
               className="w-full"
             >
               <NativeSelectOption value="">Sin firma</NativeSelectOption>
-              {catalogs.firmantes.map((firmante) => (
-                <NativeSelectOption key={firmante.id} value={firmante.id}>
-                  {firmante.activo ? firmante.nombre : `${firmante.nombre} (inactivo)`}
+              {catalogs.firmantes.map((signer) => (
+                <NativeSelectOption key={signer.id} value={signer.id}>
+                  {signer.activo ? signer.nombre : `${signer.nombre} (inactivo)`}
                 </NativeSelectOption>
               ))}
             </NativeSelect>

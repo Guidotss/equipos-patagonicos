@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { sumarDays } from '@/lib/format/dates'
+import { addDays } from '@/lib/format/dates'
 import { anonClient, removeUser, crearUser, sql } from './helpers'
 
 const marca = `inicio-${crypto.randomUUID()}`
@@ -50,10 +50,10 @@ async function quote(options: {
        (cliente_id, formato, asunto, notas, fecha, validez_dias, estado, fecha_aprobacion, presupuesto_estado,
         fecha_proxima_actualizacion, origen, archivo_original_path)
      values ($1, 'jornada', $2, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id, numero::text`,
-    [clientId, marca, sumarDays(today, -(options.hace ?? 0)), options.validity ?? 30,
+    [clientId, marca, addDays(today, -(options.hace ?? 0)), options.validity ?? 30,
       options.aprobada ? 'aprobada' : 'enviada', options.aprobada ? today : null,
       options.aprobada ? options.finalizada ? 'finalizado' : 'en_curso' : null,
-      options.actualizacion === undefined ? null : sumarDays(today, options.actualizacion),
+      options.actualizacion === undefined ? null : addDays(today, options.actualizacion),
       options.importada ? 'importada' : 'app', options.importada ? `${marca}/original.pdf` : null],
   )
   return row
@@ -63,7 +63,7 @@ async function envio(id: string, hace: number) {
   await sql(
     `insert into public.cotizacion_envios (cotizacion_id, pdf_path, enviada_at)
      values ($1, $2, ($3::date + time '12:00') at time zone 'America/Argentina/Buenos_Aires')`,
-    [id, `${marca}/envio.pdf`, sumarDays(today, -hace)],
+    [id, `${marca}/envio.pdf`, addDays(today, -hace)],
   )
 }
 
@@ -71,7 +71,7 @@ async function document(tipo: 'factura' | 'orden_compra' | 'orden_pago' | 'remit
   const [row] = await sql<{ id: string }>(
     `insert into public.documentos (cliente_id, tipo, numero, notas, monto, tipo_comprobante, fecha)
      values ($1, $2, $3, $4, $5, $6, $7) returning id`,
-    [clientId, tipo, numero, marca, ['factura', 'orden_pago'].includes(tipo) ? monto : null, tipo === 'factura' ? 'FA' : null, sumarDays(today, -45)],
+    [clientId, tipo, numero, marca, ['factura', 'orden_pago'].includes(tipo) ? monto : null, tipo === 'factura' ? 'FA' : null, addDays(today, -45)],
   )
   for (const id of budgets) await sql('insert into public.documento_presupuestos values ($1, $2)', [row.id, id])
   return row.id

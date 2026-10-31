@@ -8,132 +8,132 @@ function insert<T>(list: T[], position: number, element: T): T[] {
 }
 
 /** Saca el elemento de `desde` y lo pone en `hasta` (como arrayMove de dnd-kit). */
-function move<T>(list: T[], desde: number, hasta: number): T[] {
+function move<T>(list: T[], from: number, to: number): T[] {
   const copy = [...list]
-  const [element] = copy.splice(desde, 1)
-  copy.splice(hasta, 0, element)
+  const [element] = copy.splice(from, 1)
+  copy.splice(to, 0, element)
   return copy
 }
 
 /** Fila vacía: copia sección y unidad de la fila de referencia; sin referencia, la unidad típica del formato. */
-function itemNew(estado: StatusEditor, referencia: ItemEditor | undefined, seccion?: string): ItemEditor {
+function createItem(state: StatusEditor, reference: ItemEditor | undefined, section?: string): ItemEditor {
   return {
     clave: newKey(),
-    seccion: seccion ?? referencia?.seccion ?? '',
+    seccion: section ?? reference?.seccion ?? '',
     descripcion: '',
     cantidad: '1',
     precio: '',
-    unidad: referencia?.unidad ?? (estado.formato === 'jornada' ? 'JORNADA' : 'UNIDAD'),
+    unidad: reference?.unidad ?? (state.formato === 'jornada' ? 'JORNADA' : 'UNIDAD'),
   }
 }
 
-function moveItem(items: ItemEditor[], desde: number, hasta: number): ItemEditor[] {
+function moveItem(items: ItemEditor[], from: number, to: number): ItemEditor[] {
   const valid = (index: number) => Number.isInteger(index) && index >= 0 && index < items.length
-  if (desde === hasta || !valid(desde) || !valid(hasta)) return items
-  const list = move(items, desde, hasta)
-  const previous = list[hasta - 1]
-  const next = list[hasta + 1]
-  const moved = list[hasta]
+  if (from === to || !valid(from) || !valid(to)) return items
+  const list = move(items, from, to)
+  const previous = list[to - 1]
+  const next = list[to + 1]
+  const moved = list[to]
   // Las secciones son rachas de filas consecutivas. Si la fila cae en el medio de otro grupo, se suma a ese grupo:
   // si conservara la suya, partiría el grupo en dos. En el borde entre dos grupos conserva su sección.
   if (previous && next && previous.seccion === next.seccion && moved.seccion !== previous.seccion) {
-    list[hasta] = { ...moved, seccion: previous.seccion }
+    list[to] = { ...moved, seccion: previous.seccion }
   }
   return list
 }
 
 /** Renombra la racha de filas consecutivas con la misma sección que la fila `clave` (no otras rachas iguales). */
-function renameSection(items: ItemEditor[], clave: string, seccion: string): ItemEditor[] {
-  const index = items.findIndex((item) => item.clave === clave)
+function renameSection(items: ItemEditor[], key: string, section: string): ItemEditor[] {
+  const index = items.findIndex((item) => item.clave === key)
   if (index < 0) return items
-  const actual = items[index].seccion
+  const current = items[index].seccion
   let home = index
-  while (home > 0 && items[home - 1].seccion === actual) home--
-  let fin = index
-  while (fin < items.length - 1 && items[fin + 1].seccion === actual) fin++
-  return items.map((item, i) => (i >= home && i <= fin ? { ...item, seccion } : item))
+  while (home > 0 && items[home - 1].seccion === current) home--
+  let end = index
+  while (end < items.length - 1 && items[end + 1].seccion === current) end++
+  return items.map((item, i) => (i >= home && i <= end ? { ...item, seccion: section } : item))
 }
 
 /**
  * Todas las transiciones del editor. Pura salvo las claves nuevas (crypto.randomUUID). Si la acción no cambia nada
  * (mover fuera de rango, una clave que ya no existe), devuelve el mismo estado.
  */
-export function reduceEditor(estado: StatusEditor, accion: ActionEditor): StatusEditor {
-  switch (accion.tipo) {
+export function reduceEditor(state: StatusEditor, action: ActionEditor): StatusEditor {
+  switch (action.tipo) {
     case 'campo':
-      if (accion.campo === 'proximaActualizacion') {
+      if (action.campo === 'proximaActualizacion') {
         // Un solo control llena la fecha y el texto del PDF (decisión 7). Vaciarlo borra también el texto: el PDF
         // vuelve al valor de la empresa, igual antes y después de recargar. Mientras no se toque, el texto que trajo
         // la fila se conserva.
         return {
-          ...estado,
-          proximaActualizacion: accion.value,
-          datos: { ...estado.datos, proxima_actualizacion: isMonth(accion.value) ? monthInLetters(accion.value) : '' },
+          ...state,
+          proximaActualizacion: action.value,
+          datos: { ...state.datos, proxima_actualizacion: isMonth(action.value) ? monthInLetters(action.value) : '' },
         }
       }
-      return { ...estado, [accion.campo]: accion.value }
+      return { ...state, [action.campo]: action.value }
     case 'dato':
-      return { ...estado, datos: { ...estado.datos, [accion.campo]: accion.value } }
+      return { ...state, datos: { ...state.datos, [action.campo]: action.value } }
     case 'mostrarTotal':
-      return { ...estado, mostrarTotal: accion.value }
+      return { ...state, mostrarTotal: action.value }
     case 'cliente':
-      return { ...estado, cliente: accion.cliente, contactoId: accion.contactoId }
+      return { ...state, cliente: action.cliente, contactoId: action.contactoId }
     case 'plantilla':
-      return applyTemplate(estado, accion.plantilla)
+      return applyTemplate(state, action.plantilla)
     case 'agregarItem': {
-      const index = accion.despuesOf ? estado.items.findIndex((item) => item.clave === accion.despuesOf) : -1
-      const referencia = index >= 0 ? estado.items[index] : estado.items.at(-1)
-      const nuevo = itemNew(estado, referencia, accion.seccion)
-      return { ...estado, items: insert(estado.items, index >= 0 ? index + 1 : estado.items.length, nuevo) }
+      const index = action.despuesOf ? state.items.findIndex((item) => item.clave === action.despuesOf) : -1
+      const reference = index >= 0 ? state.items[index] : state.items.at(-1)
+      const next = createItem(state, reference, action.seccion)
+      return { ...state, items: insert(state.items, index >= 0 ? index + 1 : state.items.length, next) }
     }
     case 'item':
-      if (!estado.items.some((item) => item.clave === accion.clave)) return estado
+      if (!state.items.some((item) => item.clave === action.clave)) return state
       return {
-        ...estado,
-        items: estado.items.map((item) =>
-          item.clave === accion.clave ? { ...item, ...accion.changes, clave: item.clave } : item,
+        ...state,
+        items: state.items.map((item) =>
+          item.clave === action.clave ? { ...item, ...action.changes, clave: item.clave } : item,
         ),
       }
     case 'moverItem': {
-      const items = moveItem(estado.items, accion.desde, accion.hasta)
-      return items === estado.items ? estado : { ...estado, items }
+      const items = moveItem(state.items, action.desde, action.hasta)
+      return items === state.items ? state : { ...state, items }
     }
     case 'quitarItem':
-      if (!estado.items.some((item) => item.clave === accion.clave)) return estado
-      return { ...estado, items: estado.items.filter((item) => item.clave !== accion.clave) }
+      if (!state.items.some((item) => item.clave === action.clave)) return state
+      return { ...state, items: state.items.filter((item) => item.clave !== action.clave) }
     case 'duplicarItem': {
-      const index = estado.items.findIndex((item) => item.clave === accion.clave)
-      if (index < 0) return estado
-      const copy = { ...estado.items[index], clave: newKey() }
-      return { ...estado, items: insert(estado.items, index + 1, copy) }
+      const index = state.items.findIndex((item) => item.clave === action.clave)
+      if (index < 0) return state
+      const copy = { ...state.items[index], clave: newKey() }
+      return { ...state, items: insert(state.items, index + 1, copy) }
     }
     case 'renombrarSeccion': {
-      const items = renameSection(estado.items, accion.clave, accion.seccion)
-      return items === estado.items ? estado : { ...estado, items }
+      const items = renameSection(state.items, action.clave, action.seccion)
+      return items === state.items ? state : { ...state, items }
     }
     case 'agregarSeccion': {
-      const nuevo = itemNew(estado, estado.items.at(-1), accion.nombre.trim() || 'Nueva sección')
-      return { ...estado, items: [...estado.items, nuevo] }
+      const next = createItem(state, state.items.at(-1), action.nombre.trim() || 'Nueva sección')
+      return { ...state, items: [...state.items, next] }
     }
     case 'bloque':
-      if (!estado.bloques.some((block) => block.clave === accion.clave)) return estado
+      if (!state.bloques.some((block) => block.clave === action.clave)) return state
       return {
-        ...estado,
-        bloques: estado.bloques.map((block) =>
-          block.clave === accion.clave ? { ...block, ...accion.changes, clave: block.clave } : block,
+        ...state,
+        bloques: state.bloques.map((block) =>
+          block.clave === action.clave ? { ...block, ...action.changes, clave: block.clave } : block,
         ),
       }
     case 'moverBloque': {
-      const index = estado.bloques.findIndex((block) => block.clave === accion.clave)
-      const destination = index + accion.direccion
-      if (index < 0 || destination < 0 || destination >= estado.bloques.length) return estado
-      return { ...estado, bloques: move(estado.bloques, index, destination) }
+      const index = state.bloques.findIndex((block) => block.clave === action.clave)
+      const destination = index + action.direccion
+      if (index < 0 || destination < 0 || destination >= state.bloques.length) return state
+      return { ...state, bloques: move(state.bloques, index, destination) }
     }
     case 'restaurarBloques':
-      return { ...estado, bloques: createEditorBlocks(accion.bloques) }
+      return { ...state, bloques: createEditorBlocks(action.bloques) }
     case 'guardado':
-      return { ...estado, id: accion.id, version: accion.version, numero: accion.numero }
+      return { ...state, id: action.id, version: action.version, numero: action.numero }
     case 'reemplazar':
-      return accion.estado
+      return action.estado
   }
 }

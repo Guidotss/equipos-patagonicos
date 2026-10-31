@@ -1,15 +1,15 @@
-// src/lib/cotizaciones/vista-previa.ts
+// src/lib/quotes/preview.ts
 // Qué muestra el panel de vista previa del editor y cómo lo explica. Puro: lo usa un componente de cliente.
-import { formatDateCorta, todayArgentina } from '@/lib/format/dates'
+import { formatShortDate, todayArgentina } from '@/lib/format/dates'
 import { hasChanges } from './editor/validation'
 import type { StatusEditor } from './editor/types'
 
 /** Parámetros del visor de PDF del navegador: sin barra ni miniaturas y la hoja al ancho del panel. */
-export const PARAMS_VISOR = '#toolbar=0&navpanes=0&view=FitH'
+export const VIEWER_PARAMS = '#toolbar=0&navpanes=0&view=FitH'
 
 /** La URL que va en el <iframe> del panel. */
-export function urlVisor(url: string): string {
-  return `${url}${PARAMS_VISOR}`
+export function viewerUrl(url: string): string {
+  return `${url}${VIEWER_PARAMS}`
 }
 
 /** El PDF de lo guardado en su versión actual (no el último envío): lo que abre "Vista previa" en el celular. */
@@ -19,34 +19,34 @@ export function urlPdfCurrent(id: string): string {
 
 export type ModeViewPreview =
   /** Se arma en el servidor con lo que hay en pantalla, aunque no esté guardado (POST /cotizaciones/vista-previa). */
-  | { tipo: 'generada' }
+  | { type: 'generada' }
   /** Un PDF que ya existe y no cambia con lo editado: el aprobado, el original de una cargada o lo enviado de una rechazada. */
-  | { tipo: 'guardada'; url: string }
+  | { type: 'guardada'; url: string }
   /** Todavía no hay cliente: la cotización no tiene a quién dirigirse. */
-  | { tipo: 'sin-cliente' }
+  | { type: 'sin-cliente' }
   /** Un presupuesto directo no tiene PDF. */
-  | { tipo: 'sin-pdf' }
+  | { type: 'sin-pdf' }
 
-export function modeViewPreview(estado: Pick<StatusEditor, 'id' | 'estado' | 'origen' | 'cliente'>): ModeViewPreview {
-  if (estado.origen === 'directa') return { tipo: 'sin-pdf' }
-  const congelada = estado.origen === 'importada' || estado.estado === 'aprobada' || estado.estado === 'rechazada'
-  if (estado.id && congelada) return { tipo: 'guardada', url: `/cotizaciones/${estado.id}/pdf` }
-  if (!estado.cliente) return { tipo: 'sin-cliente' }
-  return { tipo: 'generada' }
+export function modeViewPreview(state: Pick<StatusEditor, 'id' | 'estado' | 'origen' | 'cliente'>): ModeViewPreview {
+  if (state.origen === 'directa') return { type: 'sin-pdf' }
+  const frozen = state.origen === 'importada' || state.estado === 'aprobada' || state.estado === 'rechazada'
+  if (state.id && frozen) return { type: 'guardada', url: `/cotizaciones/${state.id}/pdf` }
+  if (!state.cliente) return { type: 'sin-cliente' }
+  return { type: 'generada' }
 }
 
 /** "20/10/2026" en hora argentina a partir de un timestamptz (por ejemplo, el enviada_at de un envío). */
-export function dateOfMark(marca: string): string {
-  return formatDateCorta(todayArgentina(new Date(marca)))
+export function dateOfMark(timestamp: string): string {
+  return formatShortDate(todayArgentina(new Date(timestamp)))
 }
 
 /**
  * La vista previa generada ya no muestra lo que hay en pantalla. El número cuenta aparte porque no está en lo que
  * se guarda: la primera vista previa de una nueva lo muestra como {{numero}} y, después de guardar, ya lo tiene.
  */
-export function viewDesactualizada(generadaWith: StatusEditor | null, actual: StatusEditor): boolean {
-  if (!generadaWith) return false
-  return generadaWith.numero !== actual.numero || hasChanges(generadaWith, actual)
+export function isPreviewOutdated(generatedFrom: StatusEditor | null, current: StatusEditor): boolean {
+  if (!generatedFrom) return false
+  return generatedFrom.numero !== current.numero || hasChanges(generatedFrom, current)
 }
 
 /** La línea gris bajo el título "Vista previa". */
@@ -60,7 +60,7 @@ export function lineViewPreview(args: {
   /** 'YYYY-MM-DD' */
   dateApproval: string | null
 }): string {
-  switch (args.modo.tipo) {
+  switch (args.modo.type) {
     case 'sin-pdf':
       return ''
     case 'sin-cliente':
@@ -68,7 +68,7 @@ export function lineViewPreview(args: {
     case 'guardada':
       if (args.origen === 'importada') return 'PDF original cargado'
       if (args.estado === 'aprobada') {
-        return args.dateApproval ? `PDF aprobado el ${formatDateCorta(args.dateApproval)}` : 'PDF aprobado'
+        return args.dateApproval ? `PDF aprobado el ${formatShortDate(args.dateApproval)}` : 'PDF aprobado'
       }
       return args.lastSend ? `Último envío · ${dateOfMark(args.lastSend)}` : 'Versión guardada'
     case 'generada':

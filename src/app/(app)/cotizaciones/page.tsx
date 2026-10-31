@@ -98,7 +98,7 @@ export default async function QuotesPage({
 
         <FrameListing
           className="group/lista"
-          tools={<FiltersQuotes filters={filters} clientes={withQuotes.data} />}
+          tools={<FiltersQuotes filters={filters} clients={withQuotes.data} />}
           pie={<Pagination filters={filters} total={total} />}
         >
           <div className="transition-opacity group-has-[[data-pendiente]]/lista:opacity-60">

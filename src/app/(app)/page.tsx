@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { BarCrumbs, Content, Cover } from '@/components/app-shell/header'
 import { QueueHome } from '@/components/home/queue-home'
 import { Button } from '@/components/ui/button'
-import { todayArgentina, ZONA_ARGENTINA } from '@/lib/format/dates'
+import { todayArgentina, ARGENTINA_TIME_ZONE } from '@/lib/format/dates'
 import { readHome, PENDING_PER_PAGE } from '@/lib/home/queries'
 import { QUEUES_HOME, isQueueHome, pageValid, type QueueHome as NameQueueHome } from '@/lib/home/model'
 
@@ -19,7 +19,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const now = new Date()
   const today = todayArgentina(now)
   const fecha = new Intl.DateTimeFormat('es-AR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: ZONA_ARGENTINA,
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: ARGENTINA_TIME_ZONE,
   }).format(now)
   const total = resumen.find((row) => row.cola === cola)?.cantidad ?? 0
   const pages = Math.max(1, Math.ceil(total / PENDING_PER_PAGE))

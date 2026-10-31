@@ -13,10 +13,10 @@ import {
 } from '@/lib/catalogs/schemas'
 import {
   success,
-  falloBase,
-  falloValidation,
+  databaseFailure,
+  validationFailure,
   readFields,
-  messageErrorBase,
+  databaseErrorMessage,
   type StatusForm,
 } from '@/lib/forms'
 import { createClient } from '@/lib/supabase/server'
@@ -31,11 +31,11 @@ export async function actualizarCompany(_previous: StatusForm, formData: FormDat
   const values = readFields(formData, FIELDS_COMPANY)
   if (user.rol !== 'admin') return { ok: false, message: 'Solo un administrador puede cambiar estos datos', errors: {}, values }
   const datos = schemaCompany.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('empresa_config').update(datos.data).eq('id', true)
-  if (error) return falloBase(error, values)
+  if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/empresa')
   return success('Datos de la empresa guardados')
@@ -45,11 +45,11 @@ export async function crearSigner(_previous: StatusForm, formData: FormData): Pr
   await requireUser()
   const values = readFields(formData, FIELDS_SIGNER)
   const datos = schemaSigner.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('firmantes').insert(datos.data)
-  if (error) return falloBase(error, values)
+  if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/firmantes')
   return success('Firmante agregado')
@@ -64,11 +64,11 @@ export async function actualizarSigner(
   requireUuid(id)
   const values = readFields(formData, FIELDS_SIGNER)
   const datos = schemaSigner.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('firmantes').update(datos.data).eq('id', id)
-  if (error) return falloBase(error, values)
+  if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/firmantes')
   return success('Firmante guardado')
@@ -79,7 +79,7 @@ export async function changeStatusSigner(id: string, activo: boolean): Promise<v
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('firmantes').update({ activo }).eq('id', id)
-  if (error) throw new Error(messageErrorBase(error))
+  if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/configuracion/firmantes')
 }
 
@@ -87,11 +87,11 @@ export async function crearEquipment(_previous: StatusForm, formData: FormData):
   await requireUser()
   const values = readFields(formData, FIELDS_EQUIPMENT)
   const datos = schemaEquipment.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').insert(datos.data)
-  if (error) return falloBase(error, values)
+  if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/equipos')
   return success('Equipo agregado')
@@ -106,11 +106,11 @@ export async function actualizarEquipment(
   requireUuid(id)
   const values = readFields(formData, FIELDS_EQUIPMENT)
   const datos = schemaEquipment.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').update(datos.data).eq('id', id)
-  if (error) return falloBase(error, values)
+  if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/equipos')
   return success('Equipo guardado')
@@ -121,7 +121,7 @@ export async function changeStatusEquipment(id: string, activo: boolean): Promis
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').update({ activo }).eq('id', id)
-  if (error) throw new Error(messageErrorBase(error))
+  if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/configuracion/equipos')
 }
 
@@ -134,11 +134,11 @@ export async function renameTemplate(
   requireUuid(id)
   const values = readFields(formData, ['nombre'] as const)
   const datos = schemaNameTemplate.safeParse(values)
-  if (!datos.success) return falloValidation(datos.error, values)
+  if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
   const { error } = await supabase.from('plantillas').update(datos.data).eq('id', id)
-  if (error) return falloBase(error, values, { campo: 'nombre', message: 'Ya existe una plantilla con ese nombre' })
+  if (error) return databaseFailure(error, values, { campo: 'nombre', message: 'Ya existe una plantilla con ese nombre' })
 
   revalidatePath('/configuracion/plantillas')
   revalidatePath(`/configuracion/plantillas/${id}`)
@@ -150,6 +150,6 @@ export async function changeStatusTemplate(id: string, activa: boolean): Promise
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('plantillas').update({ activa }).eq('id', id)
-  if (error) throw new Error(messageErrorBase(error))
+  if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/configuracion/plantillas')
 }

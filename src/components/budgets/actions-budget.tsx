@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { changeStatusBudget } from '@/app/(app)/presupuestos/actions'
-import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Field } from '@/components/form/field'
@@ -36,7 +36,7 @@ export function ActionsBudget({ id, estado }: { id: string; estado: string | nul
   return (
     <div className="flex max-w-xl flex-col gap-2">
       {destination ? (
-        <ConfirmationInLugar
+        <InlineConfirmation
           pregunta={
             destination === 'anulado'
               ? '¿Anular este presupuesto?'
@@ -66,7 +66,7 @@ export function ActionsBudget({ id, estado }: { id: string; estado: string | nul
               />
             </Field>
           ) : null}
-        </ConfirmationInLugar>
+        </InlineConfirmation>
       ) : (
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setDestination(estado === 'en_curso' ? 'finalizado' : 'en_curso')}>

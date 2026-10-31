@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { StatusQuote } from '@/components/quotes/status-quote'
 import { ActionsRow } from '@/components/quotes/list/actions-row'
-import { transicionesOfList } from '@/lib/quotes/actions-status'
+import { listTransitions } from '@/lib/quotes/actions-status'
 import type { RowQuote } from '@/lib/quotes/list-view'
 import { cn } from '@/lib/utils'
 
@@ -22,7 +22,7 @@ export function ListQuotesMobile({ rows }: { rows: RowQuote[] }) {
             <div className="flex shrink-0 items-center gap-1">
               <StatusQuote estado={row.estado} vencida={row.vencida} />
               <div className="relative z-10">
-                <ActionsRow id={row.id} numero={row.numero} tienePdf={row.tienePdf} transiciones={transicionesOfList(row)} variante="movil" />
+                <ActionsRow id={row.id} numero={row.numero} tienePdf={row.tienePdf} transiciones={listTransitions(row)} variante="movil" />
               </div>
             </div>
           </div>

@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { TransicionList } from '@/lib/quotes/actions-status'
+import type { ListTransition } from '@/lib/quotes/actions-status'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /**
@@ -33,7 +33,7 @@ export function ActionsRow({
   numero: number
   tienePdf: boolean
   /** Las del ⋯ según el estado (transicionesDeLista, Task 12): abren el editor con la confirmación abierta. */
-  transiciones?: TransicionList[]
+  transiciones?: ListTransition[]
   variante?: 'tabla' | 'movil'
 }) {
   const router = useRouter()
@@ -103,7 +103,7 @@ export function ActionsRow({
         </DropdownMenuItem>
         <DropdownMenuItem disabled={duplicando} onSelect={() => setOtroClient(true)}><Copy aria-hidden />Duplicar a otro cliente</DropdownMenuItem>
         {transiciones.length > 0 ? <DropdownMenuSeparator /> : null}
-        {transiciones.map(({ accion, label }) => (
+        {transiciones.map(({ action: accion, label }) => (
           <DropdownMenuItem key={accion} asChild variant={accion === 'borrar' ? 'destructive' : 'default'}>
             <Link href={`/cotizaciones/${id}?accion=${accion}`}>{label}</Link>
           </DropdownMenuItem>

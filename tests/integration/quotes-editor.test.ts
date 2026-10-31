@@ -18,7 +18,7 @@ import {
   revertApproval,
   viewPreview,
 } from '@/lib/quotes/service'
-import { todayArgentina, sumarDays } from '@/lib/format/dates'
+import { todayArgentina, addDays } from '@/lib/format/dates'
 import { AMARILLO_VARIABLE } from '@/lib/pdf/styles'
 import { ITEMS_DAILY, idsOfExample, versionOf } from './quotes-helpers'
 import { adminClient, removeUser, contraTransaccionInCurso, crearUser, sql } from './helpers'
@@ -243,7 +243,7 @@ describe('buscar_cotizaciones', () => {
       borrador: await insert({ estado: 'borrador', fecha: '2025-03-01' }),
       aprobada: await insert({ estado: 'aprobada', fecha: '2025-03-05' }),
       rechazada: await insert({ estado: 'rechazada', fecha: '2025-03-10' }),
-      vencida: await insert({ estado: 'enviada', fecha: sumarDays(today, -40) }),
+      vencida: await insert({ estado: 'enviada', fecha: addDays(today, -40) }),
       enviada: await insert({ estado: 'enviada', fecha: today }),
       otroCliente: await insert({
         estado: 'borrador',

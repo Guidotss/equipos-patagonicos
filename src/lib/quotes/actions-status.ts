@@ -1,10 +1,10 @@
-// src/lib/cotizaciones/acciones-estado.ts
+// src/lib/quotes/actions-status.ts
 // Qué acciones de estado ofrece el editor, qué franjas muestra y qué falta para enviar (decisiones 11 a 17).
 // Puro: lo usan los componentes de cliente del editor.
-import { formatDateCorta, ZONA_ARGENTINA } from '@/lib/format/dates'
+import { formatShortDate, ARGENTINA_TIME_ZONE } from '@/lib/format/dates'
 import { parsePrice } from '@/lib/format/amounts'
 import { VARIABLES, type NameVariable } from '@/lib/templates/variables'
-import type { ContextoStatus } from './context-status'
+import type { StatusContext } from './context-status'
 import { MESSAGE_CONFLICT } from './editor/constants'
 import { canSend } from './editor/document'
 import type { StatusEditor, PendingList } from './editor/types'
@@ -40,7 +40,7 @@ export const LABEL_ACTION: Record<ActionStatus, string> = {
 }
 
 /** El texto del botón mientras la acción corre. */
-export const LABEL_IN_CURSO: Record<ActionStatus, string> = {
+export const ACTION_PROGRESS_LABEL: Record<ActionStatus, string> = {
   enviar: 'Generando…',
   reenviar: 'Generando…',
   aprobar: 'Aprobando…',
@@ -56,8 +56,8 @@ export const LABEL_IN_CURSO: Record<ActionStatus, string> = {
 export const CONFIRMABLES = ['aprobar', 'rechazar', 'reabrir', 'revertir', 'borrar'] as const
 export type ActionConfirmable = (typeof CONFIRMABLES)[number]
 
-export function isConfirmable(accion: ActionStatus): accion is ActionConfirmable {
-  return (CONFIRMABLES as readonly string[]).includes(accion)
+export function isConfirmable(action: ActionStatus): action is ActionConfirmable {
+  return (CONFIRMABLES as readonly string[]).includes(action)
 }
 
 /** `?accion=aprobar` (desde el menú de una fila de la lista): abre esa confirmación al entrar. */
@@ -68,39 +68,39 @@ export function actionFromParam(value: string | string[] | undefined): ActionCon
 }
 
 /** Una transición del ⋯ de una fila de la lista: lleva a `/cotizaciones/{id}?accion={accion}`. */
-export type TransicionList = { accion: ActionConfirmable; label: string }
+export type ListTransition = { action: ActionConfirmable; label: string }
 
 /**
  * Las transiciones del ⋯ de una fila de la lista (relev-visual §1.6), solo en las armadas en la app (`origen` es el
  * de FilaCotizacion: null en las de la app). Llevan al editor con la confirmación abierta; si al entrar ya no se
  * puede (por ejemplo, un borrador que ya se envió no se elimina), el editor no la abre.
  */
-export function transicionesOfList(row: { estado: string; origen: string | null }): TransicionList[] {
+export function listTransitions(row: { estado: string; origen: string | null }): ListTransition[] {
   if (row.origen !== null) return []
   switch (row.estado) {
     case 'borrador':
-      return [{ accion: 'borrar', label: 'Eliminar borrador…' }]
+      return [{ action: 'borrar', label: 'Eliminar borrador…' }]
     case 'enviada':
       return [
-        { accion: 'aprobar', label: 'Aprobar…' },
-        { accion: 'rechazar', label: 'Rechazar…' },
+        { action: 'aprobar', label: 'Aprobar…' },
+        { action: 'rechazar', label: 'Rechazar…' },
       ]
     case 'rechazada':
-      return [{ accion: 'reabrir', label: 'Reabrir…' }]
+      return [{ action: 'reabrir', label: 'Reabrir…' }]
     default:
       return []
   }
 }
 
 /** Solo se editan los borradores y las enviadas armadas en la app (guardar_cotizacion rechaza el resto). */
-export function isEditable(estado: Pick<StatusEditor, 'origen' | 'estado'>): boolean {
-  return estado.origen === 'app' && (estado.estado === 'borrador' || estado.estado === 'enviada')
+export function isEditable(state: Pick<StatusEditor, 'origen' | 'estado'>): boolean {
+  return state.origen === 'app' && (state.estado === 'borrador' || state.estado === 'enviada')
 }
 
-export type ButtonAction = { accion: ActionStatus; primaria: boolean }
+export type ButtonAction = { action: ActionStatus; primary: boolean }
 export type LayoutActions = {
   /** Los botones del encabezado después de Guardar, de izquierda a derecha. */
-  botones: ButtonAction[]
+  buttons: ButtonAction[]
   /** Lo que va en el menú ⋯ (los envíos anteriores se agregan aparte). */
   menu: ActionStatus[]
 }
@@ -111,43 +111,43 @@ export type LayoutActions = {
  * muestra enviar y aprobar: guardan primero (decisión 12).
  */
 export function layoutActions(
-  estado: Pick<StatusEditor, 'id' | 'estado' | 'origen'>,
-  contexto: Pick<ContextoStatus, 'envios'>,
+  state: Pick<StatusEditor, 'id' | 'estado' | 'origen'>,
+  context: Pick<StatusContext, 'envios'>,
 ): LayoutActions {
-  if (estado.origen !== 'app') return { botones: [], menu: [] }
-  if (!estado.id) {
-    return { botones: [{ accion: 'enviar', primaria: true }, { accion: 'aprobar', primaria: false }], menu: [] }
+  if (state.origen !== 'app') return { buttons: [], menu: [] }
+  if (!state.id) {
+    return { buttons: [{ action: 'enviar', primary: true }, { action: 'aprobar', primary: false }], menu: [] }
   }
-  switch (estado.estado) {
+  switch (state.estado) {
     case 'borrador':
       return {
-        botones: [
-          { accion: 'enviar', primaria: true },
-          { accion: 'aprobar', primaria: false },
+        buttons: [
+          { action: 'enviar', primary: true },
+          { action: 'aprobar', primary: false },
         ],
-        menu: contexto.envios.length ? ['duplicar', 'rechazar'] : ['duplicar', 'rechazar', 'borrar'],
+        menu: context.envios.length ? ['duplicar', 'rechazar'] : ['duplicar', 'rechazar', 'borrar'],
       }
     case 'enviada':
       return {
-        botones: [
-          { accion: 'rechazar', primaria: false },
-          { accion: 'aprobar', primaria: true },
+        buttons: [
+          { action: 'rechazar', primary: false },
+          { action: 'aprobar', primary: true },
         ],
         menu: ['reenviar', 'duplicar'],
       }
     case 'aprobada':
       return {
-        botones: [
-          { accion: 'descargar', primaria: false },
-          { accion: 'duplicar', primaria: true },
+        buttons: [
+          { action: 'descargar', primary: false },
+          { action: 'duplicar', primary: true },
         ],
         menu: ['revertir'],
       }
     case 'rechazada':
       return {
-        botones: [
-          { accion: 'reabrir', primaria: true },
-          { accion: 'duplicar', primaria: false },
+        buttons: [
+          { action: 'reabrir', primary: true },
+          { action: 'duplicar', primary: false },
         ],
         menu: [],
       }
@@ -158,14 +158,14 @@ export function layoutActions(
  * Por qué un botón está deshabilitado (null: se puede). El detalle de lo que falta va en la franja amarilla. Una
  * nueva no se bloquea por no estar guardada: enviar y aprobar la guardan primero (decisión 12).
  */
-export function reasonBlock(accion: ActionStatus, pendingList: PendingList): string | null {
-  if (accion !== 'enviar' && accion !== 'reenviar' && accion !== 'aprobar') return null
+export function reasonBlock(action: ActionStatus, pendingList: PendingList): string | null {
+  if (action !== 'enviar' && action !== 'reenviar' && action !== 'aprobar') return null
   if (!canSend(pendingList)) return 'Completá lo que falta para enviarla o aprobarla'
   return null
 }
 
 /** true si la cotización se editó después del último envío (marcar_enviada deja updated_at = enviada_at). */
-export function editedDespuesOfSend(version: string | null, lastSend: string | null): boolean {
+export function editedAfterSend(version: string | null, lastSend: string | null): boolean {
   if (!version || !lastSend) return false
   return new Date(version).getTime() > new Date(lastSend).getTime()
 }
@@ -177,81 +177,81 @@ export function editedDespuesOfSend(version: string | null, lastSend: string | n
  * último guardado de contenido con la que distinguirlo.
  */
 export function approvesVersionNoSent(
-  estado: Pick<StatusEditor, 'estado' | 'version'>,
-  contexto: Pick<ContextoStatus, 'envios'>,
+  state: Pick<StatusEditor, 'estado' | 'version'>,
+  context: Pick<StatusContext, 'envios'>,
   hasChangesWithoutSave: boolean,
 ): boolean {
-  if (estado.estado !== 'enviada') return false
-  return hasChangesWithoutSave || editedDespuesOfSend(estado.version, contexto.envios[0]?.enviada_at ?? null)
+  if (state.estado !== 'enviada') return false
+  return hasChangesWithoutSave || editedAfterSend(state.version, context.envios[0]?.enviada_at ?? null)
 }
 
 /** El mensaje de la fecha de aprobación (null si sirve). La base vuelve a controlarlo. */
-export function errorDateApproval(fecha: string, dateQuote: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return 'Ingresá la fecha de aprobación'
-  if (fecha < dateQuote) {
-    return `No puede ser anterior a la fecha de la cotización (${formatDateCorta(dateQuote)})`
+export function errorDateApproval(date: string, dateQuote: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Ingresá la fecha de aprobación'
+  if (date < dateQuote) {
+    return `No puede ser anterior a la fecha de la cotización (${formatShortDate(dateQuote)})`
   }
   return null
 }
 
 /** Qué pasa al revertir: vuelve a enviada si se envió alguna vez (revertir_aprobacion). */
-export function statusOnRevert(contexto: Pick<ContextoStatus, 'envios'>): 'enviada' | 'borrador' {
-  return contexto.envios.length ? 'enviada' : 'borrador'
+export function statusOnRevert(context: Pick<StatusContext, 'envios'>): 'enviada' | 'borrador' {
+  return context.envios.length ? 'enviada' : 'borrador'
 }
 
-const HORA = new Intl.DateTimeFormat('es-AR', {
-  timeZone: ZONA_ARGENTINA,
+const TIME_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  timeZone: ARGENTINA_TIME_ZONE,
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
 })
 
 /** "20/10/2026 14:35" (hora argentina): cada envío del historial. */
-export function dateTimeOfMark(marca: string): string {
-  return `${dateOfMark(marca)} ${HORA.format(new Date(marca))}`
+export function formatTimestamp(timestamp: string): string {
+  return `${dateOfMark(timestamp)} ${TIME_FORMAT.format(new Date(timestamp))}`
 }
 
 export type Band =
-  | { tipo: 'enviada'; texto: string; envioId: string | null }
-  | { tipo: 'vencida'; texto: string }
-  | { tipo: 'aprobada'; texto: string }
-  | { tipo: 'rechazada'; texto: string }
-  | { tipo: 'duplicada'; anterior: { id: string; numero: number } }
+  | { type: 'enviada'; text: string; envioId: string | null }
+  | { type: 'vencida'; text: string }
+  | { type: 'aprobada'; text: string }
+  | { type: 'rechazada'; text: string }
+  | { type: 'duplicada'; anterior: { id: string; numero: number } }
 
 /** Las franjas de estado bajo el encabezado (relev-visual §3.9), en orden. */
-export function bandsStatus(estado: Pick<StatusEditor, 'estado'>, contexto: ContextoStatus): Band[] {
+export function bandsStatus(state: Pick<StatusEditor, 'estado'>, context: StatusContext): Band[] {
   const bands: Band[] = []
-  if (estado.estado === 'enviada') {
-    if (contexto.vencida && contexto.venceEl) {
+  if (state.estado === 'enviada') {
+    if (context.vencida && context.venceEl) {
       bands.push({
-        tipo: 'vencida',
-        texto: `Venció el ${formatDateCorta(contexto.venceEl)}. Duplicala para renegociar o aprobala si el cliente la aceptó.`,
+        type: 'vencida',
+        text: `Venció el ${formatShortDate(context.venceEl)}. Duplicala para renegociar o aprobala si el cliente la aceptó.`,
       })
     } else {
-      const last = contexto.envios[0] ?? null
+      const last = context.envios[0] ?? null
       bands.push({
-        tipo: 'enviada',
-        texto: `${last ? `Enviada el ${dateOfMark(last.enviada_at)}` : 'Enviada'}. Lo que edites no le llega al cliente hasta que la vuelvas a mandar.`,
+        type: 'enviada',
+        text: `${last ? `Enviada el ${dateOfMark(last.enviada_at)}` : 'Enviada'}. Lo que edites no le llega al cliente hasta que la vuelvas a mandar.`,
         envioId: last?.id ?? null,
       })
     }
   }
-  if (estado.estado === 'aprobada') {
-    const fecha = contexto.dateApproval ? ` el ${formatDateCorta(contexto.dateApproval)}` : ''
-    bands.push({ tipo: 'aprobada', texto: `Aprobada${fecha}: es un presupuesto y no se modifica.` })
+  if (state.estado === 'aprobada') {
+    const date = context.dateApproval ? ` el ${formatShortDate(context.dateApproval)}` : ''
+    bands.push({ type: 'aprobada', text: `Aprobada${date}: es un presupuesto y no se modifica.` })
   }
-  if (estado.estado === 'rechazada') {
-    bands.push({ tipo: 'rechazada', texto: 'Rechazada. Para volver a editarla, reabrila.' })
+  if (state.estado === 'rechazada') {
+    bands.push({ type: 'rechazada', text: 'Rechazada. Para volver a editarla, reabrila.' })
   }
-  if (contexto.anterior) bands.push({ tipo: 'duplicada', anterior: contexto.anterior })
+  if (context.anterior) bands.push({ type: 'duplicada', anterior: context.anterior })
   return bands
 }
 
 /**
  * Si ya hay equipo, se nombra el dato que le falta en su ficha; si no, se pide elegir uno.
  */
-export function labelVariable(nombre: NameVariable, equipmentId: string): string {
-  switch (nombre) {
+export function labelVariable(name: NameVariable, equipmentId: string): string {
+  switch (name) {
     case 'capacidad':
       return equipmentId ? 'Capacidad del equipo' : 'Equipo'
     case 'equipo_descripcion':
@@ -261,17 +261,17 @@ export function labelVariable(nombre: NameVariable, equipmentId: string): string
     case 'proxima_actualizacion':
       return 'Próxima actualización'
     default:
-      return VARIABLES[nombre]
+      return VARIABLES[name]
   }
 }
 
-/** El id del precio de un ítem en la grilla (TarjetaItems, Task 9: `item-{clave}-precio`). */
-export function idPriceItem(clave: string): string {
-  return `item-${clave}-precio`
+/** El id del precio de un ítem en la grilla (CardItems, Task 9: `item-{clave}-precio`). */
+export function idPriceItem(key: string): string {
+  return `item-${key}-precio`
 }
 
 /** Un faltante de la franja amarilla: `destino` es el id del campo que recibe el foco (null: no hay un campo). */
-export type Pending = { clave: string; texto: string; destination: string | null }
+export type Pending = { key: string; text: string; destination: string | null }
 
 /**
  * Lo que la franja amarilla lista como "Para enviar falta completar" (decisión 17), sin repetir el mismo campo,
@@ -279,27 +279,27 @@ export type Pending = { clave: string; texto: string; destination: string | null
  */
 export function pendingListVisible(
   pendingList: PendingList,
-  estado: Pick<StatusEditor, 'items' | 'equipoId'>,
-): { missing: Pending[]; malEscritas: string[] } {
+  state: Pick<StatusEditor, 'items' | 'equipoId'>,
+): { missing: Pending[]; unknownVariables: string[] } {
   const missing: Pending[] = []
-  const vistos = new Set<string>()
+  const seen = new Set<string>()
   for (const variable of pendingList.variables) {
     const destination = idFieldVariable(variable)
-    const texto = labelVariable(variable, estado.equipoId)
+    const text = labelVariable(variable, state.equipoId)
     // Sin equipo elegido, capacidad y descripción se resuelven con una sola selección.
-    if (vistos.has(texto)) continue
-    vistos.add(texto)
-    missing.push({ clave: `variable-${variable}`, texto, destination })
+    if (seen.has(text)) continue
+    seen.add(text)
+    missing.push({ key: `variable-${variable}`, text, destination })
   }
-  if (pendingList.withoutItems) missing.push({ clave: 'sin-items', texto: 'al menos un ítem', destination: null })
+  if (pendingList.withoutItems) missing.push({ key: 'sin-items', text: 'al menos un ítem', destination: null })
   if (pendingList.itemsWithoutPrice > 0) {
     // El mismo criterio que pendientesEditor: un precio vacío o que no se puede leer cuenta como sin precio.
-    const first = estado.items.find((item) => parsePrice(item.precio) === null)
+    const first = state.items.find((item) => parsePrice(item.precio) === null)
     missing.push({
-      clave: 'items-sin-precio',
-      texto: pendingList.itemsWithoutPrice === 1 ? '1 ítem sin precio' : `${pendingList.itemsWithoutPrice} ítems sin precio`,
+      key: 'items-sin-precio',
+      text: pendingList.itemsWithoutPrice === 1 ? '1 ítem sin precio' : `${pendingList.itemsWithoutPrice} ítems sin precio`,
       destination: first ? idPriceItem(first.clave) : null,
     })
   }
-  return { missing, malEscritas: pendingList.desconocidas.map((nombre) => `{{${nombre}}}`) }
+  return { missing, unknownVariables: pendingList.desconocidas.map((name) => `{{${name}}}`) }
 }

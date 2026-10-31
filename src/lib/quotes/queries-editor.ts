@@ -1,4 +1,4 @@
-// src/lib/cotizaciones/lecturas-editor.ts
+// src/lib/quotes/queries-editor.ts
 // Lo que leen las páginas del editor (/cotizaciones/nueva y /cotizaciones/[id]) además de la cotización.
 // Recibe el cliente de Supabase por parámetro y no importa 'server-only': lo prueban los tests de integración.
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -10,16 +10,16 @@ import type { ContactEditor } from './editor-screen'
 type Client = SupabaseClient<Database>
 
 /** Lo que la cotización ya tiene elegido: se ofrece en los combos aunque esté inactivo (decisión 20). */
-export type ElegidosEditor = { templateId: string | null; equipoId: string | null; firmanteId: string | null }
+export type EditorSelections = { templateId: string | null; equipoId: string | null; firmanteId: string | null }
 
-const NADA_CHOSEN: ElegidosEditor = { templateId: null, equipoId: null, firmanteId: null }
+const NO_SELECTION: EditorSelections = { templateId: null, equipoId: null, firmanteId: null }
 
 /** Plantillas, equipos y firmantes (activos más lo ya elegido) y los datos de la empresa que usa el PDF. */
 export async function readCatalogsEditor(
   supabase: Client,
-  elegidos: ElegidosEditor = NADA_CHOSEN,
+  selected: EditorSelections = NO_SELECTION,
 ): Promise<CatalogsEditor> {
-  const [plantillas, equipos, firmantes, company] = await Promise.all([
+  const [templates, equipment, signers, company] = await Promise.all([
     supabase
       .from('plantillas')
       .select('id, nombre, formato, asunto, intro, validez_dias, bloques, items, activa')
@@ -31,14 +31,14 @@ export async function readCatalogsEditor(
       .select('razon_social, direccion, ciudad, telefono, email, web, indice_base, proxima_actualizacion')
       .single(),
   ])
-  if (plantillas.error) throw plantillas.error
-  if (equipos.error) throw equipos.error
-  if (firmantes.error) throw firmantes.error
+  if (templates.error) throw templates.error
+  if (equipment.error) throw equipment.error
+  if (signers.error) throw signers.error
   if (company.error) throw company.error
 
   return {
-    plantillas: plantillas.data
-      .filter((template) => template.activa || template.id === elegidos.templateId)
+    plantillas: templates.data
+      .filter((template) => template.activa || template.id === selected.templateId)
       .map((template) => ({
         id: template.id,
         nombre: template.nombre,
@@ -49,8 +49,8 @@ export async function readCatalogsEditor(
         bloques: readBlocks(template.bloques),
         items: readItemsTemplate(template.items),
       })),
-    equipos: equipos.data.filter((equipo) => equipo.activo || equipo.id === elegidos.equipoId),
-    firmantes: firmantes.data.filter((firmante) => firmante.activo || firmante.id === elegidos.firmanteId),
+    equipos: equipment.data.filter((equipment) => equipment.activo || equipment.id === selected.equipoId),
+    firmantes: signers.data.filter((signer) => signer.activo || signer.id === selected.firmanteId),
     empresa: company.data,
   }
 }
@@ -58,15 +58,15 @@ export async function readCatalogsEditor(
 /** Firmante de la última cotización creada en la app que tenga un firmante activo (decisión 9). */
 export async function readLastSigner(
   supabase: Client,
-  firmantes: CatalogsEditor['firmantes'],
+  signers: CatalogsEditor['firmantes'],
 ): Promise<string | null> {
-  const activos = firmantes.filter((firmante) => firmante.activo).map((firmante) => firmante.id)
-  if (activos.length === 0) return null
+  const active = signers.filter((signer) => signer.activo).map((signer) => signer.id)
+  if (active.length === 0) return null
   const { data, error } = await supabase
     .from('cotizaciones')
     .select('firmante_id')
     .eq('origen', 'app')
-    .in('firmante_id', activos)
+    .in('firmante_id', active)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()

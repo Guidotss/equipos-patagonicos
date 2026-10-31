@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { prepareFile } from '@/app/(app)/documentos/actions'
 import { Button } from '@/components/ui/button'
 import { prepareFoto, uploadWithProgreso } from '@/lib/documents/upload'
-import type { FileSubido } from '@/lib/documents/service'
+import type { UploadedFile } from '@/lib/documents/service'
 
 type Upload = {
   id: string
@@ -15,7 +15,7 @@ type Upload = {
   progreso: number
   estado: 'subiendo' | 'error' | 'listo'
   error?: string
-  subido?: FileSubido
+  subido?: UploadedFile
 }
 
 export function UploadFiles({
@@ -25,7 +25,7 @@ export function UploadFiles({
 }: {
   clientId: string
   disabled?: boolean
-  onChange: (archivos: FileSubido[], pendingList: boolean) => void
+  onChange: (archivos: UploadedFile[], pendingList: boolean) => void
 }) {
   const [archivos, setFiles] = useState<Upload[]>([])
   const [error, setError] = useState('')

@@ -1,5 +1,5 @@
 import { nameFileQuote } from '@/lib/pdf/file-name'
-import { renderizarQuote } from '@/lib/pdf/render'
+import { renderQuote } from '@/lib/pdf/render'
 import { VARIABLES } from '@/lib/templates/variables'
 import { buildDocument, type DocumentQuote, type SourceDocument } from '../document'
 import { sourceFromEditor } from '../editor/document'
@@ -14,14 +14,14 @@ const BUCKET = 'documentos'
 /** Arma el documento y exige que no queden variables sin completar ni mal escritas (informa todas juntas). */
 export function documentComplete(source: SourceDocument): DocumentQuote {
   const document = buildDocument(source)
-  const problemas: string[] = []
+  const issues: string[] = []
   if (document.faltantes.length) {
-    problemas.push(`Faltan completar: ${document.faltantes.map((nombre) => VARIABLES[nombre]).join(', ')}`)
+    issues.push(`Faltan completar: ${document.faltantes.map((name) => VARIABLES[name]).join(', ')}`)
   }
   if (document.desconocidas.length) {
-    problemas.push(`Hay variables mal escritas: ${document.desconocidas.map((nombre) => `{{${nombre}}}`).join(', ')}`)
+    issues.push(`Hay variables mal escritas: ${document.desconocidas.map((name) => `{{${name}}}`).join(', ')}`)
   }
-  if (problemas.length) throw new ErrorQuote(problemas.join('. '))
+  if (issues.length) throw new ErrorQuote(issues.join('. '))
   return document
 }
 
@@ -40,25 +40,25 @@ export type EntryViewPreview = { estado: StatusEditor }
  * equipo, el firmante y la empresa se releen de la base (un id que no existe, o un contacto de otro cliente,
  * queda vacío).
  */
-export async function viewPreview(supabase: Client, { estado }: EntryViewPreview): Promise<Buffer> {
-  const clientId = estado.cliente?.id
-  const [cliente, contacto, equipo, firmante, company] = await Promise.all([
+export async function viewPreview(supabase: Client, { estado: state }: EntryViewPreview): Promise<Buffer> {
+  const clientId = state.cliente?.id
+  const [client, contact, equipment, signer, company] = await Promise.all([
     clientId ? readClient(supabase, clientId) : null,
-    clientId && estado.contactoId ? readContact(supabase, clientId, estado.contactoId) : null,
-    estado.equipoId ? readEquipment(supabase, estado.equipoId) : null,
-    estado.firmanteId ? readSigner(supabase, estado.firmanteId) : null,
+    clientId && state.contactoId ? readContact(supabase, clientId, state.contactoId) : null,
+    state.equipoId ? readEquipment(supabase, state.equipoId) : null,
+    state.firmanteId ? readSigner(supabase, state.firmanteId) : null,
     readCompany(supabase),
   ])
   const catalogs: CatalogsEditor = {
     plantillas: [],
-    equipos: equipo ? [equipo] : [],
-    firmantes: firmante ? [firmante] : [],
+    equipos: equipment ? [equipment] : [],
+    firmantes: signer ? [signer] : [],
     empresa: company,
   }
-  // fuenteDesdeEditor toma equipo y firmante de los catálogos por id, y usa hoy si la fecha está a medio escribir.
-  const releido: StatusEditor = { ...estado, cliente }
-  const document = buildDocument(sourceFromEditor(releido, catalogs, contacto))
-  return renderizarQuote(document, { highlightVariables: true })
+  // sourceFromEditor toma equipo y firmante de los catálogos por id, y usa hoy si la fecha está a medio escribir.
+  const reloadedState: StatusEditor = { ...state, cliente: client }
+  const document = buildDocument(sourceFromEditor(reloadedState, catalogs, contact))
+  return renderQuote(document, { highlightVariables: true })
 }
 
 async function downloadPdf(supabase: Client, path: string): Promise<Buffer> {
@@ -98,33 +98,33 @@ export async function pdfForShow(
   sendId?: string,
   options: { actual?: boolean } = {},
 ): Promise<{ pdf: Buffer; nameFile: string } | null> {
-  const cargada = await loadQuoteSource(supabase, id)
-  if (!cargada) return null
-  const { fila: row, source } = cargada
+  const loadedQuote = await loadQuoteSource(supabase, id)
+  if (!loadedQuote) return null
+  const { fila: row, source } = loadedQuote
   const nameFile = nameFileQuote(row.numero, source.cliente.razon_social)
 
   if (sendId) {
-    const { data: envio, error } = await supabase
+    const { data: delivery, error } = await supabase
       .from('cotizacion_envios')
       .select('pdf_path')
       .eq('id', sendId)
       .eq('cotizacion_id', id)
       .maybeSingle()
     if (error) throw error
-    if (!envio) return null
-    return { pdf: await downloadPdf(supabase, envio.pdf_path), nameFile }
+    if (!delivery) return null
+    return { pdf: await downloadPdf(supabase, delivery.pdf_path), nameFile }
   }
 
   // Un presupuesto directo no tiene PDF: generarlo mostraría una cotización que nunca existió.
   if (row.origen === 'directa') return null
 
-  const actual = options.actual === true && row.origen === 'app' && row.estado !== 'aprobada'
-  const saved = actual
+  const current = options.actual === true && row.origen === 'app' && row.estado !== 'aprobada'
+  const saved = current
     ? null
     : (row.pdf_aprobado_path ??
       row.archivo_original_path ??
       (WITH_SEND.includes(row.estado) ? await pathLastSend(supabase, id) : null))
   if (saved) return { pdf: await downloadPdf(supabase, saved), nameFile }
 
-  return { pdf: await renderizarQuote(buildDocument(source), { highlightVariables: actual }), nameFile }
+  return { pdf: await renderQuote(buildDocument(source), { highlightVariables: current }), nameFile }
 }

@@ -2,7 +2,7 @@ import { PostgrestError, StorageApiError } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { z } from 'zod'
 import { ErrorQuote } from '@/lib/quotes/service'
-import { MESSAGE_INESPERADO, messageForUser, type Result } from './result'
+import { UNEXPECTED_MESSAGE, messageForUser, type Result } from './result'
 
 describe('mensajeParaUsuario', () => {
   let consola: MockInstance<typeof console.error>
@@ -33,8 +33,8 @@ describe('mensajeParaUsuario', () => {
     expect(messageForUser({ code: '22003', message: 'overflow' })).toBe('Algún número es demasiado grande')
     // Lo que mensajeErrorBase no traduce dice "No se pudo guardar…": acá hay acciones que no guardan (rechazar,
     // duplicar, buscar clientes), así que va el genérico.
-    expect(messageForUser({ code: '23503', message: 'fk' })).toBe(MESSAGE_INESPERADO)
-    expect(messageForUser({ code: 'PGRST116', message: 'varias filas' })).toBe(MESSAGE_INESPERADO)
+    expect(messageForUser({ code: '23503', message: 'fk' })).toBe(UNEXPECTED_MESSAGE)
+    expect(messageForUser({ code: 'PGRST116', message: 'varias filas' })).toBe(UNEXPECTED_MESSAGE)
     expect(consola).toHaveBeenCalledTimes(5)
     expect(consola).toHaveBeenCalledWith(permiso)
   })
@@ -46,19 +46,19 @@ describe('mensajeParaUsuario', () => {
 
   it('un error de Storage da el mensaje genérico aunque traiga código', () => {
     const error = new StorageApiError('The resource already exists', 409, '409', 'storage', 'ResourceAlreadyExists')
-    expect(messageForUser(error)).toBe(MESSAGE_INESPERADO)
+    expect(messageForUser(error)).toBe(UNEXPECTED_MESSAGE)
     expect(consola).toHaveBeenCalledWith(error)
   })
 
   it('una falla de red de PostgREST (sin código) da el mensaje genérico', () => {
     const error = new PostgrestError({ message: 'FetchError: fetch failed', details: '', hint: '', code: '' })
-    expect(messageForUser(error)).toBe(MESSAGE_INESPERADO)
+    expect(messageForUser(error)).toBe(UNEXPECTED_MESSAGE)
   })
 
   it('cualquier otra cosa da el mensaje genérico y se registra', () => {
     const errorNode = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' })
     for (const error of [new Error('boom'), errorNode, z.string().safeParse(1).error, 'texto', undefined, null]) {
-      expect(messageForUser(error)).toBe(MESSAGE_INESPERADO)
+      expect(messageForUser(error)).toBe(UNEXPECTED_MESSAGE)
     }
     expect(consola).toHaveBeenCalledTimes(6)
   })

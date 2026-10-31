@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
 import { Templates } from '@/components/settings/templates'
 import { ButtonStatus } from '@/components/form/button-status'
-import { FORMATOS, type Format } from '@/lib/templates/content'
+import { FORMATS, type Format } from '@/lib/templates/content'
 import { createClient } from '@/lib/supabase/server'
 import { changeStatusTemplate } from '../actions'
 
@@ -19,7 +19,7 @@ export default async function TemplatesPage() {
 
   const plantillas = data.map((template) => ({
     ...template,
-    formato: FORMATOS[template.formato as Format] ?? template.formato,
+    formato: FORMATS[template.formato as Format] ?? template.formato,
     button: (
       <ButtonStatus
         activo={template.activa}

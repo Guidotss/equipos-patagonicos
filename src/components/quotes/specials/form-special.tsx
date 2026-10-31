@@ -3,9 +3,9 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { FileUp, FileCheck2, Paperclip } from 'lucide-react'
-import { crearSpecial, preparePdfExisting } from '@/app/(app)/cotizaciones/specials-actions'
+import { createSpecial, preparePdfExisting } from '@/app/(app)/cotizaciones/specials-actions'
 import { Content } from '@/components/app-shell/header'
-import { SelectorClient, type ClientBuscado } from '@/components/quotes/editor/selector-client'
+import { SelectorClient, type ClientSearchResult } from '@/components/quotes/editor/selector-client'
 import { Field } from '@/components/form/field'
 import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
 import { Card } from '@/components/form/card'
@@ -19,7 +19,7 @@ import { createClient } from '@/lib/supabase/client'
 
 export function FormSpecial({ origen, today }: { origen: 'importada' | 'directa'; today: string }) {
   const router = useRouter()
-  const [cliente, setClient] = useState<ClientBuscado | null>(null)
+  const [cliente, setClient] = useState<ClientSearchResult | null>(null)
   const [values, setValues] = useState({ numero: '', fecha: today, fecha_aprobacion: '', formato: 'jornada', estado: 'enviada', asunto: '', notas: '' })
   const [archivo, setFile] = useState<File | null>(null)
   const [subido, setSubido] = useState<string | null>(null)
@@ -70,7 +70,7 @@ export function FormSpecial({ origen, today }: { origen: 'importada' | 'directa'
         path = permiso.datos.path; setSubido(path)
       }
       setProgreso('Guardando…')
-      const r = await crearSpecial(origen, entrada, path)
+      const r = await createSpecial(origen, entrada, path)
       if (!r.ok) { setMessage(r.message); setErrors(r.errors ?? {}); return }
       router.push(imported ? `/cotizaciones/${r.datos.id}` : `/presupuestos/${r.datos.id}`)
     } catch { setMessage('No se pudo completar la operación. Podés reintentar sin perder los datos.') }

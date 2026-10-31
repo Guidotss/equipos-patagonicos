@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Count } from '@/components/ui/count'
 import { Pill } from '@/components/ui/pill'
-import { formatDateCorta } from '@/lib/format/dates'
-import { formatMoneda } from '@/lib/format/amounts'
+import { formatShortDate } from '@/lib/format/dates'
+import { formatCurrency } from '@/lib/format/amounts'
 import type { PendingHome, ResumenHome } from '@/lib/home/queries'
 import { antiguedadCobranza, QUEUES_HOME, vencimientoPending, type QueueHome } from '@/lib/home/model'
 
@@ -56,19 +56,19 @@ function DetailPending({ fila: row, cola, today }: { fila: PendingHome; cola: Qu
     const antiguedad = antiguedadCobranza(row.dias ?? 0)
     return (
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-semibold tabular-nums">{formatMoneda(row.importe ?? 0)}</p>
+        <p className="font-semibold tabular-nums">{formatCurrency(row.importe ?? 0)}</p>
         <Pill tone={antiguedad.tone}>{antiguedad.texto}</Pill>
-        {row.vence_el ? <span className="text-xs text-muted-foreground">Vencimiento {formatDateCorta(row.vence_el)}</span> : null}
+        {row.vence_el ? <span className="text-xs text-muted-foreground">Vencimiento {formatShortDate(row.vence_el)}</span> : null}
       </div>
     )
   }
   if (cola === 'actualizacion' && row.fecha_referencia) {
-    return <p className="text-xs text-muted-foreground">{(row.dias ?? 0) > 0 ? 'Actualización vencida' : 'Actualizar'} · {formatDateCorta(row.fecha_referencia)}</p>
+    return <p className="text-xs text-muted-foreground">{(row.dias ?? 0) > 0 ? 'Actualización vencida' : 'Actualizar'} · {formatShortDate(row.fecha_referencia)}</p>
   }
   if (cola === 'para_facturar' && row.fecha_referencia && row.vence_el) {
-    return <p className="text-xs text-muted-foreground">Período {formatDateCorta(row.fecha_referencia)} – {formatDateCorta(row.vence_el)}</p>
+    return <p className="text-xs text-muted-foreground">Período {formatShortDate(row.fecha_referencia)} – {formatShortDate(row.vence_el)}</p>
   }
-  return row.fecha ? <p className="text-xs text-muted-foreground">{formatDateCorta(row.fecha)}</p> : null
+  return row.fecha ? <p className="text-xs text-muted-foreground">{formatShortDate(row.fecha)}</p> : null
 }
 
 export function QueueHome({
@@ -94,7 +94,7 @@ export function QueueHome({
           {cola === 'cobranzas' ? (
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-1">
               <p className="text-xs text-muted-foreground">Pendiente de cobro</p>
-              <p className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="total-cobranzas">{formatMoneda(resumen?.importe ?? 0)}</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="total-cobranzas">{formatCurrency(resumen?.importe ?? 0)}</p>
             </div>
           ) : null}
           {rows.length ? (

@@ -71,7 +71,7 @@ export type OptionBudget = {
   asunto: string
   presupuesto_estado: string
 }
-export type ContextoDocument = {
+export type DocumentContext = {
   budgets: OptionBudget[]
   documentos: Document[]
   facturas: Invoice[]

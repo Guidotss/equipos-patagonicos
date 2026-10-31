@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
-import { TIPOS_COMPROBANTE } from '@/lib/documents/schemas'
+import { INVOICE_TYPES } from '@/lib/documents/schemas'
 
 import type { DocumentFormValues } from './document-form-model'
 import type { DocumentFormState } from './use-document-form'
@@ -13,21 +13,21 @@ export function DocumentDetailsSection({
   values,
   changeField,
   errors,
-  contexto,
-  duplicado,
-}: Pick<DocumentFormState, 'values' | 'changeField' | 'errors' | 'contexto'> & { duplicado: string | boolean }) {
-  function field(nombre: keyof DocumentFormValues, label: string, tipoInput = 'text', required = false) {
+  context,
+  duplicate,
+}: Pick<DocumentFormState, 'values' | 'changeField' | 'errors' | 'context'> & { duplicate: string | boolean }) {
+  function field(name: keyof DocumentFormValues, label: string, inputType = 'text', required = false) {
     return (
-      <Field id={nombre} label={label} error={errors[`datos.${nombre}`]}>
+      <Field id={name} label={label} error={errors[`datos.${name}`]}>
         <Input
-          id={nombre}
-          value={values[nombre]}
-          onChange={(evento) => changeField(nombre, evento.target.value)}
-          type={tipoInput}
+          id={name}
+          value={values[name]}
+          onChange={(event) => changeField(name, event.target.value)}
+          type={inputType}
           required={required}
-          maxLength={nombre === 'numero' || nombre === 'numero_oc_ref' ? 50 : undefined}
-          inputMode={nombre === 'monto' ? 'decimal' : undefined}
-          aria-invalid={Boolean(errors[`datos.${nombre}`])}
+          maxLength={name === 'numero' || name === 'numero_oc_ref' ? 50 : undefined}
+          inputMode={name === 'monto' ? 'decimal' : undefined}
+          aria-invalid={Boolean(errors[`datos.${name}`])}
         />
       </Field>
     )
@@ -37,7 +37,7 @@ export function DocumentDetailsSection({
       <div className="grid gap-4 sm:grid-cols-2">
         {field('numero', 'Número (opcional)')}
         {field('fecha', 'Fecha (opcional)', 'date')}
-        {duplicado ? (
+        {duplicate ? (
           <Alert className="sm:col-span-2">
             <AlertDescription>
               Ya hay un documento del mismo tipo con este número. Revisalo antes de guardar.
@@ -60,10 +60,10 @@ export function DocumentDetailsSection({
               <NativeSelect
                 id="tipo_comprobante"
                 value={values.tipo_comprobante}
-                onChange={(evento) => changeField('tipo_comprobante', evento.target.value)}
+                onChange={(event) => changeField('tipo_comprobante', event.target.value)}
                 className="w-full"
               >
-                {Object.entries(TIPOS_COMPROBANTE).map(([value, label]) => (
+                {Object.entries(INVOICE_TYPES).map(([value, label]) => (
                   <NativeSelectOption value={value} key={value}>
                     {label}
                   </NativeSelectOption>
@@ -81,12 +81,12 @@ export function DocumentDetailsSection({
                 id="equipo_id"
                 className="w-full"
                 value={values.equipo_id}
-                onChange={(evento) => changeField('equipo_id', evento.target.value)}
+                onChange={(event) => changeField('equipo_id', event.target.value)}
               >
                 <NativeSelectOption value="">Sin equipo</NativeSelectOption>
-                {contexto.equipos.map((equipo) => (
-                  <NativeSelectOption value={equipo.id} key={equipo.id}>
-                    {equipo.nombre}
+                {context.equipos.map((equipment) => (
+                  <NativeSelectOption value={equipment.id} key={equipment.id}>
+                    {equipment.nombre}
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
@@ -99,7 +99,7 @@ export function DocumentDetailsSection({
           <Textarea
             id="notas"
             value={values.notas}
-            onChange={(evento) => changeField('notas', evento.target.value)}
+            onChange={(event) => changeField('notas', event.target.value)}
             rows={3}
             maxLength={2000}
           />

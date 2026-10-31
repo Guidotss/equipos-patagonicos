@@ -6,16 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { formatAmountTable } from '@/lib/format/amounts'
-import type { Despachar } from '@/lib/quotes/editor-screen'
+import type { EditorDispatch } from '@/lib/quotes/editor-screen'
 import type { ItemEditor } from '@/lib/quotes/editor/types'
 import {
-  destinationFoco,
+  focusDestination,
   nameSectionNew,
   rowsGrid,
   totalGeneral,
-  vecinoOnQuitar,
+  neighborOnRemove,
   type ErrorsItem,
-  type PedidoFoco,
+  type FocusRequest,
 } from '@/lib/quotes/grid'
 import { type Format } from '@/lib/templates/content'
 import { cn } from '@/lib/utils'
@@ -47,33 +47,33 @@ export type { OnChangeDraftSection } from './items-grid.constants'
 
 export function CardItems({
   items,
-  formato,
-  mostrarTotal: showTotal,
+  format,
+  showTotal,
   errors,
-  despachar,
+  dispatch,
   onChangeDraftSection,
   editPrices = true,
 }: {
   items: ItemEditor[]
-  formato: Format
-  mostrarTotal: boolean
+  format: Format
+  showTotal: boolean
   /**
-   * Errores de guardado por clave de ítem. EditorCotizacion los pasa de 'items.N.campo' a claves al guardar, con las
+   * Errores de guardado por clave de ítem. EditorQuote los pasa de 'items.N.campo' a claves al guardar, con las
    * claves de los ítems que mandó: la marca queda en el ítem que la tuvo aunque mientras se guardaba o después se
    * agreguen, dupliquen, muevan o borren otros.
    */
   errors: Record<string, ErrorsItem>
-  despachar: Despachar
+  dispatch: EditorDispatch
   /** Un nombre de sección escrito y todavía no aplicado: el editor lo cuenta como cambio sin guardar. */
   onChangeDraftSection: OnChangeDraftSection
   /** Las plantillas guardan descripciones, cantidades y unidades; los precios se definen al cotizar. */
   editPrices?: boolean
 }) {
-  const idDnd = useId()
+  const dragId = useId()
   const inSheet = useSheetForm()
-  const foco = useRef<PedidoFoco | 'agregar' | null>(null)
-  const buttonAgregar = useRef<HTMLButtonElement>(null)
-  const sensores = useSensors(
+  const focusTarget = useRef<FocusRequest | 'agregar' | null>(null)
+  const addButton = useRef<HTMLButtonElement>(null)
+  const sensors = useSensors(
     // 4 px de movimiento antes de arrastrar: un clic en el agarre abre el menú.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates, keyboardCodes: DRAG_KEYBOARD_CODES }),
@@ -83,55 +83,55 @@ export function CardItems({
 
   // Después de agregar, duplicar o borrar, el foco va a la fila que corresponde (las claves las pone el reducer).
   useEffect(() => {
-    const pedido = foco.current
-    if (!pedido) return
-    foco.current = null
-    if (pedido === 'agregar') {
-      buttonAgregar.current?.focus()
+    const request = focusTarget.current
+    if (!request) return
+    focusTarget.current = null
+    if (request === 'agregar') {
+      addButton.current?.focus()
       return
     }
-    const destination = destinationFoco(pedido, items)
+    const destination = focusDestination(request, items)
     if (!destination) return
     const element = document.getElementById(
-      destination.campo === 'seccion' ? `seccion-${destination.clave}` : `item-${destination.clave}-descripcion`,
+      destination.field === 'seccion' ? `seccion-${destination.key}` : `item-${destination.key}-descripcion`,
     )
     element?.focus()
-    if (destination.campo === 'seccion' && element instanceof HTMLInputElement) element.select()
+    if (destination.field === 'seccion' && element instanceof HTMLInputElement) element.select()
   }, [items])
 
   // Si el ítem cae en el medio de otro grupo, el reducer le pone esa sección (Task 3).
-  function move(desde: number, hasta: number) {
-    if (desde === hasta || hasta < 0 || hasta >= items.length) return
-    despachar({ tipo: 'moverItem', desde, hasta })
+  function move(from: number, to: number) {
+    if (from === to || to < 0 || to >= items.length) return
+    dispatch({ tipo: 'moverItem', desde: from, hasta: to })
   }
 
-  function agregarDespuesOf(item: ItemEditor) {
-    foco.current = { tipo: 'siguiente', clave: item.clave }
-    despachar({ tipo: 'agregarItem', despuesOf: item.clave, seccion: item.seccion })
+  function addAfter(item: ItemEditor) {
+    focusTarget.current = { type: 'siguiente', key: item.clave }
+    dispatch({ tipo: 'agregarItem', despuesOf: item.clave, seccion: item.seccion })
   }
 
-  function agregarOnFinal() {
-    foco.current = { tipo: 'ultimo' }
-    despachar({ tipo: 'agregarItem', seccion: items.at(-1)?.seccion ?? '' })
+  function addAtEnd() {
+    focusTarget.current = { type: 'ultimo' }
+    dispatch({ tipo: 'agregarItem', seccion: items.at(-1)?.seccion ?? '' })
   }
 
-  function agregarSection() {
-    foco.current = { tipo: 'seccionUltima' }
-    despachar({ tipo: 'agregarSeccion', nombre: nameSectionNew(items) })
+  function addSection() {
+    focusTarget.current = { type: 'seccionUltima' }
+    dispatch({ tipo: 'agregarSeccion', nombre: nameSectionNew(items) })
   }
 
   function duplicate(item: ItemEditor) {
-    foco.current = { tipo: 'siguiente', clave: item.clave }
-    despachar({ tipo: 'duplicarItem', clave: item.clave })
+    focusTarget.current = { type: 'siguiente', key: item.clave }
+    dispatch({ tipo: 'duplicarItem', clave: item.clave })
   }
 
-  function quitar(item: ItemEditor) {
-    const vecino = vecinoOnQuitar(items, item.clave)
-    foco.current = vecino ? { tipo: 'item', clave: vecino } : 'agregar'
-    despachar({ tipo: 'quitarItem', clave: item.clave })
+  function remove(item: ItemEditor) {
+    const neighbor = neighborOnRemove(items, item.clave)
+    focusTarget.current = neighbor ? { type: 'item', key: neighbor } : 'agregar'
+    dispatch({ tipo: 'quitarItem', clave: item.clave })
   }
 
-  function onSoltar({ active, over }: DragEndEvent) {
+  function onDrop({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
     move(
       items.findIndex((item) => item.clave === active.id),
@@ -140,7 +140,7 @@ export function CardItems({
   }
 
   const position = (id: UniqueIdentifier) => items.findIndex((item) => item.clave === id) + 1
-  const anuncios: Announcements = {
+  const announcements: Announcements = {
     onDragStart: ({ active }) => `Tomaste el ítem ${position(active.id)}.`,
     onDragOver: ({ active, over }) =>
       over ? `El ítem ${position(active.id)} pasa a la posición ${position(over.id)}.` : undefined,
@@ -181,20 +181,20 @@ export function CardItems({
               {editPrices ? <span className="text-right">Total</span> : null}
             </div>
             <DndContext
-              id={idDnd}
-              sensors={sensores}
+              id={dragId}
+              sensors={sensors}
               collisionDetection={closestCenter}
-              onDragEnd={onSoltar}
-              accessibility={{ announcements: anuncios, screenReaderInstructions: DRAG_SCREEN_READER_INSTRUCTIONS }}
+              onDragEnd={onDrop}
+              accessibility={{ announcements, screenReaderInstructions: DRAG_SCREEN_READER_INSTRUCTIONS }}
             >
               <SortableContext items={items.map((item) => item.clave)} strategy={verticalListSortingStrategy}>
                 {rows.map((row) =>
-                  row.tipo === 'seccion' ? (
+                  row.type === 'seccion' ? (
                     <HeaderSection
-                      key={`seccion-${row.clave}`}
-                      fila={row}
-                      error={errors[row.clave]?.seccion}
-                      despachar={despachar}
+                      key={`seccion-${row.key}`}
+                      row={row}
+                      error={errors[row.key]?.seccion}
+                      dispatch={dispatch}
                       onChangeDraft={onChangeDraftSection}
                     />
                   ) : (
@@ -204,11 +204,11 @@ export function CardItems({
                       index={row.index}
                       quantityItems={items.length}
                       errors={errors[items[row.index].clave] ?? {}}
-                      despachar={despachar}
-                      onEnter={() => agregarDespuesOf(items[row.index])}
-                      onMove={(paso) => move(row.index, row.index + paso)}
+                      dispatch={dispatch}
+                      onEnter={() => addAfter(items[row.index])}
+                      onMove={(step) => move(row.index, row.index + step)}
                       onDuplicate={() => duplicate(items[row.index])}
-                      onQuitar={() => quitar(items[row.index])}
+                      onRemove={() => remove(items[row.index])}
                       editPrices={editPrices}
                     />
                   ),
@@ -234,24 +234,24 @@ export function CardItems({
         <div className="flex flex-col gap-2 border-t px-3 py-3 @min-[44rem]:flex-row @min-[44rem]:items-center @min-[44rem]:justify-between @min-[44rem]:border-t-0">
           <div className="flex flex-wrap gap-x-2 gap-y-1">
             <Button
-              ref={buttonAgregar}
+              ref={addButton}
               type="button"
               variant="ghost"
               size="sm"
               className="h-11 text-primary @min-[44rem]:h-9"
-              onClick={agregarOnFinal}
+              onClick={addAtEnd}
             >
               <Plus aria-hidden />
               Agregar ítem
             </Button>
             {/* Las secciones solo se imprimen en el formato por jornada. */}
-            {formato === 'jornada' ? (
+            {format === 'jornada' ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="h-11 text-primary @min-[44rem]:h-9"
-                onClick={agregarSection}
+                onClick={addSection}
               >
                 <Plus aria-hidden />
                 Agregar sección
@@ -262,7 +262,7 @@ export function CardItems({
             <Switch
               id="cotizacion-mostrar-total"
               checked={showTotal}
-              onCheckedChange={(value) => despachar({ tipo: 'mostrarTotal', value })}
+              onCheckedChange={(value) => dispatch({ tipo: 'mostrarTotal', value })}
             />
             <Label htmlFor="cotizacion-mostrar-total" className="text-sm font-normal">
               Total en el PDF

@@ -57,9 +57,9 @@ export async function loadQuoteSource(supabase: Client, id: string) {
 }
 
 export async function requireQuoteSource(supabase: Client, id: string) {
-  const cargada = await loadQuoteSource(supabase, id)
-  if (!cargada) throw new ErrorQuote('La cotización no existe')
-  return cargada
+  const loadedQuote = await loadQuoteSource(supabase, id)
+  if (!loadedQuote) throw new ErrorQuote('La cotización no existe')
+  return loadedQuote
 }
 
 export type Row = NonNullable<Awaited<ReturnType<typeof loadQuoteSource>>>['fila']

@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
-import type { ContextoDocument, OptionBudget } from './screens'
+import type { DocumentContext, OptionBudget } from './screens'
 
 export async function contextoDocument(
   supabase: SupabaseClient<Database>,
   clientId: string,
-): Promise<ContextoDocument> {
+): Promise<DocumentContext> {
   const [budgets, documentos, facturas, equipos] = await Promise.all([
     supabase
       .from('v_presupuestos')

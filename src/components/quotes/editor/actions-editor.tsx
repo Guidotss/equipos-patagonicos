@@ -10,17 +10,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  dateTimeOfMark,
+  formatTimestamp,
   isConfirmable,
   isEditable,
   LABEL_ACTION,
-  LABEL_IN_CURSO,
+  ACTION_PROGRESS_LABEL,
   layoutActions,
   reasonBlock,
   type ActionStatus,
   type ButtonAction,
 } from '@/lib/quotes/actions-status'
-import type { ContextoStatus } from '@/lib/quotes/context-status'
+import type { StatusContext } from '@/lib/quotes/context-status'
 import type { PendingList, StatusEditor } from '@/lib/quotes/editor/types'
 import { cn } from '@/lib/utils'
 import { Ellipsis, FileText } from 'lucide-react'
@@ -28,56 +28,56 @@ import { useRef } from 'react'
 
 import type { ActionsStatus } from './quote-actions.types'
 export { downloadFile } from './download-file'
-export type { ActionsStatus, Confirmation, EsperaServidor, QuoteGuardada } from './quote-actions.types'
+export type { ActionsStatus, Confirmation, ServerUpdateMode, SavedQuote } from './quote-actions.types'
 export { useQuoteActions as useActionsStatus } from './use-quote-actions'
 
 /** Primario de cabecera; con la barra inferior a la vista (< 90rem) se ve como outline: el primario ahí es Guardar. */
-const PRIMARIO = 'shadow-md shadow-primary/20'
-const PRIMARIO_WITH_BAR = cn(
-  PRIMARIO,
+const PRIMARY = 'shadow-md shadow-primary/20'
+const PRIMARY_WITH_BAR = cn(
+  PRIMARY,
   'max-[90rem]:border-border max-[90rem]:bg-background max-[90rem]:text-foreground max-[90rem]:shadow-none max-[90rem]:hover:bg-muted',
 )
 
 function ButtonOfAction({
   button,
-  estado,
+  state,
   pendingList,
   actions: actionsStatus,
   className,
 }: {
   button: ButtonAction
-  estado: StatusEditor
+  state: StatusEditor
   pendingList: PendingList
   actions: ActionsStatus
   /** Visibilidad según el ancho (va en el elemento de afuera). */
   className?: string
 }) {
-  const { accion, primaria } = button
-  const variante = primaria ? 'default' : 'outline'
-  const style = primaria ? (isEditable(estado) ? PRIMARIO_WITH_BAR : PRIMARIO) : undefined
+  const { action, primary } = button
+  const variant = primary ? 'default' : 'outline'
+  const style = primary ? (isEditable(state) ? PRIMARY_WITH_BAR : PRIMARY) : undefined
 
-  if (accion === 'descargar') {
-    if (!estado.id) return null
+  if (action === 'descargar') {
+    if (!state.id) return null
     return (
-      <Button asChild variant={variante} size="lg" className={cn(style, className)}>
-        <a href={`/cotizaciones/${estado.id}/pdf?descargar=1`} download>
+      <Button asChild variant={variant} size="lg" className={cn(style, className)}>
+        <a href={`/cotizaciones/${state.id}/pdf?descargar=1`} download>
           {LABEL_ACTION.descargar}
         </a>
       </Button>
     )
   }
 
-  const block = reasonBlock(accion, pendingList)
+  const block = reasonBlock(action, pendingList)
   const element = (
     <Button
       type="button"
-      variant={variante}
+      variant={variant}
       size="lg"
       className={cn(style, block ? undefined : className)}
       disabled={actionsStatus.busy || block !== null}
-      onClick={() => actionsStatus.iniciar(accion)}
+      onClick={() => actionsStatus.start(action)}
     >
-      {actionsStatus.inCurso === accion ? LABEL_IN_CURSO[accion] : LABEL_ACTION[accion]}
+      {actionsStatus.currentAction === action ? ACTION_PROGRESS_LABEL[action] : LABEL_ACTION[action]}
     </Button>
   )
   // Un botón deshabilitado no recibe el puntero: el motivo va en el title de un envoltorio.
@@ -95,43 +95,43 @@ function ButtonOfAction({
  * estado (relev-visual §3.2), con el menú ⋯ y el historial de envíos. En el celular los secundarios pasan al menú.
  */
 export function ActionsHeader({
-  estado,
-  contexto,
+  state,
+  context,
   pendingList,
   actions: actionsStatus,
 }: {
-  estado: StatusEditor
-  contexto: ContextoStatus
+  state: StatusEditor
+  context: StatusContext
   pendingList: PendingList
   actions: ActionsStatus
 }) {
   const buttonMenu = useRef<HTMLButtonElement>(null)
   /** La confirmación que eligió un ítem del menú: se abre cuando el menú terminó de cerrarse (onCloseAutoFocus). */
   const pending = useRef<ActionStatus | null>(null)
-  const { botones, menu } = layoutActions(estado, contexto)
-  const secundarias = botones.filter((button) => !button.primaria).map((button) => button.accion)
-  const id = estado.id
-  const inMenu: { accion: ActionStatus; soloCelular: boolean }[] = [
-    ...secundarias.map((accion) => ({ accion, soloCelular: true })),
-    ...menu.map((accion) => ({ accion, soloCelular: false })),
+  const { buttons, menu } = layoutActions(state, context)
+  const secondary = buttons.filter((button) => !button.primary).map((button) => button.action)
+  const id = state.id
+  const inMenu: { action: ActionStatus; mobileOnly: boolean }[] = [
+    ...secondary.map((action) => ({ action, mobileOnly: true })),
+    ...menu.map((action) => ({ action, mobileOnly: false })),
   ]
   // Sin acciones propias ni envíos, el menú solo tiene lo que en escritorio ya está a la vista.
-  const menuSoloCelular = menu.length === 0 && contexto.envios.length === 0
+  const mobileOnlyMenu = menu.length === 0 && context.envios.length === 0
 
   return (
     <>
-      {botones.map((button) => (
+      {buttons.map((button) => (
         <ButtonOfAction
-          key={button.accion}
+          key={button.action}
           button={button}
-          estado={estado}
+          state={state}
           pendingList={pendingList}
           actions={actionsStatus}
-          className={button.primaria ? undefined : 'hidden md:inline-flex'}
+          className={button.primary ? undefined : 'hidden md:inline-flex'}
         />
       ))}
       {/* También en una nueva (sin id): en el celular, Aprobar va en el menú. */}
-      {inMenu.length + contexto.envios.length > 0 ? (
+      {inMenu.length + context.envios.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -141,7 +141,7 @@ export function ActionsHeader({
               size="icon-lg"
               aria-label="Más acciones"
               disabled={actionsStatus.busy}
-              className={menuSoloCelular ? 'md:hidden' : undefined}
+              className={mobileOnlyMenu ? 'md:hidden' : undefined}
             >
               <Ellipsis aria-hidden />
             </Button>
@@ -149,53 +149,53 @@ export function ActionsHeader({
           <DropdownMenuContent
             align="end"
             className="w-auto min-w-56"
-            onCloseAutoFocus={(evento) => {
-              const accion = pending.current
-              if (!accion) return
+            onCloseAutoFocus={(event) => {
+              const action = pending.current
+              if (!action) return
               pending.current = null
               // Recién acá el FocusScope del menú (modal) ya no atrapa el foco: abrir la confirmación en onSelect
               // dejaría el foco en el ítem y después en body. El foco pasa por el ⋯ (adonde vuelve al cancelar) y, con
               // el render de la confirmación, queda en su "Cancelar" (decisión 15).
-              evento.preventDefault()
+              event.preventDefault()
               buttonMenu.current?.focus()
-              actionsStatus.iniciar(accion)
+              actionsStatus.start(action)
             }}
           >
-            {inMenu.map(({ accion, soloCelular }) =>
-              accion === 'descargar' ? (
-                <DropdownMenuItem key={accion} asChild className={soloCelular ? 'md:hidden' : undefined}>
+            {inMenu.map(({ action, mobileOnly }) =>
+              action === 'descargar' ? (
+                <DropdownMenuItem key={action} asChild className={mobileOnly ? 'md:hidden' : undefined}>
                   <a href={`/cotizaciones/${id}/pdf?descargar=1`} download>
                     {LABEL_ACTION.descargar}
                   </a>
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem
-                  key={accion}
-                  className={soloCelular ? 'md:hidden' : undefined}
-                  variant={accion === 'borrar' ? 'destructive' : 'default'}
-                  disabled={reasonBlock(accion, pendingList) !== null}
+                  key={action}
+                  className={mobileOnly ? 'md:hidden' : undefined}
+                  variant={action === 'borrar' ? 'destructive' : 'default'}
+                  disabled={reasonBlock(action, pendingList) !== null}
                   onSelect={() => {
                     // Una confirmación se abre cuando el menú se cerró del todo (ver onCloseAutoFocus). Duplicar
                     // también espera: con cambios sin guardar pregunta qué copiar.
-                    if (isConfirmable(accion) || accion === 'duplicar') pending.current = accion
-                    else actionsStatus.iniciar(accion)
+                    if (isConfirmable(action) || action === 'duplicar') pending.current = action
+                    else actionsStatus.start(action)
                   }}
                 >
-                  {LABEL_ACTION[accion]}
+                  {LABEL_ACTION[action]}
                 </DropdownMenuItem>
               ),
             )}
-            {contexto.envios.length > 0 ? (
+            {context.envios.length > 0 ? (
               <>
                 {inMenu.length > 0 ? <DropdownMenuSeparator /> : null}
                 <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                   Envíos (lo que recibió el cliente)
                 </DropdownMenuLabel>
-                {contexto.envios.map((envio, index) => (
-                  <DropdownMenuItem key={envio.id} asChild>
-                    <a href={`/cotizaciones/${id}/pdf?envio=${envio.id}`} target="_blank" rel="noopener">
+                {context.envios.map((delivery, index) => (
+                  <DropdownMenuItem key={delivery.id} asChild>
+                    <a href={`/cotizaciones/${id}/pdf?envio=${delivery.id}`} target="_blank" rel="noopener">
                       <FileText aria-hidden />
-                      {dateTimeOfMark(envio.enviada_at)}
+                      {formatTimestamp(delivery.enviada_at)}
                       {index === 0 ? ' · último' : ''}
                     </a>
                   </DropdownMenuItem>

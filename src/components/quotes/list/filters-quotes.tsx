@@ -19,8 +19,8 @@ import { useQuoteFilters } from './use-quote-filters'
  * Ningún control se vuelve a montar al cambiar la URL (un key le sacaba el foco al que se estaba usando): los selects
  * son controlados y el buscador se actualiza a mano cuando no se tipeó nada distinto de lo que mostraba.
  */
-export function FiltersQuotes({ filters, clientes }: { filters: FiltersList; clientes: ClientFilter[] }) {
-  const { pending, vigentes, search, apply, chips } = useQuoteFilters(filters, clientes)
+export function FiltersQuotes({ filters, clients }: { filters: FiltersList; clients: ClientFilter[] }) {
+  const { pending, activeFilters, search, apply, chips } = useQuoteFilters(filters, clients)
 
   return (
     <div data-pendiente={pending ? '' : undefined} aria-busy={pending} className="space-y-3">
@@ -28,9 +28,9 @@ export function FiltersQuotes({ filters, clientes }: { filters: FiltersList; cli
         <form
           role="search"
           className="relative @min-[44rem]/listado:col-span-3 @min-[48rem]/listado:col-span-1"
-          onSubmit={(evento) => {
-            evento.preventDefault()
-            const q = new FormData(evento.currentTarget).get('q')
+          onSubmit={(event) => {
+            event.preventDefault()
+            const q = new FormData(event.currentTarget).get('q')
             apply({ q: typeof q === 'string' ? q.trim() : '' })
           }}
         >
@@ -52,29 +52,29 @@ export function FiltersQuotes({ filters, clientes }: { filters: FiltersList; cli
           </button>
         </form>
 
-        <FiltersMobile filters={vigentes} clientes={clientes} activos={chips.length} onApply={apply} />
+        <FiltersMobile filters={activeFilters} clients={clients} active={chips.length} onApply={apply} />
 
         {/* pr-7 y no el pr-8 del select: con 160 px, "Todos los estados" se cortaba antes de la flecha. */}
         <NativeSelect
           aria-label="Estado"
-          value={vigentes.estado}
-          onChange={(evento) => apply({ estado: readFilterStatus(evento.target.value) })}
+          value={activeFilters.estado}
+          onChange={(event) => apply({ estado: readFilterStatus(event.target.value) })}
           className="hidden min-w-0 w-full @min-[44rem]/listado:block [&>select]:h-10 [&>select]:truncate [&>select]:bg-background [&>select]:pr-7"
         >
           <OptionsStatus />
         </NativeSelect>
         <NativeSelect
           aria-label="Cliente"
-          value={vigentes.cliente}
-          onChange={(evento) => apply({ cliente: evento.target.value })}
+          value={activeFilters.cliente}
+          onChange={(event) => apply({ cliente: event.target.value })}
           className="hidden min-w-0 w-full @min-[44rem]/listado:block [&>select]:h-10 [&>select]:truncate [&>select]:bg-background [&>select]:pr-7"
         >
-          <OptionsClient clientes={clientes} />
+          <OptionsClient clients={clients} />
         </NativeSelect>
         <SelectorDates
-          desde={vigentes.desde}
-          hasta={vigentes.hasta}
-          onApply={apply}
+          from={activeFilters.desde}
+          to={activeFilters.hasta}
+          onApply={({ from, to }) => apply({ desde: from, hasta: to })}
           className="hidden @min-[44rem]/listado:flex"
         />
       </div>
@@ -83,14 +83,14 @@ export function FiltersQuotes({ filters, clientes }: { filters: FiltersList; cli
         <div className="flex flex-wrap items-center gap-2">
           {chips.map((chip) => (
             <button
-              key={chip.clave}
+              key={chip.key}
               type="button"
-              aria-label={`Quitar filtro ${chip.texto}`}
-              title={chip.texto}
-              onClick={() => apply(chip.quitar)}
+              aria-label={`Quitar filtro ${chip.text}`}
+              title={chip.text}
+              onClick={() => apply(chip.remove)}
               className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-lg bg-accent px-2.5 text-[13px] text-primary transition-colors outline-none hover:bg-primary/15 focus-visible:ring-3 focus-visible:ring-ring/50 @min-[44rem]/listado:min-h-8 @min-[44rem]/listado:max-w-72"
             >
-              <span className="truncate">{chip.texto}</span>
+              <span className="truncate">{chip.text}</span>
               <X className="size-3.5 shrink-0" aria-hidden />
             </button>
           ))}

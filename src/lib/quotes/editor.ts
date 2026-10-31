@@ -1,4 +1,4 @@
-// Compatibility entry point for existing quote editor consumers.
+// Punto de entrada compatible con los consumidores existentes del editor de cotizaciones.
 export { MESSAGE_CONFLICT, SELECT_EDITOR } from './editor/constants'
 export { canSend, pendingListEditor, sourceFromEditor } from './editor/document'
 export { newKey } from './editor/keys'

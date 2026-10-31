@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation'
 import { useLayoutEffect, useReducer, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
-import { eliminarTemplate, saveTemplateEditor } from '@/app/(app)/cotizaciones/specials-actions'
+import { deleteTemplate, saveTemplateEditor } from '@/app/(app)/cotizaciones/specials-actions'
 import { Content } from '@/components/app-shell/header'
 import { CardSubject } from '@/components/quotes/editor/card-subject'
 import { CardItems } from '@/components/quotes/editor/card-items'
 import { CardTexts } from '@/components/quotes/editor/card-texts'
 import { Field } from '@/components/form/field'
-import { ConfirmationInLugar } from '@/components/form/confirmation-inline'
+import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
 import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
@@ -19,77 +19,77 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { reduceEditor } from '@/lib/quotes/editor/reducer'
 import type { StatusEditor, TemplateEditor } from '@/lib/quotes/editor/types'
 
-const LISTA = '/configuracion/plantillas'
+const LIST_CLASS = '/configuracion/plantillas'
 
 export function EditorTemplate({
   id,
-  nombre: initialName,
+  name: initialName,
   initial,
-  plantilla: template,
+  template,
 }: {
   id: string
-  nombre: string
+  name: string
   initial: StatusEditor
-  plantilla: TemplateEditor
+  template: TemplateEditor
 }) {
   const router = useRouter()
-  const [estado, despachar] = useReducer(reduceEditor, initial)
-  const [nombre, setName] = useState(initialName)
+  const [state, dispatch] = useReducer(reduceEditor, initial)
+  const [name, setName] = useState(initialName)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const [confirmando, setConfirmando] = useState(false)
-  const borradores = useRef(new Map<string, () => void>())
-  const actual = useRef(estado)
-  const inCurso = useRef(false)
+  const [confirming, setConfirming] = useState(false)
+  const drafts = useRef(new Map<string, () => void>())
+  const current = useRef(state)
+  const inProgress = useRef(false)
 
   useLayoutEffect(() => {
-    actual.current = estado
-  }, [estado])
+    current.current = state
+  }, [state])
 
-  function registerDraft(clave: string, apply: (() => void) | null) {
-    if (apply) borradores.current.set(clave, apply)
-    else borradores.current.delete(clave)
+  function registerDraft(key: string, apply: (() => void) | null) {
+    if (apply) drafts.current.set(key, apply)
+    else drafts.current.delete(key)
   }
 
-  async function save(evento: React.FormEvent<HTMLFormElement>) {
-    evento.preventDefault()
-    if (inCurso.current) return
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (inProgress.current) return
     flushSync(() => {
-      for (const apply of borradores.current.values()) apply()
+      for (const apply of drafts.current.values()) apply()
     })
-    inCurso.current = true
+    inProgress.current = true
     setBusy(true)
     setMessage('')
     try {
-      const result = await saveTemplateEditor(actual.current, nombre, id)
+      const result = await saveTemplateEditor(current.current, name, id)
       if (!result.ok) setMessage(result.message)
       else {
         toast.success('Plantilla guardada')
-        router.push(LISTA)
+        router.push(LIST_CLASS)
       }
     } catch {
       setMessage('No se pudo guardar. Probá nuevamente.')
     } finally {
-      inCurso.current = false
+      inProgress.current = false
       setBusy(false)
     }
   }
 
-  async function eliminar() {
-    if (inCurso.current) return
-    inCurso.current = true
+  async function removeTemplate() {
+    if (inProgress.current) return
+    inProgress.current = true
     setBusy(true)
     setMessage('')
     try {
-      const result = await eliminarTemplate(id)
+      const result = await deleteTemplate(id)
       if (result.ok) {
         toast.success(result.message)
-        router.push(LISTA)
+        router.push(LIST_CLASS)
       } else setMessage(result.message)
     } catch {
       setMessage('No se pudo eliminar. Probá nuevamente.')
     } finally {
-      inCurso.current = false
+      inProgress.current = false
       setBusy(false)
     }
   }
@@ -100,20 +100,20 @@ export function EditorTemplate({
         titulo={`Editar plantilla: ${initialName}`}
         descripcion="Los cambios se aplican a futuras cotizaciones. Las existentes conservan su contenido."
         actions={
-          <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirmando(true)}>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirming(true)}>
             Eliminar plantilla
           </Button>
         }
       />
-      {confirmando ? (
-        <ConfirmationInLugar
+      {confirming ? (
+        <InlineConfirmation
           pregunta="¿Eliminar esta plantilla?"
           detail="Si ya fue usada, se archiva para conservar el histórico."
           textConfirm="Eliminar"
           tone="peligro"
           pendiente={busy}
-          onCancelar={() => setConfirmando(false)}
-          onConfirm={eliminar}
+          onCancelar={() => setConfirming(false)}
+          onConfirm={removeTemplate}
         />
       ) : null}
       <form onSubmit={save}>
@@ -128,8 +128,8 @@ export function EditorTemplate({
                 <Field id="plantilla-nombre" label="Nombre" className="@md:col-span-2">
                   <Input
                     id="plantilla-nombre"
-                    value={nombre}
-                    onChange={(evento) => setName(evento.target.value)}
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
                     maxLength={100}
                     required
                   />
@@ -138,10 +138,10 @@ export function EditorTemplate({
                   <NativeSelect
                     id="plantilla-formato"
                     className="w-full"
-                    value={estado.formato}
-                    onChange={(evento) => despachar({
+                    value={state.formato}
+                    onChange={(event) => dispatch({
                       tipo: 'reemplazar',
-                      estado: { ...estado, formato: evento.target.value as 'jornada' | 'mensual' },
+                      estado: { ...state, formato: event.target.value as 'jornada' | 'mensual' },
                     })}
                   >
                     <NativeSelectOption value="jornada">Por jornada</NativeSelectOption>
@@ -154,25 +154,25 @@ export function EditorTemplate({
                     type="number"
                     min={1}
                     max={365}
-                    value={estado.validezDias}
-                    onChange={(evento) => despachar({ tipo: 'campo', campo: 'validezDias', value: evento.target.value })}
+                    value={state.validezDias}
+                    onChange={(event) => dispatch({ tipo: 'campo', campo: 'validezDias', value: event.target.value })}
                   />
                 </Field>
               </div>
             </Card>
-            <CardSubject estado={estado} errors={{}} despachar={despachar} />
+            <CardSubject state={state} errors={{}} dispatch={dispatch} />
             <CardItems
-              items={estado.items}
-              formato={estado.formato}
-              mostrarTotal={estado.mostrarTotal}
+              items={state.items}
+              format={state.formato}
+              showTotal={state.mostrarTotal}
               editPrices={false}
               errors={{}}
-              despachar={despachar}
+              dispatch={dispatch}
               onChangeDraftSection={registerDraft}
             />
-            <CardTexts bloques={estado.bloques} plantilla={template} errors={{}} despachar={despachar} />
+            <CardTexts blocks={state.bloques} template={template} errors={{}} dispatch={dispatch} />
           </SheetForm>
-          <ActionsForm back={LISTA} textButton="Guardar plantilla" pendiente={busy} />
+          <ActionsForm back={LIST_CLASS} textButton="Guardar plantilla" pendiente={busy} />
         </fieldset>
       </form>
     </Content>

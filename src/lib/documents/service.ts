@@ -1,4 +1,4 @@
-// src/lib/documentos/servicio.ts
+// src/lib/documents/service.ts
 // Documentos del lado del servidor. Recibe el cliente de Supabase por parámetro (sesión del usuario).
 // No importar 'server-only' acá: Vitest lo carga.
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -32,7 +32,7 @@ export async function prepareUpload(
   return { path: data.path, token: data.token, signedUrl: data.signedUrl }
 }
 
-export type FileSubido = { path: string; nombre_original: string }
+export type UploadedFile = { path: string; nombre_original: string }
 
 export async function registerDocument(
   supabase: Client,
@@ -40,7 +40,7 @@ export async function registerDocument(
     clientId: string
     budgets: string[]
     datos: DataDocument
-    archivos: FileSubido[]
+    archivos: UploadedFile[]
     remitos?: string[]
     aplicaciones?: { factura_id: string; monto_aplicado: number }[]
   },
