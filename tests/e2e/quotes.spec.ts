@@ -638,6 +638,12 @@ test.describe('grilla de ítems de una cotización guardada', () => {
     const price = page.getByLabel('Precio del ítem 2', { exact: true })
     await expect(price).toHaveValue('195.000,00')
 
+    // El menú confirma que el editor ya responde antes de probar el recorrido con Tab.
+    await page.getByRole('button', { name: 'Opciones del ítem 2', exact: true }).click()
+    await expect(page.getByRole('menuitem', { name: 'Duplicar fila', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).toHaveCount(0)
+
     await page.getByLabel('Cantidad del ítem 2', { exact: true }).focus()
     await page.keyboard.press('Tab')
     await expect(price).toBeFocused()

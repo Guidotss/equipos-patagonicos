@@ -160,7 +160,11 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
       await path.abort('internetdisconnected')
     } else await path.continue()
   })
-  await page.getByLabel('Seleccionar archivos del documento', { exact: true }).setInputFiles([
+  // El selector se abre desde React: evita seleccionar archivos antes de que se conecten los eventos del formulario.
+  const fileChooserPromise = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Seleccionar archivos', exact: true }).click()
+  const fileChooser = await fileChooserPromise
+  await fileChooser.setFiles([
     { name: 'Remito foto.png', mimeType: 'image/png', buffer: Buffer.from(foto, 'base64') },
     { name: 'Segunda hoja.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 prueba') },
   ])
