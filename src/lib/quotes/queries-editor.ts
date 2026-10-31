@@ -4,7 +4,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { readBlocks, readItemsTemplate, type Format } from '@/lib/templates/content'
 import type { Database } from '@/lib/supabase/database.types'
-import type { CatalogsEditor } from './editor'
+import type { CatalogsEditor } from './editor/types'
 import type { ContactEditor } from './editor-screen'
 
 type Client = SupabaseClient<Database>

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/form/card'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import type { CatalogsEditor, StatusEditor } from '@/lib/quotes/editor'
+import type { CatalogsEditor, StatusEditor } from '@/lib/quotes/editor/types'
 import { ID_FIELD, contactInitial, type ContactEditor, type Despachar } from '@/lib/quotes/editor-screen'
 import { SelectorClient, type ClientBuscado } from './selector-client'
 

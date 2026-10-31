@@ -3,7 +3,7 @@
 // adónde va el foco después de agregar o borrar, y los errores de guardado de cada fila. Pura (UI y Vitest). Las
 // reglas de las secciones al mover o renombrar están en el reducer (editor.ts).
 import { formatAmountTable, parsePrice } from '@/lib/format/amounts'
-import type { ItemEditor } from './editor'
+import type { ItemEditor } from './editor/types'
 
 type ItemGrid = Pick<ItemEditor, 'clave' | 'seccion'>
 

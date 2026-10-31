@@ -1,7 +1,7 @@
 // src/app/(app)/cotizaciones/vista-previa/route.ts
 import { z } from 'zod'
 import { getStatusSession } from '@/lib/auth'
-import { schemaStatusEditor } from '@/lib/quotes/editor'
+import { schemaStatusEditor } from '@/lib/quotes/editor/validation'
 import { viewPreview, type EntryViewPreview } from '@/lib/quotes/service'
 import { createClient } from '@/lib/supabase/server'
 

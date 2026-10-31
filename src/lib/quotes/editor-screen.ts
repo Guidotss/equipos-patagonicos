@@ -6,14 +6,9 @@ import { isMonth, formatDateCorta, monthInLetters, sumarDays } from '@/lib/forma
 import { FORMATOS, type Format } from '@/lib/templates/content'
 import { variablesUsadas, type NameVariable } from '@/lib/templates/variables'
 import { FIELDS_DATA, type FieldData } from './data'
-import {
-  applyTemplate,
-  hasChanges,
-  type ActionEditor,
-  type CatalogsEditor,
-  type StatusEditor,
-  type TemplateEditor,
-} from './editor'
+import { applyTemplate } from './editor/state'
+import { hasChanges } from './editor/validation'
+import type { ActionEditor, CatalogsEditor, StatusEditor, TemplateEditor } from './editor/types'
 
 /** Un contacto del cliente, para el "Atte.". */
 export type ContactEditor = { id: string; nombre: string; email: string }

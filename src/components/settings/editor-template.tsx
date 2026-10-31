@@ -16,7 +16,8 @@ import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { reduceEditor, type StatusEditor, type TemplateEditor } from '@/lib/quotes/editor'
+import { reduceEditor } from '@/lib/quotes/editor/reducer'
+import type { StatusEditor, TemplateEditor } from '@/lib/quotes/editor/types'
 
 const LISTA = '/configuracion/plantillas'
 

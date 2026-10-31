@@ -6,7 +6,7 @@ import { Card } from '@/components/form/card'
 import { WithVariables } from '@/components/templates/text-formatted'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { StatusEditor } from '@/lib/quotes/editor'
+import type { StatusEditor } from '@/lib/quotes/editor/types'
 import { ID_FIELD, type Despachar } from '@/lib/quotes/editor-screen'
 import { variablesUsadas } from '@/lib/templates/variables'
 

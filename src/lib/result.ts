@@ -1,8 +1,8 @@
 // src/lib/resultado.ts
 // Respuesta de las Server Actions que no reciben FormData (el editor de cotizaciones manda objetos).
-// Solo para el servidor: importa el servicio de cotizaciones, que dibuja PDFs. Los componentes de cliente
-// importan solo el tipo (`import type { Resultado } from '@/lib/resultado'`).
-import { ErrorQuote } from '@/lib/quotes/service'
+// El contrato de errores se importa sin cargar las operaciones de PDF del servicio de cotizaciones.
+// Los componentes de cliente importan solo el tipo Result.
+import { ErrorQuote } from '@/lib/quotes/service/contracts'
 import { messageErrorBase } from '@/lib/forms'
 
 export type Result<T = null> =

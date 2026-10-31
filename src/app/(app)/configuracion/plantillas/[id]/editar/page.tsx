@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { EditorTemplate } from '@/components/settings/editor-template'
-import { statusNew } from '@/lib/quotes/editor'
+import { statusNew } from '@/lib/quotes/editor/state'
 import { todayArgentina } from '@/lib/format/dates'
 import { readBlocks, readItemsTemplate, type Format } from '@/lib/templates/content'
 import { createClient } from '@/lib/supabase/server'

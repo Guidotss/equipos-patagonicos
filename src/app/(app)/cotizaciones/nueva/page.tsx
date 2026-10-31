@@ -2,7 +2,7 @@
 import type { Metadata } from 'next'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { EditorQuote } from '@/components/quotes/editor/editor-quote'
-import { statusNew } from '@/lib/quotes/editor'
+import { statusNew } from '@/lib/quotes/editor/state'
 import { signerByDefecto } from '@/lib/quotes/editor-screen'
 import { readCatalogsEditor, readLastSigner, readContacts } from '@/lib/quotes/queries-editor'
 import { todayArgentina } from '@/lib/format/dates'

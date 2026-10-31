@@ -4,7 +4,7 @@
 import { HeaderPage } from '@/components/app-shell/header'
 import { StatusQuote } from '@/components/quotes/status-quote'
 import { Button } from '@/components/ui/button'
-import type { StatusEditor } from '@/lib/quotes/editor'
+import type { StatusEditor } from '@/lib/quotes/editor/types'
 import { resumenHeader } from '@/lib/quotes/editor-screen'
 import { cn } from '@/lib/utils'
 

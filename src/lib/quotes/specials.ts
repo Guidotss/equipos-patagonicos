@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { isDate } from '@/lib/format/dates'
 import { parsePrice } from '@/lib/format/amounts'
-import type { StatusEditor } from './editor'
+import type { StatusEditor } from './editor/types'
 
 export const FIELDS_SPECIAL = ['cliente_id', 'numero', 'fecha', 'fecha_aprobacion', 'formato', 'asunto', 'estado', 'notas'] as const
 

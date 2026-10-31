@@ -7,7 +7,7 @@ import { Field } from '@/components/form/field'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import type { StatusEditor } from '@/lib/quotes/editor'
+import type { StatusEditor } from '@/lib/quotes/editor/types'
 
 export function SaveTemplate({ estado, disabled, antesOfAbrir }: { estado: StatusEditor; disabled?: boolean; antesOfAbrir?: () => void }) {
   const [open, setOpen] = useState(false)

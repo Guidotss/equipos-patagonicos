@@ -1,7 +1,8 @@
 // src/lib/cotizaciones/vista-previa.ts
 // Qué muestra el panel de vista previa del editor y cómo lo explica. Puro: lo usa un componente de cliente.
 import { formatDateCorta, todayArgentina } from '@/lib/format/dates'
-import { hasChanges, type StatusEditor } from './editor'
+import { hasChanges } from './editor/validation'
+import type { StatusEditor } from './editor/types'
 
 /** Parámetros del visor de PDF del navegador: sin barra ni miniaturas y la hoja al ancho del panel. */
 export const PARAMS_VISOR = '#toolbar=0&navpanes=0&view=FitH'
