@@ -7,10 +7,19 @@ export const UNIDADES = ['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'] 
 export type Unit = (typeof UNIDADES)[number]
 
 /**
- * Un bloque de texto de la plantilla o de la cotización. `oculto`: se guarda con la cotización pero no sale en el
- * PDF, así "Mostrar" lo recupera tal cual estaba. Los bloques guardados antes de existir la marca se leen visibles.
+ * Un bloque de texto de la plantilla o de la cotización. Se leen las marcas actuales y las guardadas como
+ * `oculto` antes del renombrado, y se expone siempre `hidden`. Sin marca, el bloque queda visible.
  */
-export const schemaBlock = z.object({ titulo: z.string(), contenido: z.string(), hidden: z.boolean().default(false) })
+export const schemaBlock = z.object({
+  titulo: z.string(),
+  contenido: z.string(),
+  hidden: z.boolean().optional(),
+  oculto: z.boolean().optional(),
+}).transform(({ titulo, contenido, hidden, oculto }) => ({
+  titulo,
+  contenido,
+  hidden: hidden ?? oculto ?? false,
+}))
 export type Block = z.infer<typeof schemaBlock>
 
 export const schemaItemTemplate = z.object({

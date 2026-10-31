@@ -14,10 +14,23 @@ describe('leerBloques', () => {
     ])
   })
 
+  it('conserva los bloques ocultos guardados antes del renombrado', () => {
+    expect(readBlocks([{ titulo: 'Alcance', contenido: '- Item', oculto: true }])).toEqual([
+      { titulo: 'Alcance', contenido: '- Item', hidden: true },
+    ])
+  })
+
+  it('prioriza la marca actual cuando aparecen ambos nombres', () => {
+    expect(readBlocks([{ titulo: 'Alcance', contenido: '- Item', hidden: false, oculto: true }])).toEqual([
+      { titulo: 'Alcance', contenido: '- Item', hidden: false },
+    ])
+  })
+
   it('rechaza datos con otra forma', () => {
     expect(() => readBlocks([{ titulo: 1 }])).toThrow()
     expect(() => readBlocks({})).toThrow()
     expect(() => readBlocks([{ titulo: 'Alcance', contenido: '', hidden: 'si' }])).toThrow()
+    expect(() => readBlocks([{ titulo: 'Alcance', contenido: '', oculto: 'si' }])).toThrow()
   })
 })
 
