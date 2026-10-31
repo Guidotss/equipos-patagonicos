@@ -50,6 +50,19 @@ describe('empresa_config', () => {
 
     await sql('update public.empresa_config set telefono = $1', [original])
   })
+
+  it('acepta un CUIT informado sin restringir contenido o longitud', async () => {
+    const [{ cuit: original }] = await sql<{ cuit: string | null }>('select cuit from public.empresa_config')
+    try {
+      for (const cuit of ['30719529671', '1', 'identificación informada por la empresa']) {
+        const { data, error } = await admin.client.from('empresa_config').update({ cuit }).eq('id', true).select('cuit').single()
+        expect(error).toBeNull()
+        expect(data?.cuit).toBe(cuit)
+      }
+    } finally {
+      await sql('update public.empresa_config set cuit = $1', [original])
+    }
+  })
 })
 
 describe('firmantes, equipos y plantillas', () => {

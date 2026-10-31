@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { normalizarCuit, validarCuit } from '@/lib/cuit'
+import { normalizarCuit } from '@/lib/cuit'
 import { parsePrecio } from '@/lib/format/montos'
 
 export function textoRequerido(mensaje: string, max = 200) {
@@ -16,13 +16,10 @@ export const emailOpcional = z
   .max(200, 'Máximo 200 caracteres')
   .refine((valor) => valor === '' || z.email().safeParse(valor).success, 'El email no es válido')
 
-/** CUIT opcional: acepta dígitos con guiones, puntos o espacios; vacío → null; guarda solo dígitos. */
+/** CUIT informado sin validación fiscal; vacío → null. */
 export const cuitOpcional = z
   .string()
-  .trim()
-  .refine((valor) => /^[\d\s.-]*$/.test(valor), 'El CUIT no es válido')
   .transform(normalizarCuit)
-  .refine((cuit) => cuit === '' || validarCuit(cuit), 'El CUIT no es válido')
   .transform((cuit) => (cuit === '' ? null : cuit))
 
 /** Número positivo opcional escrito al estilo argentino ("60,5"); vacío → null. */

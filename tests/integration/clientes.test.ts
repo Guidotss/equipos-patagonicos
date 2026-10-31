@@ -42,10 +42,18 @@ describe('clientes', () => {
     expect(creado.error?.code).toBe('42501')
   })
 
-  it('la base rechaza un CUIT inválido y uno repetido', async () => {
-    const invalido = await activo.client.from('clientes').insert({ razon_social: `Malo ${MARCA}`, cuit: '30719529671' })
-    expect(invalido.error?.code).toBe('23514')
+  it.each(['30719529671', '1', 'identificación informada'])('guarda y edita el CUIT informado %s sin validación fiscal', async (cuit) => {
+    const { data, error } = await activo.client.from('clientes')
+      .insert({ razon_social: `Informado ${MARCA} ${cuit}`, cuit }).select('id, cuit').single()
+    expect(error).toBeNull()
+    expect(data?.cuit).toBe(cuit)
+    const editado = await activo.client.from('clientes').update({ cuit: `${cuit} actualizado` })
+      .eq('id', data!.id).select('cuit').single()
+    expect(editado.error).toBeNull()
+    expect(editado.data?.cuit).toBe(`${cuit} actualizado`)
+  })
 
+  it('la base conserva la unicidad del CUIT informado', async () => {
     const primero = await activo.client.from('clientes').insert({ razon_social: `Uno ${MARCA}`, cuit: CUIT_DE_PRUEBA })
     expect(primero.error).toBeNull()
     const repetido = await activo.client.from('clientes').insert({ razon_social: `Dos ${MARCA}`, cuit: CUIT_DE_PRUEBA })
@@ -59,7 +67,7 @@ describe('clientes', () => {
     expect(b.error).toBeNull()
   })
 
-  it('la secret key (scripts de importación) crea y modifica clientes, y la base sigue validando el CUIT', async () => {
+  it('la secret key (scripts de importación) también acepta el CUIT informado', async () => {
     const admin = adminClient()
     const { data, error } = await admin.from('clientes').insert({ razon_social: `Importado ${MARCA}` }).select('id').single()
     expect(error).toBeNull()
@@ -67,8 +75,8 @@ describe('clientes', () => {
     const modificado = await admin.from('clientes').update({ notas: 'Importado por script' }).eq('id', data!.id)
     expect(modificado.error).toBeNull()
 
-    const invalido = await admin.from('clientes').insert({ razon_social: `Importado malo ${MARCA}`, cuit: '30719529671' })
-    expect(invalido.error?.code).toBe('23514')
+    const informado = await admin.from('clientes').insert({ razon_social: `Importado informado ${MARCA}`, cuit: '30000000008' })
+    expect(informado.error).toBeNull()
   })
 
   it('los clientes no se borran (se desactivan)', async () => {

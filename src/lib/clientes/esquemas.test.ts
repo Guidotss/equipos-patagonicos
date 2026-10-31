@@ -17,13 +17,13 @@ describe('esquemaCliente', () => {
   })
 
   it.each([
-    ['30-71952967-1', 'dígito verificador'],
-    ['abc', 'letras'],
-    ['30-71952967', 'incompleto'],
-  ])('rechaza el CUIT %s (%s)', (cuit) => {
-    const resultado = esquemaCliente.safeParse(cliente({ razon_social: 'X', cuit }))
-    expect(resultado.success).toBe(false)
-    expect(resultado.error?.issues[0]?.message).toBe('El CUIT no es válido')
+    ['30-71952967-1', '30719529671'],
+    ['abc', 'abc'],
+    ['30-71952967', '3071952967'],
+    ['11-71952967-6', '11719529676'],
+    ['307195296701', '307195296701'],
+  ])('acepta el CUIT informado %s sin validación fiscal', (cuit, esperado) => {
+    expect(esquemaCliente.parse(cliente({ razon_social: 'X', cuit })).cuit).toBe(esperado)
   })
 
   it('exige razón social y valida email y condición de IVA', () => {

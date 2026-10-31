@@ -32,7 +32,7 @@ Los dos llevan membrete con logo, fecha "Neuquén, 22 de octubre de 2026.", prec
 ## 3. Alcance
 
 ### Incluido en el MVP
-1. **Clientes** con contactos. Alta rápida desde el editor de cotización. CUIT opcional para cotizar y validado con dígito verificador cuando se carga.
+1. **Clientes** con contactos. Alta rápida desde el editor de cotización. CUIT opcional informado, sin validación de contenido, longitud, prefijo o dígito verificador (decisión del usuario del 31/10/2026).
 2. **Cotizaciones** en los dos formatos, armadas desde una plantilla con equipo, ítems, bloques de texto con formato mínimo y variables. El PDF replica el actual. Acciones: duplicar, "Descargar y marcar enviada" (guarda snapshot), aprobar, rechazar y reabrir.
 3. **Carga de cotizaciones existentes:** número original, cliente, fecha y PDF. Pueden entrar como enviada o como aprobada.
 4. **Presupuestos** (cotizaciones aprobadas): OC, remitos, facturas y órdenes de pago, cada documento con N archivos. Estado manual `en curso / finalizado / anulado`, indicadores por tipo de documento y saldo a cobrar.
@@ -52,7 +52,7 @@ Todas las tablas viven en `public`, tienen RLS activado y GRANTs explícitos (ve
 empresa_config (singleton)  razon_social, cuit, direccion, ciudad ('Neuquén'), telefono, email, web
 profiles                    id → auth.users, nombre, rol ('admin'|'operador'), activo (default false), firmante_id?
 firmantes                   nombre, cargo, telefono, email, activo
-clientes                    razon_social, cuit? (11 díg., UNIQUE parcial, DV validado), condicion_iva, direccion,
+clientes                    razon_social, cuit? (texto informado, UNIQUE parcial), condicion_iva, direccion,
                             localidad, provincia, telefono, email, condicion_pago_default, notas, activo
 contactos                   cliente_id, nombre, cargo, email, telefono
 equipos                     nombre, capacidad_tn, marca, modelo, interno/dominio?, descripcion ("Equipo ofrecido"), activo
@@ -177,7 +177,7 @@ op_facturas                 op_id, factura_id, monto_aplicado          ← qué 
 
 ## 9. Testing
 
-- **Vitest (unidad):** formato de montos (los dos layouts), fecha en letras (incluido el caso de las 22:00 en hora argentina), validación de CUIT, parser del texto con formato mínimo, resolución de variables, estados derivados (vencida, saldo de factura, indicadores) y parseo de precios pegados.
+- **Vitest (unidad):** formato de montos (los dos layouts), fecha en letras (incluido el caso de las 22:00 en hora argentina), aceptación y presentación del CUIT informado, parser del texto con formato mínimo, resolución de variables, estados derivados (vencida, saldo de factura, indicadores) y parseo de precios pegados.
 - **Integración contra Supabase local:**
   - RLS: anon denegado, usuario inactivo denegado, usuario activo permitido, y ninguna tabla sin RLS.
   - Triggers: una aprobada no se modifica y los documentos solo van a presupuestos aprobados del mismo cliente.

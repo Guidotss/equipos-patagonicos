@@ -18,14 +18,6 @@ export function decimal(valor) {
   return `${valor / 100n}.${(valor % 100n).toString().padStart(2, "0")}`;
 }
 
-export function cuitValido(cuit) {
-  if (!/^(20|23|24|25|26|27|30|33|34)\d{9}$/.test(cuit)) return false;
-  const pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-  const resto =
-    pesos.reduce((suma, peso, i) => suma + Number(cuit[i]) * peso, 0) % 11;
-  return resto !== 1 && Number(cuit[10]) === (resto === 0 ? 0 : 11 - resto);
-}
-
 export function uuidEstable(texto) {
   const namespace = Buffer.from("028667250ba34f7c9f1f63d4fb58e190", "hex");
   const bytes = createHash("sha1")
@@ -136,7 +128,7 @@ function prepararItem(item, numero) {
 }
 
 function prepararCliente(cliente) {
-  exigir(cuitValido(cliente.cuit), `CUIT inválido: ${cliente.cuit}`);
+  exigir(typeof cliente.cuit === "string", "El CUIT debe ser texto");
   exigir(
     typeof cliente.razon_social === "string" && cliente.razon_social.trim(),
     "Falta razón social",
@@ -218,7 +210,7 @@ function prepararFactura(factura, archivos, lote) {
   );
   const identidad = /^(\d{11})_001_(\d{5})_(\d{8})\.pdf$/.exec(factura.archivo);
   exigir(
-    identidad && cuitValido(identidad[1]),
+    identidad,
     `Nombre de comprobante inválido: ${factura.archivo}`,
   );
   exigir(

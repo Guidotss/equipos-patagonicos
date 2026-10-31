@@ -2,6 +2,8 @@
 
 App interna para cotizaciones, clientes, presupuestos y documentos del circuito de venta (OC, remitos, facturas y órdenes de pago).
 
+El CUIT de Clientes y Empresa es un dato opcional informado por el usuario: no se valida su verificador, prefijo, longitud ni contenido. Se quitan separadores de las entradas numéricas para mantener la identificación de clientes existentes; las demás entradas se conservan como texto. La unicidad de clientes por CUIT continúa vigente. La migración `20261031100000_cuit_informado.sql` retira los controles de la base sin cambiar datos existentes.
+
 - Diseño: `docs/plans/2026-10-23-equipos-patagonicos-mvp-design.md`
 - Planes de implementación: `docs/superpowers/plans/`
 

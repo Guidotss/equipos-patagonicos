@@ -791,6 +791,11 @@ describe('payloadGuardar', () => {
 })
 
 describe('esquemaEstadoEditor', () => {
+  it('acepta el CUIT textual del cliente sin limitarlo al formato fiscal', () => {
+    const estado = { ...completa(), cliente: { ...CLIENTE, cuit: 'identificación informada por el cliente' } }
+    expect(esquemaEstadoEditor.parse(estado).cliente?.cuit).toBe(estado.cliente.cuit)
+  })
+
   it('acepta cualquier estado que arma el editor, aunque no se pueda guardar', () => {
     const nueva = estadoNuevo({ plantilla: PLANTILLA_JORNADA, firmanteId: '', hoy: '2026-10-25' })
     expect(esquemaEstadoEditor.parse(nueva)).toEqual(nueva)

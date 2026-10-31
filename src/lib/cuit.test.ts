@@ -1,30 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { formatCuit, normalizarCuit, validarCuit } from './cuit'
+import { formatCuit, normalizarCuit } from './cuit'
 
 describe('normalizarCuit', () => {
-  it('deja solo los dígitos', () => {
+  it('quita los separadores de una entrada numérica sin corregir sus dígitos', () => {
     expect(normalizarCuit('30-71952967-0')).toBe('30719529670')
     expect(normalizarCuit(' 30 71952967 0 ')).toBe('30719529670')
-  })
-})
-
-describe('validarCuit', () => {
-  it.each([
-    '30-71952967-0', // Vértice Servicios Integrales S.R.L. (cotización 112711)
-    '30719529670',
-    '33-69345023-9', // AFIP
-  ])('acepta %s', (cuit) => {
-    expect(validarCuit(cuit)).toBe(true)
+    expect(normalizarCuit('30-71952967-1')).toBe('30719529671')
   })
 
-  it.each([
-    ['30-71952967-1', 'dígito verificador incorrecto'],
-    ['3071952967', 'menos de 11 dígitos'],
-    ['307195296701', 'más de 11 dígitos'],
-    ['11-71952967-6', 'prefijo inexistente con dígito verificador correcto'],
-    ['', 'vacío'],
-  ])('rechaza %s (%s)', (cuit) => {
-    expect(validarCuit(cuit)).toBe(false)
+  it('conserva un texto informado sin eliminar letras ni espacios internos', () => {
+    expect(normalizarCuit('  identificación pendiente  ')).toBe('identificación pendiente')
+    expect(normalizarCuit(' CUIT 30-71952967-1 ')).toBe('CUIT 30-71952967-1')
   })
 })
 
@@ -36,5 +22,6 @@ describe('formatCuit', () => {
 
   it('devuelve la entrada sin tocar si no tiene 11 dígitos', () => {
     expect(formatCuit('123')).toBe('123')
+    expect(formatCuit('CUIT 30719529670')).toBe('CUIT 30719529670')
   })
 })

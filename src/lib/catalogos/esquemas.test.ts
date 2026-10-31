@@ -19,9 +19,13 @@ describe('esquemaEmpresa', () => {
     expect(esquemaEmpresa.parse(base).cuit).toBeNull()
   })
 
-  it('exige razón social y valida CUIT y email', () => {
+  it.each(['1', '30-71952967-1', 'identificación pendiente'])('acepta el CUIT informado %s', (cuit) => {
+    expect(esquemaEmpresa.safeParse({ ...base, cuit }).success).toBe(true)
+  })
+
+  it('exige razón social y valida email', () => {
     const resultado = esquemaEmpresa.safeParse({ ...base, razon_social: ' ', cuit: '1', email: 'x' })
-    expect(resultado.error?.issues.map((i) => i.path[0])).toEqual(expect.arrayContaining(['razon_social', 'cuit', 'email']))
+    expect(resultado.error?.issues.map((i) => i.path[0])).toEqual(['razon_social', 'email'])
   })
 })
 

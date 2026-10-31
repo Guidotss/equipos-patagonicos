@@ -120,11 +120,16 @@ describe("preparación de carga histórica", () => {
       /Cobro sin confirmar/,
     );
   });
-  it("rechaza CUIT incorrecto, clientes duplicados y comprobantes repetidos", () => {
-    assert.throws(
-      () => preparar([factura()], [{ ...cliente, cuit: "30000000008" }]),
-      /CUIT inválido/,
-    );
+  it("conserva el CUIT informado sin validar contenido ni verificador", () => {
+    for (const cuit of ["30000000008", "1", "identificación informada"]) {
+      const resultado = preparar([factura({ cuit })], [{ ...cliente, cuit }]);
+      assert.equal(resultado.clientes[0].cuit, cuit);
+      assert.equal(resultado.facturas[0].cuit, cuit);
+    }
+    const resultado = preparar([factura({ archivo: "30000000008_001_00002_00000001.pdf" })]);
+    assert.equal(resultado.facturas[0].datos.emisor_cuit, "30000000008");
+  });
+  it("rechaza clientes duplicados y comprobantes repetidos", () => {
     assert.throws(
       () => preparar([factura()], [cliente, cliente]),
       /clientes duplicados/,

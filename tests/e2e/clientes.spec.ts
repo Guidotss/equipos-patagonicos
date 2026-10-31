@@ -11,7 +11,7 @@ test.afterEach(async () => {
   clientesCreados.length = 0
 })
 
-test('alta de cliente: valida el CUIT sin perder lo escrito, agrega un contacto y se encuentra sin acentos', async ({ page }) => {
+test('alta de cliente: acepta el CUIT informado, conserva errores de email y permite editarlo', async ({ page }) => {
   const sufijo = sufijoUnico()
   const razonSocial = `Grúas Ñandú ${sufijo} S.A.`
   clientesCreados.push(razonSocial)
@@ -22,15 +22,27 @@ test('alta de cliente: valida el CUIT sin perder lo escrito, agrega un contacto 
 
   await page.getByLabel('Razón social').fill(razonSocial)
   await page.getByLabel('CUIT').fill('30-71952967-1')
+  await page.getByLabel('Email', { exact: true }).fill('correo-incorrecto')
   await page.getByRole('button', { name: 'Crear cliente' }).click()
-  await expect(page.getByText('El CUIT no es válido')).toBeVisible()
+  await expect(page.getByText('El email no es válido')).toBeVisible()
   await expect(page.getByLabel('Razón social')).toHaveValue(razonSocial)
+  await expect(page.getByLabel('CUIT')).toHaveValue('30-71952967-1')
 
-  await page.getByLabel('CUIT').fill('')
+  await page.getByLabel('Email', { exact: true }).fill('')
   await page.getByRole('button', { name: 'Crear cliente' }).click()
   await expect(page.getByRole('heading', { name: razonSocial })).toBeVisible()
   await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)
   const ficha = page.url()
+  await expect(page.getByLabel('CUIT')).toHaveValue('30-71952967-1')
+  const informado = 'Identificación informada por el cliente'
+  await page.getByLabel('CUIT').fill(informado)
+  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  const clienteId = ficha.split('/').at(-1)!
+  await expect.poll(() => conBase(async (db) => (
+    await db.query<{ cuit: string }>('select cuit from public.clientes where id=$1', [clienteId])
+  ).rows[0].cuit)).toBe(informado)
+  await page.reload()
+  await expect(page.getByLabel('CUIT')).toHaveValue(informado)
 
   await page.getByRole('link', { name: 'Agregar contacto' }).click()
   await expect(page).toHaveURL(`${ficha}/contactos/nuevo`)

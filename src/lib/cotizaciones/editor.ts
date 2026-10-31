@@ -470,7 +470,7 @@ export const esquemaEstadoEditor = z.object({
   numero: z.number().int().positive().nullable(),
   estado: z.enum(ESTADOS),
   origen: z.enum(ORIGENES),
-  cliente: z.object({ id: z.uuid(), razon_social: textoLibre, cuit: z.string().max(20).nullable() }).nullable(),
+  cliente: z.object({ id: z.uuid(), razon_social: textoLibre, cuit: z.string().nullable() }).nullable(),
   contactoId: idOpcional,
   plantillaId: idOpcional,
   formato: z.enum(FORMATOS_EDITOR),
