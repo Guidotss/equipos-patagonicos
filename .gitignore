@@ -17,6 +17,7 @@
 /.next/
 /.next-e2e/
 /.pruebas-*/
+/.test-run-*/
 /out/
 
 # production
