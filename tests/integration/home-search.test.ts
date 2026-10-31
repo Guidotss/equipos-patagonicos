@@ -27,7 +27,7 @@ beforeAll(async () => {
      values ($1, $2, '299 111-2233', 'cliente@inicio.test', $3) returning id`,
     [`Grúas Ñandú ${marca}`, cuit, marca],
   )
-  ;[{ today }] = await sql<{ today: string }>(`select (now() at time zone 'America/Argentina/Buenos_Aires')::date::text as hoy`)
+  ;[{ today }] = await sql<{ today: string }>(`select (now() at time zone 'America/Argentina/Buenos_Aires')::date::text as today`)
 })
 
 afterAll(async () => {

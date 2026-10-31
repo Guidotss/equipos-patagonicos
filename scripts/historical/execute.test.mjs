@@ -78,7 +78,7 @@ it("no registra una factura si el PDF almacenado tiene otro hash", async () =>
     );
     assert.equal(llamadas, 0);
     assert.equal(report.archivos[0].estado, "previsto");
-    assert.match(report.archivos[0].last_error, /no coincide/);
+    assert.match(report.archivos[0].ultimo_error, /no coincide/);
   }));
 
 it("sube un PDF ausente con el contrato 404 del SDK real y verifica antes de registrar", async () =>
@@ -122,7 +122,8 @@ it("sube un PDF ausente con el contrato 404 del SDK real y verifica antes de reg
           data: {
             factura_id: "factura-sintetica",
             presupuesto_id: "presupuesto-sintetico",
-            ya_imported: false,
+            numero_presupuesto: 123,
+            ya_importada: false,
           },
         };
       },
@@ -136,6 +137,16 @@ it("sube un PDF ausente con el contrato 404 del SDK real y verifica antes de reg
     assert.deepEqual(metodos, ["HEAD", "POST", "GET", "RPC"]);
     assert.equal(report.archivos[0].estado, "registrado");
     assert.equal(report.facturas.length, 1);
+    assert.deepEqual(report.facturas[0], {
+      numero: invoice.datos.numero,
+      clave: invoice.clave,
+      sha256: invoice.datos.sha256,
+      archivo_path: invoice.datos.archivo.path,
+      factura_id: "factura-sintetica",
+      presupuesto_id: "presupuesto-sintetico",
+      numero_presupuesto: 123,
+      ya_importada: false,
+    });
   }));
 
 it("mantiene el bloqueo ante errores de autorización al consultar el archivo", async () =>

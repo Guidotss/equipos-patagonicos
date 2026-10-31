@@ -55,7 +55,7 @@ test.describe('lista de cotizaciones', () => {
            (cliente_id, formato, asunto, notas, fecha, validez_dias, estado, mostrar_total)
          values ($1, 'mensual', 'Izaje de tanques en Neuquén', $2, ${HOY} - 60, 30, 'enviada', true)
          returning id, numero::int as numero, to_char(fecha, 'YYYY-MM-DD') as fecha,
-                   to_char(fecha, 'DD/MM/YYYY') as fecha_corta,
+                   to_char(fecha, 'DD/MM/YYYY') as date_corta,
                    to_char(fecha + validez_dias, 'DD/MM/YYYY') as vence_el`,
         [cliente.id, MARCA],
       )

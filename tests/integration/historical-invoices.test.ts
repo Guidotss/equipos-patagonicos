@@ -21,7 +21,7 @@ const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.
 const anonymous = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, options)
 
 type Entry = Awaited<ReturnType<typeof entryNew>>
-type Result = { factura_id: string; presupuesto_id: string; number_budget: number; ya_imported: boolean }
+type Result = { factura_id: string; presupuesto_id: string; numero_presupuesto: number; ya_importada: boolean }
 
 async function clientWithSession(user: Awaited<ReturnType<typeof crearUser>>) {
   const { data } = await user.client.auth.getSession()
@@ -74,7 +74,7 @@ async function entryNew() {
     lote: MARCA,
     confirmacion_cobro: 'El usuario confirmó que el total fue cobrado',
     notas: 'Observación de origen sintética',
-    source: { comprobante: 'FA', moneda: 'ARS', evidencia: { texto: 'Datos sintéticos de prueba' } },
+    fuente: { comprobante: 'FA', moneda: 'ARS', evidencia: { texto: 'Datos sintéticos de prueba' } },
   }
 }
 
@@ -131,8 +131,8 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
   it('crea presupuesto finalizado, ítems, factura original y PDF, sin inventar pagos ni documentos', async () => {
     const entrada = await entryNew()
     const result = await importOk(entrada)
-    expect(result.ya_imported).toBe(false)
-    expect(result.number_budget).toBeGreaterThan(0)
+    expect(result.ya_importada).toBe(false)
+    expect(result.numero_presupuesto).toBeGreaterThan(0)
     const [invoice] = await sql('select cliente_id, tipo, numero, fecha::text, fecha_vencimiento::text, tipo_comprobante, monto, notas, created_by from public.documentos where id = $1', [result.factura_id])
     expect(invoice).toMatchObject({ cliente_id: clientId, tipo: 'factura', numero: entrada.numero,
       fecha: entrada.fecha, fecha_vencimiento: entrada.fecha_vencimiento, tipo_comprobante: 'FA', monto: '1222.50', created_by: null })
@@ -141,7 +141,7 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
     expect(invoice.notas).toContain('no acreditan la aprobación original')
     expect(invoice.notas).toContain('Sin OP ni fecha de pago acreditadas')
     const [budget] = await sql('select numero, origen, fecha::text, fecha_aprobacion::text, estado, presupuesto_estado, datos, equipo_id, contacto_id from public.cotizaciones where id = $1', [result.presupuesto_id])
-    expect(budget).toEqual({ numero: String(result.number_budget), origen: 'directa', fecha: entrada.fecha,
+    expect(budget).toEqual({ numero: String(result.numero_presupuesto), origen: 'directa', fecha: entrada.fecha,
       fecha_aprobacion: entrada.fecha, estado: 'aprobada', presupuesto_estado: 'finalizado',
       datos: { periodo_desde: entrada.periodo_desde, periodo_hasta: entrada.periodo_hasta }, equipo_id: null, contacto_id: null })
     expect(await sql('select descripcion, cantidad, precio_unitario, total, unidad from public.cotizacion_items where cotizacion_id = $1', [result.presupuesto_id]))
@@ -187,10 +187,10 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
     const respuestas = await Promise.all([importar(entrada), importar(entrada)])
     expect(respuestas.map((r) => r.error)).toEqual([null, null])
     const results = respuestas.map((r) => r.data as Result)
-    expect(results.map((r) => r.ya_imported).sort()).toEqual([false, true])
+    expect(results.map((r) => r.ya_importada).sort()).toEqual([false, true])
     expect(results[0].factura_id).toBe(results[1].factura_id)
     expect(results[0].presupuesto_id).toBe(results[1].presupuesto_id)
-    expect(await importOk(entrada)).toEqual({ ...results[0], ya_imported: true })
+    expect(await importOk(entrada)).toEqual({ ...results[0], ya_importada: true })
     expect(await sql('select count(*) from public.documentos where numero = $1 and tipo = $2', [entrada.numero, 'factura'])).toEqual([{ count: '1' }])
   })
 
@@ -198,12 +198,12 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
     const entrada = await entryNew()
     const result = await importOk(entrada)
     for (const change of [
-      { source: { ...entrada.source, revisada: true } }, { notas: 'otra observación' }, { sha256: 'b'.repeat(64) },
+      { fuente: { ...entrada.fuente, revisada: true } }, { notas: 'otra observación' }, { sha256: 'b'.repeat(64) },
       { archivo: { ...entrada.archivo, nombre_original: 'Otro nombre.pdf' } }, { monto: 1500 },
     ]) {
       expect((await importar({ ...entrada, ...change })).error?.message).toMatch(/otra entrada o evidencia/)
     }
-    expect(await importOk(entrada)).toEqual({ ...result, ya_imported: true })
+    expect(await importOk(entrada)).toEqual({ ...result, ya_importada: true })
   })
 
   it('rechaza números ya registrados por el circuito habitual, incluso anulados', async () => {
@@ -340,7 +340,7 @@ describe('validación y atomicidad de la importación', () => {
     ['cliente inexistente', { cliente_id: crypto.randomUUID() }, /cliente no existe/],
     ['SHA inválido', { sha256: 'abc' }, /SHA-256/],
     ['confirmación ausente', { confirmacion_cobro: '' }, /confirmación de cobro/],
-    ['evidencia ausente', { source: null }, /evidencia/],
+    ['evidencia ausente', { fuente: null }, /evidencia/],
     ['lista vacía', { items: [] }, /entre 1 y 200 ítems/],
     ['cantidad redondeable', { items: [{ descripcion: 'Servicio', cantidad: 2.001, precio_unitario: 500, unidad: 'HORA' }] }, /Ítem inválido/],
     ['precio cero', { items: [{ descripcion: 'Servicio', cantidad: 2, precio_unitario: 0, unidad: 'HORA' }] }, /deben ser positivos/],

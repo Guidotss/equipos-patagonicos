@@ -73,14 +73,14 @@ export async function registerInvoice({
       numero: invoice.datos.numero,
       clave: invoice.clave,
       sha256: invoice.datos.sha256,
-      file_path: archivo.path,
+      archivo_path: archivo.path,
       ...registro,
     });
     archivo.estado = "registrado";
     await save();
     return registro;
   } catch (error) {
-    archivo.last_error = error.message;
+    archivo.ultimo_error = error.message;
     await save();
     throw error;
   }

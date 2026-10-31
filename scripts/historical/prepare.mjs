@@ -114,7 +114,7 @@ function prepareItem(item, numero) {
     net === cents(item.neto),
     `El precio bonificado no concilia en ${numero}`,
   );
-  const descripcion = item.description_for_carga ?? item.descripcion;
+  const descripcion = item.descripcion_para_carga ?? item.descripcion;
   require(
     typeof descripcion === "string" && descripcion.trim() !== "",
     `Falta descripción en ${numero}`,
@@ -152,7 +152,7 @@ function prepareClient(cliente) {
     email: cliente.email ?? "",
     telefono: cliente.telefono ?? "",
     condicion_pago: cliente.condicion_pago ?? "",
-    notas: `Datos fiscales tomados de factura 00002-${cliente.last_invoice} del ${cliente.date_last_invoice}. Contactos y condiciones de pago a completar.`,
+    notas: `Datos fiscales tomados de factura 00002-${cliente.ultima_factura} del ${cliente.fecha_ultima_factura}. Contactos y condiciones de pago a completar.`,
   };
 }
 
@@ -294,7 +294,7 @@ function prepareInvoice(invoice, archivos, lote) {
         invoice.fuente_estado_cobro ??
         "El usuario confirmó que todas las facturas históricas están cobradas; fecha de cobro no informada.",
       notas,
-      source: Object.fromEntries(
+      fuente: Object.fromEntries(
         FIELDS_SOURCE.filter((field) => invoice[field] !== undefined).map(
           (field) => [field, invoice[field]],
         ),

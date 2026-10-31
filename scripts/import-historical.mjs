@@ -11,16 +11,25 @@ import {
 } from './historical/prepare.mjs';
 import { registerInvoice } from './historical/execute.mjs';
 
-const { values: options } = parseArgs({
+const { values: cliOptions } = parseArgs({
   options: {
     review: { type: "string" },
+    revision: { type: "string" },
     "project-ref": { type: "string" },
     report: { type: "string" },
+    informe: { type: "string" },
     lote: { type: "string" },
     apply: { type: "boolean", default: false },
     expected: { type: "string" },
+    esperados: { type: "string" },
   },
 });
+const options = {
+  ...cliOptions,
+  review: cliOptions.review ?? cliOptions.revision,
+  report: cliOptions.report ?? cliOptions.informe,
+  expected: cliOptions.expected ?? cliOptions.esperados,
+};
 const verify = (condition, message) => {
   if (!condition) throw new Error(message);
 };
@@ -36,7 +45,7 @@ function conectar() {
       options["project-ref"] &&
       options.report &&
       options.lote,
-    "Uso: node --env-file=<archivo> scripts/import-historical.mjs --revision <json> --project-ref <ref> --lote <lote> --informe <json> [--apply]",
+    "Uso: node --env-file=<archivo> scripts/import-historical.mjs --review <json> --project-ref <ref> --lote <lote> --report <json> [--expected <clientes,facturas,excluidas> --apply]",
   );
   const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
   verify(
@@ -65,11 +74,11 @@ async function readClients(supabase) {
   }
 }
 
-async function saveReport(path, report) {
-  await mkdir(path.dirname(path), { recursive: true, mode: 0o700 });
-  const temp = `${path}.tmp`;
+async function saveReport(reportPath, report) {
+  await mkdir(path.dirname(reportPath), { recursive: true, mode: 0o700 });
+  const temp = `${reportPath}.tmp`;
   await writeFile(temp, JSON.stringify(report, null, 2), { mode: 0o600 });
-  await rename(temp, path);
+  await rename(temp, reportPath);
 }
 
 async function validateConflicts(supabase, facturas) {
@@ -85,7 +94,7 @@ async function validateConflicts(supabase, facturas) {
     ["PGRST205", "42P01"].includes(response.error.code) &&
     !options.apply
   )
-    return { migration_pending: true };
+    return { migracion_pendiente: true };
   const history = result(
     response,
     "Leer importaciones históricas; verificá que la migración esté aplicada",
@@ -127,7 +136,7 @@ async function validateConflicts(supabase, facturas) {
       `La factura ${invoice.datos.numero} ya existe fuera de esta importación`,
     );
   }
-  return { migration_pending: false, ya_importadas: history.length };
+  return { migracion_pendiente: false, ya_importadas: history.length };
 }
 
 async function crearClient(supabase, cliente) {
@@ -180,7 +189,7 @@ async function run() {
   const quantities = `${prepared.clientes.length},${prepared.facturas.length},${prepared.excluidas.length}`;
   verify(
     !options.apply || options.expected,
-    "Para aplicar, indicá --esperados <clientes,facturas,excluidas> según la simulación revisada",
+    "Para aplicar, indicá --expected <clientes,facturas,excluidas> según la simulación revisada",
   );
   verify(
     !options.expected || options.expected === quantities,
@@ -201,9 +210,9 @@ async function run() {
   );
   const report = {
     modo: options.apply ? "aplicar" : "simulacion",
-    project: options["project-ref"],
+    proyecto: options["project-ref"],
     lote: options.lote,
-    review_sha256: hash(bytesReview),
+    revision_sha256: hash(bytesReview),
     iniciado_at: new Date().toISOString(),
     control: {
       clientes: preparedQuantity(planned),
@@ -251,11 +260,11 @@ async function run() {
         guardar: () => saveReport(pathReport, report),
       });
       console.log(
-        `${index + 1}/${facturas.length}: ${invoice.datos.numero} ${registro.ya_imported ? "reutilizada" : "importada"}`,
+        `${index + 1}/${facturas.length}: ${invoice.datos.numero} ${registro.ya_importada ? "reutilizada" : "importada"}`,
       );
     }
     report.estado = "completo";
-    report.finished_at = new Date().toISOString();
+    report.finalizado_at = new Date().toISOString();
     await saveReport(pathReport, report);
   } catch (error) {
     report.estado = "interrumpido";
@@ -269,7 +278,7 @@ async function run() {
 function preparedQuantity(clientes) {
   return {
     total: clientes.length,
-    existing: clientes.filter((cliente) => cliente.existente).length,
+    existentes: clientes.filter((cliente) => cliente.existente).length,
     nuevos: clientes.filter((cliente) => !cliente.existente).length,
   };
 }

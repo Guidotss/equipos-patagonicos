@@ -443,7 +443,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     const fields = async () =>
       (
         await sql(
-          `select fecha is not null as con_fecha, fecha_vencimiento, periodo_desde, periodo_hasta, equipo_id
+          `select fecha is not null as with_date, fecha_vencimiento, periodo_desde, periodo_hasta, equipo_id
            from public.documentos where id = $1`,
           [id],
         )

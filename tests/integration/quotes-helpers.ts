@@ -15,12 +15,12 @@ export async function idsOfExample() {
   }>(`
     select
       (select id from public.clientes where razon_social = 'VERTICE SERVICIOS INTEGRALES S.R.L.') as cliente_id,
-      (select id from public.clientes where razon_social = 'Milicic S.A.') as cliente_con_contacto_id,
+      (select id from public.clientes where razon_social = 'Milicic S.A.') as client_with_contact_id,
       (select k.id from public.contactos k join public.clientes c on c.id = k.cliente_id
         where c.razon_social = 'Milicic S.A.' limit 1) as contacto_id,
       (select id from public.equipos where nombre = 'Grúa telescópica XCMG QY70K-1 40 TN') as equipo_id,
       (select id from public.firmantes where nombre = 'Thomas Cravero') as firmante_id,
-      (select id from public.plantillas where nombre = 'Por jornada - Grúa con operador') as plantilla_jornada_id
+      (select id from public.plantillas where nombre = 'Por jornada - Grúa con operador') as template_daily_id
   `)
   return row
 }

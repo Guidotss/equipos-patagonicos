@@ -15,8 +15,8 @@ const cliente = {
   cuit: "30000000007",
   razon_social: "Cliente de ejemplo",
   condicion_iva: "responsable_inscripto",
-  last_invoice: "00000001",
-  date_last_invoice: "2026-10-01",
+  ultima_factura: "00000001",
+  fecha_ultima_factura: "2026-10-01",
 };
 function invoice(changes = {}) {
   return {
@@ -76,11 +76,24 @@ describe("preparación de carga histórica", () => {
     ]);
     assert.equal(result.facturas[0].clave, "30709154083:FA:00002-00000001");
     assert.equal(
-      result.facturas[0].datos.source.items[0].precio_unitario,
+      result.facturas[0].datos.fuente.items[0].precio_unitario,
       "1000000.00",
     );
     assert.equal(cents("999999999999.99"), 99999999999999n);
     assert.equal(decimal(1n), "0.01");
+  });
+  it("conserva las claves del manifiesto y la evidencia exigida por la RPC", () => {
+    const original = invoice({
+      items: [{ ...invoice().items[0], descripcion_para_carga: "Descripción revisada" }],
+    });
+    const result = prepare([original]);
+    const datos = JSON.parse(JSON.stringify(result.facturas[0].datos));
+
+    assert.equal(datos.items[0].descripcion, "Descripción revisada");
+    assert.deepEqual(datos.fuente.items, original.items);
+    assert.equal(Object.hasOwn(datos, "source"), false);
+    assert.equal(result.clientes[0].notas,
+      "Datos fiscales tomados de factura 00002-00000001 del 2026-10-01. Contactos y condiciones de pago a completar.");
   });
   it("excluye refacturaciones e intereses conservando sus razones", () => {
     const result = prepare([
@@ -102,7 +115,7 @@ describe("preparación de carga histórica", () => {
     ]);
     assert.match(result.facturas[0].datos.notas, /Se usa la cabecera/);
     assert.equal(
-      result.facturas[0].datos.source.observaciones_fechas_resueltas[0],
+      result.facturas[0].datos.fuente.observaciones_fechas_resueltas[0],
       "El detalle tenía otra fecha.",
     );
   });
