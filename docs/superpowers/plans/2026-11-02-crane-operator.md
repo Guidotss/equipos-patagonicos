@@ -98,10 +98,12 @@ create table public.crane_operator_assignments (
 - [x] Revisar de forma independiente el conjunto de permisos, flujo y calidad. Verificar que no quedaron contenedores, volúmenes, redes ni carpetas de los proyectos temporales y que main no recibió archivos de prueba ni secretos.
 - [x] Documentar el uso del nuevo rol y las migraciones. No crear cuentas ni equipos ficticios en producción.
 - [x] Aplicar las tres migraciones a producción después de dry-run, sin semillas ni cuentas de prueba. Verificar que los recuentos comerciales se conservan y las cuatro tablas nuevas están vacías.
-- [ ] Integrar la rama en main sin force push y publicar por el pipeline existente. Leer el estado SUCCESS del despliegue de ese commit y comprobar /api/health y /login.
+- [x] Integrar la rama en main sin force push y publicar por el pipeline existente. Leer el estado SUCCESS del despliegue de ese commit y comprobar /api/health y /login.
 
 ## Evidencia del cierre
 
 Código validado: `70ff7d1`. `npm run check` aprobado: lint, tipos, 553 unitarias y 20 pruebas de importación histórica. Integración completa: 390; navegador completo: 83. CLI de usuarios: 14 y runner: 12, con entornos simulados. Compilación de producción aprobada. Todos los proyectos descartables quedaron sin contenedores, volúmenes, redes, directorios ni lock.
 
 La revisión final de código cerró los dos hallazgos y el cierre visual emitió SHIP; el nuevo estado de presupuesto eliminado recibió un dictamen separado para ese delta. Las migraciones `20261102090000`, `20261102100000` y `20261102110000` se aplicaron al proyecto de producción existente el 2 de noviembre de 2026. No se crearon cuentas, grúas ni datos comerciales de prueba.
+
+Publicación funcional verificada: `fe321e7a6bc7cbd95e7aeb960f38660a2fe85381` en `main`, despliegue Railway `3cf60083-8f9f-4745-89f5-b8cef024f434` con estado `SUCCESS`. `/api/health` y `/login` respondieron HTTP 200. Esta constancia solo añade documentación al mismo código validado.
