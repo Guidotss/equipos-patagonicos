@@ -82,17 +82,26 @@ create table public.crane_operator_assignments (
 - Create: `tests/e2e/crane-operators.spec.ts`
 
 - [x] Antes del código de UI, generar una referencia que continúe los tokens, marca y estructura de las capturas existentes; documentar un breve criterio visual y usar componentes Radix ya instalados.
-- [ ] Portal móvil: encabezado con identidad y grúa, acción «Cargar remito», lista propia con estado. Sin grúa activa, explicación y carga deshabilitada. Formulario con presupuesto opcional, fecha, número, cliente/lugar y trabajo, observaciones, uploader y estado de envío. Tras guardar, navegar al detalle propio; los errores conservan el formulario y adjuntos. El ID de envío permanece estable durante los reintentos.
-- [ ] Implementar archivos autenticados y detalle de estado. No ofrecer edición, anulación, eliminación, facturas ni importes al gruista.
-- [ ] Configuración administrativa para cambiar rol, activo y equipo por persona con guardas de servidor y SQL. Mantener la protección del último administrador/self-demotion existente.
-- [ ] Bandeja con pendientes/vinculados y detalle con archivos y selector de presupuesto no anulado. Evitar buscador separado «Buscar presupuesto». Confirmar vinculación mediante RPC; mostrar documento existente si la llamada ya se había completado.
-- [ ] Usar requireStaff en el layout comercial y en acciones/endpoints, y requireCraneOperator en portal/archivos. Usuarios autenticados que entren al área equivocada reciben el destino de su rol; los datos se protegen además por las políticas y RPC.
-- [ ] E2E: admin asigna grúa, operador móvil sube PDF/foto sin presupuesto, vuelve a ver su carga, otro gruista no puede abrirla, no accede a cotizaciones/finanzas, staff la vincula a un presupuesto real y el documento conserva los archivos, autor y equipo. Agregar caso con presupuesto, sin grúa, desactivado y cambio de asignación.
-- [ ] Capturas de móvil y escritorio juntas: comparar una vez con la referencia, corregir en un lote, confirmar una vez. Commit `feat: add crane operator portal and delivery note review`; revisión de especificación y después de calidad.
+- [x] Portal móvil: encabezado con identidad y grúa, acción «Cargar remito», lista propia con estado. Sin grúa activa, explicación y carga deshabilitada. Formulario con presupuesto opcional, fecha, número, cliente/lugar y trabajo, observaciones, uploader y estado de envío. Tras guardar, navegar al detalle propio; los errores conservan el formulario y adjuntos. El ID de envío permanece estable durante los reintentos.
+- [x] Implementar archivos autenticados y detalle de estado. No ofrecer edición, anulación, eliminación, facturas ni importes al gruista.
+- [x] Configuración administrativa para cambiar rol, activo y equipo por persona con guardas de servidor y SQL. Mantener la protección del último administrador/self-demotion existente.
+- [x] Bandeja con pendientes/vinculados y detalle con archivos y selector de presupuesto no anulado. Evitar buscador separado «Buscar presupuesto». Confirmar vinculación mediante RPC; mostrar documento existente si la llamada ya se había completado.
+- [x] Usar requireStaff en el layout comercial y en acciones/endpoints, y requireCraneOperator en portal/archivos. Usuarios autenticados que entren al área equivocada reciben el destino de su rol; los datos se protegen además por las políticas y RPC.
+- [x] E2E: admin asigna grúa, operador móvil sube PDF/foto sin presupuesto, vuelve a ver su carga, otro gruista no puede abrirla, no accede a cotizaciones/finanzas, staff la vincula a un presupuesto real y el documento conserva los archivos, autor y equipo. Agregar caso con presupuesto, sin grúa, desactivado y cambio de asignación.
+- [x] Capturas de móvil y escritorio juntas: comparar una vez con la referencia, corregir en un lote, confirmar una vez. Commit `feat: add crane operator portal and delivery note review`; revisión de especificación y después de calidad.
 
 ## Task 4: Cierre y publicación
 
-- [ ] Ejecutar `npm run check`, `node --test scripts/create-user.test.mjs`, `npm run test:runner`, `npm run build`, integración completa y navegador completo con los runners descartables. Corregir fallos por su causa y conservar aserciones.
-- [ ] Revisar de forma independiente el conjunto de permisos, flujo y calidad. Verificar que no quedaron contenedores, volúmenes, redes ni carpetas de los proyectos temporales y que main no recibió archivos de prueba ni secretos.
-- [ ] Documentar el uso del nuevo rol y las migraciones. No crear cuentas ni equipos ficticios en producción.
-- [ ] Aplicar migraciones a la producción existente con Supabase CLI después de dry-run, integrar la rama en main sin force push y publicar por el pipeline existente. Leer el estado SUCCESS del despliegue de ese commit y comprobar /api/health y /login.
+- [x] Resolver los dos hallazgos de la revisión final: compatibilidad de número/notas del remito con el editor comercial sin recortar metadatos, y referencias UUID históricas que no bloqueen anular → revertir → borrar una cotización. Cubrir límites Unicode, edición real y ausencia del presupuesto original con pruebas aisladas. Revisión del arreglo por el mismo revisor.
+
+- [x] Ejecutar `npm run check`, `node --test scripts/create-user.test.mjs`, `npm run test:runner`, `npm run build`, integración completa y navegador completo con los runners descartables. Corregir fallos por su causa y conservar aserciones.
+- [x] Revisar de forma independiente el conjunto de permisos, flujo y calidad. Verificar que no quedaron contenedores, volúmenes, redes ni carpetas de los proyectos temporales y que main no recibió archivos de prueba ni secretos.
+- [x] Documentar el uso del nuevo rol y las migraciones. No crear cuentas ni equipos ficticios en producción.
+- [x] Aplicar las tres migraciones a producción después de dry-run, sin semillas ni cuentas de prueba. Verificar que los recuentos comerciales se conservan y las cuatro tablas nuevas están vacías.
+- [ ] Integrar la rama en main sin force push y publicar por el pipeline existente. Leer el estado SUCCESS del despliegue de ese commit y comprobar /api/health y /login.
+
+## Evidencia del cierre
+
+Código validado: `70ff7d1`. `npm run check` aprobado: lint, tipos, 553 unitarias y 20 pruebas de importación histórica. Integración completa: 390; navegador completo: 83. CLI de usuarios: 14 y runner: 12, con entornos simulados. Compilación de producción aprobada. Todos los proyectos descartables quedaron sin contenedores, volúmenes, redes, directorios ni lock.
+
+La revisión final de código cerró los dos hallazgos y el cierre visual emitió SHIP; el nuevo estado de presupuesto eliminado recibió un dictamen separado para ese delta. Las migraciones `20261102090000`, `20261102100000` y `20261102110000` se aplicaron al proyecto de producción existente el 2 de noviembre de 2026. No se crearon cuentas, grúas ni datos comerciales de prueba.
