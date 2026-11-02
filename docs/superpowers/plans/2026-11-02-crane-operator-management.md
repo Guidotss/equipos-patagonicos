@@ -63,7 +63,7 @@ type NewCraneOperatorResult = { userId: string; email: string }
 ## Task 3: Módulo Gruistas, alta y actividad
 
 **Files:**
-- Create: `src/app/(app)/crane-operators/{page,actions}.tsx|ts`, `new/page.tsx`, `[id]/page.tsx`.
+- Create: `src/app/(crane-management)/crane-operators/{page,actions}.tsx|ts`, `new/page.tsx`, `[id]/page.tsx`, y layout de personal del grupo.
 - Create: componentes pequeños y hook en `src/components/crane-operators/management/`.
 - Modify: `src/components/app-shell/nav-items.ts`.
 - Create: `tests/e2e/crane-operator-management.spec.ts` y fixture aislado si se necesita.
@@ -77,6 +77,8 @@ type NewCraneOperatorResult = { userId: string; email: string }
 - [ ] E2E: staff `operador` crea cuenta, inicia sesión como gruista y envía remito, personal ve actividad, reasigna y desactiva, historial se conserva y acceso se bloquea. Segundo staff ve la ficha. Rechazar replay de acciones desde gruista e intentos de apuntar a cuentas de personal.
 - [ ] Capturas de listado, alta y ficha en móvil/escritorio, inspección en lote y como máximo una confirmación. Reviewers independientes de spec/calidad y finish visual; documentar sistema preservado. No fixtures en bases compartidas.
 - [ ] Commit `feat: add staff crane operator management module` después de pruebas dirigidas y revisión propia.
+
+**Ajuste de estructura verificado durante E2E:** el `loading.tsx` preexistente de `(app)` inicia streaming antes de resolver `notFound`, lo que fija HTTP 200. Solo el módulo nuevo se aísla en `(crane-management)` para devolver 404 antes del streaming, con el mismo AppShell y `requireStaff`, el root layout compartido y las mismas URLs. Se conserva la carga de las rutas existentes.
 
 ## Task 4: Validación y producción
 
