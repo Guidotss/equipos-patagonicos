@@ -2,9 +2,10 @@ import 'server-only'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { isSessionInvalid } from '@/lib/auth/errors'
+import { homeForRole, isRole, isStaffRole, type Role } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 
-export type Role = 'admin' | 'operador'
+export type { Role } from '@/lib/auth/roles'
 
 export type UserCurrent = {
   id: string
@@ -30,18 +31,19 @@ export const getStatusSession = cache(async (): Promise<StatusSession> => {
 
   // Por RLS, un usuario inactivo no puede leer ni su propio perfil (la consulta no da error,
   // devuelve null). Un error acá es una falla real y no se puede confundir con "inactivo".
-  const { data: perfil, error: errorPerfil } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('nombre, rol, activo')
     .eq('id', claims.sub)
     .maybeSingle()
-  if (errorPerfil) throw errorPerfil
+  if (profileError) throw profileError
 
-  if (!perfil?.activo) return { estado: 'inactivo', email }
+  if (!profile?.activo) return { estado: 'inactivo', email }
+  if (!isRole(profile.rol)) throw new Error('El rol del usuario no es válido')
 
   return {
     estado: 'activo',
-    user: { id: claims.sub, email, nombre: perfil.nombre, rol: perfil.rol as Role },
+    user: { id: claims.sub, email, nombre: profile.nombre, rol: profile.rol },
   }
 })
 
@@ -51,4 +53,23 @@ export async function requireUser(): Promise<UserCurrent> {
   if (session.estado === 'anonimo') redirect('/login')
   if (session.estado === 'inactivo') redirect('/sin-acceso')
   return session.user
+}
+
+/** Restringe la gestión comercial a administradores y administración. */
+export async function requireStaff(): Promise<UserCurrent> {
+  const user = await requireUser()
+  if (!isStaffRole(user.rol)) redirect(homeForRole(user.rol))
+  return user
+}
+
+export async function requireAdmin(): Promise<UserCurrent> {
+  const user = await requireUser()
+  if (user.rol !== 'admin') redirect(homeForRole(user.rol))
+  return user
+}
+
+export async function requireCraneOperator(): Promise<UserCurrent> {
+  const user = await requireUser()
+  if (user.rol !== 'crane_operator') redirect(homeForRole(user.rol))
+  return user
 }
