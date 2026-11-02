@@ -21,7 +21,7 @@
 - Modify: `tests/integration/helpers.ts` (tipo de rol compatible)
 - Generate: `src/lib/supabase/database.types.ts` únicamente desde el proyecto temporal.
 
-- [ ] Agregar pruebas de rechazo y permiso usando JWT reales. La preparación utiliza `crearUser` importado como `createTestUser`, SQL y archivos con una marca única; afterAll borra únicamente lo propio. Ejemplo de comprobación del límite:
+- [x] Agregar pruebas de rechazo y permiso usando JWT reales. La preparación utiliza `crearUser` importado como `createTestUser`, SQL y archivos con una marca única; afterAll borra únicamente lo propio. Ejemplo de comprobación del límite:
 
 ```ts
 const user = await createTestUser({ activo: true, rol: 'crane_operator' })
@@ -34,9 +34,9 @@ const write = await user.client.rpc('presupuesto_directo', {
 expect(write.error?.code).toBe('42501')
 ```
 
-- [ ] Ejecutar `npm run test:int -- tests/integration/crane-operators.test.ts tests/integration/crane-delivery-notes.test.ts`: deben fallar por ausencia de tablas/RPC.
-- [ ] Implementar el rol, asignaciones, guardas y políticas restrictivas con las claves antiguas intactas. Conservar el mensaje de usuario inactivo y exigir además `private.is_staff()` en `private.exigir_usuario_activo()`. Conceder a authenticated solo SELECT de las tablas nuevas y EXECUTE de las RPC públicas del diseño; escrituras por funciones comprobadas. Los helpers privados no se exponen.
-- [ ] Implementar las cuatro tablas, tickets, contexto operativo, envío y vinculación según el diseño. La fecha y el equipo se preservan y no se inventan relaciones comerciales. Ejemplo mínimo de forma de almacenamiento:
+- [x] Ejecutar `npm run test:int -- tests/integration/crane-operators.test.ts tests/integration/crane-delivery-notes.test.ts`: deben fallar por ausencia de tablas/RPC.
+- [x] Implementar el rol, asignaciones, guardas y políticas restrictivas con las claves antiguas intactas. Conservar el mensaje de usuario inactivo y exigir además `private.is_staff()` en `private.exigir_usuario_activo()`. Conceder a authenticated solo SELECT de las tablas nuevas y EXECUTE de las RPC públicas del diseño; escrituras por funciones comprobadas. Los helpers privados no se exponen.
+- [x] Implementar las cuatro tablas, tickets, contexto operativo, envío y vinculación según el diseño. La fecha y el equipo se preservan y no se inventan relaciones comerciales. Ejemplo mínimo de forma de almacenamiento:
 
 ```sql
 create table public.crane_operator_assignments (
@@ -47,10 +47,10 @@ create table public.crane_operator_assignments (
 );
 ```
 
-- [ ] Verificar: otras grúas, perfil propio/ajeno, consultas de importes, todas las RPC comerciales concedidas, Storage ajeno, falta de asignación, equipo inactivo, desactivación/reasignación entre autorización y envío, MIME/tamaño/ruta adulterados, fechas inválidas, más de 50 archivos, consumo repetido y reintento idéntico. Probar carga sin presupuesto y autovinculación con uno permitido, vinculación administrativa a uno sin equipo, presupuesto anulado, y vinculación concurrente sin duplicar documentos.
-- [ ] Generar tipos mediante un controlador temporal de `runTests('int', ...)`: inyectar un wrapper de `runProcess` que, antes de lanzar Vitest y con el stack temporal activo, ejecute `supabase gen types typescript --local --workdir <temp>`. Guardar stdout de tipos en el archivo generado. No ejecutar db reset/push sobre desarrollo o producción.
-- [ ] Correr las pruebas dirigidas y `npm run typecheck`. Commit `feat: add scoped crane operator delivery note intake`.
-- [ ] Revisión de especificación y después de calidad; resolver y volver a revisar cualquier hallazgo material.
+- [x] Verificar: otras grúas, perfil propio/ajeno, consultas de importes, todas las RPC comerciales concedidas, Storage ajeno, falta de asignación, equipo inactivo, desactivación/reasignación entre autorización y envío, MIME/tamaño/ruta adulterados, fechas inválidas, más de 50 archivos, consumo repetido y reintento idéntico. Probar carga sin presupuesto y autovinculación con uno permitido, vinculación administrativa a uno sin equipo, presupuesto anulado, y vinculación concurrente sin duplicar documentos.
+- [x] Generar tipos mediante un controlador temporal de `runTests('int', ...)`: inyectar un wrapper de `runProcess` que, antes de lanzar Vitest y con el stack temporal activo, ejecute `supabase gen types typescript --local --workdir <temp>`. Guardar stdout de tipos en el archivo generado. No ejecutar db reset/push sobre desarrollo o producción.
+- [x] Correr las pruebas dirigidas y `npm run typecheck`. Commit `feat: add scoped crane operator delivery note intake`.
+- [x] Revisión de especificación y después de calidad; resolver y volver a revisar cualquier hallazgo material.
 
 ## Task 2: Acceso del servidor, contratos tipados y alta administrativa
 
@@ -81,7 +81,7 @@ create table public.crane_operator_assignments (
 - Modify: `src/components/documents/upload-files.tsx` para inyectar opcionalmente el preparador de subida, manteniendo por defecto el comportamiento actual.
 - Create: `tests/e2e/crane-operators.spec.ts`
 
-- [ ] Antes del código de UI, generar una referencia que continúe los tokens, marca y estructura de las capturas existentes; documentar un breve criterio visual y usar componentes Radix ya instalados.
+- [x] Antes del código de UI, generar una referencia que continúe los tokens, marca y estructura de las capturas existentes; documentar un breve criterio visual y usar componentes Radix ya instalados.
 - [ ] Portal móvil: encabezado con identidad y grúa, acción «Cargar remito», lista propia con estado. Sin grúa activa, explicación y carga deshabilitada. Formulario con presupuesto opcional, fecha, número, cliente/lugar y trabajo, observaciones, uploader y estado de envío. Tras guardar, navegar al detalle propio; los errores conservan el formulario y adjuntos. El ID de envío permanece estable durante los reintentos.
 - [ ] Implementar archivos autenticados y detalle de estado. No ofrecer edición, anulación, eliminación, facturas ni importes al gruista.
 - [ ] Configuración administrativa para cambiar rol, activo y equipo por persona con guardas de servidor y SQL. Mantener la protección del último administrador/self-demotion existente.
