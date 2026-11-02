@@ -62,12 +62,12 @@ create table public.crane_operator_assignments (
 - Modify: `scripts/create-user.mjs`
 - Create: `scripts/create-user.test.mjs`
 
-- [ ] Definir Role como `admin | operador | crane_operator`, `isStaffRole`, `homeForRole`, `requireStaff`, `requireAdmin` y `requireCraneOperator`. Leer rol y actividad de profiles, sin confiar en user_metadata.
-- [ ] Escribir esquemas Zod estrictos con los nombres ingleses del diseño. Los archivos del uploader existente se adaptan de `nombre_original` a `originalName`; no se aceptan campos de autor, grúa, importe o estado.
-- [ ] Implementar funciones de consultas/RPC tipadas: contexto del gruista, listado propio de recepciones y archivos, bandeja de staff, detalles, usuarios/asignaciones, autorización de subida, envío y vinculación. Ningún servidor público usa una secret key.
-- [ ] Ampliar el script con flags canónicos `--name`, `--role`, `--equipment-id`, manteniendo `--nombre` y `--rol` como alias. Validar rol/equipo antes de crear una cuenta; comprobar que la grúa existe y está activa. Si falla activar/asignar, eliminar el Auth user recién creado y su perfil/asignación; si la limpieza falla, informar explícitamente el ID pendiente sin imprimir contraseñas ni claves.
-- [ ] Probar campos obligatorios, fechas/formatos, límites, payload financiero rechazado y destino por rol con `npm run test`. Probar CLI mediante fetch simulado que rechaza toda red no esperada: `node --test scripts/create-user.test.mjs`.
-- [ ] Commit `feat: add crane operator access and typed services`; revisión de especificación y de calidad.
+- [x] Definir Role como `admin | operador | crane_operator`, `isStaffRole`, `homeForRole`, `requireStaff`, `requireAdmin` y `requireCraneOperator`. Leer rol y actividad de profiles, sin confiar en user_metadata.
+- [x] Escribir esquemas Zod estrictos con los nombres ingleses del diseño. Los archivos del uploader existente se adaptan de `nombre_original` a `originalName`; no se aceptan campos de autor, grúa, importe o estado.
+- [x] Implementar funciones de consultas/RPC tipadas: contexto del gruista, listado propio de recepciones y archivos, bandeja de staff, detalles, usuarios/asignaciones, autorización de subida, envío y vinculación. Ningún servidor público usa una secret key.
+- [x] Ampliar el script con flags canónicos `--name`, `--role`, `--equipment-id`, manteniendo `--nombre` y `--rol` como alias. Validar rol/equipo antes de crear una cuenta; comprobar que la grúa existe y está activa. Si falla activar/asignar, eliminar el Auth user recién creado y su perfil/asignación; si la limpieza falla, informar explícitamente el ID pendiente sin imprimir contraseñas ni claves.
+- [x] Probar campos obligatorios, fechas/formatos, límites, payload financiero rechazado y destino por rol con `npm run test`. Probar CLI mediante fetch simulado que rechaza toda red no esperada: `node --test scripts/create-user.test.mjs`.
+- [x] Commit `feat: add crane operator access and typed services`; revisión de especificación y de calidad.
 
 ## Task 3: Portal, recepción administrativa y asignaciones
 
