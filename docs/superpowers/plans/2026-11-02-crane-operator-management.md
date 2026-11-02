@@ -18,7 +18,7 @@
 - Extend: `tests/integration/crane-operator-helpers.ts` solo para fixtures necesarios.
 - Generate: `src/lib/supabase/database.types.ts` desde el stack descartable.
 
-- [ ] Prueba roja con JWT: `operador` lista solo gruistas y puede cambiar su grúa/actividad; `crane_operator` no puede llamar las RPC nuevas. Comprobar que intentar modificar un perfil `admin` u `operador` falla y conserva el perfil.
+- [x] Prueba roja con JWT: `operador` lista solo gruistas y puede cambiar su grúa/actividad; `crane_operator` no puede llamar las RPC nuevas. Comprobar que intentar modificar un perfil `admin` u `operador` falla y conserva el perfil.
 
 ```ts
 const result = await staff.client.rpc('set_crane_operator_access', {
@@ -31,11 +31,11 @@ const denied = await worker.client.rpc('complete_crane_operator_signup', {
 expect(denied.error?.code).toBe('42501')
 ```
 
-- [ ] Implementar las tres RPC del diseño, sin ampliar las RPC genéricas de administrador. El directorio filtra búsqueda/estado, agrega conteos y último envío del autor, conserva equipo inactivo como contexto y admite paginación externa con conteo exacto. No incluir fechas/IP/tokens de Auth.
-- [ ] La finalización se concede explícitamente solo a `service_role`; revocar `PUBLIC`, `anon` y `authenticated`. Revalidar al actor y bloquear filas antes de activar/asignar. Fijar siempre `crane_operator`, sin argumento de rol.
-- [ ] Probar finalización correcta y rechazo de actor inactivo/rol gruista, destino ya activo, grúa inactiva y objetivo de otro rol. Comprobar que los errores revierten perfil y asignación. Verificar historial y conteos después de reasignar/desactivar.
-- [ ] Generar tipos usando el controlador temporal de `runTests('int', ...)` con `supabase gen types typescript --local --workdir <temp>` antes de Vitest. No reset/push sobre desarrollo o producción.
-- [ ] Ejecutar dirigida y typecheck, revisar, commit `feat: add scoped staff management for crane operators`; revisión de especificación y luego calidad.
+- [x] Implementar las tres RPC del diseño, sin ampliar las RPC genéricas de administrador. El directorio filtra búsqueda/estado, agrega conteos y último envío del autor, conserva equipo inactivo como contexto y admite paginación externa con conteo exacto. No incluir fechas/IP/tokens de Auth.
+- [x] La finalización se concede explícitamente solo a `service_role`; revocar `PUBLIC`, `anon` y `authenticated`. Revalidar al actor y bloquear filas antes de activar/asignar. Fijar siempre `crane_operator`, sin argumento de rol.
+- [x] Probar finalización correcta y rechazo de actor inactivo/rol gruista, destino ya activo, grúa inactiva y objetivo de otro rol. Comprobar que los errores revierten perfil y asignación. Verificar historial y conteos después de reasignar/desactivar.
+- [x] Generar tipos usando el controlador temporal de `runTests('int', ...)` con `supabase gen types typescript --local --workdir <temp>` antes de Vitest. No reset/push sobre desarrollo o producción.
+- [x] Ejecutar dirigida y typecheck, revisar, commit `feat: add scoped staff management for crane operators`; revisión de especificación y luego calidad.
 
 ## Task 2: Contratos, consultas y alta segura desde el servidor
 
@@ -46,7 +46,7 @@ expect(denied.error?.code).toBe('42501')
 - Create: `src/lib/crane-operators/provisioning.ts` y pruebas con fetch simulado.
 - Extend: consultas/contratos de actividad solo si hace falta un orden explícito por envío.
 
-- [ ] Esquemas estrictos: alta `{name,email,password,equipmentId}`, acceso `{userId,active,equipmentId}`, filtros `{q,active,page}`. Nombre no vacío y hasta 120; email válido; contraseña sin trim de 6 a 72 caracteres; UUID de equipo. Rechazar `role`, `actorId`, `userId` en alta y claves extra. Nunca devolver contraseña en DTO ni logs.
+- [ ] Esquemas estrictos: alta `{name,email,password,equipmentId}`, acceso `{userId,active,equipmentId}`, filtros `{q,active,page}`. Nombre no vacío y hasta 120; email válido; contraseña sin trim de al menos 6 caracteres y hasta 72 bytes UTF-8 (límite de Auth); UUID de equipo. Rechazar `role`, `actorId`, `userId` en alta y claves extra. Nunca devolver contraseña en DTO ni logs.
 - [ ] Consultas tipadas `listCraneOperators(client,filters)`, `getManagedCraneOperator(client,id)` y servicio `setCraneOperatorAccess(client,input)`. Normalizar páginas fuera de rango conservando filtros y total 0.
 - [ ] Implementar el alta para llamarse después de `requireStaff` y validación en la acción; comprobar la grúa con cliente de sesión antes de instanciar privilegios. Crear Auth con email confirmado y finalizar con el actor real. En fallo borrar solo el nuevo ID; error de duplicado no toca la cuenta existente. Fallo de limpieza informa ID y explicación segura.
 
@@ -69,7 +69,7 @@ type NewCraneOperatorResult = { userId: string; email: string }
 - Create: `tests/e2e/crane-operator-management.spec.ts` y fixture aislado si se necesita.
 - Create: brief visual en `docs/diseno/2026-11-02-crane-operator-management.md` y referencia 17.
 
-- [ ] Antes del código UI, generar referencia con ImageGen a partir del listado/formularios existentes y documentar su dirección/procedencia. Conservar DESIGN.md, tokens, Inter, logo y componentes instalados.
+- [x] Antes del código UI, generar referencia con ImageGen a partir del listado/formularios existentes y documentar su dirección/procedencia. Conservar DESIGN.md, tokens, Inter, logo y componentes instalados.
 - [ ] Sidebar «Gruistas» para personal; layout, páginas, acciones y consultas usan `requireStaff`. Un gruista que intenta entrar recibe su portal y no puede ejecutar el alta ni modificar acceso.
 - [ ] Listado paginado y responsive con búsqueda, estado, grúa, remitos y último envío; CTA «Nuevo gruista» y fila «Ver actividad». Fichas de otros roles/IDs inválidos devuelven 404.
 - [ ] Formulario continuo Cuenta/Grúa con nombre, email, contraseña oculta y selector de grúa activa; botón «Crear gruista». Estado controlado, doble envío protegido, errores asociados y foco, contraseña fuera de URL/log/resultado. Guardar navega a la ficha. Grúa inactiva/ausente y email duplicado muestran recuperación clara.
