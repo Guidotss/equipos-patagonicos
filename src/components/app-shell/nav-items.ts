@@ -1,4 +1,4 @@
-import { FileCheck2, FileText, Home, Settings, Users, type LucideIcon } from 'lucide-react'
+import { FileCheck2, FileText, HardHat, Home, Settings, Users, type LucideIcon } from 'lucide-react'
 
 export type NavItem = { href: string; label: string; icon: LucideIcon }
 
@@ -7,6 +7,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/cotizaciones', label: 'Cotizaciones', icon: FileText },
   { href: '/presupuestos', label: 'Presupuestos', icon: FileCheck2 },
   { href: '/delivery-notes', label: 'Remitos', icon: FileCheck2 },
+  { href: '/crane-operators', label: 'Gruistas', icon: HardHat },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/configuracion', label: 'Configuración', icon: Settings },
 ]

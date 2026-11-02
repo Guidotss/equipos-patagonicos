@@ -10,6 +10,7 @@ export function createOperatorFixture() {
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } })
   const marker = `gruistas-${crypto.randomUUID()}`
   const users: OperatorTestUser[] = []
+  const createdEmails: string[] = []
   const equipmentIds: string[] = []
   const quotePaths: string[] = []
   let customerId: string
@@ -53,6 +54,10 @@ export function createOperatorFixture() {
 
   async function cleanup() {
     validateEnvTests()
+    const createdUsers = await withBase(async (db) => (await db.query<{ id: string; email: string }>('select id,email from auth.users where email=any($1::text[])', [createdEmails])).rows)
+    for (const account of createdUsers) {
+      if (!users.some((user) => user.id === account.id)) users.push({ ...account, name: '', password: '' })
+    }
     const paths = await withBase(async (db) => (await db.query<{ path: string }>('select path from public.crane_delivery_note_uploads where operator_id=any($1::uuid[])', [users.map((account) => account.id)])).rows.map((row) => row.path))
     paths.push(...quotePaths)
     if (customerId) {
@@ -79,5 +84,5 @@ export function createOperatorFixture() {
     await withBase((db) => db.query('delete from public.equipos where id=any($1::uuid[])', [equipmentIds]))
   }
 
-  return { marker, user, equipment, customer, budget, assign, cleanup }
+  return { marker, user, equipment, customer, budget, assign, cleanup, trackCreatedAccount: (email: string) => createdEmails.push(email) }
 }

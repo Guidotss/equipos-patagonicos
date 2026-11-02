@@ -9,7 +9,7 @@ export const newCraneOperatorSchema = z.strictObject({
   email: z.string({ error: 'Ingresá un email válido' }).trim().toLowerCase()
     .pipe(z.email({ error: 'Ingresá un email válido' })),
   password: z.string({ error: 'Ingresá una contraseña válida' }).min(6, 'La contraseña debe tener al menos 6 caracteres')
-    .refine((value) => new TextEncoder().encode(value).byteLength <= 72, 'La contraseña puede ocupar hasta 72 bytes'),
+    .refine((value) => new TextEncoder().encode(value).byteLength <= 72, 'La contraseña es demasiado larga. Usá una más corta'),
   equipmentId: uuidSchema,
 }, { error: 'El alta contiene campos no permitidos' })
 
