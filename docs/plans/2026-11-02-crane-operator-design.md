@@ -45,7 +45,7 @@ La fecha y la descripción son obligatorias; el cliente/lugar es obligatorio cua
 ## Modelo y contratos nuevos
 
 - `crane_operator_assignments`: asignación vigente por usuario, equipo, administrador y fecha.
-- `crane_delivery_notes`: recepción, autor, equipo y nombre al recibirla, fecha, número, cliente informado, trabajo, notas, presupuesto solicitado opcional, estado `pending | linked` y remito comercial opcional.
+- `crane_delivery_notes`: recepción, autor, equipo y nombre al recibirla, fecha, número, cliente informado, trabajo, notas, presupuesto solicitado opcional, estado `pending | linked` y remito comercial opcional. `linked_budget_id` conserva el destino original para que la idempotencia no dependa de cambios posteriores en los vínculos del documento comercial.
 - `crane_delivery_note_uploads`: autorización de subida, propietario, equipo, ruta única, MIME, tamaño esperado y vencimiento de un día.
 - `crane_delivery_note_files`: archivos de cada recepción, nombre original, MIME y tamaño comprobados en Storage, y orden. Cada autorización y ruta se consumen una sola vez.
 - Ruta de archivos: `documentos/crane-operators/<user-id>/<upload-id>.<ext>`. Se conserva el bucket privado `documentos` y el CHECK de prefijo de los archivos comerciales. La vinculación especializada valida y consume esas rutas; el registrador genérico conserva su restricción de carpetas por cliente.
@@ -71,6 +71,7 @@ RPC públicas:
 - El nuevo rol puede leer solo su perfil, su asignación, sus recepciones y archivos. Los trabajos se leen por una RPC con proyección explícita que no devuelve precios, datos fiscales, condiciones de pago ni PDF de cotización.
 - La consulta de perfiles deja de mostrar al gruista los perfiles ajenos. Los accesos actuales de administración se conservan.
 - Storage autoriza al gruista exclusivamente rutas registradas para él; la finalización comprueba nuevamente rol, actividad, asignación, equipo, propiedad, tamaño, MIME y vencimiento.
+- La autorización de INSERT también rechaza el encabezado `x-upsert: true` para el gruista: una firma de subida conserva ese permiso al consumir el token, por lo que debe impedirse al emitirlo. La regresión usa Storage real y comprueba que los bytes enviados no pueden reemplazarse con esa firma.
 - Un cambio de asignación invalida las subidas nuevas de la grúa anterior; no modifica ni expone cargas ajenas. Un usuario desactivado no conserva acceso por tener una sesión todavía válida.
 - La vinculación y el envío se serializan para impedir documentos duplicados y operaciones concurrentes sobre presupuestos anulados. Las cotizaciones aprobadas siguen siendo inmutables.
 
