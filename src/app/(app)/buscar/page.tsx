@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Count } from '@/components/ui/count'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import { searchGlobal, RESULTS_PER_PAGE } from '@/lib/search/queries'
 import { schemaSearch, isGroupSearch, GROUPS_SEARCH, hrefSearch, type GroupSearch } from '@/lib/search/model'
 import { pageValid } from '@/lib/home/model'
@@ -17,7 +17,7 @@ export default async function SearchPage({ searchParams }: {
   searchParams: Promise<{ q?: string | string[]; grupo?: string; pagina?: string }>
 }) {
   const params = await searchParams
-  await requireUser()
+  await requireStaff()
   const q = typeof params.q === 'string' ? params.q : ''
   const consulta = schemaSearch.safeParse(q)
   const grupo = isGroupSearch(params.grupo) ? params.grupo : undefined

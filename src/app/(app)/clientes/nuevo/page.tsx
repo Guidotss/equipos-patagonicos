@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { BarCrumbs, Content } from '@/components/app-shell/header'
 import { HeaderForm } from '@/components/form/structure-form'
@@ -6,7 +7,8 @@ import { crearClient } from '../actions'
 
 export const metadata: Metadata = { title: 'Nuevo cliente' }
 
-export default function NewClientPage() {
+export default async function NewClientPage() {
+  await requireStaff()
   return (
     <>
       <BarCrumbs crumbs={[{ texto: 'Clientes', href: '/clientes' }, { texto: 'Nuevo cliente' }]} />

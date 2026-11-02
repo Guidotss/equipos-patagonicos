@@ -76,6 +76,9 @@ export async function listCraneDeliveryNotes(
   const start = (page - 1) * pageSize
   const { data, count, error } = await query.order('service_date', { ascending: false })
     .order('created_at', { ascending: false }).order('id', { ascending: false }).range(start, start + pageSize - 1)
+  if (error?.code === 'PGRST103' && page > 1) {
+    return listCraneDeliveryNotes(supabase, { ...input, page: 1 })
+  }
   if (error) throw error
   return { notes: (data ?? []).map(readNote), total: count ?? 0, page, pageSize }
 }

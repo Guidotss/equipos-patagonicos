@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import { FIELDS_CLIENT, FIELDS_CONTACT, schemaClient, schemaContact } from '@/lib/clients/schemas'
 import {
   success,
@@ -22,7 +22,7 @@ function requireUuid(...ids: string[]) {
 }
 
 export async function crearClient(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   const values = readFields(formData, FIELDS_CLIENT)
   const datos = schemaClient.safeParse(values)
   if (!datos.success) return validationFailure(datos.error, values)
@@ -40,7 +40,7 @@ export async function actualizarClient(
   _previous: StatusForm,
   formData: FormData,
 ): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const values = readFields(formData, FIELDS_CLIENT)
   const datos = schemaClient.safeParse(values)
@@ -56,7 +56,7 @@ export async function actualizarClient(
 }
 
 export async function changeStatusClient(id: string, activo: boolean): Promise<void> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('clientes').update({ activo }).eq('id', id)
@@ -70,7 +70,7 @@ export async function crearContact(
   _previous: StatusForm,
   formData: FormData,
 ): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   requireUuid(clientId)
   const values = readFields(formData, FIELDS_CONTACT)
   const datos = schemaContact.safeParse(values)
@@ -90,7 +90,7 @@ export async function actualizarContact(
   _previous: StatusForm,
   formData: FormData,
 ): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   requireUuid(clientId, contactId)
   const values = readFields(formData, FIELDS_CONTACT)
   const datos = schemaContact.safeParse(values)
@@ -109,7 +109,7 @@ export async function actualizarContact(
 }
 
 export async function removeContact(clientId: string, contactId: string): Promise<void> {
-  await requireUser()
+  await requireStaff()
   requireUuid(clientId, contactId)
   const supabase = await createClient()
   const { error } = await supabase.from('contactos').delete().eq('id', contactId).eq('cliente_id', clientId)

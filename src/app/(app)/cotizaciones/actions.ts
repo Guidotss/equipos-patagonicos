@@ -6,7 +6,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { unstable_rethrow } from 'next/navigation'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import { schemaStatusEditor, payloadSave } from '@/lib/quotes/editor/validation'
 import type { StatusEditor } from '@/lib/quotes/editor/types'
 import * as service from '@/lib/quotes/service'
@@ -46,7 +46,7 @@ function revalidate(...ids: string[]) {
 export async function saveQuote(
   state: StatusEditor,
 ): Promise<Result<{ id: string; numero: number; version: string }>> {
-  await requireUser()
+  await requireStaff()
   const parsed = schemaStatusEditor.safeParse(state)
   if (!parsed.success) return failure('Los datos de la cotización no son válidos. Recargá la página y probá de nuevo.')
   const built = payloadSave(parsed.data)
@@ -63,7 +63,7 @@ export async function saveQuote(
 
 /** Genera el PDF, lo registra como enviado y devuelve el envío para descargarlo. */
 export async function sendQuote(id: string, version: string): Promise<Result<{ envioId: string }>> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   if (typeof version !== 'string' || !version) return failure('Falta la versión de la cotización')
   const result = await run(
@@ -80,7 +80,7 @@ export async function approveQuote(
   version: string,
   date: string,
 ): Promise<Result<{ anterior: { id: string; numero: number } | null }>> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   if (typeof version !== 'string' || !version) return failure('Falta la versión de la cotización')
   if (typeof date !== 'string') return failure('La fecha de aprobación no es válida')
@@ -97,7 +97,7 @@ export async function approveQuote(
 
 /** Finaliza el presupuesto de la cotización anterior de una renegociación. */
 export async function finishBudget(id: string): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   const result = await run(async (supabase) => {
     await service.finishBudget(supabase, id)
@@ -111,7 +111,7 @@ export async function finishBudget(id: string): Promise<Result> {
 }
 
 export async function rejectQuote(id: string): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   const result = await run(async (supabase) => {
     await service.rejectQuote(supabase, id)
@@ -122,7 +122,7 @@ export async function rejectQuote(id: string): Promise<Result> {
 }
 
 export async function reopenQuote(id: string): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   const result = await run(async (supabase) => {
     await service.reopenQuote(supabase, id)
@@ -133,7 +133,7 @@ export async function reopenQuote(id: string): Promise<Result> {
 }
 
 export async function revertApproval(id: string): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   const result = await run(async (supabase) => {
     await service.revertApproval(supabase, id)
@@ -147,7 +147,7 @@ export async function revertApproval(id: string): Promise<Result> {
 }
 
 export async function removeQuote(id: string): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   const result = await run(async (supabase) => {
     await service.removeQuote(supabase, id)
@@ -159,7 +159,7 @@ export async function removeQuote(id: string): Promise<Result> {
 
 /** Copia como borrador nuevo (renegociación del mismo cliente) y devuelve su id para abrirla. */
 export async function duplicateQuote(id: string, clientId?: string): Promise<Result<{ id: string }>> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
   if (clientId !== undefined && !isUuid(clientId)) return failure('Cliente inválido')
   const result = await run((supabase) => service.duplicateQuote(supabase, id, clientId), 'Cotización duplicada')
@@ -171,7 +171,7 @@ export async function duplicateQuote(id: string, clientId?: string): Promise<Res
 export async function searchClients(
   text: string,
 ): Promise<Result<{ id: string; razon_social: string; cuit: string | null; activo: boolean }[]>> {
-  await requireUser()
+  await requireStaff()
   if (typeof text !== 'string') return failure('Búsqueda inválida')
   return run(async (supabase) => {
     const { data, error } = await supabase
@@ -188,7 +188,7 @@ const businessNameSchema = textRequired('Ingresá la razón social')
 export async function createQuickClient(
   businessName: string,
 ): Promise<Result<{ id: string; razon_social: string; cuit: string | null }>> {
-  await requireUser()
+  await requireStaff()
   const parsed = businessNameSchema.safeParse(businessName)
   if (!parsed.success) return failure(parsed.error.issues[0].message)
   const result = await run(async (supabase) => {
@@ -208,7 +208,7 @@ export async function createQuickClient(
 export async function contactsOfClient(
   clientId: string,
 ): Promise<Result<{ contactos: { id: string; nombre: string; email: string }[]; lastContactId: string | null }>> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(clientId)) return failure(INVALID_IDENTIFIER)
   return run(async (supabase) => {
     const [contacts, last] = await Promise.all([

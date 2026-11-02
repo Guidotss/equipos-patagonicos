@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import { Plus, Search, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -28,6 +29,7 @@ export default async function ClientsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  await requireStaff()
   const params = await searchParams
   const q = (Array.isArray(params.q) ? params.q[0] : params.q) ?? ''
   const numberPage = Array.isArray(params.pagina) ? params.pagina[0] : params.pagina

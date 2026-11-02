@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { unstable_rethrow } from 'next/navigation'
 import { z } from 'zod'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import { approveWithPurchaseOrder, ErrorQuote } from '@/lib/quotes/service'
 import { contextoDocument } from '@/lib/documents/queries'
 import { schemaSaveDocument } from '@/lib/documents/screens'
@@ -29,7 +29,7 @@ function actualizarScreens() {
 }
 
 export async function prepareFile(entrada: unknown): Promise<Result<{ path: string; signedUrl: string }>> {
-  await requireUser()
+  await requireStaff()
   const validado = z
     .object({
       clientId: z.uuid(),
@@ -50,7 +50,7 @@ export async function prepareFile(entrada: unknown): Promise<Result<{ path: stri
 }
 
 export async function readDocumentContext(clientId: unknown) {
-  await requireUser()
+  await requireStaff()
   const id = z.uuid().safeParse(clientId)
   if (!id.success) return { ok: false as const, message: 'Cliente inválido' }
   try {
@@ -61,7 +61,7 @@ export async function readDocumentContext(clientId: unknown) {
 }
 
 export async function saveDocument(entrada: unknown): Promise<Result<{ id: string; presupuesto: string }>> {
-  await requireUser()
+  await requireStaff()
   const validado = schemaSaveDocument.safeParse(entrada)
   if (!validado.success)
     return { ok: false, message: 'Revisá los datos marcados', errors: errorsByPath(validado.error) }
@@ -110,7 +110,7 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
 }
 
 export async function changeVoidingDocument(id: unknown, restore: unknown): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   const validado = z.object({ id: z.uuid(), restore: z.boolean() }).safeParse({ id, restore })
   if (!validado.success) return { ok: false, message: 'Documento inválido' }
   try {

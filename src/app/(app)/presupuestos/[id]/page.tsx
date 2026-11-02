@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import { FileText } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -23,6 +24,7 @@ export default async function BudgetPage({
   params: Promise<{ id: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
   const consulta = await searchParams

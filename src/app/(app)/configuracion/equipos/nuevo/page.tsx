@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { FormEquipment } from '@/components/settings/equipment'
@@ -9,6 +10,7 @@ import { crearEquipment } from '../../actions'
 export const metadata: Metadata = { title: 'Nuevo equipo' }
 
 export default async function NewEquipmentPage() {
+  await requireStaff()
   const supabase = await createClient()
   const { data: plantillas, error } = await supabase.from('plantillas').select('bloques').eq('activa', true)
   if (error) throw error

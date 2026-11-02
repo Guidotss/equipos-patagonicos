@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 // src/app/(app)/cotizaciones/nueva/page.tsx
 import type { Metadata } from 'next'
 import { BarCrumbs } from '@/components/app-shell/header'
@@ -12,6 +13,7 @@ import { isUuid } from '@/lib/validation'
 export const metadata: Metadata = { title: 'Nueva cotización' }
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ cliente?: string; plantilla?: string }> }) {
+  await requireStaff()
   const params = await searchParams
   const supabase = await createClient()
   const catalogs = await readCatalogsEditor(supabase)

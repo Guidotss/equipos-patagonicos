@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BarCrumbs } from '@/components/app-shell/header'
@@ -9,6 +10,7 @@ import { actualizarContact, removeContact } from '../../../actions'
 export const metadata: Metadata = { title: 'Contacto' }
 
 export default async function ContactPage({ params }: { params: Promise<{ id: string; contactoId: string }> }) {
+  await requireStaff()
   const { id, contactoId: contactId } = await params
   if (!isUuid(id) || !isUuid(contactId)) notFound()
 

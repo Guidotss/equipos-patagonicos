@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -14,6 +15,7 @@ import { isUuid } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Documento' }
 export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
   const supabase = await createClient()

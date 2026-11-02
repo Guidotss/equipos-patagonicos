@@ -2,13 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import { databaseErrorMessage } from '@/lib/forms'
 import type { Result } from '@/lib/result'
 import { createClient } from '@/lib/supabase/server'
 
 export async function changeStatusBudget(entrada: unknown): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   const datos = z
     .object({
       id: z.uuid(),

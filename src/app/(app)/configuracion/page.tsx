@@ -1,4 +1,5 @@
-import { Building2, ChevronRight, FileText, PenLine } from 'lucide-react'
+import { requireStaff } from '@/lib/auth'
+import { Building2, ChevronRight, FileText, PenLine, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BarCrumbs, Content, HeaderSection } from '@/components/app-shell/header'
@@ -13,14 +14,15 @@ const SECCIONES = [
   { href: '/configuracion/plantillas', titulo: 'Plantillas', descripcion: 'Textos e ítems de las cotizaciones mensual y por jornada.', icon: FileText },
 ]
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await requireStaff()
   return (
     <>
       <BarCrumbs crumbs={[{ texto: 'Configuración' }]} />
       <HeaderSection titulo="Configuración" descripcion="Datos que usan las cotizaciones y sus PDF." />
       <Content>
         <div className="grid gap-6 lg:grid-cols-2">
-          {SECCIONES.map(({ href, titulo: title, descripcion, icon: Icon }) => (
+          {[...SECCIONES, ...(user.rol === 'admin' ? [{ href: '/configuracion/users', titulo: 'Usuarios y grúas', descripcion: 'Roles, acceso y grúas asignadas al personal.', icon: Users }] : [])].map(({ href, titulo: title, descripcion, icon: Icon }) => (
             <Link
               key={href}
               href={href}

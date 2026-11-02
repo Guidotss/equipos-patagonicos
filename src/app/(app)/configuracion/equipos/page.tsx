@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
 import { Equipment, NewEquipment } from '@/components/settings/equipment'
@@ -9,6 +10,7 @@ import { changeStatusEquipment } from '../actions'
 export const metadata: Metadata = { title: 'Equipos' }
 
 export default async function EquipmentPage() {
+  await requireStaff()
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('equipos')

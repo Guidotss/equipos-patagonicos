@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { unstable_rethrow } from 'next/navigation'
 import { z } from 'zod'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import { schemaStatusEditor } from '@/lib/quotes/editor/validation'
 import { SELECT_EDITOR } from '@/lib/quotes/editor/constants'
 import { statusFromRow } from '@/lib/quotes/editor/state'
@@ -17,7 +17,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 
 export async function preparePdfExisting(size: number, mime: string): Promise<Result<{ path: string; token: string }>> {
-  const user = await requireUser()
+  const user = await requireStaff()
   if (mime !== 'application/pdf' || !Number.isFinite(size) || size <= 0 || size > 10 * 1024 * 1024) {
     return { ok: false, message: 'Elegí un PDF de hasta 10 MB' }
   }
@@ -30,7 +30,7 @@ export async function preparePdfExisting(size: number, mime: string): Promise<Re
 }
 
 export async function createSpecial(origin: 'importada' | 'directa', input: unknown, path?: string): Promise<Result<{ id: string }>> {
-  await requireUser()
+  await requireStaff()
   if (origin !== 'importada' && origin !== 'directa') return { ok: false, message: 'Origen inválido' }
   const parsed = schemaSpecial(origin).safeParse(input)
   if (!parsed.success) return { ok: false, message: 'Revisá los datos marcados', errors: errorsByPath(parsed.error) }
@@ -49,7 +49,7 @@ export async function createSpecial(origin: 'importada' | 'directa', input: unkn
 }
 
 export async function saveTemplateEditor(state: StatusEditor, name: string, id?: string): Promise<Result<{ id: string }>> {
-  await requireUser()
+  await requireStaff()
   const parsed = schemaStatusEditor.safeParse(state)
   if (!parsed.success || typeof name !== 'string' || !name.trim() || name.trim().length > 100 || (id !== undefined && !isUuid(id))) return { ok: false, message: 'Revisá el nombre y el contenido de la plantilla' }
   const content = templateFromEditor(parsed.data)
@@ -65,7 +65,7 @@ export async function saveTemplateEditor(state: StatusEditor, name: string, id?:
 }
 
 export async function deleteTemplate(id: string): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(id)) return { ok: false, message: 'Plantilla inválida' }
   try {
     const supabase = await createClient()
@@ -77,7 +77,7 @@ export async function deleteTemplate(id: string): Promise<Result> {
 }
 
 export async function updateFollowUp(id: string, version: string, notes: string, date: string): Promise<Result> {
-  await requireUser()
+  await requireStaff()
   const v = z.object({ id: z.uuid(), version: z.iso.datetime({ offset: true }), notas: z.string().max(2000), fecha: z.string().refine((f) => f === '' || isDate(f)) }).safeParse({ id, version, notas: notes, fecha: date })
   if (!v.success) return { ok: false, message: 'Revisá las notas y la fecha de actualización' }
   try {
@@ -90,7 +90,7 @@ export async function updateFollowUp(id: string, version: string, notes: string,
 }
 
 export async function baseOnLastQuote(clientId: string): Promise<Result<{ estado: StatusEditor; catalogs: CatalogsEditor }>> {
-  await requireUser()
+  await requireStaff()
   if (!isUuid(clientId)) return { ok: false, message: 'Cliente inválido' }
   try {
     const supabase = await createClient()

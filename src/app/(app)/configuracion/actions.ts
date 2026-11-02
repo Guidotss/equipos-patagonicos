@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import {
   FIELDS_COMPANY,
   FIELDS_EQUIPMENT,
@@ -27,7 +27,7 @@ function requireUuid(id: string) {
 }
 
 export async function actualizarCompany(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
-  const user = await requireUser()
+  const user = await requireStaff()
   const values = readFields(formData, FIELDS_COMPANY)
   if (user.rol !== 'admin') return { ok: false, message: 'Solo un administrador puede cambiar estos datos', errors: {}, values }
   const datos = schemaCompany.safeParse(values)
@@ -42,7 +42,7 @@ export async function actualizarCompany(_previous: StatusForm, formData: FormDat
 }
 
 export async function crearSigner(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   const values = readFields(formData, FIELDS_SIGNER)
   const datos = schemaSigner.safeParse(values)
   if (!datos.success) return validationFailure(datos.error, values)
@@ -60,7 +60,7 @@ export async function actualizarSigner(
   _previous: StatusForm,
   formData: FormData,
 ): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const values = readFields(formData, FIELDS_SIGNER)
   const datos = schemaSigner.safeParse(values)
@@ -75,7 +75,7 @@ export async function actualizarSigner(
 }
 
 export async function changeStatusSigner(id: string, activo: boolean): Promise<void> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('firmantes').update({ activo }).eq('id', id)
@@ -84,7 +84,7 @@ export async function changeStatusSigner(id: string, activo: boolean): Promise<v
 }
 
 export async function crearEquipment(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   const values = readFields(formData, FIELDS_EQUIPMENT)
   const datos = schemaEquipment.safeParse(values)
   if (!datos.success) return validationFailure(datos.error, values)
@@ -102,7 +102,7 @@ export async function actualizarEquipment(
   _previous: StatusForm,
   formData: FormData,
 ): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const values = readFields(formData, FIELDS_EQUIPMENT)
   const datos = schemaEquipment.safeParse(values)
@@ -117,7 +117,7 @@ export async function actualizarEquipment(
 }
 
 export async function changeStatusEquipment(id: string, activo: boolean): Promise<void> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('equipos').update({ activo }).eq('id', id)
@@ -130,7 +130,7 @@ export async function renameTemplate(
   _previous: StatusForm,
   formData: FormData,
 ): Promise<StatusForm> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const values = readFields(formData, ['nombre'] as const)
   const datos = schemaNameTemplate.safeParse(values)
@@ -146,7 +146,7 @@ export async function renameTemplate(
 }
 
 export async function changeStatusTemplate(id: string, activa: boolean): Promise<void> {
-  await requireUser()
+  await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
   const { error } = await supabase.from('plantillas').update({ activa }).eq('id', id)

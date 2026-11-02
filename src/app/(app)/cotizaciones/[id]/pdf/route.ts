@@ -1,5 +1,6 @@
 // src/app/(app)/cotizaciones/[id]/pdf/route.ts
 import { getStatusSession } from '@/lib/auth'
+import { isStaffRole } from '@/lib/auth/roles'
 import { pdfForShow } from '@/lib/quotes/service'
 import { contentDisposition } from '@/lib/pdf/file-name'
 import { createClient } from '@/lib/supabase/server'
@@ -15,6 +16,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getStatusSession()
   if (session.estado !== 'activo') return new Response('No autorizado', { status: 401 })
+  if (!isStaffRole(session.user.rol)) return new Response('No autorizado', { status: 403 })
 
   const { id } = await params
   const query = new URL(request.url).searchParams

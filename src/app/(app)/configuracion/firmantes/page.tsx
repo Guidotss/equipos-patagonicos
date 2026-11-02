@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
 import { Signers, NewSigner } from '@/components/settings/signers'
@@ -8,6 +9,7 @@ import { changeStatusSigner } from '../actions'
 export const metadata: Metadata = { title: 'Firmantes' }
 
 export default async function SignersPage() {
+  await requireStaff()
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('firmantes')

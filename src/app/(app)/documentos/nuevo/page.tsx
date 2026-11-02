@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BarCrumbs, Content } from '@/components/app-shell/header'
@@ -15,6 +16,7 @@ export default async function NewDocumentPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  await requireStaff()
   const consulta = await searchParams
   const supabase = await createClient()
   const { data, error } = await supabase

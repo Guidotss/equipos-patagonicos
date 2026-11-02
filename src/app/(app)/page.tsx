@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { Plus, Upload } from 'lucide-react'
 import Link from 'next/link'
@@ -11,6 +12,7 @@ import { QUEUES_HOME, isQueueHome, pageValid, type QueueHome as NameQueueHome } 
 export const metadata: Metadata = { title: 'Inicio' }
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ cola?: string; pagina?: string }> }) {
+  await requireStaff()
   const params = await searchParams
   // El layout valida la sesión en paralelo; las consultas de Inicio también están protegidas por RLS.
   const cola = isQueueHome(params.cola) ? params.cola : undefined

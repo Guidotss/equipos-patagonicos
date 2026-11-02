@@ -1,6 +1,7 @@
 // src/app/(app)/cotizaciones/vista-previa/route.ts
 import { z } from 'zod'
 import { getStatusSession } from '@/lib/auth'
+import { isStaffRole } from '@/lib/auth/roles'
 import { schemaStatusEditor } from '@/lib/quotes/editor/validation'
 import { viewPreview, type EntryViewPreview } from '@/lib/quotes/service'
 import { createClient } from '@/lib/supabase/server'
@@ -17,6 +18,7 @@ const schemaEntry = z.object({ estado: schemaStatusEditor }) satisfies z.ZodType
 export async function POST(request: Request) {
   const session = await getStatusSession()
   if (session.estado !== 'activo') return new Response('No autorizado', { status: 401 })
+  if (!isStaffRole(session.user.rol)) return new Response('No autorizado', { status: 403 })
 
   if (!request.headers.get('content-type')?.startsWith('application/json')) {
     return new Response('Pedido inválido', { status: 400 })

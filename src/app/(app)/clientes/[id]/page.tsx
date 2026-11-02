@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BarCrumbs, Content, HeaderFicha } from '@/components/app-shell/header'
@@ -16,6 +17,7 @@ import { actualizarClient, changeStatusClient } from '../actions'
 export const metadata: Metadata = { title: 'Cliente' }
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
 

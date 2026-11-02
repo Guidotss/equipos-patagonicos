@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { CompanyForm } from '@/components/settings/company-form'
-import { requireUser } from '@/lib/auth'
+import { requireStaff } from '@/lib/auth'
 import { formatCuit } from '@/lib/cuit'
 import { todayArgentina } from '@/lib/format/dates'
 import { phrasesWithVariables } from '@/lib/templates/phrases'
@@ -11,7 +11,7 @@ import { actualizarCompany } from '../actions'
 export const metadata: Metadata = { title: 'Empresa' }
 
 export default async function CompanyPage() {
-  const user = await requireUser()
+  const user = await requireStaff()
   const supabase = await createClient()
   const [{ data: company, error }, { data: plantillas, error: errorTemplates }] = await Promise.all([
     supabase.from('empresa_config').select('*').single(),

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { prepareFile } from '@/app/(app)/documentos/actions'
 import { Button } from '@/components/ui/button'
 import { prepareFoto, uploadWithProgreso } from '@/lib/documents/upload'
+import type { Result } from '@/lib/result'
 import type { UploadedFile } from '@/lib/documents/service'
 
 type Upload = {
@@ -18,15 +19,19 @@ type Upload = {
   subido?: UploadedFile
 }
 
+export type UploadPreparer = (input: { mime: string; tamano: number }) => Promise<Result<{ path: string; signedUrl: string }>>
+
+type UploadFilesProps = {
+  disabled?: boolean
+  onChange: (files: UploadedFile[], pendingList: boolean) => void
+} & ({ clientId: string; uploadPreparer?: UploadPreparer } | { clientId?: never; uploadPreparer: UploadPreparer })
+
 export function UploadFiles({
   clientId,
   disabled,
   onChange,
-}: {
-  clientId: string
-  disabled?: boolean
-  onChange: (archivos: UploadedFile[], pendingList: boolean) => void
-}) {
+  uploadPreparer,
+}: UploadFilesProps) {
   const [archivos, setFiles] = useState<Upload[]>([])
   const [error, setError] = useState('')
   const selector = useRef<HTMLInputElement>(null)
@@ -48,7 +53,8 @@ export function UploadFiles({
     try {
       if (entrada.archivo.name.length > 255) throw new Error('El nombre del archivo puede tener hasta 255 caracteres')
       const archivo = await prepareFoto(entrada.archivo)
-      const result = await prepareFile({ clientId, mime: archivo.type, tamano: archivo.size })
+      const input = { mime: archivo.type, tamano: archivo.size }
+      const result = await (uploadPreparer ? uploadPreparer(input) : prepareFile({ ...input, clientId }))
       if (!result.ok) throw new Error(result.message)
       await uploadWithProgreso(result.datos.signedUrl, archivo, (progreso) => actualizar(entrada.id, { progreso }))
       actualizar(entrada.id, {
@@ -86,7 +92,7 @@ export function UploadFiles({
           type="button"
           variant="outline"
           className="h-20 flex-col"
-          disabled={disabled || !clientId}
+          disabled={disabled || (!clientId && !uploadPreparer)}
           onClick={() => camara.current?.click()}
         >
           <Camera data-icon="inline-start" />
@@ -96,7 +102,7 @@ export function UploadFiles({
           type="button"
           variant="outline"
           className="h-20 flex-col"
-          disabled={disabled || !clientId}
+          disabled={disabled || (!clientId && !uploadPreparer)}
           onClick={() => selector.current?.click()}
         >
           <Paperclip data-icon="inline-start" />
@@ -110,7 +116,7 @@ export function UploadFiles({
         multiple
         className="sr-only"
         aria-label="Seleccionar archivos del documento"
-        disabled={disabled || !clientId}
+        disabled={disabled || (!clientId && !uploadPreparer)}
         onChange={(evento) => {
           select(evento.target.files)
           evento.target.value = ''
@@ -123,7 +129,7 @@ export function UploadFiles({
         capture="environment"
         className="sr-only"
         aria-label="Tomar foto del documento"
-        disabled={disabled || !clientId}
+        disabled={disabled || (!clientId && !uploadPreparer)}
         onChange={(evento) => {
           select(evento.target.files)
           evento.target.value = ''

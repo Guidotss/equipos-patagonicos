@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 // src/app/(app)/cotizaciones/[id]/page.tsx
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -29,6 +30,7 @@ export default async function QuotePage({
   params: Promise<{ id: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
 

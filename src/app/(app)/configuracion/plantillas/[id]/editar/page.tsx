@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { EditorTemplate } from '@/components/settings/editor-template'
@@ -8,6 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 
 export default async function EditTemplatePage({ params }: { params: Promise<{ id: string }> }) {
+  await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
   const supabase = await createClient()

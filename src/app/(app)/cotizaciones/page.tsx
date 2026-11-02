@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import { FileText, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -37,6 +38,7 @@ export default async function QuotesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  await requireStaff()
   const filters = readFilters(await searchParams)
   const home = (filters.pagina - 1) * PER_PAGE
   const supabase = await createClient()

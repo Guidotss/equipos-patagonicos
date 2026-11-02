@@ -1,3 +1,4 @@
+import { requireStaff } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { BarCrumbs, Content, HeaderPage } from '@/components/app-shell/header'
 import { Templates } from '@/components/settings/templates'
@@ -9,6 +10,7 @@ import { changeStatusTemplate } from '../actions'
 export const metadata: Metadata = { title: 'Plantillas' }
 
 export default async function TemplatesPage() {
+  await requireStaff()
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('plantillas')

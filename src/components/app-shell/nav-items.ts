@@ -6,6 +6,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Inicio', icon: Home },
   { href: '/cotizaciones', label: 'Cotizaciones', icon: FileText },
   { href: '/presupuestos', label: 'Presupuestos', icon: FileCheck2 },
+  { href: '/delivery-notes', label: 'Remitos', icon: FileCheck2 },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/configuracion', label: 'Configuración', icon: Settings },
 ]
