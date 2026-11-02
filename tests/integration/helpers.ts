@@ -28,7 +28,7 @@ export function anonClient() {
 export const PASSWORD_OF_TEST = 'Prueba-1234-segura'
 
 /** Crea un usuario de Auth, le fija activo/rol y devuelve un cliente con su sesión iniciada. */
-export async function crearUser(options: { activo: boolean; rol?: 'admin' | 'operador' }) {
+export async function crearUser(options: { activo: boolean; rol?: 'admin' | 'operador' | 'crane_operator' }) {
   const admin = adminClient()
   const email = `test-${crypto.randomUUID()}@equipos.test`
 

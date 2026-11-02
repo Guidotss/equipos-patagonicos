@@ -23,79 +23,6 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            facturas_historicas: {
-        Row: {
-          clave_origen: string
-          cobrado: number
-          confirmacion_cobro: string
-          cotizacion_id: string
-          entrada: Json
-          factura_id: string
-          lote: string
-          registrado_at: string
-          sha256: string
-        }
-        Insert: {
-          clave_origen?: string
-          cobrado: number
-          confirmacion_cobro: string
-          cotizacion_id: string
-          entrada: Json
-          factura_id: string
-          lote: string
-          registrado_at?: string
-          sha256: string
-        }
-        Update: {
-          clave_origen?: string
-          cobrado?: number
-          confirmacion_cobro?: string
-          cotizacion_id?: string
-          entrada?: Json
-          factura_id?: string
-          lote?: string
-          registrado_at?: string
-          sha256?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
-            columns: ["cotizacion_id"]
-            isOneToOne: true
-            referencedRelation: "cotizaciones"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
-            columns: ["cotizacion_id"]
-            isOneToOne: true
-            referencedRelation: "v_cotizaciones"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
-            columns: ["cotizacion_id"]
-            isOneToOne: true
-            referencedRelation: "v_presupuestos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "facturas_historicas_factura_id_fkey"
-            columns: ["factura_id"]
-            isOneToOne: true
-            referencedRelation: "documentos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "facturas_historicas_factura_id_fkey"
-            columns: ["factura_id"]
-            isOneToOne: true
-            referencedRelation: "v_facturas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-
             "clientes": {
                   Row: {
                     "activo": boolean,"condicion_iva": string | null,"condicion_pago": string,"created_at": string,"created_by": string | null,"cuit": string | null,"direccion": string,"email": string,"id": string,"localidad": string,"notas": string,"provincia": string,"razon_social": string,"telefono": string,"updated_at": string
@@ -274,6 +201,176 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"crane_delivery_note_files": {
+                  Row: {
+                    "id": string,"mime": string,"note_id": string,"original_name": string,"path": string,"position": number,"size": number,"upload_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"mime": string,"note_id": string,"original_name": string,"path": string,"position": number,"size": number,"upload_id": string
+                  }
+                  Update: {
+                    "id"?: string,"mime"?: string,"note_id"?: string,"original_name"?: string,"path"?: string,"position"?: number,"size"?: number,"upload_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crane_delivery_note_files_note_id_fkey"
+      columns: ["note_id"]
+isOneToOne: false
+      referencedRelation: "crane_delivery_notes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_note_files_upload_id_fkey"
+      columns: ["upload_id"]
+isOneToOne: true
+      referencedRelation: "crane_delivery_note_uploads"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crane_delivery_note_uploads": {
+                  Row: {
+                    "consumed_note_id": string | null,"created_at": string,"equipment_id": string,"expected_size": number,"expires_at": string,"id": string,"mime": string,"operator_id": string,"path": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "consumed_note_id"?: string | null,"created_at"?: string,"equipment_id": string,"expected_size": number,"expires_at"?: string,"id"?: string,"mime": string,"operator_id": string,"path": string
+                  }
+                  Update: {
+                    "consumed_note_id"?: string | null,"created_at"?: string,"equipment_id"?: string,"expected_size"?: number,"expires_at"?: string,"id"?: string,"mime"?: string,"operator_id"?: string,"path"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crane_delivery_note_uploads_consumed_note_id_fkey"
+      columns: ["consumed_note_id"]
+isOneToOne: false
+      referencedRelation: "crane_delivery_notes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_note_uploads_equipment_id_fkey"
+      columns: ["equipment_id"]
+isOneToOne: false
+      referencedRelation: "equipos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_note_uploads_operator_id_fkey"
+      columns: ["operator_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crane_delivery_notes": {
+                  Row: {
+                    "created_at": string,"customer_name": string,"document_id": string | null,"equipment_id": string,"equipment_name": string,"id": string,"linked_at": string | null,"linked_budget_id": string | null,"linked_by": string | null,"notes": string,"number": string,"operator_id": string,"requested_budget_id": string | null,"service_date": string,"status": string,"submission_data": NonNullable<Json>,"submission_files": NonNullable<Json>,"work_description": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"customer_name": string,"document_id"?: string | null,"equipment_id": string,"equipment_name": string,"id": string,"linked_at"?: string | null,"linked_budget_id"?: string | null,"linked_by"?: string | null,"notes"?: string,"number"?: string,"operator_id": string,"requested_budget_id"?: string | null,"service_date": string,"status"?: string,"submission_data": NonNullable<Json>,"submission_files": NonNullable<Json>,"work_description": string
+                  }
+                  Update: {
+                    "created_at"?: string,"customer_name"?: string,"document_id"?: string | null,"equipment_id"?: string,"equipment_name"?: string,"id"?: string,"linked_at"?: string | null,"linked_budget_id"?: string | null,"linked_by"?: string | null,"notes"?: string,"number"?: string,"operator_id"?: string,"requested_budget_id"?: string | null,"service_date"?: string,"status"?: string,"submission_data"?: NonNullable<Json>,"submission_files"?: NonNullable<Json>,"work_description"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crane_delivery_notes_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: true
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: true
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_equipment_id_fkey"
+      columns: ["equipment_id"]
+isOneToOne: false
+      referencedRelation: "equipos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_linked_budget_id_fkey"
+      columns: ["linked_budget_id"]
+isOneToOne: false
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_linked_budget_id_fkey"
+      columns: ["linked_budget_id"]
+isOneToOne: false
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_linked_budget_id_fkey"
+      columns: ["linked_budget_id"]
+isOneToOne: false
+      referencedRelation: "v_presupuestos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_linked_by_fkey"
+      columns: ["linked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_operator_id_fkey"
+      columns: ["operator_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_requested_budget_id_fkey"
+      columns: ["requested_budget_id"]
+isOneToOne: false
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_requested_budget_id_fkey"
+      columns: ["requested_budget_id"]
+isOneToOne: false
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_delivery_notes_requested_budget_id_fkey"
+      columns: ["requested_budget_id"]
+isOneToOne: false
+      referencedRelation: "v_presupuestos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"crane_operator_assignments": {
+                  Row: {
+                    "assigned_at": string,"assigned_by": string | null,"equipment_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "assigned_at"?: string,"assigned_by"?: string | null,"equipment_id": string,"user_id": string
+                  }
+                  Update: {
+                    "assigned_at"?: string,"assigned_by"?: string | null,"equipment_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crane_operator_assignments_assigned_by_fkey"
+      columns: ["assigned_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_operator_assignments_equipment_id_fkey"
+      columns: ["equipment_id"]
+isOneToOne: false
+      referencedRelation: "equipos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crane_operator_assignments_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"documento_archivos": {
                   Row: {
                     "created_at": string,"documento_id": string,"id": string,"mime": string,"nombre_original": string,"orden": number,"path": string,"tamano": number
@@ -421,6 +518,50 @@ isOneToOne: false
                   }
                   Relationships: [
 
+                  ]
+                },"facturas_historicas": {
+                  Row: {
+                    "clave_origen": string,"cobrado": number,"confirmacion_cobro": string,"cotizacion_id": string,"entrada": NonNullable<Json>,"factura_id": string,"lote": string,"registrado_at": string,"sha256": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clave_origen"?: never,"cobrado": number,"confirmacion_cobro": string,"cotizacion_id": string,"entrada": NonNullable<Json>,"factura_id": string,"lote": string,"registrado_at"?: string,"sha256": string
+                  }
+                  Update: {
+                    "clave_origen"?: never,"cobrado"?: number,"confirmacion_cobro"?: string,"cotizacion_id"?: string,"entrada"?: NonNullable<Json>,"factura_id"?: string,"lote"?: string,"registrado_at"?: string,"sha256"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: true
+      referencedRelation: "cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: true
+      referencedRelation: "v_cotizaciones"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
+      columns: ["cotizacion_id"]
+isOneToOne: true
+      referencedRelation: "v_presupuestos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "facturas_historicas_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: true
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "facturas_historicas_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: true
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"firmantes": {
                   Row: {
@@ -606,8 +747,6 @@ isOneToOne: false
                 }
           }
           Functions: {
-            importar_factura_historica: { Args: { p_datos: Json }; Returns: Json }
-
             "actualizar_documento":
 { Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
                            },
@@ -735,11 +874,19 @@ isOneToOne: false
 "cargar_cotizacion_existente":
 { Args: { "p_datos": Json }; Returns: string
                            },
+"create_crane_delivery_note_upload":
+{ Args: { "p_mime": string,"p_size": number }; Returns: {
+              "path": string,"upload_id": string
+            }[]
+                           },
 "duplicar_cotizacion":
 { Args: { "p_cliente_id"?: string,"p_id": string }; Returns: string
                            },
 "eliminar_plantilla":
 { Args: { "p_id": string }; Returns: undefined
+                           },
+"get_crane_operator_context":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "guardar_cotizacion":
 { Args: { "p_datos": Json,"p_id"?: string,"p_items": Json,"p_updated_at"?: string }; Returns: string
@@ -754,6 +901,9 @@ isOneToOne: false
                            },
 "importar_cotizacion":
 { Args: { "p_datos": Json }; Returns: string
+                           },
+"importar_factura_historica":
+{ Args: { "p_datos": Json }; Returns: Json
                            },
 "inicio_pendientes":
 { Args: { "p_cola"?: string,"p_desde"?: number,"p_limite"?: number }; Returns: {
@@ -784,6 +934,14 @@ isOneToOne: false
               "cantidad": number,"cola": string,"importe": number
             }[]
                            },
+"link_crane_delivery_note":
+{ Args: { "p_budget_id": string,"p_note_id": string }; Returns: string
+                           },
+"list_user_access":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "active": boolean,"email": string,"equipment_id": string,"equipment_name": string,"name": string,"role": string,"user_id": string
+            }[]
+                           },
 "marcar_enviada":
 { Args: { "p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: undefined
                            },
@@ -807,6 +965,12 @@ isOneToOne: false
                            },
 "revertir_aprobacion":
 { Args: { "p_id": string }; Returns: undefined
+                           },
+"set_user_access":
+{ Args: { "p_active": boolean,"p_equipment_id"?: string,"p_role": string,"p_user_id": string }; Returns: undefined
+                           },
+"submit_crane_delivery_note":
+{ Args: { "p_data": Json,"p_files": Json,"p_id": string }; Returns: string
                            }
           }
           Enums: {
