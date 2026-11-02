@@ -1,6 +1,8 @@
 import { cp, mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type Page, type Request, type TestInfo } from '@playwright/test'
+import { createClient } from '@supabase/supabase-js'
+import type { Database } from '../../src/lib/supabase/database.types'
 import { createOperatorFixture, type OperatorTestUser } from './crane-operator-fixture'
 import { withBase } from './database'
 import { iniciarSession } from './helpers'
@@ -331,4 +333,67 @@ test('reasignación rechaza archivos anteriores y conserva el historial de la gr
   await expect(page.getByLabel('Número de remito (opcional)', { exact: true })).toHaveValue(duringUploadNumber)
   await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
   expect(await withBase(async (db) => (await db.query('select id from public.crane_delivery_notes where operator_id=$1 and number=$2', [worker.id, duringUploadNumber])).rowCount)).toBe(0)
+})
+
+
+test('el personal edita el remito completo y conserva su historial cuando se elimina el presupuesto original', async ({ page, browser }, info) => {
+  test.setTimeout(120_000)
+  const imported = await fixture.budget(crane.id, 'en_curso', 'Trabajo importado con remito completo', 'importada')
+  await fixture.assign(worker.id, crane.id)
+  const number = 'N'.repeat(100)
+  const work = 'Trabajo de izaje. '.repeat(120).slice(0, 1999) + 'X'
+  const notes = 'Observación del gruista. '.repeat(100).slice(0, 1999) + 'X'
+  await login(page, worker)
+  await page.goto('/operator/new')
+  await page.getByLabel('Presupuesto (opcional)', { exact: true }).selectOption(imported.id)
+  await page.getByLabel('Número de remito (opcional)', { exact: true }).fill(number)
+  await page.getByLabel('Fecha del servicio', { exact: true }).fill('2026-01-15')
+  await page.getByLabel('Descripción del trabajo', { exact: true }).fill(work)
+  await page.getByLabel('Observaciones (opcional)', { exact: true }).fill(notes)
+  await attach(page)
+  await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
+  await expect(page).toHaveURL(/\/operator\/notes\/[0-9a-f-]{36}$/)
+  const submittedId = page.url().split('/').at(-1)!
+  await expect(page.getByText('Vinculado', { exact: true })).toBeVisible()
+  const original = await withBase(async (db) => (await db.query<{ id: string; numero: string; notas: string }>(
+    'select d.id,d.numero,d.notas from public.documentos d join public.crane_delivery_notes n on n.document_id=d.id where n.id=$1', [submittedId])).rows[0])
+  expect(original.numero).toBe(number)
+  expect(original.notas).toContain(work)
+  expect(original.notas).toContain(notes)
+  expect(original.notas.length).toBeGreaterThan(4000)
+
+  const staffContext = await browser.newContext()
+  try {
+    const staffPage = await staffContext.newPage()
+    await login(staffPage, staff, 'Inicio')
+    await staffPage.goto(`/documentos/${original.id}`)
+    await expect(staffPage.getByLabel('Número (opcional)', { exact: true })).toHaveValue(number)
+    await expect(staffPage.getByLabel('Notas (opcional)', { exact: true })).toHaveValue(original.notas)
+    await expect(staffPage.getByLabel('Número (opcional)', { exact: true })).toHaveAttribute('maxlength', '200')
+    await expect(staffPage.getByLabel('Notas (opcional)', { exact: true })).toHaveAttribute('maxlength', '12400')
+    const serviceDate = staffPage.getByLabel('Fecha (opcional)', { exact: true })
+    await expect(serviceDate).toBeEnabled()
+    await serviceDate.fill('2026-02-20')
+    await staffPage.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+    await expect(staffPage).toHaveURL(new RegExp(`/presupuestos/${imported.id}$`))
+    const saved = await withBase(async (db) => (await db.query('select numero,notas,fecha::text from public.documentos where id=$1', [original.id])).rows[0])
+    expect(saved).toEqual({ numero: number, notas: original.notas, fecha: '2026-02-20' })
+
+    const client = createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } })
+    expect((await client.auth.signInWithPassword({ email: staff.email, password: staff.password })).error).toBeNull()
+    expect((await client.rpc('anular_documento', { p_id: original.id })).error).toBeNull()
+    expect((await client.rpc('revertir_aprobacion', { p_id: imported.id })).error).toBeNull()
+    expect((await client.rpc('borrar_cotizacion', { p_id: imported.id })).error).toBeNull()
+    await staffPage.goto(`/delivery-notes/${submittedId}`)
+    await expect(staffPage.getByText('El presupuesto original ya no está disponible.', { exact: true })).toBeVisible()
+    await expect(staffPage.getByRole('link', { name: 'Ver presupuesto vinculado', exact: true })).toHaveCount(0)
+    await expect(staffPage.getByRole('link', { name: 'Ver documento', exact: true })).toHaveAttribute('href', `/documentos/${original.id}`)
+    await expect(staffPage.getByText('Vinculado', { exact: true })).toBeVisible()
+    await capture(staffPage, info, 'deleted-budget')
+    await page.reload()
+    await expect(page.getByText('Vinculado', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Remito de obra.pdf', exact: true })).toBeVisible()
+  } finally {
+    await staffContext.close()
+  }
 })

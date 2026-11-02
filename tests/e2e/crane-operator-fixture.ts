@@ -11,6 +11,7 @@ export function createOperatorFixture() {
   const marker = `gruistas-${crypto.randomUUID()}`
   const users: OperatorTestUser[] = []
   const equipmentIds: string[] = []
+  const quotePaths: string[] = []
   let customerId: string
 
   async function user(role: Role, suffix: string, active = true) {
@@ -35,8 +36,15 @@ export function createOperatorFixture() {
     return customerId
   }
 
-  async function budget(equipmentId: string | null, state: string, subject: string) {
-    return withBase(async (db) => (await db.query<{ id: string; numero: number }>(`insert into public.cotizaciones(cliente_id,origen,formato,equipo_id,asunto,datos,estado,fecha_aprobacion,presupuesto_estado) values($1,'directa','jornada',$2,$3,'{"ubicacion":"Neuquén"}','aprobada',current_date,$4) returning id,numero`, [customerId, equipmentId, subject, state])).rows[0])
+  async function budget(equipmentId: string | null, state: string, subject: string, origin: 'directa' | 'importada' = 'directa') {
+    const path = origin === 'importada' ? `importadas/${crypto.randomUUID()}.pdf` : null
+    if (path) {
+      quotePaths.push(path)
+      const uploaded = await admin.storage.from('documentos').upload(path,
+        new Blob(['%PDF-1.4 presupuesto importado'], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+      if (uploaded.error) throw uploaded.error
+    }
+    return withBase(async (db) => (await db.query<{ id: string; numero: number }>(`insert into public.cotizaciones(cliente_id,origen,formato,equipo_id,asunto,datos,estado,fecha_aprobacion,presupuesto_estado,archivo_original_path) values($1,$5,'jornada',$2,$3,'{"ubicacion":"Neuquén"}','aprobada',current_date,$4,$6) returning id,numero`, [customerId, equipmentId, subject, state, origin, path])).rows[0])
   }
 
   async function assign(userId: string, equipmentId: string) {
@@ -46,6 +54,7 @@ export function createOperatorFixture() {
   async function cleanup() {
     validateEnvTests()
     const paths = await withBase(async (db) => (await db.query<{ path: string }>('select path from public.crane_delivery_note_uploads where operator_id=any($1::uuid[])', [users.map((account) => account.id)])).rows.map((row) => row.path))
+    paths.push(...quotePaths)
     if (customerId) {
       const { data, error } = await admin.storage.from('documentos').list(`documentos/${customerId}`, { limit: 1000 })
       if (error) throw error

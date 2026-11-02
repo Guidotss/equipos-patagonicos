@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
-import { INVOICE_TYPES } from '@/lib/documents/schemas'
+import { getDocumentTextLimits, INVOICE_TYPES } from '@/lib/documents/schemas'
 
 import type { DocumentFormValues } from './document-form-model'
 import type { DocumentFormState } from './use-document-form'
@@ -16,6 +16,10 @@ export function DocumentDetailsSection({
   context,
   duplicate,
 }: Pick<DocumentFormState, 'values' | 'changeField' | 'errors' | 'context'> & { duplicate: string | boolean }) {
+  const textLimits = getDocumentTextLimits(values.tipo)
+  // maxlength cuenta UTF-16: dos unidades por punto de código evitan recortar caracteres suplementarios.
+  const inputLengthMultiplier = values.tipo === 'remito' ? 2 : 1
+
   function field(name: keyof DocumentFormValues, label: string, inputType = 'text', required = false) {
     return (
       <Field id={name} label={label} error={errors[`datos.${name}`]}>
@@ -25,7 +29,7 @@ export function DocumentDetailsSection({
           onChange={(event) => changeField(name, event.target.value)}
           type={inputType}
           required={required}
-          maxLength={name === 'numero' || name === 'numero_oc_ref' ? 50 : undefined}
+          maxLength={name === 'numero' ? textLimits.number * inputLengthMultiplier : name === 'numero_oc_ref' ? 50 : undefined}
           inputMode={name === 'monto' ? 'decimal' : undefined}
           aria-invalid={Boolean(errors[`datos.${name}`])}
         />
@@ -101,7 +105,7 @@ export function DocumentDetailsSection({
             value={values.notas}
             onChange={(event) => changeField('notas', event.target.value)}
             rows={3}
-            maxLength={2000}
+            maxLength={textLimits.notes * inputLengthMultiplier}
           />
         </Field>
       </div>

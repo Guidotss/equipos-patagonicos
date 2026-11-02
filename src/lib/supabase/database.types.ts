@@ -290,24 +290,6 @@ isOneToOne: false
       referencedRelation: "equipos"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "crane_delivery_notes_linked_budget_id_fkey"
-      columns: ["linked_budget_id"]
-isOneToOne: false
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_linked_budget_id_fkey"
-      columns: ["linked_budget_id"]
-isOneToOne: false
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_linked_budget_id_fkey"
-      columns: ["linked_budget_id"]
-isOneToOne: false
-      referencedRelation: "v_presupuestos"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "crane_delivery_notes_linked_by_fkey"
       columns: ["linked_by"]
 isOneToOne: false
@@ -318,24 +300,6 @@ isOneToOne: false
       columns: ["operator_id"]
 isOneToOne: false
       referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_requested_budget_id_fkey"
-      columns: ["requested_budget_id"]
-isOneToOne: false
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_requested_budget_id_fkey"
-      columns: ["requested_budget_id"]
-isOneToOne: false
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_requested_budget_id_fkey"
-      columns: ["requested_budget_id"]
-isOneToOne: false
-      referencedRelation: "v_presupuestos"
       referencedColumns: ["id"]
     }
                   ]

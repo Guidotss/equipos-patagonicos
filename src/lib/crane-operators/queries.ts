@@ -95,6 +95,14 @@ export async function getCraneDeliveryNote(supabase: Client, id: string): Promis
   return { ...readNote(note), files: (files ?? []).map(readFile) }
 }
 
+/** El UUID histórico puede sobrevivir al presupuesto; solo se enlazan destinos que siguen disponibles. */
+export async function getLiveDeliveryNoteBudgetId(supabase: Client, id: string): Promise<string | null> {
+  const budgetId = z.uuid().parse(id)
+  const { data, error } = await supabase.from('v_presupuestos').select('id').eq('id', budgetId).maybeSingle()
+  if (error) throw error
+  return data?.id ?? null
+}
+
 /** También permite descargar remitos pendientes, que aún no tienen un documento comercial. */
 export async function getCraneDeliveryNoteFile(supabase: Client, id: string): Promise<CraneDeliveryNoteFile | null> {
   const fileId = z.uuid().parse(id)

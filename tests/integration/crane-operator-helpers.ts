@@ -45,6 +45,31 @@ export function createCraneFixture() {
     return id
   }
 
+  async function importedBudget(client: TestClient, equipmentId: string | null) {
+    const path = `importadas/${crypto.randomUUID()}.pdf`
+    paths.push(path)
+    const uploaded = await client.storage.from('documentos').upload(path,
+      new Blob(['%PDF-1.4 presupuesto importado'], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+    if (uploaded.error) throw uploaded.error
+    const [customer] = await sql<{ id: string }>('select id from public.clientes limit 1')
+    const [sequence] = await sql<{ number: string }>("select nextval(pg_get_serial_sequence('public.cotizaciones','numero'))::text as number")
+    const imported = await client.rpc('importar_cotizacion', { p_datos: {
+      cliente_id: customer.id, numero: Number(sequence.number), formato: 'jornada', estado: 'enviada',
+      fecha: '2026-01-01', archivo_original_path: path, asunto: 'Trabajo importado de prueba',
+    } })
+    if (imported.error) throw imported.error
+    budgetIds.push(imported.data)
+    // Se prepara la grúa antes de aprobar; el contenido aprobado nunca se modifica.
+    await sql('update public.cotizaciones set equipo_id=$2 where id=$1', [imported.data, equipmentId])
+    const version = await client.from('cotizaciones').select('updated_at').eq('id', imported.data).single()
+    if (version.error) throw version.error
+    const approved = await client.rpc('aprobar_cotizacion', {
+      p_id: imported.data, p_updated_at: version.data.updated_at, p_fecha: '2026-01-02',
+    })
+    if (approved.error) throw approved.error
+    return imported.data
+  }
+
   function assign(admin: TestClient, workerId: string, equipmentId: string | null, active = true) {
     return admin.rpc('set_user_access', {
       p_user_id: workerId, p_role: 'crane_operator', p_active: active,
@@ -88,5 +113,5 @@ export function createCraneFixture() {
     await sql('delete from public.equipos where id=any($1::uuid[])', [equipmentIds])
   }
 
-  return { user, equipment, budget, assign, reserve, uploadSigned, upload, cleanup, paths }
+  return { user, equipment, budget, importedBudget, assign, reserve, uploadSigned, upload, cleanup, paths }
 }

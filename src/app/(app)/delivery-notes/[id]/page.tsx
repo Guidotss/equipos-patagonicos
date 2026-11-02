@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { requireStaff } from '@/lib/auth'
 import { isUuid } from '@/lib/validation'
 import { createClient } from '@/lib/supabase/server'
-import { getCraneDeliveryNote, listLinkableBudgets } from '@/lib/crane-operators/queries'
+import { getCraneDeliveryNote, getLiveDeliveryNoteBudgetId, listLinkableBudgets } from '@/lib/crane-operators/queries'
 import { BarCrumbs, Content } from '@/components/app-shell/header'
 import { HeaderForm } from '@/components/form/structure-form'
 import { NoteDetail } from '@/components/crane-operators/note-detail'
@@ -18,14 +18,17 @@ export default async function DeliveryNotePage({ params }: { params: Promise<{ i
   const client = await createClient()
   const note = await getCraneDeliveryNote(client, id)
   if (!note) notFound()
-  const budgets = note.status === 'pending' ? await listLinkableBudgets(client) : null
+  const [budgets, liveBudgetId] = await Promise.all([
+    note.status === 'pending' ? listLinkableBudgets(client) : null,
+    note.linkedBudgetId ? getLiveDeliveryNoteBudgetId(client, note.linkedBudgetId) : null,
+  ])
   return <>
     <BarCrumbs crumbs={[{ texto: 'Remitos', href: '/delivery-notes' }, { texto: note.number || 'Sin número' }]} />
     <Content className="max-w-5xl">
       <HeaderForm titulo={note.number ? `Remito ${note.number}` : 'Remito sin número'} estado={<NoteStatus status={note.status} />} actions={note.documentId ? <Button asChild variant="outline"><Link href={`/documentos/${note.documentId}`}>Ver documento</Link></Button> : undefined} />
       <NoteDetail note={note} staff />
       {budgets ? <LinkNoteForm noteId={id} initial={budgets} /> : null}
-      {note.linkedBudgetId ? <Button asChild variant="outline"><Link href={`/presupuestos/${note.linkedBudgetId}`}>Ver presupuesto vinculado</Link></Button> : null}
+      {liveBudgetId ? <Button asChild variant="outline"><Link href={`/presupuestos/${liveBudgetId}`}>Ver presupuesto vinculado</Link></Button> : note.linkedBudgetId ? <p className="text-sm text-muted-foreground">El presupuesto original ya no está disponible.</p> : null}
     </Content>
   </>
 }

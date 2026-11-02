@@ -381,14 +381,18 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     ['vencimiento con letras', { ...invoice, monto: 100, fecha_vencimiento: 'abc' }, 'Fecha inválida'],
     ['período con letras en un remito', { tipo: 'remito', periodo_hasta: 'abc' }, 'Fecha inválida'],
     ['período con letras en una factura', { ...invoice, monto: 100, periodo_desde: 'abc' }, 'Fecha inválida'],
-    ['número de más de 50 caracteres', { tipo: 'remito', numero: 'N'.repeat(51) }, NUMBER_LARGO],
-    ['número enorme', { tipo: 'remito', numero: numberEnorme }, NUMBER_LARGO],
+    ['número de remito de más de 100 caracteres', { tipo: 'remito', numero: 'N'.repeat(101) }, 'El número puede tener hasta 100 caracteres'],
+    ['número enorme', { tipo: 'remito', numero: numberEnorme }, 'El número puede tener hasta 100 caracteres'],
     [
       'OC de referencia de más de 50 caracteres',
       { ...invoice, monto: 100, numero_oc_ref: 'O'.repeat(51) },
       'La OC de referencia puede tener hasta 50 caracteres',
     ],
-    ['notas de más de 2000 caracteres', { tipo: 'remito', notas: 'x'.repeat(2001) }, 'Las notas pueden tener hasta 2000 caracteres'],
+    ['notas de remito de más de 6200 caracteres', { tipo: 'remito', notas: 'x'.repeat(6201) }, 'Las notas pueden tener hasta 6200 caracteres'],
+    ...['orden_compra', 'factura', 'orden_pago'].flatMap((tipo): [string, Record<string, unknown>, string][] => [
+      [`número de ${tipo} de más de 50 caracteres`, { tipo, numero: 'N'.repeat(51) }, NUMBER_LARGO],
+      [`notas de ${tipo} de más de 2000 caracteres`, { tipo, notas: 'x'.repeat(2001) }, 'Las notas pueden tener hasta 2000 caracteres'],
+    ]),
   ]
   const result = (error: { code?: string; message: string } | null) => ({ code: error?.code, message: error?.message })
 

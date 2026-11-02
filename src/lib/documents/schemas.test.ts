@@ -15,6 +15,32 @@ describe('esquemaDocumento', () => {
     expect([...FIELDS_DOCUMENT].sort()).toEqual(Object.keys(schemaDocument.in.shape).sort())
   })
 
+  it.each(['N', '🦺'])('un remito admite 100 caracteres de número y 6200 de notas, incluidos %s', (character) => {
+    const numero = character.repeat(100)
+    const notas = character.repeat(6200)
+    expect(schemaDocument.parse(form({ tipo: 'remito', numero, notas }))).toMatchObject({ numero, notas })
+    expect(problemas({ tipo: 'remito', numero: character.repeat(101) })).toContainEqual({ path: ['numero'], message: 'Máximo 100 caracteres' })
+    expect(problemas({ tipo: 'remito', notas: character.repeat(6201) })).toContainEqual({ path: ['notas'], message: 'Máximo 6200 caracteres' })
+  })
+
+  it('conserva los espacios Unicode del número del remito y normaliza solo los espacios ASCII como la base', () => {
+    const numero = '\u00a0' + 'N'.repeat(98) + '\u00a0'
+    expect(schemaDocument.parse(form({ tipo: 'remito', numero: ` ${numero} ` })).numero).toBe(numero)
+    expect(schemaDocument.parse(form({ tipo: 'orden_compra', numero: '\u00a0OC\u00a0' })).numero).toBe('OC')
+  })
+
+  it('conserva las notas recibidas del remito sin recortar espacios al editar otros campos', () => {
+    const notas = 'Cliente informado: Obra\nTrabajo realizado: Izaje\nObservaciones:  terminado  '
+    expect(schemaDocument.parse(form({ tipo: 'remito', notas })).notas).toBe(notas)
+  })
+
+  it.each(['orden_compra', 'factura', 'orden_pago'])('%s conserva los máximos de 50 y 2000', (tipo) => {
+    const required = { tipo, monto: '100', tipo_comprobante: 'FA' }
+    expect(schemaDocument.safeParse(form({ ...required, numero: 'N'.repeat(50), notas: 'x'.repeat(2000) })).success).toBe(true)
+    expect(problemas({ ...required, numero: 'N'.repeat(51) })).toContainEqual({ path: ['numero'], message: 'Máximo 50 caracteres' })
+    expect(problemas({ ...required, notas: 'x'.repeat(2001) })).toContainEqual({ path: ['notas'], message: 'Máximo 2000 caracteres' })
+  })
+
   it('un remito mínimo: sin número ni fecha (quedan para completar)', () => {
     expect(schemaDocument.parse(form({ tipo: 'remito' }))).toEqual({
       tipo: 'remito',

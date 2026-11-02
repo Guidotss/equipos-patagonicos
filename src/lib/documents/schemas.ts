@@ -11,6 +11,25 @@ export const DOCUMENT_TYPES = {
 } as const
 export type DocumentType = keyof typeof DOCUMENT_TYPES
 
+export const DOCUMENT_TEXT_LIMITS = {
+  standard: { number: 50, notes: 2000 },
+  deliveryNote: { number: 100, notes: 6200 },
+} as const
+
+export function getDocumentTextLimits(type: string) {
+  return type === 'remito' ? DOCUMENT_TEXT_LIMITS.deliveryNote : DOCUMENT_TEXT_LIMITS.standard
+}
+
+function trimDocumentNumber(value: string, type: string) {
+  // btrim de PostgreSQL quita espacios ASCII; conserva los demás caracteres del número recibido.
+  if (type !== 'remito') return value.trim()
+  let start = 0
+  let end = value.length
+  while (value[start] === ' ') start++
+  while (end > start && value[end - 1] === ' ') end--
+  return value.slice(start, end)
+}
+
 export const INVOICE_TYPES = {
   FA: 'Factura A',
   FCE_A: 'Factura de crédito electrónica MiPyME A',
@@ -49,7 +68,7 @@ export const schemaDocument = z
     tipo: z.enum(Object.keys(DOCUMENT_TYPES) as [DocumentType, ...DocumentType[]], {
       error: 'Elegí el tipo de documento',
     }),
-    numero: z.string().trim().max(50, 'Máximo 50 caracteres'),
+    numero: z.string(),
     fecha: dateOptional,
     monto: amountOptional,
     // Se valida en el superRefine y solo para facturas: en los otros tipos se descarta.
@@ -63,9 +82,19 @@ export const schemaDocument = z
       .trim()
       .refine((value) => value === '' || isUuid(value), 'Equipo inválido')
       .transform((value) => (value === '' ? null : value)),
-    notas: z.string().trim().max(2000, 'Máximo 2000 caracteres'),
+    notas: z.string(),
   })
   .superRefine((datos, ctx) => {
+    const limits = getDocumentTextLimits(datos.tipo)
+    const notes = datos.tipo === 'remito' ? datos.notas : datos.notas.trim()
+    // PostgreSQL cuenta puntos de código; los remitos conservan todo el texto recibido por RPC.
+    const textLength = (value: string) => datos.tipo === 'remito' ? Array.from(value).length : value.length
+    if (textLength(trimDocumentNumber(datos.numero, datos.tipo)) > limits.number) {
+      ctx.addIssue({ code: 'custom', path: ['numero'], message: `Máximo ${limits.number} caracteres` })
+    }
+    if (textLength(notes) > limits.notes) {
+      ctx.addIssue({ code: 'custom', path: ['notas'], message: `Máximo ${limits.notes} caracteres` })
+    }
     if ((datos.tipo === 'factura' || datos.tipo === 'orden_pago') && datos.monto === null) {
       ctx.addIssue({ code: 'custom', path: ['monto'], message: 'Ingresá el monto' })
     }
@@ -83,6 +112,8 @@ export const schemaDocument = z
   // Lo que no corresponde al tipo se vacía: la base lo exige (CHECKs por tipo).
   .transform((datos) => ({
     ...datos,
+    numero: trimDocumentNumber(datos.numero, datos.tipo),
+    notas: datos.tipo === 'remito' ? datos.notas : datos.notas.trim(),
     tipo_comprobante: datos.tipo === 'factura' && isTipoComprobante(datos.tipo_comprobante) ? datos.tipo_comprobante : null,
     fecha_vencimiento: datos.tipo === 'factura' ? datos.fecha_vencimiento : null,
     numero_oc_ref: datos.tipo === 'factura' ? datos.numero_oc_ref : '',
