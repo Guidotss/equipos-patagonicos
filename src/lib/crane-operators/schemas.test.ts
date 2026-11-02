@@ -120,7 +120,8 @@ describe('contexto y operaciones de acceso', () => {
   it('valida paginación, estado y propietario sin interpolar filtros libres', () => {
     expect(craneDeliveryNoteFiltersSchema.parse({})).toEqual({ page: 1, pageSize: 25 })
     expect(craneDeliveryNoteFiltersSchema.safeParse({ status: 'pending', operatorId: userId, page: 2, pageSize: 100 }).success).toBe(true)
-    for (const filter of [{ status: 'pending,linked' }, { operatorId: 'otro' }, { page: 0 }, { page: 1.5 }, { page: '2' }, { pageSize: 101 }, { raw: 'or=true' }]) {
+    expect(craneDeliveryNoteFiltersSchema.safeParse({ order: 'submission' }).success).toBe(true)
+    for (const filter of [{ order: 'created_at' }, { status: 'pending,linked' }, { operatorId: 'otro' }, { page: 0 }, { page: 1.5 }, { page: '2' }, { pageSize: 101 }, { raw: 'or=true' }]) {
       expect(craneDeliveryNoteFiltersSchema.safeParse(filter).success).toBe(false)
     }
   })

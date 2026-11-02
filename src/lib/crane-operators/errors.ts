@@ -2,6 +2,13 @@
 export class CraneOperatorError extends Error {}
 
 const businessMessages = new Set([
+  'La búsqueda puede tener hasta 200 caracteres',
+  'Elegí el estado del gruista',
+  'El usuario no existe o no es un gruista',
+  'El usuario que solicita el alta no está habilitado',
+  'El destino del alta tiene que ser una cuenta nueva',
+  'El destino del alta tiene que ser una cuenta nueva e inactiva',
+  'Ingresá un nombre de entre 1 y 120 caracteres',
   'Solo un administrador puede gestionar usuarios',
   'Revisá el rol y el estado del usuario',
   'El usuario no existe',

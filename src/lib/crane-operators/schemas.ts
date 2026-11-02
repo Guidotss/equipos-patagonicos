@@ -71,6 +71,7 @@ export const paginationSchema = z.strictObject({
 export const craneDeliveryNoteFiltersSchema = paginationSchema.extend({
   operatorId: uuidSchema.optional(),
   status: craneDeliveryNoteStatusSchema.optional(),
+  order: z.enum(['submission'], { error: 'Elegí un orden válido' }).optional(),
 })
 
 export const linkCraneDeliveryNoteSchema = z.strictObject({ noteId: uuidSchema, budgetId: uuidSchema }, {

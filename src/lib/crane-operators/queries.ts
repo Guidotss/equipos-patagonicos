@@ -69,13 +69,14 @@ export async function listCraneDeliveryNotes(
   supabase: Client,
   input: CraneDeliveryNoteFilters = {},
 ): Promise<Page<{ notes: CraneDeliveryNoteSummary[] }>> {
-  const { operatorId, status, page, pageSize } = craneDeliveryNoteFiltersSchema.parse(input)
+  const { operatorId, status, page, pageSize, order } = craneDeliveryNoteFiltersSchema.parse(input)
   let query = supabase.from('crane_delivery_notes').select(noteColumns, { count: 'exact' })
   if (operatorId) query = query.eq('operator_id', operatorId)
   if (status) query = query.eq('status', status)
   const start = (page - 1) * pageSize
-  const { data, count, error } = await query.order('service_date', { ascending: false })
-    .order('created_at', { ascending: false }).order('id', { ascending: false }).range(start, start + pageSize - 1)
+  if (order !== 'submission') query = query.order('service_date', { ascending: false })
+  const { data, count, error } = await query.order('created_at', { ascending: false })
+    .order('id', { ascending: false }).range(start, start + pageSize - 1)
   if (error?.code === 'PGRST103' && page > 1) {
     return listCraneDeliveryNotes(supabase, { ...input, page: 1 })
   }
