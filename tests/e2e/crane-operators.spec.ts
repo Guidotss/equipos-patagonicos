@@ -55,7 +55,7 @@ async function capture(page: Page, info: TestInfo, name: string, review = name) 
     for (const fullPage of [false, true]) {
       const destination = info.outputPath(`${name}-${label}-${fullPage ? 'full' : 'first'}.png`)
       await page.screenshot({ path: destination, fullPage })
-      if (fullPage) await cp(destination, path.resolve('.impeccable/review', `${review}-${label}.png`))
+      if (fullPage || name === 'form') await cp(destination, path.resolve('.impeccable/review', `${review}-${label}${fullPage ? '' : '-first'}.png`))
     }
     if (name === 'form') await cp(info.outputPath(`form-${label}-full.png`), path.resolve('.impeccable/review', `${label}.png`))
   }

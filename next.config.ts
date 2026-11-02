@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: 'standalone',
   distDir: process.env.EP_TESTS_RUNNER === '1' ? '.next-e2e' : '.next',
+  devIndicators: process.env.EP_TESTS_RUNNER === '1' ? false : undefined,
   /* config options here */
   // react-pdf usa módulos de Node (fontkit, yoga): se carga sin empaquetar.
   serverExternalPackages: ['@react-pdf/renderer'],
