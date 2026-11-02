@@ -46,9 +46,9 @@ expect(denied.error?.code).toBe('42501')
 - Create: `src/lib/crane-operators/provisioning.ts` y pruebas con fetch simulado.
 - Extend: consultas/contratos de actividad solo si hace falta un orden explícito por envío.
 
-- [ ] Esquemas estrictos: alta `{name,email,password,equipmentId}`, acceso `{userId,active,equipmentId}`, filtros `{q,active,page}`. Nombre no vacío y hasta 120; email válido; contraseña sin trim de al menos 6 caracteres y hasta 72 bytes UTF-8 (límite de Auth); UUID de equipo. Rechazar `role`, `actorId`, `userId` en alta y claves extra. Nunca devolver contraseña en DTO ni logs.
-- [ ] Consultas tipadas `listCraneOperators(client,filters)`, `getManagedCraneOperator(client,id)` y servicio `setCraneOperatorAccess(client,input)`. Normalizar páginas fuera de rango conservando filtros y total 0.
-- [ ] Implementar el alta para llamarse después de `requireStaff` y validación en la acción; comprobar la grúa con cliente de sesión antes de instanciar privilegios. Crear Auth con email confirmado y finalizar con el actor real. En fallo borrar solo el nuevo ID; error de duplicado no toca la cuenta existente. Fallo de limpieza informa ID y explicación segura.
+- [x] Esquemas estrictos: alta `{name,email,password,equipmentId}`, acceso `{userId,active,equipmentId}`, filtros `{q,active,page}`. Nombre no vacío y hasta 120; email válido; contraseña sin trim de al menos 6 caracteres y hasta 72 bytes UTF-8 (límite de Auth); UUID de equipo. Rechazar `role`, `actorId`, `userId` en alta y claves extra. Nunca devolver contraseña en DTO ni logs.
+- [x] Consultas tipadas `listCraneOperators(client,filters)`, `getManagedCraneOperator(client,id)` y servicio `setCraneOperatorAccess(client,input)`. Normalizar páginas fuera de rango conservando filtros y total 0.
+- [x] Implementar el alta para llamarse después de `requireStaff` y validación en la acción; comprobar la grúa con cliente de sesión antes de instanciar privilegios. Crear Auth con email confirmado y finalizar con el actor real. En fallo borrar solo el nuevo ID; error de duplicado no toca la cuenta existente. Fallo de limpieza informa ID y explicación segura.
 
 ```ts
 type NewCraneOperator = { name: string; email: string; password: string; equipmentId: string }
@@ -56,9 +56,9 @@ type NewCraneOperatorResult = { userId: string; email: string }
 // El cuerpo HTTP no puede elegir el actor ni el rol; la acción obtiene el actor de requireStaff().
 ```
 
-- [ ] Pruebas con dependencias explícitas y SDK real/fetch simulado: payload exacto, preflight sin alta, confirmación/finalización, duplicado sin borrado, fallo de finalización con compensación, fallo de limpieza con ID sin secretos, clave faltante y actor real separado del cuerpo. No red real en unitarios.
-- [ ] Agregar orden de actividad por `created_at` sin cambiar el orden histórico por servicio de las pantallas existentes; probarlo cuando se amplíe un helper compartido.
-- [ ] Ejecutar unitarios dirigidos, lint y typecheck; commit `feat: provision crane operators from authorized staff`; revisión de especificación y después calidad.
+- [x] Pruebas con dependencias explícitas y SDK real/fetch simulado: payload exacto, preflight sin alta, confirmación/finalización, duplicado sin borrado, fallo de finalización con compensación, fallo de limpieza con ID sin secretos, clave faltante y actor real separado del cuerpo. No red real en unitarios.
+- [x] Agregar orden de actividad por `created_at` sin cambiar el orden histórico por servicio de las pantallas existentes; probarlo cuando se amplíe un helper compartido.
+- [x] Ejecutar unitarios dirigidos, lint y typecheck; commit `feat: provision crane operators from authorized staff`; revisión de especificación y después calidad.
 
 ## Task 3: Módulo Gruistas, alta y actividad
 
