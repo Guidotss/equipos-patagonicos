@@ -838,6 +838,9 @@ isOneToOne: false
 "cargar_cotizacion_existente":
 { Args: { "p_datos": Json }; Returns: string
                            },
+"complete_crane_operator_signup":
+{ Args: { "p_actor_id": string,"p_equipment_id": string,"p_name": string,"p_user_id": string }; Returns: undefined
+                           },
 "create_crane_delivery_note_upload":
 { Args: { "p_mime": string,"p_size": number }; Returns: {
               "path": string,"upload_id": string
@@ -901,6 +904,11 @@ isOneToOne: false
 "link_crane_delivery_note":
 { Args: { "p_budget_id": string,"p_note_id": string }; Returns: string
                            },
+"list_crane_operators":
+{ Args: { "p_active"?: boolean,"p_search"?: string }; Returns: {
+              "active": boolean,"email": string,"equipment_active": boolean,"equipment_id": string,"equipment_name": string,"last_submission_at": string,"name": string,"note_count": number,"pending_note_count": number,"user_id": string
+            }[]
+                           },
 "list_user_access":
 { Args: Record<PropertyKey, never>; Returns: {
               "active": boolean,"email": string,"equipment_id": string,"equipment_name": string,"name": string,"role": string,"user_id": string
@@ -929,6 +937,9 @@ isOneToOne: false
                            },
 "revertir_aprobacion":
 { Args: { "p_id": string }; Returns: undefined
+                           },
+"set_crane_operator_access":
+{ Args: { "p_active": boolean,"p_equipment_id"?: string,"p_user_id": string }; Returns: undefined
                            },
 "set_user_access":
 { Args: { "p_active": boolean,"p_equipment_id"?: string,"p_role": string,"p_user_id": string }; Returns: undefined

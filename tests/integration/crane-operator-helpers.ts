@@ -1,8 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/lib/supabase/database.types'
-import { adminClient, crearUser as createUser, removeUser, sql } from './helpers'
+import { adminClient, anonClient, crearUser as createTestUser, PASSWORD_OF_TEST, removeUser, sql } from './helpers'
 
-export type TestUser = Awaited<ReturnType<typeof createUser>>
+export type TestUser = Awaited<ReturnType<typeof createTestUser>>
 export type TestClient = SupabaseClient<Database>
 export const NOTE_DATA = {
   budgetId: null,
@@ -24,9 +24,22 @@ export function createCraneFixture() {
   const paths: string[] = []
 
   async function user(role: 'admin' | 'operador' | 'crane_operator' = 'crane_operator', active = true) {
-    const result = await createUser({ activo: active, rol: role })
+    const result = await createTestUser({ activo: active, rol: role })
     userIds.push(result.id)
     return result
+  }
+
+  async function signupUser(): Promise<TestUser> {
+    const email = `signup-${crypto.randomUUID()}@equipos.test`
+    const { data, error } = await adminClient().auth.admin.createUser({
+      email, password: PASSWORD_OF_TEST, email_confirm: true, user_metadata: { nombre: 'Alta pendiente' },
+    })
+    if (error) throw error
+    userIds.push(data.user.id)
+    const client = anonClient()
+    const signedIn = await client.auth.signInWithPassword({ email, password: PASSWORD_OF_TEST })
+    if (signedIn.error) throw signedIn.error
+    return { id: data.user.id, email, client }
   }
 
   async function equipment(active = true) {
@@ -113,5 +126,5 @@ export function createCraneFixture() {
     await sql('delete from public.equipos where id=any($1::uuid[])', [equipmentIds])
   }
 
-  return { user, equipment, budget, importedBudget, assign, reserve, uploadSigned, upload, cleanup, paths }
+  return { user, signupUser, equipment, budget, importedBudget, assign, reserve, uploadSigned, upload, cleanup, paths }
 }
