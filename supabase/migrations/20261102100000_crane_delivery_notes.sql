@@ -75,7 +75,10 @@ returns boolean language sql stable security definer set search_path = '' as $$
 $$;
 create function private.can_upload_crane_file(p_path text)
 returns boolean language sql stable security definer set search_path = '' as $$
-  select private.is_crane_operator() and exists (
+  -- La firma conserva upsert durante dos horas; no se concede aunque el objeto todavía no exista.
+  select private.is_crane_operator()
+    and coalesce(nullif(current_setting('request.headers', true), '')::jsonb->>'x-upsert', 'false') = 'false'
+    and exists (
     select 1 from public.crane_delivery_note_uploads u
     join public.crane_operator_assignments a on a.user_id = u.operator_id and a.equipment_id = u.equipment_id
     join public.equipos e on e.id = a.equipment_id and e.activo

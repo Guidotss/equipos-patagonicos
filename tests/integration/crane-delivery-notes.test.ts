@@ -153,6 +153,38 @@ describe('recepción de remitos de gruistas', () => {
     expect((await bucket.createSignedUrl(own.file.path, 60)).error).toBeNull()
   })
 
+  it('no concede tokens con upsert al gruista y un token común no puede reemplazar un archivo recibido', async () => {
+    const content = '%PDF-1.4 test\n'
+    const replacement = '%PDF-1.4 otro\n'
+    const ticket = await fixture.reserve(worker.client, 'application/pdf', Buffer.byteLength(content))
+    const bucket = worker.client.storage.from('documentos')
+    expect((await bucket.createSignedUploadUrl(ticket.path)).error).toBeNull()
+    const signed = await bucket.createSignedUploadUrl(ticket.path, { upsert: false })
+    expect(signed.error).toBeNull()
+    expect((await bucket.createSignedUploadUrl(ticket.path, { upsert: true })).error).not.toBeNull()
+    expect((await bucket.uploadToSignedUrl(ticket.path, signed.data!.token,
+      new Blob([content], { type: 'application/pdf' }), { contentType: 'application/pdf' })).error).toBeNull()
+    expect((await submitNote(worker.client, [{ path: ticket.path, originalName: 'Remito.pdf' }])).error).toBeNull()
+    const overwritten = await bucket.uploadToSignedUrl(ticket.path, signed.data!.token,
+      new Blob([replacement], { type: 'application/pdf' }), { contentType: 'application/pdf', upsert: true })
+    expect(overwritten.error).not.toBeNull()
+    const downloaded = await bucket.download(ticket.path)
+    expect(downloaded.error).toBeNull()
+    expect(await downloaded.data!.text()).toBe(content)
+  })
+
+  it('conserva la emisión de cargas firmadas del personal, incluso con su opción previa de upsert', async () => {
+    const [customer] = await sql<{ id: string }>('select id from public.clientes limit 1')
+    const path = `documentos/${customer.id}/${crypto.randomUUID()}.pdf`
+    fixture.paths.push(path)
+    const bucket = staff.client.storage.from('documentos')
+    const signed = await bucket.createSignedUploadUrl(path, { upsert: true })
+    expect(signed.error).toBeNull()
+    expect((await bucket.uploadToSignedUrl(path, signed.data!.token,
+      new Blob(['%PDF-1.4 personal\n'], { type: 'application/pdf' }), { contentType: 'application/pdf' })).error).toBeNull()
+    expect((await bucket.download(path)).error).toBeNull()
+  })
+
   it('solo permite lectura del historial propio; no hay escrituras directas a las nuevas tablas', async () => {
     const own = await pendingNote()
     expect((await other.client.from('crane_delivery_notes').select('*').eq('id', own.id)).data).toEqual([])
