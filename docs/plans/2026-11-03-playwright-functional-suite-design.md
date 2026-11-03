@@ -2,7 +2,7 @@
 
 ## Alcance
 
-El usuario pidió una suite de Playwright después de definir el recorrido operativo de gruistas y remitos. La base existente contiene 87 pruebas y volvió a pasar completa antes de esta ampliación. Se toma todo el MVP como alcance, conservando esa cobertura y completando el recorrido entre roles. La consulta opcional sobre concentrarse solo en gruistas no cambia las pruebas existentes.
+El usuario pidió una suite de Playwright después de definir el recorrido operativo de gruistas y remitos. La base existente contiene 87 pruebas y volvió a pasar completa antes de esta ampliación. El usuario confirmó expresamente todo el MVP como alcance; se conserva esa cobertura y se completa el recorrido entre roles.
 
 ## Alternativas y decisión
 

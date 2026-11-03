@@ -72,8 +72,19 @@ Antes de cambios: `npm run test:e2e` pasó 87/87 en 2,6 minutos. El proyecto tem
 
 El commit `9a216fb` se publicó en main y Railway lo desplegó en SUCCESS. La ejecución manual de GitHub `41656762953` aprobó código, compilación e integración, y publicó correctamente su artefacto HTML. Playwright remoto terminó 88/89: Inicio mostró un desborde móvil al convivir con un remito válido de 100 caracteres creado por otro archivo. La evidencia está en el artefacto de esa ejecución; el problema no afecta únicamente al runner ni se debe resolver esperando que se elimine el dato ajeno.
 
-- [ ] Reproducir en `home.spec.ts` con un remito largo propio del fixture, conservando aislamiento y limpieza.
-- [ ] Corregir la contención mínima de QueueHome/grid sin acortar datos persistidos ni ocultar overflow global. Preservar apariencia y nombre completo accesible.
-- [ ] Conservar el dato largo al abrir la factura desde Inicio y corregir el span de su selector de remitos en `InvoiceDeliveryNotesSection`; comprobar ambos destinos sin aislar o eliminar anticipadamente el dato.
-- [ ] Verificar dirigida, revisión independiente de código y lote visual 390/1200; no relajar la aserción de ancho ni añadir sleeps/retries.
+- [x] Reproducir en `home.spec.ts` con un remito largo propio del fixture, conservando aislamiento y limpieza.
+- [x] Corregir la contención mínima de QueueHome/grid sin acortar datos persistidos ni ocultar overflow global. Preservar apariencia y nombre completo accesible.
+- [x] Conservar el dato largo al abrir la factura desde Inicio y corregir el span de su selector de remitos en `InvoiceDeliveryNotesSection`; comprobar ambos destinos sin aislar o eliminar anticipadamente el dato.
+- [x] Verificar dirigida, revisión independiente de código y lote visual 390/1200; no relajar la aserción de ancho ni añadir sleeps/retries.
 - [ ] Ejecutar la suite completa y repetir GitHub Actions con el commit corregido; comprobar artefacto, limpieza y despliegue exacto.
+
+### Corrección y regresión local de CI
+
+- Delta `69e4585`: dos spans, número de QueueHome y texto del selector de remitos de factura. Wrapping y mínimo de ancho; datos, montos, URLs y lógica conservados.
+- RED con fixture propia persistente: documento 1107 px, ventana 390 px y colas 1090,9 px, aun después de esperar diez segundos con las fuentes listas. Confirmado como contenido válido, no una carrera.
+- Dirigida HOME: 2/2 en 18,3 segundos. El mismo número de 100 caracteres sigue presente y accesible durante todo el recorrido.
+- Suite completa corregida: 89/89 en 2,6 minutos; HTML comprobado con 89 expected, 0 unexpected/flaky/skipped. Build, lint y tipos correctos.
+- Especificación, calidad y nueva revisión integrada aprobadas; revisión visual SHIP acotada a los dos spans. Hooks automáticos sin hallazgos deterministas; sistema visual conservado.
+- Stack `e814e4e9de7d400` destruido; sin recursos Docker, carpetas temporales o locks restantes. Datos de desarrollo y producción intactos.
+
+Queda repetir la ejecución remota con este delta publicado y verificar su artefacto y despliegue.
