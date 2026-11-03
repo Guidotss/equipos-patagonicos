@@ -242,7 +242,8 @@ test('administración descarga pendiente y lo vincula a presupuesto finalizado s
   await capture(page, info, 'staff-detail')
   await page.goto('/delivery-notes?status=pending&page=9999')
   await expect(page).toHaveURL(/\/delivery-notes\?status=pending$/)
-  await expect(page.getByText('No hay remitos en este estado.', { exact: true })).toBeVisible()
+  // Otros escenarios pueden tener remitos pendientes en esta bandeja compartida.
+  await expect(page.locator(`a[href="/delivery-notes/${noteId}"]`)).toHaveCount(0)
   await page.goto('/delivery-notes?status=linked&page=9999')
   await expect(page).toHaveURL(/\/delivery-notes\?status=linked$/)
   await expect(page.getByRole('link', { name: new RegExp(`^(Remito )?R-${fixture.marker}$`) })).toBeVisible()
