@@ -74,5 +74,6 @@ El commit `9a216fb` se publicó en main y Railway lo desplegó en SUCCESS. La ej
 
 - [ ] Reproducir en `home.spec.ts` con un remito largo propio del fixture, conservando aislamiento y limpieza.
 - [ ] Corregir la contención mínima de QueueHome/grid sin acortar datos persistidos ni ocultar overflow global. Preservar apariencia y nombre completo accesible.
+- [ ] Conservar el dato largo al abrir la factura desde Inicio y corregir el span de su selector de remitos en `InvoiceDeliveryNotesSection`; comprobar ambos destinos sin aislar o eliminar anticipadamente el dato.
 - [ ] Verificar dirigida, revisión independiente de código y lote visual 390/1200; no relajar la aserción de ancho ni añadir sleeps/retries.
 - [ ] Ejecutar la suite completa y repetir GitHub Actions con el commit corregido; comprobar artefacto, limpieza y despliegue exacto.
