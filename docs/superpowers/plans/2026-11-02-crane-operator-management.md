@@ -70,13 +70,13 @@ type NewCraneOperatorResult = { userId: string; email: string }
 - Create: brief visual en `docs/diseno/2026-11-02-crane-operator-management.md` y referencia 17.
 
 - [x] Antes del código UI, generar referencia con ImageGen a partir del listado/formularios existentes y documentar su dirección/procedencia. Conservar DESIGN.md, tokens, Inter, logo y componentes instalados.
-- [ ] Sidebar «Gruistas» para personal; layout, páginas, acciones y consultas usan `requireStaff`. Un gruista que intenta entrar recibe su portal y no puede ejecutar el alta ni modificar acceso.
-- [ ] Listado paginado y responsive con búsqueda, estado, grúa, remitos y último envío; CTA «Nuevo gruista» y fila «Ver actividad». Fichas de otros roles/IDs inválidos devuelven 404.
-- [ ] Formulario continuo Cuenta/Grúa con nombre, email, contraseña oculta y selector de grúa activa; botón «Crear gruista». Estado controlado, doble envío protegido, errores asociados y foco, contraseña fuera de URL/log/resultado. Guardar navega a la ficha. Grúa inactiva/ausente y email duplicado muestran recuperación clara.
-- [ ] Ficha con estado/grúa actual y formulario específico de acceso, sin selector de rol. Actividad por envío con fecha de servicio, grúa histórica, trabajo y estado; abre la revisión y archivos existentes. Cambiar grúa o desactivar no mueve ni elimina remitos.
-- [ ] E2E: staff `operador` crea cuenta, inicia sesión como gruista y envía remito, personal ve actividad, reasigna y desactiva, historial se conserva y acceso se bloquea. Segundo staff ve la ficha. Rechazar replay de acciones desde gruista e intentos de apuntar a cuentas de personal.
-- [ ] Capturas de listado, alta y ficha en móvil/escritorio, inspección en lote y como máximo una confirmación. Reviewers independientes de spec/calidad y finish visual; documentar sistema preservado. No fixtures en bases compartidas.
-- [ ] Commit `feat: add staff crane operator management module` después de pruebas dirigidas y revisión propia.
+- [x] Sidebar «Gruistas» para personal; layout, páginas, acciones y consultas usan `requireStaff`. Un gruista que intenta entrar recibe su portal y no puede ejecutar el alta ni modificar acceso.
+- [x] Listado paginado y responsive con búsqueda, estado, grúa, remitos y último envío; CTA «Nuevo gruista» y fila «Ver actividad». Fichas de otros roles/IDs inválidos devuelven 404.
+- [x] Formulario continuo Cuenta/Grúa con nombre, email, contraseña oculta y selector de grúa activa; botón «Crear gruista». Estado controlado, doble envío protegido, errores asociados y foco, contraseña fuera de URL/log/resultado. Guardar navega a la ficha. Grúa inactiva/ausente y email duplicado muestran recuperación clara.
+- [x] Ficha con estado/grúa actual y formulario específico de acceso, sin selector de rol. Actividad por envío con fecha de servicio, grúa histórica, trabajo y estado; abre la revisión y archivos existentes. Cambiar grúa o desactivar no mueve ni elimina remitos.
+- [x] E2E: staff `operador` crea cuenta, inicia sesión como gruista y envía remito, personal ve actividad, reasigna y desactiva, historial se conserva y acceso se bloquea. Segundo staff ve la ficha. Rechazar replay de acciones desde gruista e intentos de apuntar a cuentas de personal.
+- [x] Capturas de listado, alta y ficha en móvil/escritorio, inspección en lote y como máximo una confirmación. Reviewers independientes de spec/calidad y finish visual; documentar sistema preservado. No fixtures en bases compartidas.
+- [x] Commit `feat: add staff crane operator management module` después de pruebas dirigidas y revisión propia.
 
 **Ajuste de estructura verificado durante E2E:** el `loading.tsx` preexistente de `(app)` inicia streaming antes de resolver `notFound`, lo que fija HTTP 200. Solo el módulo nuevo se aísla en `(crane-management)` para devolver 404 antes del streaming, con el mismo AppShell y `requireStaff`, el root layout compartido y las mismas URLs. Se conserva la carga de las rutas existentes.
 

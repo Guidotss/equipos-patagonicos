@@ -6,7 +6,7 @@ Fecha: 2 de noviembre de 2026. Base: `9da7b90`.
 
 El usuario pidió que Thomas, Administración y J. Rojas puedan crear nuevos gruistas y consultar su actividad desde un módulo. Las tres cuentas existentes tienen rol `operador`; no se modifica su rol ni su contraseña. El usuario ya eligió un módulo propio. Se conserva el rol `crane_operator`, visible como Gruista, y la UI vigente.
 
-La actividad de esta versión son los remitos enviados: fecha de envío y servicio, grúa efectiva, trabajo, adjuntos y estado de vinculación. Se consultó si hacen falta otros datos; en ausencia de una ampliación, se utiliza este alcance operativo. No se incorpora seguimiento de ubicación, asistencia ni horas trabajadas.
+La actividad de esta versión son los remitos enviados: fecha de envío y servicio, grúa efectiva, trabajo, adjuntos y estado de vinculación. El usuario confirmó expresamente este alcance de actividad por remitos. No se incorpora seguimiento de ubicación, asistencia ni horas trabajadas.
 
 ## Superficies y recorrido
 
