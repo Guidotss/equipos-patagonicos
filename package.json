@@ -15,6 +15,8 @@
     "test:watch": "vitest --project unit",
     "test:int": "node scripts/test-runner.mjs int",
     "test:e2e": "node scripts/test-runner.mjs e2e",
+    "test:e2e:operators": "node scripts/test-runner.mjs e2e tests/e2e/crane-operators.spec.ts tests/e2e/crane-operator-management.spec.ts tests/e2e/crane-operator-workflow.spec.ts",
+    "test:e2e:report": "playwright show-report",
     "test:runner": "node --test scripts/test-runner.test.mjs",
     "test:historical": "node --test scripts/historical/*.test.mjs",
     "historical:import": "node scripts/import-historical.mjs",

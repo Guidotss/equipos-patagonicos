@@ -1,5 +1,5 @@
 name: Verificación
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
@@ -31,8 +31,11 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: always()
         with:
           name: playwright-resultados
-          path: test-results
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
           retention-days: 7

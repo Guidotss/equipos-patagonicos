@@ -15,9 +15,11 @@ export default defineConfig({
   workers: 2,
   timeout: 60_000,
   expect: { timeout: 10_000 },
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL,
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     locale: 'es-AR',
     timezoneId: 'America/Argentina/Buenos_Aires',
   },

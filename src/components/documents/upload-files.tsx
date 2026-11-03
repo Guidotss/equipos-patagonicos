@@ -146,7 +146,7 @@ export function UploadFiles({
       {archivos.length ? (
         <ul className="grid gap-3 sm:grid-cols-2">
           {archivos.map((archivo) => (
-            <li key={archivo.id} className="relative flex gap-3 rounded-lg border p-3">
+            <li key={archivo.id} className="relative flex min-w-0 gap-3 rounded-lg border p-3">
               <a
                 href={archivo.view}
                 target="_blank"
