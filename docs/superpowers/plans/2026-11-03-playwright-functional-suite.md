@@ -67,3 +67,12 @@ Antes de cambios: `npm run test:e2e` pasó 87/87 en 2,6 minutos. El proyecto tem
 - Especificación, calidad y revisión integrada final aprobadas. Revisión visual independiente **SHIP** acotada al arreglo de overflow y sistema global conservado.
 - Limpieza comprobada: sin contenedores, volúmenes, redes, carpetas temporales ni locks de estas corridas. No hubo acceso a datos de desarrollo o producción.
 - `playwright-report/index.html` y evidencias visuales son archivos locales ignorados. La guía de `tests/e2e/README.md` contiene los comandos de ejecución y consulta; el workflow admite push, pull request y ejecución manual y conserva resultados siete días.
+
+## Seguimiento de la primera ejecución en GitHub
+
+El commit `9a216fb` se publicó en main y Railway lo desplegó en SUCCESS. La ejecución manual de GitHub `41656762953` aprobó código, compilación e integración, y publicó correctamente su artefacto HTML. Playwright remoto terminó 88/89: Inicio mostró un desborde móvil al convivir con un remito válido de 100 caracteres creado por otro archivo. La evidencia está en el artefacto de esa ejecución; el problema no afecta únicamente al runner ni se debe resolver esperando que se elimine el dato ajeno.
+
+- [ ] Reproducir en `home.spec.ts` con un remito largo propio del fixture, conservando aislamiento y limpieza.
+- [ ] Corregir la contención mínima de QueueHome/grid sin acortar datos persistidos ni ocultar overflow global. Preservar apariencia y nombre completo accesible.
+- [ ] Verificar dirigida, revisión independiente de código y lote visual 390/1200; no relajar la aserción de ancho ni añadir sleeps/retries.
+- [ ] Ejecutar la suite completa y repetir GitHub Actions con el commit corregido; comprobar artefacto, limpieza y despliegue exacto.
