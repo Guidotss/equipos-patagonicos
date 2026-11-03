@@ -59,7 +59,7 @@ export function InvoiceDeliveryNotesSection({
                 checked={deliveryNotes.includes(item.id)}
                 onChange={(event) => setDeliveryNotes((list) => changeList(list, item.id, event.target.checked))}
               />
-              <span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 Remito {item.numero || 'sin número'}
                 {item.deleted_at ? (
                   <span className="block text-xs text-destructive">

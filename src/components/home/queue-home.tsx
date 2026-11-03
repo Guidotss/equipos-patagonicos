@@ -107,7 +107,7 @@ export function QueueHome({
                 return (
                   <li key={row.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0" data-pendiente={row.id}>
                     <Link href={href} className="flex flex-col gap-0.5 hover:text-primary">
-                      <span className="font-medium">{cola === 'para_facturar' ? 'Remito ' : cola === 'cobranzas' ? '' : 'N° '}{row.numero || 'Sin número'}</span>
+                      <span className="font-medium [overflow-wrap:anywhere]">{cola === 'para_facturar' ? 'Remito ' : cola === 'cobranzas' ? '' : 'N° '}{row.numero || 'Sin número'}</span>
                       <span className="text-sm">{row.cliente_razon_social}</span>
                     </Link>
                     {row.asunto && cola !== 'seguimiento' ? <p className="line-clamp-2 text-xs text-muted-foreground">{row.asunto}</p> : null}

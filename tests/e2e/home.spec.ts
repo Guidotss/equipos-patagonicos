@@ -6,10 +6,12 @@ const marca = `inicio-e2e-${sufijoUnico()}`
 const razonSocial = `Grúas Ñandú ${marca}`
 const numberDeliveryNote = `R-${marca}-001`
 const numberInvoice = `F-${marca}-002`
+const longDeliveryNoteNumber = 'N'.repeat(100)
 let clientId: string
 let budgetId: string
 let quoteId: string
 let deliveryNoteId: string
+let longDeliveryNoteId: string
 let invoiceId: string
 
 test.beforeAll(async () => {
@@ -38,13 +40,19 @@ test.beforeAll(async () => {
       [clientId, numberDeliveryNote, marca],
     )
     deliveryNoteId = deliveryNote.rows[0].id
+    const longDeliveryNote = await db.query<{ id: string }>(
+      `insert into public.documentos (cliente_id, tipo, numero, fecha, notas)
+       values ($1, 'remito', $2, '2018-01-01', $3) returning id`,
+      [clientId, longDeliveryNoteNumber, marca],
+    )
+    longDeliveryNoteId = longDeliveryNote.rows[0].id
     const invoice = await db.query<{ id: string }>(
       `insert into public.documentos (cliente_id, tipo, numero, fecha, monto, tipo_comprobante, notas)
        values ($1, 'factura', $2, '2018-01-01', 125000, 'FA', $3) returning id`,
       [clientId, numberInvoice, marca],
     )
     invoiceId = invoice.rows[0].id
-    await db.query('insert into public.documento_presupuestos values ($1, $3), ($2, $3)', [deliveryNoteId, invoiceId, budgetId])
+    await db.query('insert into public.documento_presupuestos values ($1, $3), ($2, $3), ($4, $3)', [deliveryNoteId, invoiceId, budgetId, longDeliveryNoteId])
   })
 })
 
@@ -82,7 +90,7 @@ test('cinco colas accionables con selección de remito/factura y navegación mó
   }
   await expect(page.getByTestId('total-cobranzas')).toContainText('$')
   await expect(page.getByRole('link', { name: 'Subir documento', exact: true }).first()).toHaveAttribute('href', '/documentos/nuevo')
-  await page.screenshot({ path: testInfo.outputPath('inicio-escritorio.png'), fullPage: true })
+  await page.screenshot({ path: testInfo.outputPath('inicio-escritorio.png'), fullPage: true, animations: 'disabled', caret: 'initial' })
 
   await page.goto('/?cola=falta_oc')
   await page.locator(`[data-pendiente="${budgetId}"]`).getByRole('link', { name: /Cargar OC/ }).click()
@@ -104,8 +112,22 @@ test('cinco colas accionables con selección de remito/factura y navegación mó
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  await page.screenshot({ path: testInfo.outputPath('inicio-movil.png'), fullPage: true })
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
+  const longDeliveryNote = page.locator(`[data-pendiente="${longDeliveryNoteId}"]`)
+  await expect(longDeliveryNote.getByText(`Remito ${longDeliveryNoteNumber}`, { exact: true })).toBeVisible()
+  await page.waitForFunction(() => document.fonts.status === 'loaded')
+  await testInfo.attach('ancho-colas-movil', {
+    body: JSON.stringify(await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      queues: [...document.querySelectorAll('[data-cola]')].map((queue) => ({
+        name: queue.getAttribute('data-cola'), width: queue.getBoundingClientRect().width,
+      })),
+    })), null, 2),
+    contentType: 'application/json',
+  })
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('inicio-movil.png'), fullPage: true, animations: 'disabled', caret: 'initial' })
   await page.getByRole('button', { name: 'Abrir búsqueda global', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Buscar en todo el sistema', exact: true })
   await dialog.getByLabel('Buscar en todo el sistema').fill(numberInvoice)
@@ -113,5 +135,7 @@ test('cinco colas accionables con selección de remito/factura y navegación mó
   await page.getByRole('region', { name: 'Facturas', exact: true }).getByRole('link', { name: new RegExp(numberInvoice) }).click()
   await expect(page).toHaveURL(`/documentos/${invoiceId}`)
   await expect(page.getByLabel('Número (opcional)', { exact: true })).toHaveValue(numberInvoice)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  const longDeliveryNoteOption = page.getByRole('checkbox', { name: `Remito ${longDeliveryNoteNumber}`, exact: true })
+  await expect(longDeliveryNoteOption).toBeVisible()
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
