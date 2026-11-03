@@ -76,7 +76,7 @@ El commit `9a216fb` se publicó en main y Railway lo desplegó en SUCCESS. La ej
 - [x] Corregir la contención mínima de QueueHome/grid sin acortar datos persistidos ni ocultar overflow global. Preservar apariencia y nombre completo accesible.
 - [x] Conservar el dato largo al abrir la factura desde Inicio y corregir el span de su selector de remitos en `InvoiceDeliveryNotesSection`; comprobar ambos destinos sin aislar o eliminar anticipadamente el dato.
 - [x] Verificar dirigida, revisión independiente de código y lote visual 390/1200; no relajar la aserción de ancho ni añadir sleeps/retries.
-- [ ] Ejecutar la suite completa y repetir GitHub Actions con el commit corregido; comprobar artefacto, limpieza y despliegue exacto.
+- [x] Ejecutar la suite completa y repetir GitHub Actions con el commit corregido; comprobar artefacto, limpieza y despliegue exacto.
 
 ### Corrección y regresión local de CI
 
@@ -87,4 +87,11 @@ El commit `9a216fb` se publicó en main y Railway lo desplegó en SUCCESS. La ej
 - Especificación, calidad y nueva revisión integrada aprobadas; revisión visual SHIP acotada a los dos spans. Hooks automáticos sin hallazgos deterministas; sistema visual conservado.
 - Stack `e814e4e9de7d400` destruido; sin recursos Docker, carpetas temporales o locks restantes. Datos de desarrollo y producción intactos.
 
-Queda repetir la ejecución remota con este delta publicado y verificar su artefacto y despliegue.
+### Validación remota completada
+
+- Código validado en `main`: `4d3dfe9873848607bf94505585f7b96b8c420029`.
+- GitHub Actions [41692780329](https://github.com/Guidotss/equipos-patagonicos/actions/runs/41692780329): **success** en ambos trabajos. Confirmados en logs 616 unitarias, 410 de integración y **89/89 Playwright** en Linux (5,8 minutos).
+- Integración y navegador destruyeron sus proyectos temporales `3a58966224f74a0` y `b31475864d1c424` al terminar.
+- Artefacto `playwright-resultados` publicado, ID `13260355972`, no expirado y con retención hasta el 10 de noviembre de 2026. Incluye HTML y resultados de pruebas.
+- Railway: despliegue `1b3e72fe-f291-46c7-bac3-6b6032516e66` observado en **SUCCESS** para ese commit; salud y login HTTP 200.
+- El cierre de este registro modifica únicamente documentación; conserva el código que pasó todas las verificaciones.
