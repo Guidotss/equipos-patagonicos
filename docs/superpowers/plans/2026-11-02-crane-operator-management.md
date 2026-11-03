@@ -86,7 +86,7 @@ type NewCraneOperatorResult = { userId: string; email: string }
 - [x] Comprobar limpieza de todos los stacks, volúmenes, redes, directorios y locks descartables. Conservar la cuenta `gruistatest` pedida expresamente por el usuario.
 - [x] Actualizar guía operativa y registrar pruebas; no versionar capturas locales ni credenciales.
 - [x] Configurar `SUPABASE_SECRET_KEY` únicamente en el servicio Railway existente, sin imprimir valor y sin redeploy previo al push (`skipDeploys: true`). Verificar presencia por nombre. No cambiar otros valores.
-- [ ] Dry-run y aplicación de la migración de producción sin seeds ni usuarios de prueba; los cuatro perfiles y asignaciones existentes se conservan. Integrar/pushear main sin force, observar SUCCESS del commit publicado y comprobar salud/login y lectura del módulo con las tres cuentas reales. Cerrar las sesiones de verificación; no crear más datos de prueba en producción.
+- [x] Dry-run y aplicación de la migración de producción sin seeds ni usuarios de prueba; los cuatro perfiles y asignaciones existentes se conservan. Integrar/pushear main sin force, observar SUCCESS del commit publicado y comprobar salud/login y lectura del módulo con las tres cuentas reales. Cerrar las sesiones de verificación; no crear más datos de prueba en producción.
 
 ## Evidencia de validación
 
@@ -98,4 +98,13 @@ type NewCraneOperatorResult = { userId: string; email: string }
 - Especificación y calidad aprobadas por etapa; revisión integrada final aprobada sobre `9da7b90..b7858ce` y la corrección de prueba `c15e65c`. Revisión visual independiente SHIP y documentación del sistema conservado.
 - Railway: credencial privada configurada solo en el servidor con `skipDeploys: true`, verificada por nombre sin imprimirla. Migración `20261102120000` aplicada después del dry-run, sin seeds ni roles.
 
-Pendiente en este registro: push y verificación del despliegue exacto y de las sesiones reales. No se crearon fixtures en producción.
+## Publicación verificada
+
+- Integración fast-forward y push a `main`: `72b94d71ad62c8fc93737ea35d190ff9632dc5bf`.
+- Railway: despliegue `42cd57ba-14e5-4a1d-ada9-c06a3a91b701`, observado en **SUCCESS** para ese commit exacto.
+- Salud y login: HTTP 200. Las tres cuentas reales (`tcravero`, `adminstracion`, `jrojas`) conservaron rol `operador` activo y verificaron listado, alta y actividad en HTTP 200, con la gestión administrativa genérica denegada.
+- `gruistatest` conservó `crane_operator` activo y su XCMG 70 TN; su portal respondió HTTP 200, la gestión lo redirigió al portal y la RPC de directorio fue denegada.
+- Las cuatro sesiones de verificación se cerraron con alcance local. No se crearon cuentas, remitos ni archivos de prueba en producción. La consulta de perfiles y asignaciones confirmó las cuatro cuentas preexistentes sin cambios.
+- Privilegios de finalización comprobados en producción: `anon=false`, `authenticated=false`, `service_role=true`.
+
+Este registro documenta la primera publicación funcional; su cierre documental se publica sin cambios de código.
