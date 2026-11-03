@@ -82,8 +82,20 @@ type NewCraneOperatorResult = { userId: string; email: string }
 
 ## Task 4: Validación y producción
 
-- [ ] Check, compilación, integración completa y navegador completo; CLI/runner nativos si se afectan sus contratos. Revisión independiente final de permisos, alta y actividad; resolver hallazgos.
-- [ ] Comprobar limpieza de todos los stacks, volúmenes, redes, directorios y locks descartables. Conservar la cuenta `gruistatest` pedida expresamente por el usuario.
-- [ ] Actualizar guía operativa y registrar pruebas; no versionar capturas locales ni credenciales.
-- [ ] Configurar `SUPABASE_SECRET_KEY` únicamente en el servicio Railway existente, sin imprimir valor y sin redeploy previo al push (`skipDeploys: true`). Verificar presencia por nombre. No cambiar otros valores.
+- [x] Check, compilación, integración completa y navegador completo; CLI/runner nativos si se afectan sus contratos. Revisión independiente final de permisos, alta y actividad; resolver hallazgos.
+- [x] Comprobar limpieza de todos los stacks, volúmenes, redes, directorios y locks descartables. Conservar la cuenta `gruistatest` pedida expresamente por el usuario.
+- [x] Actualizar guía operativa y registrar pruebas; no versionar capturas locales ni credenciales.
+- [x] Configurar `SUPABASE_SECRET_KEY` únicamente en el servicio Railway existente, sin imprimir valor y sin redeploy previo al push (`skipDeploys: true`). Verificar presencia por nombre. No cambiar otros valores.
 - [ ] Dry-run y aplicación de la migración de producción sin seeds ni usuarios de prueba; los cuatro perfiles y asignaciones existentes se conservan. Integrar/pushear main sin force, observar SUCCESS del commit publicado y comprobar salud/login y lectura del módulo con las tres cuentas reales. Cerrar las sesiones de verificación; no crear más datos de prueba en producción.
+
+## Evidencia de validación
+
+- `npm run check`: lint y tipos correctos, 616 unitarias y 20 pruebas nativas de carga histórica.
+- `npm run build`: compilación correcta de las tres rutas nuevas.
+- Integración completa: 410 pruebas en 24 archivos, mediante stack descartable.
+- Navegador completo: 87 pruebas con los dos workers predeterminados. Se corrigió una suposición de bandeja global vacía en una prueba heredada; ahora verifica el remito de su propio fixture. Ambos archivos de gruistas pasaron también juntos (12 pruebas).
+- CLI de usuarios: 14 pruebas; controlador de stacks: 12 pruebas. Sin recursos, volúmenes, redes, directorios ni locks de pruebas restantes.
+- Especificación y calidad aprobadas por etapa; revisión integrada final aprobada sobre `9da7b90..b7858ce` y la corrección de prueba `c15e65c`. Revisión visual independiente SHIP y documentación del sistema conservado.
+- Railway: credencial privada configurada solo en el servidor con `skipDeploys: true`, verificada por nombre sin imprimirla. Migración `20261102120000` aplicada después del dry-run, sin seeds ni roles.
+
+Pendiente en este registro: push y verificación del despliegue exacto y de las sesiones reales. No se crearon fixtures en producción.
