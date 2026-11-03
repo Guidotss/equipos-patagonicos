@@ -38,7 +38,7 @@ screenshot: 'only-on-failure',
 }
 ```
 
-- [ ] Publicar `playwright-report` y `test-results` desde el paso existente de artifacts con `if: always()`, `if-no-files-found: ignore` y retención 7; mantener versiones de acciones y verificación existente.
+- [ ] Publicar `playwright-report` y `test-results` desde el paso existente de artifacts con `if: always()`, `if-no-files-found: ignore` y retención 7; mantener versiones de acciones y verificación existente. Agregar `workflow_dispatch` junto a push/pull_request para permitir ejecutar desde Run workflow.
 - [ ] Escribir la guía con comandos de instalación, ejecución completa, módulo, filtros y reporte, mapa de archivos/cobertura, límites de Chromium/emulación móvil y garantía de entorno descartable. Corregir en la sección de pruebas del README rutas `.test-run-*`, lock real y ejemplos de archivos en inglés. No actualizar documentación comercial ajena al alcance.
 - [ ] Ejecutar dirigida, lint y typecheck; revisar el diff y commit `test: expand Playwright functional workflows and reports`.
 
