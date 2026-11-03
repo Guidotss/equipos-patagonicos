@@ -30,3 +30,9 @@ La guía de `tests/e2e` explica requisitos, comandos de suite completa y gruista
 ## Validación
 
 Ejecutar los dos recorridos dirigidos, la suite completa con dos workers y los controles de lint/tipos. Revisiones independientes de especificación y calidad, con cierre integrado. Comprobar reporte HTML y ausencia de recursos del runner. No hay cambios de lógica de negocio, migraciones ni datos de producción.
+
+## Hallazgo durante la primera prueba móvil
+
+El archivo con nombre largo `Remito gruistas-<UUID>.pdf` expande el grid de `UploadFiles`. En Chromium con `isMobile: true`, el viewport observado pasa de 390 × 844 a 569 × 1232 y el botón fijo de envío deja de recibir el clic. El trace confirma que ocurre después de adjuntar el archivo; alta, sesión y preparación del upload habían terminado correctamente.
+
+Se amplía el alcance únicamente para corregir el tamaño mínimo del grid y sus filas en `src/components/documents/upload-files.tsx`. Se conserva el nombre largo en la prueba, se comprueba que el ancho móvil no cambie y se utiliza el clic normal. No se cambia la lógica de archivos ni se reduce la cobertura a nombres cortos. El sistema visual existente se conserva y se verifica en móvil y escritorio.

@@ -16,10 +16,12 @@
 - Create: `tests/e2e/crane-operator-workflow.spec.ts`.
 - Create: `tests/e2e/README.md`.
 - Modify: `playwright.config.ts`, `package.json`, `.github/workflows/check.yml`, sección de pruebas de `README.md`.
+- Fix scoped: `src/components/documents/upload-files.tsx`, tamaño mínimo del grid para nombres largos.
 - Reuse unchanged: `tests/e2e/crane-operator-fixture.ts` y `scripts/test-runner.mjs`.
 
 - [ ] Implementar dos pruebas independientes, parametrizadas por selección de presupuesto. Cada una crea su fixture local y registra antes del alta el email nuevo con `trackCreatedAccount`. El personal se crea como `operador`; el gruista se crea por el formulario real. El contexto móvil usa viewport 390 × 844, `isMobile`, `hasTouch`, locale `es-AR` y hora argentina.
 - [ ] Completar nombre, email, contraseña y grúa en el alta; comprobar rol `crane_operator`, activo y asignación con el actor real. Ingresar en la sesión móvil, subir el PDF con el botón y `filechooser`, y enviar con o sin presupuesto seleccionado. Las escrituras del flujo son por UI; SQL solo prepara fixtures y verifica persistencia.
+- [ ] Conservar el nombre largo del PDF que reprodujo el desborde. Corregir el mínimo del grid/filas de UploadFiles, comprobar viewport estable a 390 px y envío por clic normal. Capturar un lote de evidencia móvil y escritorio sin rediseño ni cambios de lógica.
 - [ ] Abrir la actividad desde la cuenta de personal, revisar el remito y descargar el original. Sin presupuesto elegido, seleccionar el presupuesto propio y pulsar «Vincular remito». Comprobar el nuevo estado en actividad, portal y presupuesto. En ambos casos comprobar autor, grúa, fecha y bytes del adjunto conservados, y un único documento para la recepción. Cerrar contexto y limpiar el fixture en `finally`.
 - [ ] Configurar reportes y captura de errores sin cambiar workers, retries ni guardas:
 
@@ -48,6 +50,7 @@ screenshot: 'only-on-failure',
 - [ ] Ejecutar `npm run test:e2e` con configuración estándar: las 87 existentes y los dos casos nuevos deben pasar juntos con dos workers. Verificar que `playwright-report/index.html` existe y el reporte contiene todos los casos.
 - [ ] Comprobar que no quedan contenedores, volúmenes, redes, carpetas `.test-run-*` ni lock de esa ejecución. El reporte es evidencia local ignorada por Git.
 - [ ] Revisión integrada final; registrar comandos y resultados en este plan y entregar la suite con instrucciones de ejecución.
+- [ ] Verificación visual acotada del ajuste de overflow: conservar el sistema, detector único sobre el archivo cambiado y revisión independiente de las capturas.
 
 ## Evidencia inicial
 
