@@ -26,8 +26,9 @@ export function DocumentForm(props: DocumentFormProps) {
     setSelectedBudgetIds,
     clientId,
     loading,
-    searchBudget,
-    setSearchBudget,
+    equipment,
+    equipmentLabel,
+    contextReady,
     values,
     deliveryNotes,
     setDeliveryNotes,
@@ -67,8 +68,6 @@ export function DocumentForm(props: DocumentFormProps) {
           <DocumentBudgetTypeSection
             document={document}
             quote={quote}
-            searchBudget={searchBudget}
-            setSearchBudget={setSearchBudget}
             errors={errors}
             selectedBudgetIds={selectedBudgetIds}
             chooseBudget={chooseBudget}
@@ -89,7 +88,8 @@ export function DocumentForm(props: DocumentFormProps) {
             values={values}
             changeField={changeField}
             errors={errors}
-            context={context}
+            equipment={equipment}
+            equipmentLabel={equipmentLabel}
             duplicate={duplicate}
           />
           {!quote && clientBudgets.length ? (
@@ -128,7 +128,7 @@ export function DocumentForm(props: DocumentFormProps) {
         back={back}
         textButton={document ? 'Guardar cambios' : quote ? 'Aprobar y guardar OC' : 'Guardar documento'}
         pendiente={pending}
-        disabled={uploading || loading || !clientId}
+        disabled={uploading || loading || !clientId || !contextReady || (values.tipo === 'remito' && equipment.ambiguous)}
       >
         {uploading || loading ? (
           <span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">

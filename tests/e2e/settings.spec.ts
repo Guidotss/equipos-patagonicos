@@ -77,3 +77,31 @@ test('empresa: muestra los datos reales', async ({ page }) => {
   await expect(page.getByLabel('Razón social')).toHaveValue('Equipos Patagónicos')
   await expect(page.getByLabel('Ciudad')).toHaveValue('Neuquén')
 })
+
+
+test('empresa: guarda el email sin borrar los valores históricos de tarifas', async ({ page }) => {
+  const initial = await withBase(async (db) => {
+    const result = await db.query<{ email: string; indice_base: string; proxima_actualizacion: string }>(
+      'select email, indice_base, proxima_actualizacion from public.empresa_config where id = true',
+    )
+    await db.query("update public.empresa_config set indice_base = 'julio 2024', proxima_actualizacion = 'enero de 2025' where id = true")
+    return result.rows[0]
+  })
+  try {
+    await iniciarSession(page)
+    await page.goto('/configuracion/empresa')
+    await expect(page.getByText('Actualización de tarifas', { exact: true })).toHaveCount(0)
+    await page.getByLabel('Email', { exact: true }).fill('administracion@equipos.test')
+    await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+    await expect(page.getByText('Datos de la empresa guardados', { exact: true })).toBeVisible()
+    const saved = await withBase(async (db) => (await db.query(
+      'select email, indice_base, proxima_actualizacion from public.empresa_config where id = true',
+    )).rows[0])
+    expect(saved).toEqual({ email: 'administracion@equipos.test', indice_base: 'julio 2024', proxima_actualizacion: 'enero de 2025' })
+  } finally {
+    await withBase(async (db) => {
+      await db.query('update public.empresa_config set email = $1, indice_base = $2, proxima_actualizacion = $3 where id = true',
+        [initial.email, initial.indice_base, initial.proxima_actualizacion])
+    })
+  }
+})

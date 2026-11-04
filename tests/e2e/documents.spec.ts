@@ -8,8 +8,15 @@ const marca = `documentos-e2e-${sufijoUnico()}`
 const razonSocial = `Grúas Ñandú Documentos ${marca}`
 let clientId: string
 let budgetId: string
+let historicEquipmentId: string
 
 test.beforeAll(async () => {
+  historicEquipmentId = await withBase(async (db) => (
+    await db.query<{ id: string }>(
+      'insert into public.equipos (nombre, activo) values ($1, false) returning id',
+      [`Grúa histórica ${marca}`],
+    )
+  ).rows[0].id)
   clientId = await withBase(
     async (db) =>
       (
@@ -37,6 +44,7 @@ test.afterAll(async () => {
     await db.query('delete from public.documentos where cliente_id = $1', [clientId])
     await db.query('delete from public.cotizaciones where cliente_id = $1', [clientId])
     await db.query('delete from public.clientes where id = $1', [clientId])
+    await db.query('delete from public.equipos where id = $1', [historicEquipmentId])
   })
 })
 
@@ -76,6 +84,8 @@ test('presupuesto directo → OC → remito → factura → pago; saldo y anulac
   await expect(page.getByRole('heading', { name: 'Órdenes de compra · 1', exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Agregar Remito', exact: true }).click()
+  await expect(page.getByLabel('Equipo', { exact: true })).toHaveValue('Sin equipo asignado')
+  await expect(page.getByLabel('Equipo', { exact: true })).toHaveAttribute('readonly', '')
   await page.getByLabel('Número (opcional)', { exact: true }).fill('R-102')
   await attach(page, 'Remito.pdf')
   await save(page)
@@ -131,14 +141,19 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
     async (db) =>
       (
         await db.query<{ id: string; numero: string }>(
-          `insert into public.cotizaciones (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado) values ($1, 'directa', 'jornada', 'Segundo frente de trabajo', $2, 'aprobada', current_date, 'en_curso') returning id, numero`,
-          [clientId, marca],
+          `insert into public.cotizaciones (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado, equipo_id) values ($1, 'directa', 'jornada', 'Segundo frente de trabajo', $2, 'aprobada', current_date, 'en_curso', $3) returning id, numero`,
+          [clientId, marca, historicEquipmentId],
         )
       ).rows[0],
   )
   await iniciarSession(page)
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto(`/documentos/nuevo?presupuesto=${budget.id}`)
+  await page.goto('/documentos/nuevo')
+  await expect(page.getByLabel('Buscar presupuesto', { exact: true })).toHaveCount(0)
+  await expect(page.getByLabel('Presupuesto', { exact: true })).toHaveAttribute('required', '')
+  await page.getByLabel('Presupuesto', { exact: true }).selectOption(budget.id)
+  await expect(page.getByLabel('Equipo', { exact: true })).toHaveValue(`Grúa histórica ${marca}`)
+  await expect(page.getByLabel('Equipo', { exact: true })).toHaveAttribute('readonly', '')
   await expect(page.getByLabel('Tomar foto del documento', { exact: true })).toHaveAttribute('capture', 'environment')
   await expect(page.getByLabel('Seleccionar archivos del documento', { exact: true })).toHaveAttribute('multiple', '')
   const foto = await page.evaluate(() => {
@@ -171,6 +186,7 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
   await expect(page.getByRole('button', { name: 'Reintentar', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Reintentar', exact: true }).click()
   await expect(page.getByText('Listo para guardar', { exact: true })).toHaveCount(2)
+  await page.screenshot({ path: testInfo.outputPath('documento-equipo-movil.png'), fullPage: true })
   await page.getByLabel('Número (opcional)', { exact: true }).fill('R-MOVIL-105')
   await page.getByRole('button', { name: 'Guardar documento', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budget.id}$`))
@@ -188,6 +204,7 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
   expect(archivo.mime).toBe('image/jpeg')
   expect(Number(archivo.tamano)).toBeLessThan(10 * 1024 * 1024)
   await deliveryNote.getByRole('link', { name: 'Editar', exact: true }).click()
+  await expect(page.getByLabel('Equipo', { exact: true })).toHaveValue(`Grúa histórica ${marca}`)
   await page.getByLabel('Número (opcional)', { exact: true }).fill('R-MOVIL-106')
   const segundaSheet = page.getByRole('listitem').filter({ hasText: 'Segunda hoja.pdf' })
   await segundaSheet.getByRole('button', { name: 'Quitar', exact: true }).click()

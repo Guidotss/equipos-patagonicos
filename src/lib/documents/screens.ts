@@ -72,7 +72,7 @@ export type OptionBudget = {
   presupuesto_estado: string
 }
 export type DocumentContext = {
-  budgets: OptionBudget[]
+  budgets: (OptionBudget & { equipmentId: string | null })[]
   documentos: Document[]
   facturas: Invoice[]
   equipos: { id: string; nombre: string }[]

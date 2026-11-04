@@ -1,26 +1,45 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
-import type { DocumentContext, OptionBudget } from './screens'
+import type { DocumentContext } from './screens'
 
 export async function contextoDocument(
   supabase: SupabaseClient<Database>,
   clientId: string,
 ): Promise<DocumentContext> {
-  const [budgets, documentos, facturas, equipos] = await Promise.all([
+  const [budgets, documents, invoices] = await Promise.all([
     supabase
-      .from('v_presupuestos')
-      .select('id, numero, cliente_id, cliente_razon_social, asunto, presupuesto_estado')
+      .from('cotizaciones')
+      .select('id, numero, cliente_id, asunto, presupuesto_estado, equipo_id, cliente:clientes(razon_social)')
       .eq('cliente_id', clientId)
+      .eq('estado', 'aprobada')
       .order('numero', { ascending: false }),
     supabase.from('documentos').select('*').eq('cliente_id', clientId).order('created_at', { ascending: false }),
     supabase.from('v_facturas').select('*').eq('cliente_id', clientId).order('fecha_vencimiento'),
-    supabase.from('equipos').select('id, nombre').eq('activo', true).order('nombre'),
   ])
-  for (const result of [budgets, documentos, facturas, equipos]) if (result.error) throw result.error
+  if (budgets.error) throw budgets.error
+  if (documents.error) throw documents.error
+  if (invoices.error) throw invoices.error
+  const equipmentIds = [...new Set([
+    ...budgets.data.map((budget) => budget.equipo_id),
+    ...documents.data.map((document) => document.equipo_id),
+  ].filter((id): id is string => id !== null))]
+  // Incluye los equipos históricos inactivos vinculados a presupuestos o remitos del cliente.
+  const equipment = equipmentIds.length
+    ? await supabase.from('equipos').select('id, nombre').in('id', equipmentIds).order('nombre')
+    : { data: [], error: null }
+  if (equipment.error) throw equipment.error
   return {
-    budgets: budgets.data as OptionBudget[],
-    documentos: documentos.data!,
-    facturas: facturas.data!,
-    equipos: equipos.data!,
+    budgets: budgets.data.map((budget) => ({
+      id: budget.id,
+      numero: budget.numero,
+      cliente_id: budget.cliente_id,
+      cliente_razon_social: budget.cliente.razon_social,
+      asunto: budget.asunto,
+      presupuesto_estado: budget.presupuesto_estado ?? '',
+      equipmentId: budget.equipo_id,
+    })),
+    documentos: documents.data,
+    facturas: invoices.data,
+    equipos: equipment.data,
   }
 }

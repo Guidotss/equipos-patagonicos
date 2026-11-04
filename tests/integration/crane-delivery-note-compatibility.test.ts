@@ -44,7 +44,7 @@ async function deleteImportedBudget(id: string) {
 }
 
 describe('compatibilidad de remitos recibidos con el circuito comercial', () => {
-  it.each(['X', '🦺'])('edita fecha, equipo y presupuesto sin recortar ninguno de los campos máximos (%s)', async (character) => {
+  it.each(['X', '🦺'])('edita fecha y presupuesto conservando la grúa real y los campos máximos (%s)', async (character) => {
     const data = { ...NOTE_DATA, number: character.repeat(100), customerName: character.repeat(2000),
       workDescription: character.repeat(2000), notes: character.repeat(1998) + '  ' }
     const file = await fixture.upload(worker.client)
@@ -58,9 +58,22 @@ describe('compatibilidad de remitos recibidos con el circuito comercial', () => 
     const nextBudgetId = await fixture.budget(null, 'finalizado')
     expect((await editDocument(document, [nextBudgetId], { fecha: '2026-02-20', equipo_id: replacementEquipmentId })).error).toBeNull()
     expect(await readDocument(document.id)).toMatchObject({ numero: data.number, notas: fullNotes,
-      fecha: '2026-02-20', equipo_id: replacementEquipmentId, created_by: worker.id, monto: null })
+      fecha: '2026-02-20', equipo_id: equipmentId, created_by: worker.id, monto: null })
     expect((await staff.client.from('documento_archivos').select('path').eq('documento_id', document.id)).data).toEqual([{ path: file.path }])
     expect((await staff.client.from('documento_presupuestos').select('cotizacion_id').eq('documento_id', document.id)).data).toEqual([{ cotizacion_id: nextBudgetId }])
+  })
+
+  it.each([null, 'different'] as const)('conserva la grúa de obra al vincular y editar con un presupuesto de equipo %s', async (kind) => {
+    const targetBudgetId = await fixture.budget(kind === null ? null : replacementEquipmentId)
+    const file = await fixture.upload(worker.client)
+    const submitted = await submitNote(worker.client, [file])
+    expect(submitted.error).toBeNull()
+    const linked = await staff.client.rpc('link_crane_delivery_note', { p_note_id: submitted.data!, p_budget_id: targetBudgetId })
+    expect(linked.error).toBeNull()
+    const document = await readDocument(linked.data!)
+    expect(document.equipo_id).toBe(equipmentId)
+    expect((await editDocument(document, [targetBudgetId], { equipo_id: '' })).error).toBeNull()
+    expect((await readDocument(document.id)).equipo_id).toBe(equipmentId)
   })
 
   it.each(['X', '🦺'])('aplica los límites SQL exactos de 100 y 6200 al editar un remito (%s)', async (character) => {

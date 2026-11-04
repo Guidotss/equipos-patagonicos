@@ -4,7 +4,6 @@ import { CompanyForm } from '@/components/settings/company-form'
 import { requireStaff } from '@/lib/auth'
 import { formatCuit } from '@/lib/cuit'
 import { todayArgentina } from '@/lib/format/dates'
-import { phrasesWithVariables } from '@/lib/templates/phrases'
 import { createClient } from '@/lib/supabase/server'
 import { actualizarCompany } from '../actions'
 
@@ -13,12 +12,8 @@ export const metadata: Metadata = { title: 'Empresa' }
 export default async function CompanyPage() {
   const user = await requireStaff()
   const supabase = await createClient()
-  const [{ data: company, error }, { data: plantillas, error: errorTemplates }] = await Promise.all([
-    supabase.from('empresa_config').select('*').single(),
-    supabase.from('plantillas').select('bloques').eq('activa', true),
-  ])
+  const { data: company, error } = await supabase.from('empresa_config').select('*').single()
   if (error) throw error
-  if (errorTemplates) throw errorTemplates
 
   return (
     <>
@@ -28,7 +23,6 @@ export default async function CompanyPage() {
         initial={{ ...company, cuit: company.cuit ? formatCuit(company.cuit) : '' }}
         soloQuery={user.rol !== 'admin'}
         today={todayArgentina()}
-        phrasesTarifas={phrasesWithVariables(plantillas, ['indice_base', 'proxima_actualizacion'])}
       />
     </>
   )

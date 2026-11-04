@@ -28,6 +28,9 @@ export const schemaCompany = z.object({
   proxima_actualizacion: textOptional(100),
 })
 
+export const schemaEditableCompany = schemaCompany.omit({ indice_base: true, proxima_actualizacion: true })
+export const EDITABLE_COMPANY_FIELDS = schemaEditableCompany.keyof().options
+
 export const FIELDS_SIGNER = ['nombre', 'cargo', 'telefono', 'email'] as const
 export type FieldSigner = (typeof FIELDS_SIGNER)[number]
 

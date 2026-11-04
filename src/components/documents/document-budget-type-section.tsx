@@ -1,6 +1,5 @@
 import { Card } from '@/components/form/card'
 import { Field } from '@/components/form/field'
-import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOCUMENT_TYPES } from '@/lib/documents/schemas'
@@ -13,8 +12,6 @@ import type { DocumentFormState } from './use-document-form'
 export function DocumentBudgetTypeSection({
   document,
   quote,
-  searchBudget,
-  setSearchBudget,
   errors,
   selectedBudgetIds,
   chooseBudget,
@@ -26,7 +23,7 @@ export function DocumentBudgetTypeSection({
   visibleOptions: OptionBudget[]
 } & Pick<
     DocumentFormState,
-    'searchBudget' | 'setSearchBudget' | 'errors' | 'selectedBudgetIds' | 'chooseBudget' | 'values' | 'changeField'
+    'errors' | 'selectedBudgetIds' | 'chooseBudget' | 'values' | 'changeField'
   >) {
   return (
     <Card
@@ -36,14 +33,6 @@ export function DocumentBudgetTypeSection({
       <div className="flex flex-col gap-4">
         {!document && !quote ? (
           <div className="flex flex-col gap-3">
-            <Field id="buscar-presupuesto" label="Buscar presupuesto">
-              <Input
-                id="buscar-presupuesto"
-                placeholder="Número, cliente o trabajo"
-                value={searchBudget}
-                onChange={(event) => setSearchBudget(event.target.value)}
-              />
-            </Field>
             <Field id="presupuesto" label="Presupuesto" error={errors.budgets}>
               <NativeSelect
                 id="presupuesto"
@@ -62,7 +51,7 @@ export function DocumentBudgetTypeSection({
               </NativeSelect>
             </Field>
             {visibleOptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay presupuestos con esa búsqueda.</p>
+              <p className="text-sm text-muted-foreground">No hay presupuestos disponibles para cargar documentos.</p>
             ) : null}
           </div>
         ) : null}

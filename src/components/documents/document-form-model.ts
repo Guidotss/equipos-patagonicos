@@ -62,7 +62,6 @@ export function documentFormSelections({
   deliveryNotes,
   allocations,
   options,
-  searchBudget,
   document,
 }: {
   values: DocumentFormValues
@@ -71,7 +70,6 @@ export function documentFormSelections({
   deliveryNotes: string[]
   allocations: Record<string, string>
   options: OptionBudget[]
-  searchBudget: string
   document?: Document
 }) {
   const duplicate =
@@ -97,20 +95,8 @@ export function documentFormSelections({
   const voidedInvoices = context.documentos.filter(
     (item) => item.tipo === 'factura' && item.deleted_at && allocations[item.id] !== undefined,
   )
-  const normalizeSearch = (value: string) =>
-    value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLocaleLowerCase('es-AR')
   const visibleOptions = options
     .filter((item) => item.presupuesto_estado !== 'anulado')
-    .filter(
-      (item) =>
-        item.id === selectedBudgetIds[0] ||
-        normalizeSearch(`${item.numero} ${item.cliente_razon_social} ${item.asunto}`).includes(
-          normalizeSearch(searchBudget),
-        ),
-    )
     .toSorted(
       (a, b) =>
         Number(b.presupuesto_estado === 'en_curso') - Number(a.presupuesto_estado === 'en_curso') ||

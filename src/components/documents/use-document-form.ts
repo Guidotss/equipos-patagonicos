@@ -1,6 +1,7 @@
 'use client'
 
 import { readDocumentContext, saveDocument } from '@/app/(app)/documentos/actions'
+import { AMBIGUOUS_EQUIPMENT_MESSAGE, deliveryNoteEquipment, hasSelectedBudgetContext } from '@/lib/documents/equipment'
 import type { UploadedFile } from '@/lib/documents/service'
 import { formatAmountTable, parsePrice } from '@/lib/format/amounts'
 import { useRouter } from 'next/navigation'
@@ -35,7 +36,6 @@ export function useDocumentForm(props: DocumentFormProps) {
     document?.cliente_id ?? options.find((option) => option.id === budgetId)?.cliente_id ?? '',
   )
   const [loading, setLoading] = useState(false)
-  const [searchBudget, setSearchBudget] = useState('')
   const contextRequest = useRef(0)
   const [values, setValues] = useState(() => initialDocumentValues(props))
   const [deliveryNotes, setDeliveryNotes] = useState(() => initialDeliveryNotes(props))
@@ -45,6 +45,11 @@ export function useDocumentForm(props: DocumentFormProps) {
   const [remove, setRemovedFileIds] = useState<string[]>([])
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const contextReady = Boolean(quote) || hasSelectedBudgetContext(context, selectedBudgetIds)
+  const equipment = deliveryNoteEquipment(context, selectedBudgetIds, document)
+  const equipmentLabel = contextReady
+    ? equipment.ambiguous ? 'Equipos diferentes' : equipment.name
+    : loading ? 'Cargando equipo…' : selectedBudgetIds.length ? 'Volvé a seleccionar el presupuesto' : 'Seleccioná un presupuesto'
   const onChangeFiles = useCallback((files: UploadedFile[], pendingList: boolean) => {
     setNewFiles(files)
     setUploading(pendingList)
@@ -55,7 +60,7 @@ export function useDocumentForm(props: DocumentFormProps) {
   async function chooseBudget(id: string) {
     const option = options.find((item) => item.id === id)
     setSelectedBudgetIds(id ? [id] : [])
-    if (!option || option.cliente_id === clientId) return
+    if (!option || (option.cliente_id === clientId && context.budgets.some((budget) => budget.id === id))) return
     setClientId(option.cliente_id)
     setDeliveryNotes([])
     setAllocations({})
@@ -71,9 +76,13 @@ export function useDocumentForm(props: DocumentFormProps) {
         setMessage('')
       } else {
         setContext(EMPTY_DOCUMENT_CONTEXT)
+        setSelectedBudgetIds([])
         setMessage(response.message)
       }
     } catch {
+      if (request !== contextRequest.current) return
+      setContext(EMPTY_DOCUMENT_CONTEXT)
+      setSelectedBudgetIds([])
       setMessage('No se pudieron cargar los documentos del cliente. Volvé a seleccionar el presupuesto.')
     } finally {
       if (request === contextRequest.current) setLoading(false)
@@ -89,7 +98,11 @@ export function useDocumentForm(props: DocumentFormProps) {
   }
   function save(event: React.FormEvent) {
     event.preventDefault()
-    if (submitting.current || uploading || loading) return
+    if (submitting.current || uploading || loading || !contextReady) return
+    if (values.tipo === 'remito' && equipment.ambiguous) {
+      setMessage(AMBIGUOUS_EQUIPMENT_MESSAGE)
+      return
+    }
     submitting.current = true
     setMessage('')
     setErrors({})
@@ -99,7 +112,7 @@ export function useDocumentForm(props: DocumentFormProps) {
           id: document?.id,
           clientId,
           budgets: selectedBudgetIds,
-          datos: values,
+          datos: { ...values, equipo_id: values.tipo === 'remito' ? equipment.id ?? '' : '' },
           archivos: newFiles,
           quitar: remove,
           remitos: values.tipo === 'factura' ? deliveryNotes : [],
@@ -128,13 +141,14 @@ export function useDocumentForm(props: DocumentFormProps) {
   }
   return {
     pending,
+    equipment,
+    equipmentLabel,
+    contextReady,
     context,
     selectedBudgetIds,
     setSelectedBudgetIds,
     clientId,
     loading,
-    searchBudget,
-    setSearchBudget,
     values,
     deliveryNotes,
     setDeliveryNotes,

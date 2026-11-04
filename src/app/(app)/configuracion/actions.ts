@@ -3,10 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { requireStaff } from '@/lib/auth'
 import {
-  FIELDS_COMPANY,
+  EDITABLE_COMPANY_FIELDS,
   FIELDS_EQUIPMENT,
   FIELDS_SIGNER,
-  schemaCompany,
+  schemaEditableCompany,
   schemaEquipment,
   schemaSigner,
   schemaNameTemplate,
@@ -28,9 +28,9 @@ function requireUuid(id: string) {
 
 export async function actualizarCompany(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
   const user = await requireStaff()
-  const values = readFields(formData, FIELDS_COMPANY)
+  const values = readFields(formData, EDITABLE_COMPANY_FIELDS)
   if (user.rol !== 'admin') return { ok: false, message: 'Solo un administrador puede cambiar estos datos', errors: {}, values }
-  const datos = schemaCompany.safeParse(values)
+  const datos = schemaEditableCompany.safeParse(values)
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()

@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+import { AMBIGUOUS_EQUIPMENT_MESSAGE } from '@/lib/documents/equipment'
 import { getDocumentTextLimits, INVOICE_TYPES } from '@/lib/documents/schemas'
 
 import type { DocumentFormValues } from './document-form-model'
@@ -13,9 +14,10 @@ export function DocumentDetailsSection({
   values,
   changeField,
   errors,
-  context,
+  equipment,
+  equipmentLabel,
   duplicate,
-}: Pick<DocumentFormState, 'values' | 'changeField' | 'errors' | 'context'> & { duplicate: string | boolean }) {
+}: Pick<DocumentFormState, 'values' | 'changeField' | 'errors' | 'equipment' | 'equipmentLabel'> & { duplicate: string | boolean }) {
   const textLimits = getDocumentTextLimits(values.tipo)
   // maxlength cuenta UTF-16: dos unidades por punto de código evitan recortar caracteres suplementarios.
   const inputLengthMultiplier = values.tipo === 'remito' ? 2 : 1
@@ -80,20 +82,16 @@ export function DocumentDetailsSection({
         ) : null}
         {values.tipo === 'remito' ? (
           <>
-            <Field id="equipo_id" label="Equipo (opcional)">
-              <NativeSelect
-                id="equipo_id"
-                className="w-full"
-                value={values.equipo_id}
-                onChange={(event) => changeField('equipo_id', event.target.value)}
-              >
-                <NativeSelectOption value="">Sin equipo</NativeSelectOption>
-                {context.equipos.map((equipment) => (
-                  <NativeSelectOption value={equipment.id} key={equipment.id}>
-                    {equipment.nombre}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+            <Field
+              id="document-equipment"
+              label="Equipo"
+              error={equipment.ambiguous ? AMBIGUOUS_EQUIPMENT_MESSAGE : undefined}
+            >
+              <Input
+                id="document-equipment"
+                value={equipmentLabel}
+                readOnly
+              />
             </Field>
             {field('periodo_desde', 'Período desde (opcional)', 'date')}
             {field('periodo_hasta', 'Período hasta (opcional)', 'date')}

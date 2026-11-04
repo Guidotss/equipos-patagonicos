@@ -1,6 +1,6 @@
 'use client'
 
-import { AlignLeft, Building2, CalendarClock, FileText, Printer } from 'lucide-react'
+import { Building2, FileText, Printer } from 'lucide-react'
 import { Fragment } from 'react'
 import { Content } from '@/components/app-shell/header'
 import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
@@ -9,7 +9,6 @@ import { MessageForm } from '@/components/form/message-form'
 import {
   FieldsGrid,
   BandView,
-  PhrasesResolved,
   Highlight,
   Card,
   useViewInLive,
@@ -31,17 +30,13 @@ const FIELDS_FOOTER: FieldOfCompany[] = [
   { campo: 'email', label: 'Email', ancho: true },
   { campo: 'web', label: 'Web', ancho: true },
 ]
-const FIELDS_TARIFAS: FieldOfCompany[] = [
-  { campo: 'indice_base', label: 'Mes base del índice FADEEAC', placeholder: 'junio 2026' },
-  { campo: 'proxima_actualizacion', label: 'Próxima actualización', placeholder: 'noviembre de 2026' },
-]
 const FIELDS_FISCALES: FieldOfCompany[] = [
   { campo: 'razon_social', label: 'Razón social', ancho: true },
   { campo: 'cuit', label: 'CUIT', placeholder: '30-12345678-9' },
   { campo: 'provincia', label: 'Provincia' },
 ]
 
-const FIELDS_VIEW = ['direccion', 'ciudad', 'telefono', 'email', 'web', 'indice_base', 'proxima_actualizacion'] as const
+const FIELDS_VIEW = ['direccion', 'ciudad', 'telefono', 'email', 'web'] as const
 type FieldView = (typeof FIELDS_VIEW)[number]
 
 /** La fecha y el pie tal como los arma el PDF, con los datos de esta pantalla resaltados. */
@@ -76,15 +71,12 @@ export function CompanyForm({
   initial,
   soloQuery,
   today,
-  phrasesTarifas,
 }: {
   accion: ActionForm
   initial: Values
   soloQuery: boolean
   /** Fecha (YYYY-MM-DD) de "Así sale en el PDF"; viene del servidor para que coincida con el HTML inicial. */
   today: string
-  /** Oraciones de las plantillas activas con {{indice_base}} o {{proxima_actualizacion}}. */
-  phrasesTarifas: string[]
 }) {
   const { view, onEscribir, sincronizar } = useViewInLive(FIELDS_VIEW, initial)
   const dataKey = [initial.direccion, initial.ciudad, initial.email].filter(Boolean).join(' · ')
@@ -112,23 +104,6 @@ export function CompanyForm({
               band={<BandPdf today={today} values={view} />}
             >
               <FieldsGrid estado={estado} initial={initial} fields={FIELDS_FOOTER} />
-            </Card>
-            <Card
-              icon={CalendarClock}
-              titulo="Actualización de tarifas"
-              descripcion="Valores por defecto de cada cotización nueva."
-              band={
-                phrasesTarifas.length > 0 ? (
-                  <BandView icon={AlignLeft} titulo="Así sale en las condiciones">
-                    <PhrasesResolved
-                      phrases={phrasesTarifas}
-                      values={{ indice_base: view.indice_base, proxima_actualizacion: view.proxima_actualizacion }}
-                    />
-                  </BandView>
-                ) : null
-              }
-            >
-              <FieldsGrid estado={estado} initial={initial} fields={FIELDS_TARIFAS} />
             </Card>
             <Card icon={Building2} titulo="Datos fiscales" descripcion="No se imprimen en las cotizaciones.">
               <FieldsGrid estado={estado} initial={initial} fields={FIELDS_FISCALES} />
