@@ -240,13 +240,13 @@ test.describe('lista de cotizaciones', () => {
     const copy = new URL(page.url()).pathname.split('/').pop()
     expect(copy).not.toBe(approved.id)
     const { rows } = await withBase((db) =>
-      db.query<{ estado: string; reemplaza_a: string | null }>(
-        `select estado, reemplaza_a from public.cotizaciones where id = $1`,
+      db.query<{ estado: string; reemplaza_a: string | null; asunto: string }>(
+        `select estado, reemplaza_a, asunto from public.cotizaciones where id = $1`,
         [copy],
       ),
     )
     // Mismo cliente: la copia queda como renegociación de la aprobada.
-    expect(rows).toEqual([{ estado: 'borrador', reemplaza_a: approved.id }])
+    expect(rows).toEqual([{ estado: 'borrador', reemplaza_a: approved.id, asunto: 'Montaje de estructura en Centenario bis' }])
     // Las demás pruebas cuentan 29: la copia se borra acá.
     await withBase((db) => db.query(`delete from public.cotizaciones where id = $1`, [copy]))
   })
@@ -1247,7 +1247,7 @@ test.describe('acciones de estado del editor', () => {
     await pregunta.getByRole('button', { name: 'Duplicar lo guardado' }).click()
     await expect(duplicada).toBeVisible()
     creadas.push(idOfLaUrl(page.url()))
-    await expect(asunto).toHaveValue(original)
+    await expect(asunto).toHaveValue(`${original} bis`)
     expect(await subjectInLaBase()).toBe(original)
 
     // "Guardar y duplicar": guarda la original y la copia lleva los cambios.
@@ -1259,7 +1259,7 @@ test.describe('acciones de estado del editor', () => {
     await expect(duplicada).toBeVisible()
     expect(idOfLaUrl(page.url())).not.toBe(id)
     creadas.push(idOfLaUrl(page.url()))
-    await expect(asunto).toHaveValue('Asunto guardado antes de duplicar')
+    await expect(asunto).toHaveValue('Asunto guardado antes de duplicar bis')
     expect(await subjectInLaBase()).toBe('Asunto guardado antes de duplicar')
 
     // Si lo que hay no se puede guardar, no duplica: el foco va al campo marcado cuando el editor se vuelve a habilitar.

@@ -101,6 +101,11 @@ export function reduceEditor(state: StatusEditor, action: ActionEditor): StatusE
     case 'quitarItem':
       if (!state.items.some((item) => item.clave === action.clave)) return state
       return { ...state, items: state.items.filter((item) => item.clave !== action.clave) }
+    case 'removeSectionItems': {
+      const removedKeys = new Set(action.itemKeys)
+      const items = state.items.filter((item) => !removedKeys.has(item.clave))
+      return items.length === state.items.length ? state : { ...state, items }
+    }
     case 'duplicarItem': {
       const index = state.items.findIndex((item) => item.clave === action.clave)
       if (index < 0) return state

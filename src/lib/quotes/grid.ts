@@ -115,6 +115,27 @@ export function neighborOnRemove(items: ItemGrid[], key: string): string | null 
   return (items[index - 1] ?? items[index + 1])?.clave ?? null
 }
 
+/** Las claves de la racha concreta, aunque otra sección tenga el mismo nombre. */
+export function sectionItemKeys(items: ItemGrid[], key: string): string[] {
+  const start = items.findIndex((item) => item.clave === key)
+  if (start < 0) return []
+  const keys: string[] = []
+  for (let index = start; index < items.length && items[index].seccion === items[start].seccion; index++) {
+    keys.push(items[index].clave)
+  }
+  return keys
+}
+
+/** Al borrar una sección, enfoca el vecino anterior que sobrevive; si no hay, el siguiente. */
+export function neighborAfterRemoval(items: ItemGrid[], itemKeys: string[]): string | null {
+  const removedKeys = new Set(itemKeys)
+  const first = items.findIndex((item) => removedKeys.has(item.clave))
+  if (first < 0) return null
+  return items.slice(0, first).findLast((item) => !removedKeys.has(item.clave))?.clave
+    ?? items.slice(first + 1).find((item) => !removedKeys.has(item.clave))?.clave
+    ?? null
+}
+
 /** Celdas de un ítem que pueden traer un error de guardado. */
 export type FieldGrid = 'seccion' | 'descripcion' | 'cantidad' | 'precio' | 'unidad'
 export type ErrorsItem = Partial<Record<FieldGrid, string>>

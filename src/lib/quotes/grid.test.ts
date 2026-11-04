@@ -10,6 +10,8 @@ import {
   totalGeneral,
   totalLine,
   neighborOnRemove,
+  neighborAfterRemoval,
+  sectionItemKeys,
 } from './grid'
 
 const item = (key: string, section = '', quantity = '1', price = '') => ({ clave: key, seccion: section, cantidad: quantity, precio: price })
@@ -150,5 +152,24 @@ describe('erroresPorClave', () => {
   it('ignora las rutas que no son de una celda y las posiciones que no existen', () => {
     expect(errorsByKey({ 'items.3.precio': 'x', 'bloques.0.titulo': 'y', 'items.0.otro': 'z' }, ['a'])).toEqual({})
     expect(errorsByKey({}, ['a'])).toEqual({})
+  })
+})
+
+
+describe('borrado de secciones', () => {
+  const items = [item('a', 'X'), item('b', 'X'), item('c', 'Y'), item('d', 'X')]
+
+  it('obtiene solo las claves de la racha pedida', () => {
+    expect(sectionItemKeys(items, 'a')).toEqual(['a', 'b'])
+    expect(sectionItemKeys(items, 'd')).toEqual(['d'])
+    expect(sectionItemKeys(items, 'missing')).toEqual([])
+  })
+
+  it('enfoca un vecino que sobrevive aunque las claves hayan cambiado de posición', () => {
+    expect(neighborAfterRemoval(items, ['a', 'b'])).toBe('c')
+    expect(neighborAfterRemoval(items, ['c', 'd'])).toBe('b')
+    expect(neighborAfterRemoval([items[0], items[2], items[1], items[3]], ['a', 'b'])).toBe('c')
+    expect(neighborAfterRemoval(items, items.map((row) => row.clave))).toBeNull()
+    expect(neighborAfterRemoval(items, ['missing'])).toBeNull()
   })
 })

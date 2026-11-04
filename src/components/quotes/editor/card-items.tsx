@@ -1,5 +1,6 @@
 'use client'
 
+import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { Card } from '@/components/form/card'
 import { useSheetForm } from '@/components/form/structure-form'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,8 @@ import {
   rowsGrid,
   totalGeneral,
   neighborOnRemove,
+  neighborAfterRemoval,
+  sectionItemKeys,
   type ErrorsItem,
   type FocusRequest,
 } from '@/lib/quotes/grid'
@@ -32,7 +35,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 import { RowItem } from './item-row'
 import { HeaderSection } from './item-section-header'
@@ -69,6 +72,7 @@ export function CardItems({
   /** Las plantillas guardan descripciones, cantidades y unidades; los precios se definen al cotizar. */
   editPrices?: boolean
 }) {
+  const [sectionRemoval, setSectionRemoval] = useState<{ section: string; itemKeys: string[] } | null>(null)
   const dragId = useId()
   const inSheet = useSheetForm()
   const focusTarget = useRef<FocusRequest | 'agregar' | null>(null)
@@ -131,6 +135,23 @@ export function CardItems({
     dispatch({ tipo: 'quitarItem', clave: item.clave })
   }
 
+  function cancelSectionRemoval() {
+    if (!sectionRemoval) return
+    const key = sectionRemoval.itemKeys[0]
+    setSectionRemoval(null)
+    const target = document.getElementById(`seccion-${key}`) ?? document.getElementById(`item-${key}-descripcion`)
+    if (target) target.focus()
+    else addButton.current?.focus()
+  }
+
+  function confirmSectionRemoval() {
+    if (!sectionRemoval) return
+    const neighbor = neighborAfterRemoval(items, sectionRemoval.itemKeys)
+    focusTarget.current = neighbor ? { type: 'item', key: neighbor } : 'agregar'
+    dispatch({ tipo: 'removeSectionItems', itemKeys: sectionRemoval.itemKeys })
+    setSectionRemoval(null)
+  }
+
   function onDrop({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
     move(
@@ -161,6 +182,17 @@ export function CardItems({
           : 'Los precios se completan en cada cotización.'
       }
     >
+      {sectionRemoval ? (
+        <InlineConfirmation
+          pregunta={`¿Eliminar la sección «${sectionRemoval.section.trim() || 'Precios'}»?`}
+          detail={sectionRemoval.itemKeys.length === 1 ? 'Se eliminará su 1 ítem.' : `Se eliminarán sus ${sectionRemoval.itemKeys.length} ítems.`}
+          textConfirm="Eliminar sección"
+          tone="peligro"
+          onConfirm={confirmSectionRemoval}
+          onCancelar={cancelSectionRemoval}
+          className="mb-3"
+        />
+      ) : null}
       <div className={cn('overflow-hidden rounded-lg border', !inSheet && '-mx-1')}>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-[15px] text-muted-foreground">Todavía no hay ítems.</p>
@@ -179,6 +211,7 @@ export function CardItems({
               {editPrices ? <span className="pr-2 text-right">Precio unitario</span> : null}
               <span className="pl-2">Unidad</span>
               {editPrices ? <span className="text-right">Total</span> : null}
+              <span />
             </div>
             <DndContext
               id={dragId}
@@ -196,6 +229,7 @@ export function CardItems({
                       error={errors[row.key]?.seccion}
                       dispatch={dispatch}
                       onChangeDraft={onChangeDraftSection}
+                      onRemove={(section) => setSectionRemoval({ section, itemKeys: sectionItemKeys(items, row.key) })}
                     />
                   ) : (
                     <RowItem

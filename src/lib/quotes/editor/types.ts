@@ -104,6 +104,7 @@ export type ActionEditor =
   | { tipo: 'item'; clave: string; changes: Partial<Omit<ItemEditor, 'clave'>> }
   | { tipo: 'moverItem'; desde: number; hasta: number }
   | { tipo: 'quitarItem'; clave: string }
+  | { tipo: 'removeSectionItems'; itemKeys: string[] }
   | { tipo: 'duplicarItem'; clave: string }
   | { tipo: 'renombrarSeccion'; clave: string; seccion: string }
   | { tipo: 'agregarSeccion'; nombre: string }

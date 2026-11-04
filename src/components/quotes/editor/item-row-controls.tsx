@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -47,87 +48,102 @@ export function ItemRowControls({
 
   const number = index + 1
   return (
-    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen} modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          ref={setActivatorNodeRef}
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          aria-label={`Opciones del ítem ${number}`}
-          title="Arrastrá para mover; hacé clic para ver las opciones"
-          className="relative z-10 col-start-2 row-start-1 size-11 cursor-grab touch-none justify-self-end text-muted-foreground active:cursor-grabbing @min-[44rem]:col-start-1 @min-[44rem]:row-start-auto @min-[44rem]:mt-1.5 @min-[44rem]:size-7"
-          {...attributes}
-          onPointerDown={(event) => {
-            wasDragging.current = false
-            withPointer.current = true
-            menuOpenOnPointerDown.current = menuOpen
-            // El preventDefault de abajo no deja que el foco se mueva solo: se pasa acá al agarre para que un nombre
-            // de sección a medio escribir se aplique (con su blur) antes de que el arrastre cambie el primer ítem
-            // del grupo y el encabezado, con su borrador, se vuelva a montar.
-            event.currentTarget.focus()
-            listeners?.onPointerDown?.(event)
-            // Sin esto Radix abriría el menú al apoyar, antes de saber si es un arrastre.
+    <>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen} modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            ref={setActivatorNodeRef}
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`Opciones del ítem ${number}`}
+            title="Arrastrá para mover; hacé clic para ver las opciones"
+            className="relative z-10 col-start-1 row-start-1 size-11 cursor-grab touch-none justify-self-start text-muted-foreground active:cursor-grabbing @min-[44rem]:col-start-1 @min-[44rem]:row-start-auto @min-[44rem]:mt-1.5 @min-[44rem]:size-7"
+            {...attributes}
+            onPointerDown={(event) => {
+              wasDragging.current = false
+              withPointer.current = true
+              menuOpenOnPointerDown.current = menuOpen
+              // El preventDefault de abajo no deja que el foco se mueva solo: se pasa acá al agarre para que un nombre
+              // de sección a medio escribir se aplique (con su blur) antes de que el arrastre cambie el primer ítem
+              // del grupo y el encabezado, con su borrador, se vuelva a montar.
+              event.currentTarget.focus()
+              listeners?.onPointerDown?.(event)
+              // Sin esto Radix abriría el menú al apoyar, antes de saber si es un arrastre.
+              event.preventDefault()
+            }}
+            onKeyDown={(event) => {
+              if (!isDragging) withPointer.current = false
+              listeners?.onKeyDown?.(event)
+              // Mientras se arrastra con el teclado, las flechas y Espacio son del arrastre, no del menú.
+              if (isDragging) event.preventDefault()
+            }}
+            onClick={() => {
+              // Solo se ignoran el clic que sigue a un arrastre y el que cerró el menú abierto (si no, se cerraría y
+              // se volvería a abrir). Los de detail 0 abren: así activa un lector de pantalla en modo exploración. El
+              // teclado no duplica: Enter abre en el keydown (Radix) y lo previene, así que no genera clic, y el
+              // keydown de Espacio lo previene el arrastre.
+              const ignoreClick = wasDragging.current || menuOpenOnPointerDown.current
+              wasDragging.current = false
+              menuOpenOnPointerDown.current = false
+              if (!ignoreClick) setMenuOpen(true)
+            }}
+          >
+            <GripVertical aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="w-44"
+          onCloseAutoFocus={(event) => {
+            if (!keepFocus.current) return
+            keepFocus.current = false
             event.preventDefault()
           }}
-          onKeyDown={(event) => {
-            if (!isDragging) withPointer.current = false
-            listeners?.onKeyDown?.(event)
-            // Mientras se arrastra con el teclado, las flechas y Espacio son del arrastre, no del menú.
-            if (isDragging) event.preventDefault()
-          }}
-          onClick={() => {
-            // Solo se ignoran el clic que sigue a un arrastre y el que cerró el menú abierto (si no, se cerraría y
-            // se volvería a abrir). Los de detail 0 abren: así activa un lector de pantalla en modo exploración. El
-            // teclado no duplica: Enter abre en el keydown (Radix) y lo previene, así que no genera clic, y el
-            // keydown de Espacio lo previene el arrastre.
-            const ignoreClick = wasDragging.current || menuOpenOnPointerDown.current
-            wasDragging.current = false
-            menuOpenOnPointerDown.current = false
-            if (!ignoreClick) setMenuOpen(true)
-          }}
         >
-          <GripVertical aria-hidden />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="w-44"
-        onCloseAutoFocus={(event) => {
-          if (!keepFocus.current) return
-          keepFocus.current = false
-          event.preventDefault()
-        }}
+          <DropdownMenuGroup>
+            <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(-1)}>
+              <ArrowUp aria-hidden />
+              Subir
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={index === quantityItems - 1} onSelect={() => onMove(1)}>
+              <ArrowDown aria-hidden />
+              Bajar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                keepFocus.current = true
+                onDuplicate()
+              }}
+            >
+              <Copy aria-hidden />
+              Duplicar fila
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => {
+                keepFocus.current = true
+                onRemove()
+              }}
+            >
+              <Trash2 aria-hidden />
+              Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        aria-label={`Eliminar ítem ${number}`}
+        title={`Eliminar ítem ${number}`}
+        onClick={onRemove}
+        className="relative z-10 col-start-2 row-start-1 size-11 justify-self-end @min-[44rem]:col-start-[-2] @min-[44rem]:row-start-1 @min-[44rem]:size-10"
       >
-        <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(-1)}>
-          <ArrowUp aria-hidden />
-          Subir
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={index === quantityItems - 1} onSelect={() => onMove(1)}>
-          <ArrowDown aria-hidden />
-          Bajar
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() => {
-            keepFocus.current = true
-            onDuplicate()
-          }}
-        >
-          <Copy aria-hidden />
-          Duplicar fila
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          onSelect={() => {
-            keepFocus.current = true
-            onRemove()
-          }}
-        >
-          <Trash2 aria-hidden />
-          Eliminar
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <Trash2 aria-hidden />
+      </Button>
+    </>
   )
 }

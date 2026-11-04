@@ -524,6 +524,23 @@ describe('reducirEditor', () => {
     expect(despues.items).toEqual(antes.items.slice(1))
   })
 
+  it('elimina las claves solicitadas aunque el nombre se haya unido a la sección vecina', () => {
+    const before = withItems([item({ seccion: 'A' }), item({ seccion: 'B' }), item({ seccion: 'A' })])
+    const itemKeys = [before.items[1].clave]
+    const merged = reduceEditor(before, { tipo: 'renombrarSeccion', clave: itemKeys[0], seccion: 'A' })
+    const after = reduceEditor(merged, { tipo: 'removeSectionItems', itemKeys })
+    expect(after.items).toEqual([merged.items[0], merged.items[2]])
+    expect(before.items).toHaveLength(3)
+    expect(reduceEditor(after, { tipo: 'removeSectionItems', itemKeys })).toBe(after)
+  })
+
+  it('elimina una racha concreta de nombres repetidos y permite dejar la grilla vacía', () => {
+    const before = withItems([item({ seccion: 'A' }), item({ seccion: 'A' }), item({ seccion: 'B' }), item({ seccion: 'A' })])
+    const after = reduceEditor(before, { tipo: 'removeSectionItems', itemKeys: before.items.slice(0, 2).map((row) => row.clave) })
+    expect(after.items).toEqual(before.items.slice(2))
+    expect(reduceEditor(after, { tipo: 'removeSectionItems', itemKeys: after.items.map((row) => row.clave) }).items).toEqual([])
+  })
+
   it('con una clave que ya no existe, item, quitarItem y bloque devuelven el mismo estado', () => {
     const antes = complete()
     expect(reduceEditor(antes, { tipo: 'item', clave: 'no-existe', changes: { precio: '1' } })).toBe(antes)

@@ -90,7 +90,7 @@ export function RowItem({
       />
 
       <div className="col-span-2 col-start-1 row-start-1 min-w-0 space-y-1.5 @min-[44rem]:col-span-1 @min-[44rem]:col-start-auto @min-[44rem]:row-start-auto @min-[44rem]:space-y-0">
-        <Label htmlFor={`${id}-descripcion`} className="flex h-11 items-center pr-12 @min-[44rem]:hidden">
+        <Label htmlFor={`${id}-descripcion`} className="flex h-11 items-center pr-12 pl-10 @min-[44rem]:hidden">
           Descripción
         </Label>
         <Textarea

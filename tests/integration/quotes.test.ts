@@ -238,11 +238,41 @@ describe('guardar, duplicar y borrar', () => {
     })
     const { data: copy } = await activo.client.rpc('duplicar_cotizacion', { p_id: original!, p_cliente_id: ids.cliente_id })
     await sql('update public.cotizaciones set notas = $1 where id = $2', [MARCA, copy])
-    const [row] = await sql<{ contacto_id: string | null; reemplaza_a: string | null; cliente_id: string }>(
-      'select contacto_id, reemplaza_a, cliente_id from public.cotizaciones where id = $1',
+    const [row] = await sql<{ contacto_id: string | null; reemplaza_a: string | null; cliente_id: string; asunto: string }>(
+      'select contacto_id, reemplaza_a, cliente_id, asunto from public.cotizaciones where id = $1',
       [copy],
     )
-    expect(row).toEqual({ contacto_id: null, reemplaza_a: null, cliente_id: ids.cliente_id })
+    expect(row).toEqual({ contacto_id: null, reemplaza_a: null, cliente_id: ids.cliente_id, asunto: `${dataBase().asunto} bis` })
+  })
+
+  it.each([
+    ['Alquiler', 'Alquiler bis'],
+    ['Alquiler BIS', 'Alquiler BIS'],
+    ['', 'bis'],
+    ['bis', 'bis'],
+    ['Alquiler bis', 'Alquiler bis'],
+    ['Á'.repeat(500), `${'Á'.repeat(496)} bis`],
+  ])('duplica el asunto %s con un único sufijo dentro del límite', async (subject, expected) => {
+    const { data: original, error: saveError } = await activo.client.rpc('guardar_cotizacion', {
+      p_datos: dataBase({ asunto: subject, fecha: '2020-01-02' }), p_items: ITEMS_DAILY,
+    })
+    expect(saveError).toBeNull()
+    const { data: copy, error } = await activo.client.rpc('duplicar_cotizacion', { p_id: original! })
+    expect(error).toBeNull()
+    await sql('update public.cotizaciones set notas = $1 where id = $2', [MARCA, copy])
+    const rows = await sql<{ id: string; asunto: string; numero: string; fecha: string; today: string; estado: string; origen: string }>(
+      `select id, asunto, numero, fecha::text, (now() at time zone 'America/Argentina/Buenos_Aires')::date::text as today,
+        estado, origen from public.cotizaciones where id = any($1::uuid[]) order by numero`, [[original, copy]],
+    )
+    expect(rows[0].asunto).toBe(subject)
+    expect(rows[1].asunto).toBe(expected)
+    expect(Number(rows[1].numero)).toBe(Number(rows[0].numero) + 1)
+    expect(rows[1]).toMatchObject({ fecha: rows[1].today, estado: 'borrador', origen: 'app' })
+  })
+
+  it('un usuario inactivo no puede duplicar', async () => {
+    const { id } = await insertComoPostgres()
+    expect((await inactivo.client.rpc('duplicar_cotizacion', { p_id: id })).error?.code).toBe('42501')
   })
 
   it('solo se borran borradores', async () => {

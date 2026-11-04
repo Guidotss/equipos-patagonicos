@@ -1,8 +1,8 @@
 import type { ScreenReaderInstructions } from '@dnd-kit/core'
 
 /** Una línea desde 44rem de ancho propio; Precio y Total admiten "39.000.000,00" sin recortar. */
-export const ITEM_COLUMNS = '@min-[44rem]:grid-cols-[1.75rem_minmax(0,1fr)_4rem_8rem_6rem_7rem]'
-export const TEMPLATE_ITEM_COLUMNS = '@min-[44rem]:grid-cols-[1.75rem_minmax(0,1fr)_4rem_6rem]'
+export const ITEM_COLUMNS = '@min-[44rem]:grid-cols-[1.75rem_minmax(0,1fr)_4rem_8rem_6rem_7rem_2.5rem]'
+export const TEMPLATE_ITEM_COLUMNS = '@min-[44rem]:grid-cols-[1.75rem_minmax(0,1fr)_4rem_6rem_2.5rem]'
 
 /** Cifras de la línea de un ítem desde 44rem: un punto más chicas que la descripción para que entren los montos. */
 export const ITEM_NUMBER_CLASS = '@min-[44rem]:text-[13px]'
