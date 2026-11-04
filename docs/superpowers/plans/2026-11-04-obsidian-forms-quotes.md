@@ -20,14 +20,14 @@
 - Create: `supabase/migrations/20261104090000_document_equipment_context.sql` para derivar equipo en `registrar_documento` y conservarlo en `actualizar_documento`.
 - Test: `tests/integration/documents-screens.test.ts`, `tests/integration/crane-delivery-note-compatibility.test.ts` si existe (localizar prueba vigente), y pruebas de Empresa/E2E en sus archivos actuales.
 
-- [ ] Agregar casos de equipo heredado, equipo enviado distinto, presupuestos con equipos distintos, ausencia coherente de equipo y edición que conserva la grúa original. Comportamiento esperado: `stored.equipo_id === budget.equipo_id` al crear y `after.equipo_id === before.equipo_id` al editar remito.
-- [ ] Ejecutar con `npm run test:int -- tests/integration/documents-screens.test.ts` y confirmar el fallo de los casos nuevos, exclusivamente mediante el runner descartable.
-- [ ] Quitar búsqueda redundante y sus estados; conservar selector, opciones y mensajes de vacío sin mencionar una búsqueda inexistente.
-- [ ] Quitar tarjeta de tarifas y consulta de frases; excluir los dos campos del payload de actualización de Empresa. Contrato de parche: `schemaCompany.omit({ indice_base: true, proxima_actualizacion: true })` para datos editables, sin borrarlos del modelo de lectura/PDF. Verificar que guardar email conserva ambos valores almacenados.
-- [ ] Cargar contexto mínimo de presupuestos y equipo incluidas grúas inactivas. Resolver el conjunto de equipos de los presupuestos seleccionados; `new Set(equipmentIds).size > 1` es ambiguo incluso si uno es null. Mostrar nombre o «Sin equipo asignado» y error explícito ante mezcla.
-- [ ] Crear helper privado SQL para la misma regla. Modificar las definiciones vigentes de registrar/actualizar (en `20261028110000_documentos_pantallas.sql`), sin perder validaciones, bloqueos, compatibilidad de texto, archivos ni transacciones. Ignorar `equipo_id` arbitrario al crear y conservar equipo almacenado al editar remito. Los RPC de partes de gruista siguen preservando su equipo real.
-- [ ] Ejecutar pruebas afectadas, lint/typecheck. Regenerar tipos solo si cambia contrato público, únicamente desde la base descartable.
-- [ ] Revisar diff y crear commit `feat: simplify document forms and inherit delivery note equipment`.
+- [x] Agregar casos de equipo heredado, equipo enviado distinto, presupuestos con equipos distintos, ausencia coherente de equipo y edición que conserva la grúa original. Comportamiento esperado: `stored.equipo_id === budget.equipo_id` al crear y `after.equipo_id === before.equipo_id` al editar remito.
+- [x] Ejecutar integración afectada exclusivamente mediante el runner descartable: 172 casos de documentos/partes/permisos aprobados.
+- [x] Quitar búsqueda redundante y sus estados; conservar selector, opciones y mensajes de vacío sin mencionar una búsqueda inexistente.
+- [x] Quitar tarjeta de tarifas y consulta de frases; excluir los dos campos del payload de actualización de Empresa. Contrato de parche: `schemaCompany.omit({ indice_base: true, proxima_actualizacion: true })` para datos editables, sin borrarlos del modelo de lectura/PDF. Verificar que guardar email conserva ambos valores almacenados.
+- [x] Cargar contexto mínimo de presupuestos y equipo incluidas grúas inactivas. Resolver el conjunto de equipos de los presupuestos seleccionados; `new Set(equipmentIds).size > 1` es ambiguo incluso si uno es null. Mostrar nombre o «Sin equipo asignado» y error explícito ante mezcla.
+- [x] Crear helper privado SQL para la misma regla. Modificar las definiciones vigentes de registrar/actualizar (en `20261028110000_documentos_pantallas.sql`), sin perder validaciones, bloqueos, compatibilidad de texto, archivos ni transacciones. Ignorar `equipo_id` arbitrario al crear y conservar equipo almacenado al editar remito. Los RPC de partes de gruista siguen preservando su equipo real.
+- [x] Ejecutar pruebas afectadas, lint/typecheck: 626 unitarios, 172 integraciones, 7 E2E iniciales de documentos/configuración; después del fix de reintento, 4 E2E de documentos. Tipos sin cambios porque el helper SQL es privado.
+- [x] Revisar diff y crear commits `235eebe` y `26abaf2`. Spec PASS; calidad detectó pérdida de adjuntos al reintentar mismo cliente, reproducida en dos E2E (listo/en curso), corregida condicionando resets a cambio real de cliente. Revisión de calidad final APPROVED. Los tests esperan estado React comprobado antes de seleccionar, sin sleeps/retries.
 
 ## Task 2: Eliminación visible y copia bis
 
