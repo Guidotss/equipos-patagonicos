@@ -61,11 +61,13 @@ export function useDocumentForm(props: DocumentFormProps) {
     const option = options.find((item) => item.id === id)
     setSelectedBudgetIds(id ? [id] : [])
     if (!option || (option.cliente_id === clientId && context.budgets.some((budget) => budget.id === id))) return
-    setClientId(option.cliente_id)
-    setDeliveryNotes([])
-    setAllocations({})
-    setNewFiles([])
-    setUploading(false)
+    if (option.cliente_id !== clientId) {
+      setClientId(option.cliente_id)
+      setDeliveryNotes([])
+      setAllocations({})
+      setNewFiles([])
+      setUploading(false)
+    }
     const request = ++contextRequest.current
     setLoading(true)
     try {

@@ -48,6 +48,14 @@ test.afterAll(async () => {
   })
 })
 
+async function readyNewDocumentForm(page: Page) {
+  // Verifica los eventos de React antes de cambiar el selector nativo.
+  await page.getByRole('radio', { name: 'Factura', exact: true }).click()
+  await expect(page.getByLabel('Monto total con IVA', { exact: true })).toBeVisible()
+  await page.getByRole('radio', { name: 'Remito', exact: true }).click()
+  await expect(page.getByLabel('Equipo', { exact: true })).toHaveValue('Seleccioná un presupuesto')
+}
+
 async function attach(page: Page, nombre: string) {
   await page
     .getByLabel('Seleccionar archivos del documento', { exact: true })
@@ -149,6 +157,7 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
   await iniciarSession(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/documentos/nuevo')
+  await readyNewDocumentForm(page)
   await expect(page.getByLabel('Buscar presupuesto', { exact: true })).toHaveCount(0)
   await expect(page.getByLabel('Presupuesto', { exact: true })).toHaveAttribute('required', '')
   await page.getByLabel('Presupuesto', { exact: true }).selectOption(budget.id)
@@ -217,3 +226,73 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.screenshot({ path: testInfo.outputPath('presupuesto-movil.png'), fullPage: true })
 })
+
+for (const uploadState of ['completed', 'pending'] as const) {
+  test(`reintenta el contexto sin perder un archivo ${uploadState === 'completed' ? 'listo' : 'en curso'} y lo guarda`, async ({ page }) => {
+    const budget = await withBase(async (db) => (await db.query<{ id: string }>(
+      `insert into public.cotizaciones (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado, equipo_id)
+       values ($1, 'directa', 'jornada', 'Reintento de contexto', $2, 'aprobada', current_date, 'en_curso', $3) returning id`,
+      [clientId, marca, historicEquipmentId],
+    )).rows[0])
+    await iniciarSession(page)
+    await page.goto('/documentos/nuevo')
+    await readyNewDocumentForm(page)
+    let interrupted = false
+    await page.route('**/documentos/nuevo', async (route) => {
+      if (route.request().method() === 'POST' && route.request().headers()['next-action'] && !interrupted) {
+        interrupted = true
+        await route.abort('internetdisconnected')
+      } else await route.continue()
+    })
+    await page.getByLabel('Presupuesto', { exact: true }).selectOption(budget.id)
+    await expect(page.getByText('No se pudieron cargar los documentos del cliente. Volvé a seleccionar el presupuesto.', { exact: true })).toBeVisible()
+    expect(interrupted).toBe(true)
+    await expect(page.getByLabel('Presupuesto', { exact: true })).toHaveValue('')
+    const submit = page.getByRole('button', { name: 'Guardar documento', exact: true })
+    await expect(submit).toBeDisabled()
+
+    let releaseUpload = () => {}
+    let observeUpload = () => {}
+    const uploadGate = new Promise<void>((resolve) => { releaseUpload = resolve })
+    const uploadStarted = new Promise<void>((resolve) => { observeUpload = resolve })
+    if (uploadState === 'pending') {
+      await page.route('**/storage/v1/object/upload/sign/**', async (route) => {
+        if (route.request().method() === 'PUT') {
+          observeUpload()
+          await uploadGate
+        }
+        await route.continue()
+      })
+    }
+    const fileName = `Remito conservado ${uploadState}.pdf`
+    try {
+      await page.getByLabel('Seleccionar archivos del documento', { exact: true }).setInputFiles({
+        name: fileName, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 reintento de contexto'),
+      })
+      if (uploadState === 'pending') await uploadStarted
+      else await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+      await page.getByLabel('Presupuesto', { exact: true }).selectOption(budget.id)
+      await expect(page.getByLabel('Equipo', { exact: true })).toHaveValue(`Grúa histórica ${marca}`)
+      await expect(page.getByText(fileName, { exact: true })).toBeVisible()
+      if (uploadState === 'pending') {
+        await expect(submit).toBeDisabled()
+        await expect(page.getByRole('progressbar', { name: `Subiendo ${fileName}`, exact: true })).toBeVisible()
+        releaseUpload()
+      }
+      await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+      await expect(submit).toBeEnabled()
+      await submit.click()
+      await expect(page).toHaveURL(new RegExp(`/presupuestos/${budget.id}$`))
+      await expect(page.getByRole('link', { name: fileName, exact: true })).toBeVisible()
+      const saved = await withBase(async (db) => (await db.query<{ nombre_original: string; equipo_id: string }>(
+        `select a.nombre_original, d.equipo_id from public.documentos d
+         join public.documento_presupuestos dp on dp.documento_id = d.id
+         join public.documento_archivos a on a.documento_id = d.id where dp.cotizacion_id = $1`,
+        [budget.id],
+      )).rows)
+      expect(saved).toEqual([{ nombre_original: fileName, equipo_id: historicEquipmentId }])
+    } finally {
+      releaseUpload()
+    }
+  })
+}
