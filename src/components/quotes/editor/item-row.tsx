@@ -55,10 +55,24 @@ export function RowItem({
   const error = (field: FieldItem) => errors[field]
   const messages = (['descripcion', 'cantidad', 'precio', 'unidad'] as const).map(error).filter(Boolean)
   const describe = (field: FieldItem) => (error(field) ? `${id}-error` : undefined)
-  const invalidPrice = item.precio.trim() !== '' && parsePrice(item.precio) === null
+  const invalidPrice = !item.isComplimentary && item.precio.trim() !== '' && parsePrice(item.precio) === null
   const total = totalLine(item)
   const change = (changes: Partial<Omit<ItemEditor, 'clave'>>) =>
     dispatch({ tipo: 'item', clave: item.clave, changes })
+
+  const complimentaryControl = (
+    <Label htmlFor={`${id}-complimentary`} className="flex min-h-9 cursor-pointer items-center gap-2 text-sm">
+      <input
+        id={`${id}-complimentary`}
+        type="checkbox"
+        aria-label={`Bonificada del ítem ${number}`}
+        checked={item.isComplimentary ?? false}
+        onChange={(event) => change({ isComplimentary: event.target.checked })}
+        className="size-4 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      />
+      Bonificada
+    </Label>
+  )
 
   // Enter (sin Shift, que deja escribir un salto en la descripción) agrega una fila debajo y la enfoca.
   function onKeyDown(event: React.KeyboardEvent) {
@@ -134,7 +148,8 @@ export function RowItem({
               id={`${id}-precio`}
               aria-label={`Precio del ítem ${number}`}
               inputMode="decimal"
-              value={editingPrice ? item.precio : normalizePrice(item.precio)}
+              value={item.isComplimentary ? 'BONIFICADA' : editingPrice ? item.precio : normalizePrice(item.precio)}
+              disabled={item.isComplimentary}
               placeholder="Sin precio"
               onChange={(event) => {
                 setEditingPrice(true)
@@ -151,10 +166,11 @@ export function RowItem({
               className={cn(
                 ITEM_INPUT_CLASS,
                 'px-2 text-right tabular-nums',
-                item.precio.trim() === '' && 'border-brand-yellow/70 bg-brand-yellow/10',
+                !item.isComplimentary && item.precio.trim() === '' && 'border-brand-yellow/70 bg-brand-yellow/10',
                 ITEM_NUMBER_CLASS,
               )}
             />
+            {complimentaryControl}
           </div>
         ) : null}
         <div className="order-2 min-w-0 space-y-1.5 @min-[44rem]:order-none @min-[44rem]:space-y-0">
@@ -177,6 +193,7 @@ export function RowItem({
               </NativeSelectOption>
             ))}
           </NativeSelect>
+          {!editPrices ? complimentaryControl : null}
         </div>
         {editPrices ? (
           <div className="order-4 min-w-0 space-y-1.5 @min-[44rem]:order-none @min-[44rem]:space-y-0">

@@ -27,7 +27,7 @@ export async function loadQuoteSource(supabase: Client, id: string) {
        contacto:contactos(nombre, email),
        equipo:equipos(capacidad_tn, descripcion),
        firmante:firmantes(nombre, cargo, telefono),
-       items:cotizacion_items(orden, seccion, descripcion, cantidad, precio_unitario, unidad)`,
+       items:cotizacion_items(orden, seccion, descripcion, cantidad, precio_unitario, is_complimentary, unidad)`,
     )
     .eq('id', id)
     .maybeSingle()

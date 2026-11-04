@@ -136,3 +136,23 @@ test('?actual=1 muestra lo guardado ahora en una enviada, no su último envío',
   expect(response.headers()['content-type']).toBe('application/pdf')
   expect(await textOfPdf(await response.body())).toContain('Asunto corregido después del envío')
 })
+
+
+for (const format of ['mensual', 'jornada'] as const) {
+  test(`la vista previa ${format} normaliza una bonificada manipulada sin cobrarla`, async ({ page }) => {
+    await iniciarSession(page)
+    const state = estado({ formato: format, mostrarTotal: true, items: [
+      { clave: 'normal', seccion: 'Servicios', descripcion: 'Servicio normal', cantidad: '2', precio: '100', unidad: 'HORA' },
+      { clave: 'bonus', seccion: 'Servicios', descripcion: 'Traslado sin cargo', cantidad: '3', precio: '999999', unidad: 'VIAJE', isComplimentary: true },
+    ] })
+    const response = await page.request.post('/cotizaciones/vista-previa', { data: { estado: state } })
+    expect(response.status()).toBe(200)
+    const text = await textOfPdf(await response.body())
+    expect(text).toContain('BONIFICADA')
+    expect(text).not.toContain('BONIFICADA más IVA')
+    expect(text).not.toContain('999.999')
+    expect(text).toContain('200')
+    const invalid = await page.request.post('/cotizaciones/vista-previa', { data: { estado: { ...state, items: [{ ...state.items[1], isComplimentary: 'true' }] } } })
+    expect(invalid.status()).toBe(400)
+  })
+}

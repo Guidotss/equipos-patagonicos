@@ -53,6 +53,7 @@ export const schemaStatusEditor = z.object({
         descripcion: textFree,
         cantidad: z.string().max(30),
         precio: z.string().max(30),
+        isComplimentary: z.boolean().default(false),
         unidad: z.enum(UNITS),
       }),
     )
@@ -111,27 +112,37 @@ const priceWritten = z
 
 // Las reglas de cada celda son las de schemaItem; las claves de error usan los nombres de la grilla
 // ('items.2.precio'), no los de la base ('precio_unitario').
-const schemaItemEditor = z
-  .object({
-    seccion: schemaItem.shape.seccion,
-    descripcion: schemaItem.shape.descripcion,
-    cantidad: quantityWritten,
-    precio: priceWritten,
-    unidad: schemaItem.shape.unidad,
-  })
-  .superRefine((item, ctx) => {
-    // El total de la fila es numeric(16,2) en la base: si no entra, la base contestaría con un error de desborde.
-    if (item.precio !== null && item.cantidad * item.precio >= 1e14) {
-      ctx.addIssue({ code: 'custom', path: ['precio'], message: 'El total de la fila es demasiado grande' })
+const schemaItemEditor = z.preprocess(
+  (value) => {
+    if (value && typeof value === 'object' && 'isComplimentary' in value && value.isComplimentary === true) {
+      return { ...value, precio: '0' }
     }
-  })
-  .transform((item) => ({
-    seccion: item.seccion,
-    descripcion: item.descripcion,
-    cantidad: item.cantidad,
-    precio_unitario: item.precio,
-    unidad: item.unidad,
-  }))
+    return value
+  },
+  z
+    .object({
+      seccion: schemaItem.shape.seccion,
+      descripcion: schemaItem.shape.descripcion,
+      cantidad: quantityWritten,
+      precio: priceWritten,
+      isComplimentary: z.boolean().default(false),
+      unidad: schemaItem.shape.unidad,
+    })
+    .superRefine((item, ctx) => {
+      // El total de la fila es numeric(16,2) en la base: si no entra, la base contestaría con un error de desborde.
+      if (item.precio !== null && item.cantidad * item.precio >= 1e14) {
+        ctx.addIssue({ code: 'custom', path: ['precio'], message: 'El total de la fila es demasiado grande' })
+      }
+    })
+    .transform((item) => ({
+      seccion: item.seccion,
+      descripcion: item.descripcion,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio,
+      is_complimentary: item.isComplimentary,
+      unidad: item.unidad,
+    })),
+)
 
 const schemaBlockEditor = z.object({
   titulo: z.string().trim().max(200, 'Máximo 200 caracteres'),
@@ -214,7 +225,7 @@ function fingerprint(state: StatusEditor): string {
   if (result.ok) return `payload:${JSON.stringify(result.payload)}`
   return `estado:${JSON.stringify({
     ...state,
-    items: state.items.map((item) => [item.seccion, item.descripcion, item.cantidad, item.precio, item.unidad]),
+    items: state.items.map((item) => [item.seccion, item.descripcion, item.cantidad, item.precio, item.unidad, item.isComplimentary ?? false]),
     bloques: state.bloques.map((block) => [block.titulo, block.contenido, block.hidden]),
   })}`
 }

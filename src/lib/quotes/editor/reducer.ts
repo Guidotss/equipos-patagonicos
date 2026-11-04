@@ -23,6 +23,7 @@ function createItem(state: StatusEditor, reference: ItemEditor | undefined, sect
     descripcion: '',
     cantidad: '1',
     precio: '',
+    isComplimentary: false,
     unidad: reference?.unidad ?? (state.formato === 'jornada' ? 'JORNADA' : 'UNIDAD'),
   }
 }
@@ -52,6 +53,13 @@ function renameSection(items: ItemEditor[], key: string, section: string): ItemE
   let end = index
   while (end < items.length - 1 && items[end + 1].seccion === current) end++
   return items.map((item, i) => (i >= home && i <= end ? { ...item, seccion: section } : item))
+}
+
+function updateItem(item: ItemEditor, changes: Partial<Omit<ItemEditor, 'clave'>>): ItemEditor {
+  const updated = { ...item, ...changes, clave: item.clave }
+  if (updated.isComplimentary) return { ...updated, precio: '0' }
+  if (item.isComplimentary && changes.isComplimentary === false) return { ...updated, precio: '' }
+  return updated
 }
 
 /**
@@ -91,7 +99,7 @@ export function reduceEditor(state: StatusEditor, action: ActionEditor): StatusE
       return {
         ...state,
         items: state.items.map((item) =>
-          item.clave === action.clave ? { ...item, ...action.changes, clave: item.clave } : item,
+          item.clave === action.clave ? updateItem(item, action.changes) : item,
         ),
       }
     case 'moverItem': {

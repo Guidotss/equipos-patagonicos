@@ -71,7 +71,7 @@ export function QuoteDaily({ doc, highlight }: { doc: DocumentQuote; highlight?:
                   {item.cantidad === 1 ? '' : ` (x${item.cantidad.toLocaleString('es-AR')})`}
                 </Text>
                 <Text style={{ width: 150, textAlign: 'right' }}>
-                  {item.priceUnitario === null ? '' : `${formatAmountDaily(item.priceUnitario)} más IVA`}
+                  {item.isComplimentary ? 'BONIFICADA' : item.priceUnitario === null ? '' : `${formatAmountDaily(item.priceUnitario)} más IVA`}
                 </Text>
               </View>
             ))}

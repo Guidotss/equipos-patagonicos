@@ -23,7 +23,15 @@ describe('cotizaciones cargadas y presupuestos directos', () => {
     const estado = statusNew({ plantilla: null, firmanteId: '', today: '2026-10-28' })
     estado.items = [{ clave: '1', seccion: 'Servicios', descripcion: 'Grúa {{capacidad}}', cantidad: '2', precio: '1.500', unidad: 'JORNADA' }]
     const template = templateFromEditor(estado)
-    expect(template.items).toEqual([{ seccion: 'Servicios', descripcion: 'Grúa {{capacidad}}', cantidad: 2, unidad: 'JORNADA' }])
+    expect(template.items).toEqual([{ seccion: 'Servicios', descripcion: 'Grúa {{capacidad}}', cantidad: 2, unidad: 'JORNADA', is_complimentary: false }])
     expect(template).not.toHaveProperty('cliente_id')
   })
+})
+
+
+it('guardar y aplicar una plantilla conserva la intención de bonificar sin guardar tarifas', () => {
+  const state = statusNew({ plantilla: null, firmanteId: '', today: '2026-11-04' })
+  state.items = [{ clave: '1', seccion: 'Traslados', descripcion: 'Traslado', cantidad: '2', precio: '0', unidad: 'VIAJE', isComplimentary: true }]
+  const content = templateFromEditor(state)
+  expect(content.items[0]).toEqual({ seccion: 'Traslados', descripcion: 'Traslado', cantidad: 2, unidad: 'VIAJE', is_complimentary: true })
 })

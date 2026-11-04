@@ -37,7 +37,7 @@ describe('leerBloques', () => {
 describe('leerItemsPlantilla', () => {
   it('acepta ítems con unidad válida y cantidad positiva', () => {
     const items = [{ seccion: 'Precios Jornada', descripcion: 'Jornada', unidad: 'JORNADA', cantidad: 1 }]
-    expect(readItemsTemplate(items)).toEqual(items)
+    expect(readItemsTemplate(items)).toEqual(items.map((item) => ({ ...item, isComplimentary: false })))
   })
 
   it('rechaza unidades desconocidas', () => {
@@ -50,4 +50,11 @@ describe('catálogos', () => {
     expect(Object.keys(FORMATS)).toEqual(['mensual', 'jornada'])
     expect(UNITS).toEqual(['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'])
   })
+})
+
+
+it('lee la bonificación persistida y rechaza marcas de otro tipo', () => {
+  const item = { seccion: '', descripcion: 'Traslado', unidad: 'VIAJE', cantidad: 2 }
+  expect(readItemsTemplate([{ ...item, is_complimentary: true }])[0]).toMatchObject({ isComplimentary: true })
+  expect(() => readItemsTemplate([{ ...item, is_complimentary: 'true' }])).toThrow()
 })

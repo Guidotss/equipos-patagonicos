@@ -27,6 +27,7 @@ export type SourceDocument = {
     descripcion: string
     cantidad: number
     precio_unitario: number | null
+    is_complimentary?: boolean
     unidad: Unit
   }[]
   cliente: { razon_social: string; cuit: string | null }
@@ -58,6 +59,7 @@ export type DocumentQuote = {
     descripcion: string
     cantidad: number
     priceUnitario: number | null
+    isComplimentary?: boolean
     unidad: Unit
     total: number | null
   }[]
@@ -136,9 +138,10 @@ export function buildDocument(source: SourceDocument): DocumentQuote {
       seccion: item.seccion,
       descripcion: resolver(item.descripcion),
       cantidad: item.cantidad,
-      priceUnitario: item.precio_unitario,
+      priceUnitario: item.is_complimentary ? 0 : item.precio_unitario,
+      isComplimentary: item.is_complimentary ?? false,
       unidad: item.unidad,
-      total: item.precio_unitario === null ? null : redondear(item.cantidad * item.precio_unitario),
+      total: item.is_complimentary ? 0 : item.precio_unitario === null ? null : redondear(item.cantidad * item.precio_unitario),
     }))
 
   const todosWithPrice = items.length > 0 && items.every((item) => item.total !== null)

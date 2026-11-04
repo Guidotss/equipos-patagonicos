@@ -41,6 +41,7 @@ export const schemaItem = z.object({
   seccion: z.string().trim().max(100, 'Máximo 100 caracteres').default(''),
   descripcion: z.string().trim().min(1, 'Falta la descripción').max(500, 'Máximo 500 caracteres'),
   cantidad: z.number().positive('La cantidad tiene que ser mayor a 0').max(999_999, 'La cantidad es demasiado grande'),
+  is_complimentary: z.boolean().default(false),
   precio_unitario: z
     .number()
     .nonnegative('El precio no puede ser negativo')

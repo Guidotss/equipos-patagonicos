@@ -44,6 +44,7 @@ describe('armarDocumento', () => {
       descripcion: 'Alquiler mensual Grúa 70 TN',
       cantidad: 1,
       priceUnitario: 39_000_000,
+      isComplimentary: false,
       unidad: 'UNIDAD',
       total: 39_000_000,
     })

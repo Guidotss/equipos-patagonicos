@@ -10,7 +10,7 @@ export const SELECT_EDITOR = `id, numero, estado, origen, fecha, formato, asunto
   mostrar_total, fecha_proxima_actualizacion, contacto_id, plantilla_id, equipo_id, firmante_id, reemplaza_a,
   fecha_aprobacion, archivo_original_path, updated_at,
   cliente:clientes(id, razon_social, cuit),
-  items:cotizacion_items(orden, seccion, descripcion, cantidad, precio_unitario, unidad),
+  items:cotizacion_items(orden, seccion, descripcion, cantidad, precio_unitario, is_complimentary, unidad),
   envios:cotizacion_envios(id, enviada_at)`
 
 /**

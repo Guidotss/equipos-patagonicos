@@ -276,6 +276,7 @@ describe('estadoNuevo', () => {
         descripcion: item.descripcion,
         cantidad: '1',
         precio: '',
+        isComplimentary: false,
         unidad: item.unidad,
         clave: 'string',
       })),
@@ -322,8 +323,8 @@ describe('estadoDesdeFila', () => {
         proxima_actualizacion: '',
       },
       items: [
-        { seccion: 'Precios', descripcion: 'Jornada', cantidad: '1', precio: '1.950.000,50', unidad: 'JORNADA', clave: 'string' },
-        { seccion: 'Precios', descripcion: 'Movilización', cantidad: '1,5', precio: '', unidad: 'VIAJE', clave: 'string' },
+        { seccion: 'Precios', descripcion: 'Jornada', cantidad: '1', precio: '1.950.000,50', unidad: 'JORNADA', isComplimentary: false, clave: 'string' },
+        { seccion: 'Precios', descripcion: 'Movilización', cantidad: '1,5', precio: '', unidad: 'VIAJE', isComplimentary: false, clave: 'string' },
       ],
       bloques: [
         { titulo: 'Alcance', contenido: '- Item', hidden: false, clave: 'string' },
@@ -434,6 +435,7 @@ describe('reducirEditor', () => {
         descripcion: '',
         cantidad: '1',
         precio: '',
+        isComplimentary: false,
         unidad: 'JORNADA',
       })
     })
@@ -693,8 +695,8 @@ describe('payloadGuardar', () => {
         reemplaza_a: ANTERIOR,
       },
       p_items: [
-        { seccion: 'Precios Jornada', descripcion: 'Jornada', cantidad: 1.5, precio_unitario: 39e6, unidad: 'JORNADA' },
-        { seccion: '', descripcion: 'Movilización', cantidad: 2, precio_unitario: null, unidad: 'VIAJE' },
+        { seccion: 'Precios Jornada', descripcion: 'Jornada', cantidad: 1.5, precio_unitario: 39e6, is_complimentary: false, unidad: 'JORNADA' },
+        { seccion: '', descripcion: 'Movilización', cantidad: 2, precio_unitario: null, is_complimentary: false, unidad: 'VIAJE' },
       ],
     })
   })
@@ -861,6 +863,7 @@ describe('fuenteDesdeEditor', () => {
         descripcion: item.descripcion,
         cantidad: 1,
         precio_unitario: [1_950_000, 2_800_000, 2_530_000][index],
+        is_complimentary: false,
         unidad: item.unidad,
       })),
       cliente: { razon_social: CLIENTE.razon_social, cuit: CLIENTE.cuit },
@@ -965,5 +968,50 @@ describe('pendientesEditor y puedeEnviar', () => {
     expect(canSend({ ...nada, desconocidas: ['ubicación'] })).toBe(false)
     expect(canSend({ ...nada, itemsWithoutPrice: 1 })).toBe(false)
     expect(canSend({ ...nada, withoutItems: true })).toBe(false)
+  })
+})
+
+
+describe('ítems bonificados', () => {
+  it('distingue cero normal, precio faltante y marca explícita antigua ausente', () => {
+    const state = complete()
+    state.items[0] = { ...state.items[0], precio: '0' }
+    expect(payloadSave(state)).toMatchObject({ ok: true, payload: { p_items: [{ precio_unitario: 0, is_complimentary: false }, {}, {}] } })
+    expect(statusFromRow(FILA).items.every((item) => item.isComplimentary === false)).toBe(true)
+    const parsed = schemaStatusEditor.parse(state)
+    expect(parsed.items[0].isComplimentary).toBe(false)
+    expect(schemaStatusEditor.safeParse({ ...state, items: [{ ...state.items[0], isComplimentary: 'true' }] }).success).toBe(false)
+  })
+
+  it.each(['1.500', '', 'BONIFICADA'])('normaliza el precio manipulado %s y conserva la cantidad y el contenido', (precio) => {
+    const state = complete()
+    state.items = [{ ...state.items[0], cantidad: '2', precio, isComplimentary: true }]
+    expect(payloadSave(state)).toMatchObject({ ok: true, payload: { p_items: [{ cantidad: 2, precio_unitario: 0, is_complimentary: true }] } })
+    const source = sourceFromEditor(state, CATALOGOS, null)
+    expect(source.items[0]).toMatchObject({ cantidad: 2, precio_unitario: 0, is_complimentary: true })
+    expect(buildDocument(source).items[0]).toMatchObject({ priceUnitario: 0, total: 0, isComplimentary: true })
+    expect(pendingListEditor(state, CATALOGOS).itemsWithoutPrice).toBe(0)
+    expect(payloadSave({ ...state, items: [{ ...state.items[0], cantidad: 'inválida' }] }).ok).toBe(false)
+  })
+
+  it('marca, duplica y desmarca: vuelve a pedir tarifa después de reabrir', () => {
+    const state = complete()
+    const key = state.items[0].clave
+    const marked = reduceEditor(state, { tipo: 'item', clave: key, changes: { isComplimentary: true } })
+    expect(marked.items[0]).toEqual({ ...state.items[0], isComplimentary: true, precio: '0' })
+    expect(reduceEditor(marked, { tipo: 'duplicarItem', clave: key }).items[1]).toMatchObject({ isComplimentary: true, precio: '0' })
+    const reopened = statusFromRow({ ...FILA, items: [{ ...FILA.items[0], precio_unitario: 0, is_complimentary: true }] })
+    const cleared = reduceEditor(reopened, { tipo: 'item', clave: reopened.items[0].clave, changes: { isComplimentary: false } })
+    expect(cleared.items[0].precio).toBe('')
+    expect(pendingListEditor(cleared, CATALOGOS).itemsWithoutPrice).toBe(1)
+  })
+
+  it('la marca cuenta como cambio incluso con otros campos inválidos', () => {
+    for (const cliente of [CLIENTE, null]) {
+      const state = { ...complete(), cliente }
+      state.items[0] = { ...state.items[0], precio: '0', isComplimentary: false }
+      const marked = { ...state, items: state.items.map((item, index) => index ? item : { ...item, isComplimentary: true }) }
+      expect(hasChanges(state, marked)).toBe(true)
+    }
   })
 })

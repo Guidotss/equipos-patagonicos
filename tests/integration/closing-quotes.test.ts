@@ -48,7 +48,7 @@ describe('cierre transaccional de cotizaciones', () => {
     expect((await inactivo.client.rpc('guardar_plantilla_editor', { p_nombre: `${marca}-inactivo`, p_contenido: content })).error).not.toBeNull()
     expect((await activo.client.rpc('guardar_plantilla_editor', { p_id: r.data!, p_nombre: marca, p_contenido: { ...content, asunto: 'Modificada' } })).error).toBeNull()
     const { data } = await activo.client.from('plantillas').select('asunto,items').eq('id', r.data!).single()
-    expect(data?.asunto).toBe('Modificada'); expect(data?.items).toEqual(content.items)
+    expect(data?.asunto).toBe('Modificada'); expect(data?.items).toEqual(content.items.map((item) => ({ ...item, is_complimentary: false })))
   })
   it('la RPC de plantillas rechaza unidades ausentes y descarta campos extra y precios', async () => {
     const invalid = await activo.client.rpc('guardar_plantilla_editor', { p_nombre: `${marca}-invalida`, p_contenido: { ...content, items: [{ seccion: '', descripcion: 'Grúa', cantidad: 1 }] } })
@@ -56,7 +56,7 @@ describe('cierre transaccional de cotizaciones', () => {
     const r = await activo.client.rpc('guardar_plantilla_editor', { p_nombre: `${marca}-limpia`, p_contenido: { ...content, items: [{ ...content.items[0], precio_unitario: 1500, cliente_id: ids.cliente_id }] } })
     expect(r.error).toBeNull(); plantillas.push(r.data!)
     const { data } = await activo.client.from('plantillas').select('items').eq('id', r.data!).single()
-    expect(data?.items).toEqual(content.items)
+    expect(data?.items).toEqual(content.items.map((item) => ({ ...item, is_complimentary: false })))
   })
   it('no carga una cotización si su PDF no existe en Storage', async () => {
     const r = await activo.client.rpc('cargar_cotizacion_existente', { p_datos: { cliente_id: ids.cliente_id, numero: 42, estado: 'enviada', archivo_original_path: 'importadas/inexistente.pdf' } })

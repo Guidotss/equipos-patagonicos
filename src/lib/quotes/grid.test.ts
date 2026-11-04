@@ -173,3 +173,9 @@ describe('borrado de secciones', () => {
     expect(neighborAfterRemoval(items, ['missing'])).toBeNull()
   })
 })
+
+it('una bonificada ignora el precio escrito, pero conserva la validación de cantidad', () => {
+  expect(totalLine({ cantidad: '2', precio: '99.000', isComplimentary: true })).toBe(0)
+  expect(totalGeneral([{ cantidad: '2', precio: '100' }, { cantidad: '2', precio: '', isComplimentary: true }])).toEqual({ total: 200, withoutPrice: 0 })
+  expect(totalLine({ cantidad: 'inválida', precio: '', isComplimentary: true })).toBeNull()
+})

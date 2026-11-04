@@ -13,6 +13,7 @@ export type ItemEditor = {
   descripcion: string
   cantidad: string
   precio: string
+  isComplimentary?: boolean
   unidad: Unit
 }
 export type BlockEditor = { clave: string; titulo: string; contenido: string; hidden: boolean }
@@ -89,6 +90,7 @@ export type RowEditor = {
     descripcion: string
     cantidad: number
     precio_unitario: number | null
+    is_complimentary?: boolean
     unidad: string
   }[]
   envios: { id: string; enviada_at: string }[]

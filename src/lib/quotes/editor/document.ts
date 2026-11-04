@@ -42,7 +42,8 @@ export function sourceFromEditor(
       seccion: item.seccion,
       descripcion: item.descripcion,
       cantidad: parsePrice(item.cantidad) ?? 1,
-      precio_unitario: parsePrice(item.precio),
+      precio_unitario: item.isComplimentary ? 0 : parsePrice(item.precio),
+      is_complimentary: item.isComplimentary ?? false,
       unidad: item.unidad,
     })),
     cliente: { razon_social: state.cliente?.razon_social ?? '', cuit: state.cliente?.cuit ?? null },
@@ -60,7 +61,7 @@ export function pendingListEditor(state: StatusEditor, catalogs: CatalogsEditor)
     // Sin guardar todavía no hay número: se asigna al guardar, no es algo que el usuario tenga que completar.
     variables: document.faltantes.filter((name) => name !== 'numero' || state.id !== null),
     desconocidas: document.desconocidas,
-    itemsWithoutPrice: state.items.filter((item) => parsePrice(item.precio) === null).length,
+    itemsWithoutPrice: state.items.filter((item) => !item.isComplimentary && parsePrice(item.precio) === null).length,
     withoutItems: state.items.length === 0,
   }
 }

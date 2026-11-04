@@ -43,19 +43,19 @@ export function normalizePrice(text: string): string {
 const roundAmount = (value: number) => Math.round(value * 100) / 100
 
 /** Cantidad × precio, redondeado a centavos; null si falta alguno o no se entiende. */
-export function totalLine(item: Pick<ItemEditor, 'cantidad' | 'precio'>): number | null {
+export function totalLine(item: Pick<ItemEditor, 'cantidad' | 'precio' | 'isComplimentary'>): number | null {
   const quantity = readQuantity(item.cantidad)
-  const price = parsePrice(item.precio)
+  const price = item.isComplimentary ? 0 : parsePrice(item.precio)
   if (quantity === null || price === null) return null
   return roundAmount(quantity * price)
 }
 
 /** Total de la cotización (solo si todas las líneas tienen total, como el PDF) y cuántos ítems no tienen precio. */
-export function totalGeneral(items: Pick<ItemEditor, 'cantidad' | 'precio'>[]): {
+export function totalGeneral(items: Pick<ItemEditor, 'cantidad' | 'precio' | 'isComplimentary'>[]): {
   total: number | null
   withoutPrice: number
 } {
-  const withoutPrice = items.filter((item) => parsePrice(item.precio) === null).length
+  const withoutPrice = items.filter((item) => !item.isComplimentary && parsePrice(item.precio) === null).length
   const totals = items.map((item) => totalLine(item))
   if (items.length === 0 || totals.some((total) => total === null)) return { total: null, withoutPrice }
   return { total: roundAmount(totals.reduce<number>((sum, total) => sum + (total ?? 0), 0)), withoutPrice }

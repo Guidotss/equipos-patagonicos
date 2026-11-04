@@ -41,7 +41,7 @@ function TableItems({ doc, highlight }: { doc: DocumentQuote; highlight?: boolea
             <TextVariables texto={item.descripcion} highlight={highlight} />
           </Cell>
           <Cell index={2}>{item.cantidad.toLocaleString('es-AR')}</Cell>
-          <Cell index={3}>{item.priceUnitario === null ? '' : formatAmountTable(item.priceUnitario)}</Cell>
+          <Cell index={3}>{item.isComplimentary ? 'BONIFICADA' : item.priceUnitario === null ? '' : formatAmountTable(item.priceUnitario)}</Cell>
           <Cell index={4}>ARS</Cell>
           <Cell index={5}>{item.unidad}</Cell>
           <Cell index={6}>{item.total === null ? '' : formatAmountTable(item.total)}</Cell>

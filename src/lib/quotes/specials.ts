@@ -29,6 +29,6 @@ export function templateFromEditor(state: StatusEditor) {
     intro: state.intro,
     validez_dias: Number(state.validezDias),
     bloques: state.bloques.map(({ titulo: title, contenido: content, hidden }) => ({ titulo: title, contenido: content, hidden })),
-    items: state.items.map(({ seccion: section, descripcion: description, cantidad: quantity, unidad: unit }) => ({ seccion: section, descripcion: description, cantidad: parsePrice(quantity), unidad: unit })),
+    items: state.items.map(({ seccion: section, descripcion: description, cantidad: quantity, unidad: unit, isComplimentary }) => ({ seccion: section, descripcion: description, cantidad: parsePrice(quantity), unidad: unit, is_complimentary: isComplimentary ?? false })),
   }
 }

@@ -103,14 +103,14 @@ isOneToOne: false
                   ]
                 },"cotizacion_items": {
                   Row: {
-                    "cantidad": number,"cotizacion_id": string,"descripcion": string,"id": string,"orden": number,"precio_unitario": number | null,"seccion": string,"total": number | null,"unidad": string
+                    "cantidad": number,"cotizacion_id": string,"descripcion": string,"id": string,"is_complimentary": boolean,"orden": number,"precio_unitario": number | null,"seccion": string,"total": number | null,"unidad": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cantidad"?: number,"cotizacion_id": string,"descripcion": string,"id"?: string,"orden": number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad": string
+                    "cantidad"?: number,"cotizacion_id": string,"descripcion": string,"id"?: string,"is_complimentary"?: boolean,"orden": number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad": string
                   }
                   Update: {
-                    "cantidad"?: number,"cotizacion_id"?: string,"descripcion"?: string,"id"?: string,"orden"?: number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad"?: string
+                    "cantidad"?: number,"cotizacion_id"?: string,"descripcion"?: string,"id"?: string,"is_complimentary"?: boolean,"orden"?: number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad"?: string
                   }
                   Relationships: [
                     {

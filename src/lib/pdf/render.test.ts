@@ -108,3 +108,15 @@ describe('cotización sin guardar', () => {
     expect(await textOfPdf(await renderQuote(buildDocument(daily)))).toContain('Cotización N° {{numero}}')
   }, 20_000)
 })
+
+describe('bonificación explícita', () => {
+  it.each([EXAMPLE_MONTHLY, EXAMPLE_DAILY])('imprime BONIFICADA en $cotizacion.formato y conserva total cero', async (source) => {
+    const original = source.items[0]
+    const document = buildDocument({ ...source, cotizacion: { ...source.cotizacion, mostrar_total: true }, items: [{ ...original, is_complimentary: true, precio_unitario: 999 }, { ...original, orden: 2, is_complimentary: false, precio_unitario: 100 }] })
+    expect(document.total).toBe(original.cantidad * 100)
+    const text = await textOfPdf(await renderQuote(document))
+    expect(text).toContain('BONIFICADA')
+    expect(text).not.toContain('BONIFICADA más IVA')
+    expect(text).not.toContain('999')
+  })
+})

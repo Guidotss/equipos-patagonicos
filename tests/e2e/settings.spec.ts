@@ -71,11 +71,15 @@ test('plantillas iniciales: mensual y por jornada con sus textos', async ({ page
   await expect(page.getByText('Alquiler mensual Grúa {{capacidad}} TN')).toBeVisible()
 })
 
-test('empresa: muestra los datos reales', async ({ page }) => {
+test('empresa: muestra los datos reales', async ({ page }, testInfo) => {
   await iniciarSession(page)
   await page.goto('/configuracion/empresa')
   await expect(page.getByLabel('Razón social')).toHaveValue('Equipos Patagónicos')
   await expect(page.getByLabel('Ciudad')).toHaveValue('Neuquén')
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport)
+    await page.screenshot({ path: testInfo.outputPath(`company-${viewport.width}.png`), fullPage: true, style: '.fixed.bottom-0 { display: none !important; }' })
+  }
 })
 
 

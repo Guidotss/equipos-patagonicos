@@ -109,7 +109,7 @@ export function TemplateForm({
             <Card
               icon={ListOrdered}
               titulo="Ítems precargados"
-              descripcion="Se cargan sin precio en cada cotización nueva."
+              descripcion="Se cargan al crear una cotización. Completá las tarifas de los ítems sin bonificar."
             >
               {template.items.length === 0 ? (
                 <p className="text-[15px] text-muted-foreground">No tiene ítems precargados.</p>
@@ -135,7 +135,10 @@ export function TemplateForm({
                             <TableCell className="px-3 py-3">{item.seccion || '—'}</TableCell>
                           ) : null}
                           <TableCell className="px-3 py-3 whitespace-normal">
-                            <WithVariables texto={item.descripcion} />
+                            <div className="flex flex-col items-start gap-1">
+                              <WithVariables texto={item.descripcion} />
+                              {item.isComplimentary ? <Pill>Bonificada</Pill> : null}
+                            </div>
                           </TableCell>
                           <TableCell className="px-3 py-3">{item.unidad}</TableCell>
                           <TableCell className="px-3 py-3 text-right tabular-nums">{item.cantidad}</TableCell>

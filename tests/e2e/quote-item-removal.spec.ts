@@ -124,6 +124,7 @@ test('las plantillas comparten el borrado visible de filas y secciones sin preci
 })
 
 test('controles visibles y columnas alineadas en escritorio y móvil', async ({ page }, testInfo) => {
+  await page.getByRole('checkbox', { name: 'Bonificada del ítem 2', exact: true }).check()
   for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport)
     const remove = page.getByRole('button', { name: 'Eliminar ítem 1', exact: true })
@@ -142,6 +143,6 @@ test('controles visibles y columnas alineadas en escritorio y móvil', async ({ 
       expect(Math.abs(first!.x - second!.x)).toBeLessThan(1)
       expect(Math.abs(first!.y - target!.y)).toBeLessThan(2)
     }
-    await page.screenshot({ path: testInfo.outputPath(`quote-controls-${viewport.width}.png`), fullPage: false })
+    await page.locator('section').filter({ has: page.getByRole('heading', { name: 'Ítems', exact: true }) }).screenshot({ path: testInfo.outputPath(`quote-controls-${viewport.width}.png`), style: '.fixed.bottom-0 { display: none !important; }' })
   }
 })

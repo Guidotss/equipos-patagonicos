@@ -27,8 +27,9 @@ export const schemaItemTemplate = z.object({
   descripcion: z.string(),
   unidad: z.enum(UNITS),
   cantidad: z.number().positive(),
+  is_complimentary: z.boolean().default(false),
 })
-export type ItemTemplate = z.infer<typeof schemaItemTemplate>
+export type ItemTemplate = Omit<z.infer<typeof schemaItemTemplate>, 'is_complimentary'> & { isComplimentary?: boolean }
 
 /** Valida el jsonb `bloques` de plantillas/cotizaciones. Lanza si no tiene la forma esperada. */
 export function readBlocks(value: unknown): Block[] {
@@ -36,5 +37,5 @@ export function readBlocks(value: unknown): Block[] {
 }
 
 export function readItemsTemplate(value: unknown): ItemTemplate[] {
-  return z.array(schemaItemTemplate).parse(value)
+  return z.array(schemaItemTemplate).parse(value).map(({ is_complimentary: isComplimentary, ...item }) => ({ ...item, isComplimentary }))
 }
