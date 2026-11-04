@@ -4,7 +4,7 @@ Modo: Operate. Refinamiento del sistema existente de `DESIGN.md`; no cambia iden
 
 ## Cambios
 
-Se quitó la búsqueda redundante de presupuestos y se mantuvo la selección necesaria. En remitos, Equipo se muestra como dato de solo lectura del trabajo nuevo o del registro histórico. Los equipos inactivos siguen disponibles como contexto. Ausencia conocida de equipo, mezcla de equipos y falta de contexto por error de carga son estados distintos. Si falla la carga, se impide guardar y se permite reintentar; los adjuntos del mismo cliente conservan estado e importe de subida pendiente.
+Se quitó la búsqueda redundante de presupuestos y se mantuvo la selección necesaria. En remitos, Equipo se muestra como dato de solo lectura del trabajo nuevo o del registro histórico. Los equipos inactivos siguen disponibles como contexto. Ausencia conocida de equipo, mezcla de equipos y falta de contexto por error de carga son estados distintos. Si falla la carga, se impide guardar y se permite reintentar; los adjuntos del mismo cliente conservan su estado, incluso durante una subida pendiente.
 
 En Empresa se retiró la tarjeta Actualización de tarifas. Los demás datos conservan su disposición y la vista de pie del PDF. Guardar los campos visibles no modifica valores históricos de tarifas ni las variables que usan las plantillas.
 

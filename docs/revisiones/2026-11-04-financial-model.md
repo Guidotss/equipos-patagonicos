@@ -40,9 +40,11 @@ Los cálculos son autoritativos en SQL, con importes decimales exactos y bloqueo
 - Conservar cobros históricos protegidos sin crear OP ficticias. Referencias históricas financieras deben sobrevivir a eliminación permitida de cotizaciones anuladas.
 - El informe mantiene grupos visibles de importes sin equipo, sin distribuir o sin fecha acreditada; los filtros temporales no deben fecharlos hoy ni ocultarlos sin explicación.
 
-## Definición pendiente
+## Definiciones adicionales confirmadas
 
-Se consultó si 30/45/60 días son cuotas con importe y vencimiento desde factura o solo condición descriptiva. No convertir el texto libre de `condicion_pago`/`datos.forma_pago` en cuotas silenciosamente ni inventar porcentajes.
+- 30/45/60 días se guarda **solo como condición de pago en texto**. No generar cuotas, importes ni vencimientos automáticamente desde `condicion_pago`/`datos.forma_pago`. Las fechas de cada cheque son datos propios de ese instrumento.
+- Mostrar **Dinero acreditado** y **Retenciones** por separado. Ambos suman el importe **cancelado** de la factura. Por tanto, `saldo = facturado - cancelado`; dinero acreditado no incluye retenciones.
+- Conservar las cancelaciones anteriores cuyo medio/desglose no está identificado en una categoría explícita; no convertirlas en dinero acreditado ni inventar una distribución entre dinero y retenciones.
 
 ## Casos de aceptación del próximo bloque
 

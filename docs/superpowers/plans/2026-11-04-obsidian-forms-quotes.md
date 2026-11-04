@@ -37,12 +37,12 @@
 - Create: `supabase/migrations/20261104100000_quote_duplicate_subject.sql`.
 - Test: pruebas unitarias del reducer, `tests/integration/quotes.test.ts`, `tests/e2e/quotes.spec.ts`.
 
-- [ ] Agregar casos de eliminación por claves con secciones no contiguas de mismo nombre y copia de asunto sin repetir «bis». Ejemplos del RPC: asunto `Alquiler` → `Alquiler bis`; `Alquiler BIS` → `Alquiler BIS`; vacío → `bis`. Conservar el límite de 500 caracteres reservando espacio para el sufijo de la copia.
-- [ ] Agregar botón accesible visible a cada fila manteniendo menú/arrastre. Acción de sección abre confirmación que fija las claves concretas. Reducer: filtrar `item => !keys.has(item.clave)`; nunca filtrar por nombre.
-- [ ] Coordinar confirmación con borradores de sección: cancelar no aplica borrado; Enter/blur continúa renombrado existente; foco vuelve a acción vecina o agregar ítem. Mantener controles de 44 px en móvil y grilla sin overflow.
-- [ ] Aplicar «bis» en RPC duplicar; no cambiar número original ni el generador secuencial. Verificado: «Guardar y duplicar» guarda primero y llama al mismo RPC, por lo que no necesita otro helper de asunto en TypeScript. Cubrir también ese flujo.
-- [ ] Ejecutar pruebas unitarias, integración afectada y E2E de arrastre/teclado/eliminación/copia mediante runner.
-- [ ] Crear commit `feat: expose quote item removal and label duplicate subjects`.
+- [x] Agregar casos de eliminación por claves con secciones no contiguas de mismo nombre y copia de asunto sin repetir «bis». Ejemplos del RPC: asunto `Alquiler` → `Alquiler bis`; `Alquiler BIS` → `Alquiler BIS`; vacío → `bis`. Conservar el límite de 500 caracteres reservando espacio para el sufijo de la copia.
+- [x] Agregar botón accesible visible a cada fila manteniendo menú/arrastre. Acción de sección abre confirmación que fija las claves concretas. Reducer: filtrar `item => !keys.has(item.clave)`; nunca filtrar por nombre.
+- [x] Coordinar confirmación con borradores de sección: cancelar no aplica borrado; Enter/blur continúa renombrado existente; foco vuelve a acción vecina o agregar ítem. Mantener controles de 44 px en móvil y grilla sin overflow.
+- [x] Aplicar «bis» en RPC duplicar; no cambiar número original ni el generador secuencial. Verificado: «Guardar y duplicar» guarda primero y llama al mismo RPC, por lo que no necesita otro helper de asunto en TypeScript. Cubrir también ese flujo.
+- [x] Ejecutar lint/typecheck, 630 unitarias, 67 integraciones y 60 E2E de editor/grillas/configuración. Tras fix de foco, 11 E2E relevantes aprobadas; solo runner descartable, stacks destruidos. Capturas desktop/móvil revisadas en un pase, sin desbordes.
+- [x] Commits `d54e843` y `5254070`. Spec PASS. Calidad detectó blur al volver con Shift+Tab; reproducido rojo y corregido con blur al salir del encabezado, re-review APPROVED. Las pruebas esperan confirmación de guardado antes de recargar. Se excluyen de ESLint los artefactos generados de Playwright para conservar trazas de fallos sin lintar su JavaScript.
 
 ## Task 3: Bonificación persistida y PDF
 
@@ -55,7 +55,7 @@
 - Test: pruebas actuales de editor, servicio, plantillas y PDF; `tests/e2e/quote-pdf.spec.ts` y/o `quotes.spec.ts`.
 
 - [ ] Agregar casos: falta de campo equivale a false; cero numérico no implica bonificada; true persiste precio cero; duplicar/plantilla/guardar-reabrir/vista previa/PDF conservan la marca; PDF contiene «BONIFICADA» y total no crece.
-- [ ] Añadir `is_complimentary boolean not null default false`; restricción `not is_complimentary or (precio_unitario is not null and precio_unitario = 0)`. Incluir campo en validación/guardado/duplicación de ítems SQL. No actualizar marcas antiguas.
+- [ ] Añadir `is_complimentary boolean not null default false`; restricción `not is_complimentary or (precio_unitario is not null and precio_unitario = 0)`. Incluir campo en validación/guardado/duplicación de ítems SQL. No actualizar marcas antiguas. Actualizar también `guardar_plantilla_editor` vigente en `20261028130000_cierre_integridad.sql`: hoy reconstruye los ítems con `jsonb_build_object` y descartaría una marca nueva. Conservar su validación de tipos y toda la lógica de bloques/permisos.
 - [ ] Extender tipos con `isComplimentary`, compatibilidad por defecto false, mapear al campo DB. Marcar normaliza precio a `'0'`; desmarcar tras recarga deja `''` para solicitar tarifa. No usar texto BONIFICADA como valor numérico.
 - [ ] Añadir checkbox al lado del precio según referencia; input deshabilitado BONIFICADA, cantidad/unidad siguen editables. Propagar por plantillas (normalmente sin precio) y cálculos/diff de concurrencia.
 - [ ] PDF diario/mensual imprime BONIFICADA en precio, sin «+ IVA» anexado a esa palabra, con total cero; no tocar PDFs históricos almacenados.
@@ -66,6 +66,7 @@
 
 - [ ] Tras cada tarea: revisión de especificación y luego calidad por agentes nuevos; corregir/revisar cualquier hallazgo antes de la siguiente.
 - [ ] Revisión integrada final, pase visual final independiente y documentar evidencia visual/funcional con alcance preciso.
+- [ ] Actualizar desarrollo sin reset ni seed: `npx supabase migration up --local --yes`. La lectura de historial confirmó que la base local (127.0.0.1:54321) llega hasta `20261028140000`, por lo que también hay migraciones anteriores pendientes. Revisar su alcance, conservar borrador y datos existentes y verificar el historial resultante; no tratar esta base como entorno de tests.
 - [ ] Comparar migraciones en producción con `supabase db push --linked --project-ref pizrtclmjsbyxfdihupg --skip-vault --dry-run --yes`, aplicar solo las nuevas ya probadas; sin seeds ni fixtures.
 - [ ] Publicar main autorizado, ejecutar workflow `check.yml` manualmente si el token no lo dispara. Verificar CI por SHA exacto y Railway SUCCESS del mismo SHA; health/login 200.
 - [ ] Dejar explícitos los bloques financieros siguientes y la decisión confirmada de cheques al acreditarse; no declarar completado todo el pendiente de Obsidian.
