@@ -34,14 +34,13 @@
 **Files:**
 - Modify: `src/components/quotes/editor/item-row-controls.tsx`, `item-row.tsx`, `item-section-header.tsx`, `card-items.tsx`, `items-grid.constants.ts`, `use-section-drafts.ts` solo si es necesario para el contrato de borrado.
 - Modify: `src/lib/quotes/editor/reducer.ts`, flujos de duplicación encontrados en `src/lib/quotes/service` y acciones de cotizaciones.
-- Create: helper `src/lib/quotes/duplicate-subject.ts` y pruebas unitarias en el directorio vigente.
 - Create: `supabase/migrations/20261104100000_quote_duplicate_subject.sql`.
 - Test: pruebas unitarias del reducer, `tests/integration/quotes.test.ts`, `tests/e2e/quotes.spec.ts`.
 
-- [ ] Agregar casos de eliminación por claves con secciones no contiguas de mismo nombre y copia de asunto sin repetir «bis». Ejemplos: `appendBis('Alquiler') === 'Alquiler bis'`; `appendBis('Alquiler BIS') === 'Alquiler BIS'`.
+- [ ] Agregar casos de eliminación por claves con secciones no contiguas de mismo nombre y copia de asunto sin repetir «bis». Ejemplos del RPC: asunto `Alquiler` → `Alquiler bis`; `Alquiler BIS` → `Alquiler BIS`; vacío → `bis`. Conservar el límite de 500 caracteres reservando espacio para el sufijo de la copia.
 - [ ] Agregar botón accesible visible a cada fila manteniendo menú/arrastre. Acción de sección abre confirmación que fija las claves concretas. Reducer: filtrar `item => !keys.has(item.clave)`; nunca filtrar por nombre.
 - [ ] Coordinar confirmación con borradores de sección: cancelar no aplica borrado; Enter/blur continúa renombrado existente; foco vuelve a acción vecina o agregar ítem. Mantener controles de 44 px en móvil y grilla sin overflow.
-- [ ] Aplicar «bis» tanto en RPC duplicar como en copia del estado sin guardar; no cambiar número original ni el generador secuencial.
+- [ ] Aplicar «bis» en RPC duplicar; no cambiar número original ni el generador secuencial. Verificado: «Guardar y duplicar» guarda primero y llama al mismo RPC, por lo que no necesita otro helper de asunto en TypeScript. Cubrir también ese flujo.
 - [ ] Ejecutar pruebas unitarias, integración afectada y E2E de arrastre/teclado/eliminación/copia mediante runner.
 - [ ] Crear commit `feat: expose quote item removal and label duplicate subjects`.
 
@@ -49,7 +48,7 @@
 
 **Files:**
 - Create: `supabase/migrations/20261104110000_quote_complimentary_items.sql`.
-- Modify: `src/lib/quotes/data.ts`, `src/lib/quotes/editor/types.ts`, `validation.ts`, `state.ts`, `reducer.ts`, `document.ts`; mappers/persistencia/duplicación en `src/lib/quotes/service`.
+- Modify: `src/lib/quotes/data.ts`, `src/lib/quotes/editor/types.ts`, `validation.ts`, `state.ts`, `reducer.ts`, `document.ts`, `constants.ts`; `src/lib/quotes/service/source.ts`, `src/lib/quotes/specials.ts`; duplicación SQL y `src/lib/quotes/grid.ts` para totales.
 - Modify: `src/lib/templates/content.ts` y editor/mappers de plantillas que consumen ítems.
 - Modify: `src/components/quotes/editor/item-row.tsx`, `src/lib/quotes/document.ts`, `src/lib/pdf/quote-monthly.tsx`, `src/lib/pdf/quote-daily.tsx`.
 - Modify: `src/lib/supabase/database.types.ts` generado desde entorno descartable.
