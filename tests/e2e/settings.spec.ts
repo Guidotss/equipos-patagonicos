@@ -78,7 +78,12 @@ test('empresa: muestra los datos reales', async ({ page }, testInfo) => {
   await expect(page.getByLabel('Ciudad')).toHaveValue('Neuquén')
   for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport)
-    await page.screenshot({ path: testInfo.outputPath(`company-${viewport.width}.png`), fullPage: true, style: '.fixed.bottom-0 { display: none !important; }' })
+    await expect(page.getByRole('heading', { name: 'Equipos Patagónicos', exact: true })).toBeVisible()
+    await expect(page.getByLabel('Razón social')).toHaveValue('Equipos Patagónicos')
+    await expect(page.getByLabel('Ciudad')).toHaveValue('Neuquén')
+    await expect(page.getByText('Cargando sección…', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Guardar cambios', exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`company-${viewport.width}.png`), fullPage: true })
   }
 })
 
