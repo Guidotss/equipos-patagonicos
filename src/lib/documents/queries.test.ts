@@ -9,7 +9,7 @@ vi.mock('@/lib/finance/queries', async (original) => ({
   readFinanceByDocument: vi.fn(async () => ({})),
 }))
 
-function clientWithPages(failDocumentPage = false) {
+function clientWithPages(failDocumentPage = false, withHistoricalEquipment = false) {
   const ranges: Record<string, number[]> = {}
   const orders: Record<string, string[]> = {}
   const rows: Record<string, object[]> = {
@@ -18,12 +18,28 @@ function clientWithPages(failDocumentPage = false) {
     documentos: Array.from({ length: 1001 }, (_, index) => ({ id: `document-${index}`, equipo_id: null,
       tipo: index % 2 === 0 ? 'factura' : 'remito' })),
     v_facturas: Array.from({ length: 1001 }, (_, index) => ({ id: `invoice-${index}` })),
+    equipos: [
+      ...Array.from({ length: 501 }, (_, index) => ({ id: `equipment-${index}`, nombre: `Grúa ${index}`, activo: true })),
+      { id: 'historical', nombre: 'Grúa anterior', activo: false },
+    ],
+  }
+  if (withHistoricalEquipment) {
+    Object.assign(rows.cotizaciones[0], { equipo_id: 'historical' })
+    Object.assign(rows.cotizaciones[1], { equipo_id: 'equipment-0' })
   }
   const client = {
     from(table: string) {
+      let selected = rows[table]
       const query = {
         select: () => query,
-        eq: () => query,
+        eq(column: string, value: unknown) {
+          if (table === 'equipos' && column === 'activo') selected = selected.filter((row) => (row as { activo: boolean }).activo === value)
+          return query
+        },
+        in(column: string, values: string[]) {
+          if (table === 'equipos' && column === 'id') selected = selected.filter((row) => values.includes((row as { id: string }).id))
+          return query
+        },
         order(column: string) {
           ;(orders[table] ??= []).push(column)
           return query
@@ -33,7 +49,7 @@ function clientWithPages(failDocumentPage = false) {
           if (table === 'documentos' && from === 500 && failDocumentPage) {
             return Promise.resolve({ data: null, error: new Error('Lectura interrumpida') })
           }
-          return Promise.resolve({ data: rows[table].slice(from, to + 1), error: null })
+          return Promise.resolve({ data: selected.slice(from, to + 1), error: null })
         },
       }
       return query
@@ -51,12 +67,21 @@ describe('contexto documental completo', () => {
     expect(context.budgets).toHaveLength(1001)
     expect(context.documentos).toHaveLength(1001)
     expect(context.facturas).toHaveLength(1001)
-    expect(ranges).toEqual({ cotizaciones: [0, 500, 1000], documentos: [0, 500, 1000], v_facturas: [0, 500, 1000] })
+    expect(ranges).toEqual({ cotizaciones: [0, 500, 1000], documentos: [0, 500, 1000], v_facturas: [0, 500, 1000], equipos: [0, 500] })
+    expect(context.equipos).toHaveLength(501)
     expect(orders.documentos).toEqual(['created_at', 'id', 'created_at', 'id', 'created_at', 'id'])
     expect(orders.cotizaciones).toEqual(['numero', 'id', 'numero', 'id', 'numero', 'id'])
     expect(orders.v_facturas).toEqual(['fecha_vencimiento', 'id', 'fecha_vencimiento', 'id', 'fecha_vencimiento', 'id'])
     expect(vi.mocked(readFinanceByDocument).mock.calls[0][1]).toHaveLength(501)
     expect(context.financeByDocument['document-1']).toEqual({ invoiceAllocations: [], paymentInstruments: [], paymentAllocations: [] })
+  })
+
+  it('incluye grúas activas y conserva las históricas vinculadas sin duplicarlas', async () => {
+    const { client } = clientWithPages(false, true)
+    const context = await contextoDocument(client, 'client')
+    expect(context.equipos).toHaveLength(502)
+    expect(context.equipos.filter((equipment) => equipment.id === 'equipment-0')).toHaveLength(1)
+    expect(context.equipos).toContainEqual(expect.objectContaining({ id: 'historical' }))
   })
 
   it('rechaza un error intermedio sin devolver opciones ni iniciar la lectura financiera', async () => {

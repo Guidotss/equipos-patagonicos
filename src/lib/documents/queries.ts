@@ -8,7 +8,7 @@ export async function contextoDocument(
   supabase: SupabaseClient<Database>,
   clientId: string,
 ): Promise<DocumentContext> {
-  const [budgets, documents, invoices] = await Promise.all([
+  const [budgets, documents, invoices, activeEquipment] = await Promise.all([
     readAllPages((from, to) => supabase
       .from('cotizaciones')
       .select('id, numero, cliente_id, asunto, presupuesto_estado, equipo_id, cliente:clientes(razon_social)')
@@ -19,6 +19,8 @@ export async function contextoDocument(
       .order('created_at', { ascending: false }).order('id').range(from, to)),
     readAllPages((from, to) => supabase.from('v_facturas').select('*, exact_balance:saldo::text').eq('cliente_id', clientId)
       .order('fecha_vencimiento').order('id').range(from, to)),
+    readAllPages((from, to) => supabase.from('equipos').select('id, nombre').eq('activo', true)
+      .order('nombre').order('id').range(from, to)),
   ])
   const financeByDocument: FinanceByDocument = Object.fromEntries(documents.map((document) => [document.id, {
     invoiceAllocations: [], paymentInstruments: [], paymentAllocations: [],
@@ -30,14 +32,15 @@ export async function contextoDocument(
     ...budgets.map((budget) => budget.equipo_id),
     ...documents.map((document) => document.equipo_id),
   ].filter((id): id is string => id !== null))]
-  // Incluye los equipos históricos inactivos vinculados a presupuestos o remitos del cliente.
-  const equipment: { id: string; nombre: string }[] = []
+  // Conserva también los equipos inactivos vinculados al historial del cliente.
+  const equipment = [...activeEquipment]
   for (let index = 0; index < equipmentIds.length; index += 100) {
     const batch = equipmentIds.slice(index, index + 100)
     equipment.push(...await readAllPages((from, to) => supabase.from('equipos').select('id, nombre')
       .in('id', batch).order('nombre').order('id').range(from, to)))
   }
-  equipment.sort((first, second) => first.nombre.localeCompare(second.nombre, 'es'))
+  const uniqueEquipment = [...new Map(equipment.map((item) => [item.id, item])).values()]
+  uniqueEquipment.sort((first, second) => first.nombre.localeCompare(second.nombre, 'es'))
   return {
     budgets: budgets.map((budget) => ({
       id: budget.id,
@@ -50,7 +53,7 @@ export async function contextoDocument(
     })),
     documentos: documents,
     facturas: invoices,
-    equipos: equipment,
+    equipos: uniqueEquipment,
     financeByDocument,
   }
 }
