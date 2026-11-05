@@ -553,13 +553,10 @@ begin
         or budget.estado <> 'aprobada' or budget.presupuesto_estado = 'anulado') then
         raise exception 'El trabajo debe estar aprobado y pertenecer al mismo cliente' using errcode = 'P0001'; end if;
     end if;
-    if invoice_id is not null and (existing.invoice_id is distinct from invoice_id or existing.budget_id is distinct from budget_id
-      or existing.amount <> private.financial_decimal(entry -> 'amount')) then
-      if not exists (select 1 from public.documentos f where f.id = input.invoice_id and f.tipo = 'factura'
-        and f.tipo_comprobante <> 'NC' and f.deleted_at is null and f.cliente_id = document.cliente_id) then
-        raise exception 'La factura debe estar vigente y pertenecer al mismo cliente' using errcode = 'P0001'; end if;
-      if budget_id is not null and not exists (select 1 from public.invoice_allocations a where a.invoice_id = input.invoice_id and a.budget_id = input.budget_id) then
-        raise exception 'El trabajo no está incluido en la distribución de la factura' using errcode = 'P0001'; end if;
+    if invoice_id is not null and not exists (select 1 from public.documentos f
+      where f.id = input.invoice_id and f.tipo = 'factura'
+        and f.tipo_comprobante <> 'NC' and f.cliente_id = document.cliente_id) then
+      raise exception 'La aplicación requiere una factura del mismo cliente que no sea nota de crédito' using errcode = 'P0001';
     end if;
     insert into public.payment_allocations(id, instrument_id, budget_id, budget_number, budget_subject, invoice_id, amount, source)
     values(allocation_id, instrument_id, budget_id,
@@ -590,11 +587,52 @@ begin
 end;
 $$;
 
+-- Una aplicación previa a la anulación conserva su referencia como anticipo; reactivarla o trasladarla exige destino vigente.
+create function private.validate_payment_destination_changes(document_id uuid, previous jsonb)
+returns void language plpgsql set search_path = '' as $$
+declare allocation record;
+begin
+  for allocation in
+    select a.*, f.cliente_id as target_client_id, f.tipo as target_type, f.tipo_comprobante as target_invoice_type,
+      f.deleted_at as target_deleted_at, op.cliente_id as client_id
+    from public.payment_allocations a
+    join public.payment_instruments i on i.id = a.instrument_id
+    join public.documentos op on op.id = i.op_id
+    left join public.documentos f on f.id = a.invoice_id
+    left join jsonb_to_recordset(coalesce(previous -> 'paymentAllocations', '[]'::jsonb))
+      as old_allocation(id uuid, instrument_id uuid, budget_id uuid, invoice_id uuid, amount numeric) on old_allocation.id = a.id
+    left join jsonb_to_recordset(coalesce(previous -> 'paymentInstruments', '[]'::jsonb))
+      as old_instrument(id uuid, status text) on old_instrument.id = i.id
+    where op.id = document_id and a.invoice_id is not null and (
+      old_allocation.id is null
+      or (a.instrument_id, a.budget_id, a.invoice_id, a.amount) is distinct from
+        (old_allocation.instrument_id, old_allocation.budget_id, old_allocation.invoice_id, old_allocation.amount)
+      or (op.deleted_at is null and i.status in ('confirmed', 'cleared', 'pending', 'legacy_recognized')
+        and (coalesce((previous ->> 'voided')::boolean, true)
+          or coalesce(old_instrument.status, '') not in ('confirmed', 'cleared', 'pending', 'legacy_recognized')))
+    )
+  loop
+    if allocation.target_deleted_at is not null then
+      raise exception 'Restaurá primero las facturas anuladas o reasigná sus aplicaciones' using errcode = 'P0001';
+    end if;
+    if allocation.target_type is distinct from 'factura' or allocation.target_invoice_type = 'NC'
+      or allocation.target_client_id is distinct from allocation.client_id then
+      raise exception 'La aplicación requiere una factura del mismo cliente que no sea nota de crédito' using errcode = 'P0001';
+    end if;
+    if allocation.budget_id is not null and not exists (select 1 from public.invoice_allocations a
+      where a.invoice_id = allocation.invoice_id and a.budget_id = allocation.budget_id) then
+      raise exception 'El trabajo no está incluido en la distribución de la factura' using errcode = 'P0001';
+    end if;
+  end loop;
+end;
+$$;
+
 create function private.write_document_finance(document_id uuid, finance jsonb, creation boolean, budget_ids uuid[])
 returns void language plpgsql set search_path = '' as $$
-declare document public.documentos%rowtype; retained uuid[]; budget public.cotizaciones%rowtype;
+declare document public.documentos%rowtype; retained uuid[]; budget public.cotizaciones%rowtype; previous jsonb;
 begin
   select * into document from public.documentos where id = document_id;
+  previous := private.financial_snapshot(document_id);
   if finance is not null then
     perform private.validate_finance_object(finance, array['expectedVersion', 'correctionReason', 'invoiceAllocations', 'paymentInstruments', 'paymentAllocations']);
     if finance ? 'expectedVersion' then perform private.require_financial_version(document.financial_version, finance -> 'expectedVersion'); end if;
@@ -605,11 +643,9 @@ begin
     if finance ? 'paymentInstruments' then retained := private.write_payment_instruments(document_id, finance -> 'paymentInstruments'); end if;
     if finance ? 'paymentAllocations' then perform private.write_payment_allocations(document_id, finance -> 'paymentAllocations'); end if;
     if retained is not null then
-      if exists(select 1 from public.payment_instruments i join public.payment_allocations a on a.instrument_id = i.id
-        where i.op_id = document_id and not i.id = any(retained)) then
-        raise exception 'Reasigná o quitá las aplicaciones antes de reemplazar sus medios de pago' using errcode = 'P0001';
-      end if;
-      delete from public.payment_instruments where op_id = document_id and not id = any(retained);
+      -- La colección presente reemplaza los medios vigentes, sin borrar su evidencia ni sus aplicaciones omitidas.
+      update public.payment_instruments set status = 'voided', updated_at = now()
+        where op_id = document_id and not id = any(retained) and status <> 'voided';
     end if;
   end if;
   if creation and document.tipo = 'factura' and not coalesce(finance ? 'invoiceAllocations', false) then
@@ -620,6 +656,7 @@ begin
   if creation and document.tipo = 'orden_pago' and not coalesce(finance ? 'paymentInstruments', false) then
     raise exception 'Declará los medios de pago y sus fechas efectivas; la orden de pago no acredita efectivo automáticamente' using errcode = 'P0001';
   end if;
+  perform private.validate_payment_destination_changes(document_id, previous);
   perform private.validate_financial_client(document.cliente_id);
   if document.tipo = 'orden_pago' then perform private.synchronize_payment_projection(document_id); end if;
 end;
@@ -901,10 +938,7 @@ begin
   previous := private.financial_snapshot(p_op_id);
   update public.payment_instruments set status = p_status, settled_on = p_settled_on, updated_at = now() where id = p_instrument_id;
   perform private.require_correction_reason(previous, private.financial_snapshot(p_op_id), p_reason);
-  -- La reactivación de una aplicación requiere que la factura siga vigente.
-  if p_status in ('confirmed', 'cleared', 'pending') and instrument.status not in ('confirmed', 'cleared', 'pending', 'legacy_recognized') and exists(select 1 from public.payment_allocations a
-    join public.documentos f on f.id = a.invoice_id where a.instrument_id = p_instrument_id and f.deleted_at is not null) then
-    raise exception 'Restaurá la factura o reasigná el medio antes de activarlo' using errcode = 'P0001'; end if;
+  perform private.validate_payment_destination_changes(p_op_id, previous);
   perform private.validate_financial_client(document.cliente_id);
   perform private.synchronize_payment_projection(p_op_id);
   perform private.append_financial_event(p_op_id, previous, 'instrument_status_changed', p_reason);
@@ -934,12 +968,9 @@ begin
   end if;
   if char_length(reason) > 2000 then raise exception 'El motivo puede tener hasta 2000 caracteres' using errcode = 'P0001'; end if;
   previous := private.financial_snapshot(document_id);
-  if not voided and document.tipo = 'orden_pago' and exists(select 1 from public.payment_allocations a
-    join public.payment_instruments i on i.id = a.instrument_id join public.documentos f on f.id = a.invoice_id
-    where i.op_id = document_id and i.status in ('confirmed', 'cleared', 'pending', 'legacy_recognized') and f.deleted_at is not null) then
-    raise exception 'Restaurá primero las facturas anuladas o reasigná sus aplicaciones' using errcode = 'P0001'; end if;
   update public.documentos set deleted_at = case when voided then now() end,
     deleted_by = case when voided then auth.uid() end where id = document_id;
+  perform private.validate_payment_destination_changes(document_id, previous);
   perform private.validate_financial_client(document.cliente_id);
   if document.tipo in ('factura', 'orden_pago') then
     perform private.append_financial_event(document_id, previous, case when voided then 'voided' else 'restored' end, reason);
@@ -1370,7 +1401,7 @@ begin
       'financial_decimal', 'financial_date', 'financial_ledger', 'financial_snapshot', 'require_financial_version',
       'append_financial_event', 'validate_financial_client', 'validate_finance_object', 'require_correction_reason',
       'write_invoice_allocations', 'write_payment_instruments', 'write_payment_allocations', 'synchronize_payment_projection',
-      'write_document_finance', 'set_document_voided', 'require_budget_without_finances', 'check_document_financial_integrity') loop
+      'write_document_finance', 'validate_payment_destination_changes', 'set_document_voided', 'require_budget_without_finances', 'check_document_financial_integrity') loop
     execute format('revoke all on function %s from public, anon, authenticated', helper.signature);
   end loop;
 end;

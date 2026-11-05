@@ -125,22 +125,98 @@ describe('autoridad monetaria y auditoría financiera', () => {
       .toEqual([{ amount: '100.00', status: 'rejected' }])
   })
 
-  it('reemplaza explícitamente un cheque rechazado conservando el registro y los IDs de aplicación', async () => {
+  it.each(['pending', 'cleared', 'rejected'] as const)('reemplaza el cheque %s omitido conservando su registro y la aplicación estable', async (initialStatus) => {
+    const id = await invoice('100')
+    const check = { ...instrument('check', '100', initialStatus), reference: 'Cheque original', bank: 'Banco original',
+      receivedOn: '2024-06-10', dueOn: '2024-08-01' }
+    const opId = await order([check], id)
+    const [before] = await sql('select id, kind, amount, received_on, due_on, settled_on, reference, bank, created_at from public.payment_instruments where id = $1', [check.id])
+    const replacement = instrument('cash', '100')
+    const [allocation] = await sql<{ id: string }>('select id from public.payment_allocations where instrument_id = $1', [check.id])
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 1, correctionReason: 'Cheque reemplazado por efectivo acreditado',
+      paymentInstruments: [replacement], paymentAllocations: [
+        { id: allocation.id, instrumentId: replacement.id, budgetId, invoiceId: id, amount: '100' },
+      ] })).error).toBeNull()
+    expect(await totals(id)).toEqual({ money: 100, withholding: 0, legacy: 0, reserved: 0 })
+    expect(await sql('select id from public.payment_allocations where instrument_id = $1', [replacement.id])).toEqual([{ id: allocation.id }])
+    expect(await sql('select id, kind, amount, received_on, due_on, settled_on, reference, bank, created_at, status from public.payment_instruments where id = $1', [check.id]))
+      .toEqual([{ ...before, status: 'voided' }])
+    expect(await sql('select status from public.payment_instruments where id = $1', [replacement.id])).toEqual([{ status: 'confirmed' }])
+    // Volver a omitir el cheque ya anulado no lo elimina ni inventa otra versión.
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 2, paymentInstruments: [replacement] })).error).toBeNull()
+    expect(await version(opId)).toBe('2')
+    expect(await sql('select status from public.payment_instruments where id = $1', [check.id])).toEqual([{ status: 'voided' }])
+  })
+
+  it('distingue colección omitida, reemplazo y lista vacía sin dejar reservas activas ocultas', async () => {
+    const id = await invoice('100')
+    const check = instrument('check', '100')
+    const opId = await order([check], id)
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 1 })).error).toBeNull()
+    expect((await totals(id)).reserved).toBe(100)
+    const replacement = instrument('cash', '100')
+    // Las aplicaciones omitidas se conservan en el cheque histórico; no se trasladan al efectivo automáticamente.
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 1, paymentInstruments: [replacement] })).error).toBeNull()
+    expect(await totals(id)).toEqual({ money: 0, withholding: 0, legacy: 0, reserved: 0 })
+    expect(await sql('select invoice_id from public.payment_allocations where instrument_id = $1', [check.id])).toEqual([{ invoice_id: id }])
+    expect(await sql('select status from public.payment_instruments where id = $1', [check.id])).toEqual([{ status: 'voided' }])
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 2, paymentAllocations: [] })).error).toBeNull()
+    expect(await sql('select id from public.payment_allocations where instrument_id = $1', [check.id])).toEqual([])
+    expect(await sql('select status from public.payment_instruments where id = $1', [check.id])).toEqual([{ status: 'voided' }])
+    // Vaciar todos los medios no puede dejar una OP positiva incompleta; la transacción revierte íntegra.
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 3, correctionReason: 'Intento de vaciado', paymentInstruments: [] })).error?.code).toBe('P0001')
+    expect(await version(opId)).toBe('3')
+    expect(await sql('select status from public.payment_instruments where id = $1', [replacement.id])).toEqual([{ status: 'confirmed' }])
+  })
+
+  it('rechaza reactivar una aplicación a factura anulada tanto por estado como por DTO completo', async () => {
     const id = await invoice('100')
     const check = instrument('check', '100')
     const opId = await order([check], id)
     expect((await status(opId, check.id, 1, 'rejected')).error).toBeNull()
-    const replacement = instrument('cash', '100')
-    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 2, paymentInstruments: [replacement] })).error?.message)
-      .toContain('Reasigná o quitá')
-    const [allocation] = await sql<{ id: string }>('select id from public.payment_allocations where instrument_id = $1', [check.id])
+    expect((await staff.client.rpc('anular_documento', { p_id: id, p_expected_version: 1, p_reason: 'Factura anulada' })).error).toBeNull()
+    expect((await status(opId, check.id, 2, 'cleared', '2024-06-20')).error?.code).toBe('P0001')
     expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 2,
+      paymentInstruments: [{ ...check, status: 'cleared', settledOn: '2024-06-20' }] })).error?.code).toBe('P0001')
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 2,
+      paymentInstruments: [{ ...check, status: 'pending' }] })).error?.code).toBe('P0001')
+    expect(await version(opId)).toBe('2')
+    expect(await sql('select status from public.payment_instruments where id = $1', [check.id])).toEqual([{ status: 'rejected' }])
+    expect(await totals(id)).toEqual({ money: 0, withholding: 0, legacy: 0, reserved: 0 })
+  })
+
+  it('revalida el destino al mover una aplicación estable a otro instrumento', async () => {
+    const id = await invoice('100')
+    const check = instrument('check', '100')
+    const opId = await order([check], id)
+    const [allocation] = await sql<{ id: string }>('select id from public.payment_allocations where instrument_id = $1', [check.id])
+    expect((await staff.client.rpc('anular_documento', { p_id: id, p_expected_version: 1, p_reason: 'Factura anulada' })).error).toBeNull()
+    const replacement = instrument('cash', '100')
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 1,
       paymentInstruments: [{ ...check, status: 'voided' }, replacement], paymentAllocations: [
         { id: allocation.id, instrumentId: replacement.id, budgetId, invoiceId: id, amount: '100' },
-      ] })).error).toBeNull()
-    expect((await totals(id)).money).toBe(100)
-    expect(await sql('select id from public.payment_allocations where instrument_id = $1', [replacement.id])).toEqual([{ id: allocation.id }])
-    expect(await sql('select status, amount from public.payment_instruments where id = $1', [check.id])).toEqual([{ status: 'voided', amount: '100.00' }])
+      ] })).error?.code).toBe('P0001')
+    expect(await version(opId)).toBe('1')
+    expect(await sql('select instrument_id from public.payment_allocations where id = $1', [allocation.id])).toEqual([{ instrument_id: check.id }])
+    expect(await sql('select id from public.payment_instruments where id = $1', [replacement.id])).toEqual([])
+  })
+
+  it.each(['status', 'dto'] as const)('conserva el anticipo vigente y admite metadatos y compensación normal por %s', async (path) => {
+    const id = await invoice('100')
+    const check = instrument('check', '100')
+    const opId = await order([check], id)
+    const [allocation] = await sql<{ id: string }>('select id from public.payment_allocations where instrument_id = $1', [check.id])
+    expect((await staff.client.rpc('anular_documento', { p_id: id, p_expected_version: 1, p_reason: 'Factura anulada' })).error).toBeNull()
+    expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 1, paymentInstruments: [check], paymentAllocations: [
+      { id: allocation.id, instrumentId: check.id, budgetId, invoiceId: id, amount: '100' },
+    ] })).error).toBeNull()
+    expect(await version(opId)).toBe('1')
+    const result = path === 'status' ? await status(opId, check.id, 1, 'cleared', '2024-06-20') : await edit(opId, 'orden_pago', '100', {
+      expectedVersion: 1, paymentInstruments: [{ ...check, status: 'cleared', settledOn: '2024-06-20' }],
+    })
+    expect(result.error).toBeNull()
+    expect(await sql('select invoice_id from public.payment_allocations where id = $1', [allocation.id])).toEqual([{ invoice_id: id }])
+    expect(await totals(id)).toEqual({ money: 100, withholding: 0, legacy: 0, reserved: 0 })
   })
 
   it('reserva concurrentemente 700 sobre 1000 una sola vez', async () => {
