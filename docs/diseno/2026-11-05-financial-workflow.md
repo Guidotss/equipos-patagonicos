@@ -19,6 +19,22 @@ Aplicación del cobro se presenta aparte: cada porción identifica medio, trabaj
 - El banco es entrada libre, sin catálogo inventado. Las acciones sobre instrumentos persistidos y las correcciones usan los flujos/versiones aprobados; la imagen muestra composición de alta, no todas las interacciones.
 - Mantener las secciones de contexto, archivos y datos existentes que queden fuera del recorte. No copiar etiquetas artificiales o datos de ejemplo al producto ni a seeds.
 
+## Resumen del trabajo
+
+Referencia generada `referencias/20-budget-financial-summary.png`, desde la captura vigente del presupuesto (`/tmp/equipos-2026-11-04-evidence/presupuesto-escritorio.png`), contrastada con `BudgetPage`, DESIGN.md y los componentes actuales. Prompt en el archivo hermano `.prompt.txt`.
+
+Mantener banda, ficha y secciones de documentos. Sustituir los cinco indicadores equivalentes por un resumen financiero único: Facturado, Cancelado y Saldo; debajo, dinero acreditado, retenciones y, si existen, cancelaciones anteriores sin medio identificado. Anticipos y cheques pendientes tienen una línea propia. Los contadores documentales se reúnen en una línea secundaria, conservando sus etiquetas. En móvil, importes apilados o alineados en pares, sin scroll horizontal de página. No copiar el estado pagado de la factura de la captura original si tiene saldo.
+
+El caso ilustrado usa factura de 1.000.000, cancelación de 400.000 (350.000 de dinero + 50.000 de retención), saldo 600.000 y cheque pendiente de 300.000. Son datos sintéticos de composición. Si el saldo asignado es negativo, usar «Crédito a favor». Si falta reparto monetario, mostrar «Saldo pendiente de distribución» y explicar qué factura/cobro resolver; no sustituir por cero ni ocultar los importes conocidos. Equipo desconocido por sí solo no vuelve indeterminado un saldo de trabajo.
+
+## Facturación por grúa
+
+Referencia `referencias/21-equipment-revenue.png`, generada con la ficha actual para el shell y la grilla vigente de Presupuestos para tabla/filtros. Prompt en `.prompt.txt`. La captura antigua de grilla no contiene las entradas más recientes del sidebar; la navegación real actual prevalece.
+
+Página Operate de consulta, sin banda de ficha ni gráficos. Título y descripción, filtros Desde/Hasta, total del período con recuento único de facturas, tabla de grúa/facturas/facturado con IVA. Reutilizar el marco plano de listado: filtros, resultados y pie comparten contorno cuando convenga al componente existente. Equipos inactivos siguen presentes. Grupos Sin equipo, Equipo desconocido y Sin distribuir distintos. Recuentos por grupo no son sumables; explicar la diferencia junto a la tabla. Sin fecha se presenta separado y fuera del total filtrado, con acceso a los comprobantes que requieren revisión. Revisar facturas conduce a comprobantes reales editables, nunca un botón sin destino.
+
+La referencia conserva una tabla de tres columnas en móvil; si importes largos no caben, apilar cada fila con etiquetas visibles siguiendo la grilla existente. Mínimo táctil 44px. Fecha nativa, filtrado real, enlaces de revisión con foco claro. Los ejemplos son sintéticos; no introducir registros ni fechas de ejemplo al producto. Carga, error y vacío deben conservar el mismo marco.
+
 ## Verificación pendiente de implementación
 
 Captura desktop/móvil con datos descartables, estados vacío/error/carga y cheque pendiente/acreditado; una ronda batched, un lote de correcciones y confirmación acotada. Revisar importes largos, foco/etiquetas, filas dinámicas y conservación de archivos. Traspasos frescos de revisión visual y documentación al terminar.

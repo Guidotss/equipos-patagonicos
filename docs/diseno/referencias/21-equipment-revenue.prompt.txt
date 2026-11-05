@@ -1,0 +1,13 @@
+Use case: ui-mockup. Asset type: faithful implementable web app report UI, desktop and 390px mobile side by side in one design board.
+Input image1 is the current Equipos Patagónicos budget-detail screenshot and authority for current shell/logo/navigation. Input image2 is the existing budget listing and authority for a flat filtered register, density, tables, white/cool-slate palette and indigo. Preserve the world, not a redesign. Use Inter, existing stroke icons and light left sidebar on desktop; mobile uses the existing compact navigation. No device hardware or commentary labels.
+New staff page “Facturación por grúa”. Header short description “Importes con IVA según la fecha de factura.” Existing breadcrumb style, no banner on this list/report surface, no charts, no dashboard grid or decorative metrics. Add staff nav item “Facturación por grúa” highlighted, keeping other real nav items from image1.
+One flat bordered rounded register. Top date inputs labeled “Desde” and “Hasta”, values 01/10/2026 and31/10/2026, button “Aplicar filtros”. A clean summary line “Total del período” $ 1.700.000,00 · “8 facturas” with amount prominent. Native dates and real48px mobile controls. No currency or bank integration.
+Table columns “Grúa”, “Facturas”, “Facturado con IVA”. Rows:
+“Grúa 70 t” 3 $ 800.000,00
+“Grúa 35 t” a quiet inline status “Inactiva” 3 $ 500.000,00
+“Sin equipo” 1 $ 200.000,00
+“Equipo desconocido” 1 $ 100.000,00
+“Sin distribuir” 1 $ 100.000,00
+Amounts right aligned and tabular. Use quiet “Revisar facturas” text action for the two unknown/unallocated rows, without making whole rows look like giant buttons. Table footnote “Una factura puede aparecer en más de una grúa. El total cuenta cada factura una vez.” Counts across groups need not add to8; do NOT change global distinct count.
+Separate modest bordered section below “Facturas sin fecha” with $ 200.000,00 ·2facturas and clear copy “Fuera del período seleccionado.” This undated amount must not be merged into the period total. Quiet link “Revisar facturas”. No fabricated invoice dates.
+Mobile faithfully stacks filters and per-row labels, still shows the amount and count per group; no page-width horizontal scrolling. Use normal readable fonts and preserve44px action targets, allow vertical scroll. Show enough content to convey separation of undated section. Clear operational hierarchy, crisp Spanish and exact consistent amounts; no synthetic marketing, no drop shadows on filter register, no redesigned product identity.
