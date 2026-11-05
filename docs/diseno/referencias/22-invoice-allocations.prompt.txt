@@ -1,0 +1,13 @@
+Use case: ui-mockup. Asset type: desktop and mobile reference for one new section in existing Equipos Patagónicos document form.
+Input1 current mobile document form; input2 current desktop company form. Preserve their brand/logo/pale sidebar/Inter and flat shared form sheet with section purpose on left and fields right on wide desktops, stacked on mobile. Existing header and bottom fixed Cancelar/Guardar documento bar. Do not redesign the application; focus crop on the invoice allocation section, no device hardware.
+Produce desktop (~1100px available) on left and narrow390px mobile on right. Header “Editar factura” and small contextual “FA 0001-1331 · Cliente de ejemplo”. Current document context, files and invoice fields remain above this cropped section, hinted at its upper edge.
+Section purpose “Distribución de factura”, concise help “Indicá qué importe corresponde a cada trabajo y grúa.” Main content:
+a visible note “Total de la factura” $1.000.000,00.
+Editable rows with labels “Trabajo”, “Grúa”, “Importe” and accessible remove icon button:
+row1 “112712 · Izaje de estructura” ; “Grúa 70 t” ; $600.000,00.
+row2 “112713 · Montaje industrial” ; “Equipo desconocido” ; $300.000,00.
+Quiet outline action “Agregar distribución”.
+Below a small distinct low emphasis total line “Sin distribuir” $100.000,00 and “Distribuido” $900.000,00. The undistributed remainder is explicit and visible, never silently shared between jobs. “Sin equipo” and “Equipo desconocido” are distinct choices; show one calm explanatory sentence “Sin equipo confirma que no se utilizó una grúa; desconocido conserva el dato pendiente.”
+No charts, no shadows or card inside each row; use thin dividers, visible select/input borders, normal cool-slate text, indigo primary.
+Mobile rows stack with labels, remove row control still44px, long work labels wrap/combobox truncates with accessible label; amount field16px and full width. Footer stays below with sufficient bottom padding; vertical scroll allowed, do not compress entire form. Do not add historical payment or fake bank information to this example.
+Use exact realistic Spanish, legible currency and consistent sums, faithful typography/spacing to incumbent inputs. Flat sheet grouping rather than a new dashboard.

@@ -19,6 +19,14 @@ Aplicación del cobro se presenta aparte: cada porción identifica medio, trabaj
 - El banco es entrada libre, sin catálogo inventado. Las acciones sobre instrumentos persistidos y las correcciones usan los flujos/versiones aprobados; la imagen muestra composición de alta, no todas las interacciones.
 - Mantener las secciones de contexto, archivos y datos existentes que queden fuera del recorte. No copiar etiquetas artificiales o datos de ejemplo al producto ni a seeds.
 
+## Distribución de factura
+
+Referencia `referencias/22-invoice-allocations.png`, sobre el formulario móvil de documentos y la hoja de Empresa actual; prompt en `.prompt.txt`. Es un recorte de la sección nueva, no un reemplazo de contexto, archivos ni datos de factura. Mantener navegación real de Presupuestos/Documentos: Configuración aparece seleccionada por error en el ejemplo generado. Las cabeceras cortadas del recorte no se reproducen en el código.
+
+La sección reúne trabajo, grúa e importe en una fila de escritorio con eliminación visible; en móvil, etiquetas y campos apilados. Mostrar total documental, distribuido y remanente Sin distribuir con sumas exactas. El remanente se persiste como porción explícita con trabajo nulo y equipo desconocido, no se reparte automáticamente. Propuesta de trabajo/equipo actual solo en altas nuevas de trabajo único, siempre visible. Editar legados conserva desconocido hasta elección explícita. Sin equipo y Equipo desconocido son opciones distintas.
+
+En facturas históricas, añadir por fila el importe de cancelación histórica atribuida, con total conocido protegido y motivo de corrección al cambiarlo; no distribuir cobros proporcionalmente al facturado. En otras facturas no se muestra ni crea ese campo. Errores de suma/importes asociados a filas y un resumen accesible; conservar el resto del formulario y archivos ante un fallo.
+
 ## Resumen del trabajo
 
 Referencia generada `referencias/20-budget-financial-summary.png`, desde la captura vigente del presupuesto (`/tmp/equipos-2026-11-04-evidence/presupuesto-escritorio.png`), contrastada con `BudgetPage`, DESIGN.md y los componentes actuales. Prompt en el archivo hermano `.prompt.txt`.
