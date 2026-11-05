@@ -2,6 +2,7 @@ import { voidFinancialFixture, confirmedCashFixtureFinance } from './financial-f
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { FIELDS_DOCUMENT, schemaDocument } from '@/lib/documents/schemas'
 import { prepareUpload, registerDocument } from '@/lib/documents/service'
+import { contextoDocument } from '@/lib/documents/queries'
 import { idsOfExample } from './quotes-helpers'
 import { limpiarFilesSubidos, limpiarDocuments, newBudget, uploadFile } from './documents-helpers'
 import { adminClient, removeUser, crearUser, sql } from './helpers'
@@ -179,4 +180,18 @@ describe('circuito documental de las pantallas', () => {
     expect(error).toBeNull()
     expect(encontrados?.some((item) => item.id === budget)).toBe(true)
   })
+  it('recupera documentos antiguos y sus finanzas aunque haya más de mil documentos posteriores', async () => {
+    const invoice = await register('factura', { monto: '100,10', tipo_comprobante: 'FA' })
+    const order = await register('orden_pago', { monto: '100,10' }, { aplicaciones: [{ factura_id: invoice, monto_aplicado: 100.10 }] })
+    await sql("update public.documentos set created_at = '2000-01-01' where id = any($1::uuid[])", [[invoice, order]])
+    await sql(`insert into public.documentos(cliente_id, tipo, notas, created_at)
+      select $1, 'orden_compra', $2, '2025-01-01'::timestamptz from generate_series(1, 1001)`, [clientId, MARCA])
+    const context = await contextoDocument(user.client, clientId)
+    expect(context.documentos.some((document) => document.id === invoice)).toBe(true)
+    expect(context.documentos.some((document) => document.id === order)).toBe(true)
+    expect(context.facturas.find((entry) => entry.id === invoice)?.exact_balance).toBe('0.00')
+    expect(context.financeByDocument[invoice].invoiceAllocations).toMatchObject([{ budgetId: budget, amount: '100.10' }])
+    expect(context.financeByDocument[order].paymentInstruments).toMatchObject([{ amount: '100.10', status: 'confirmed' }])
+    expect(context.financeByDocument[order].paymentAllocations).toMatchObject([{ invoiceId: invoice, amount: '100.10' }])
+  }, 30000)
 })
