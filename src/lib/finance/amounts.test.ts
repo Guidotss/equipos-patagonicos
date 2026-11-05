@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { centsToDecimal, formatFinancialAmount, parseAmountCents, sumCents } from './amounts'
+import { centsToDecimal, formatFinancialAmount, parseAggregateCents, parseAmountCents, sumCents } from './amounts'
 
 describe('importes financieros exactos', () => {
   it('interpreta texto argentino y suma centavos sin coma flotante', () => {
@@ -14,5 +14,12 @@ describe('importes financieros exactos', () => {
     expect(formatFinancialAmount('-0.50')).toBe('$ -0,50')
     expect(formatFinancialAmount('-0.00')).toBe('$ 0,00')
     expect(formatFinancialAmount('-1234.56')).toBe('$ -1.234,56')
+  })
+})
+
+
+describe('agregados financieros', () => {
+  it('conserva centavos aun cuando supera el límite de un importe individual', () => {
+    expect(parseAggregateCents('199999999999998.25')).toBe(BigInt('19999999999999825'))
   })
 })

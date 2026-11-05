@@ -5,8 +5,12 @@ import { toast } from 'sonner'
 import { changeVoidingDocument } from '@/app/(app)/documentos/actions'
 import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useRouter } from 'next/navigation'
 
-export function ActionsDocument({ id, anulado: voided }: { id: string; anulado: boolean }) {
+export function ActionsDocument({ id, anulado: voided, financialVersion }: { id: string; anulado: boolean; financialVersion?: number }) {
+  const router = useRouter()
+  const [reason, setReason] = useState('')
   const [confirmando, setConfirmando] = useState(false)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
@@ -18,15 +22,17 @@ export function ActionsDocument({ id, anulado: voided }: { id: string; anulado: 
     setError('')
     startTransition(async () => {
       try {
-        const result = await changeVoidingDocument(id, restore)
+        const result = await changeVoidingDocument(id, restore, financialVersion === undefined ? undefined : { expectedVersion: financialVersion, correctionReason: reason })
         if (!result.ok) {
           setError(result.message)
           return
         }
         setConfirmando(false)
-        if (!restore)
+        if (!restore && financialVersion === undefined)
           toast('Documento anulado', { action: { label: 'Deshacer', onClick: () => change(true) }, duration: 10000 })
-        else toast.success('Documento restaurado')
+        else toast.success(restore ? 'Documento restaurado' : 'Documento anulado')
+        setReason('')
+        router.refresh()
         button.current?.focus()
       } catch {
         setError('No se pudo completar la operación. Reintentá.')
@@ -44,24 +50,27 @@ export function ActionsDocument({ id, anulado: voided }: { id: string; anulado: 
           variant={voided ? 'outline' : 'ghost'}
           size="sm"
           disabled={pending}
-          onClick={() => (voided ? change(true) : setConfirmando(true))}
+          onClick={() => (voided && financialVersion === undefined ? change(true) : setConfirmando(true))}
         >
           {voided ? 'Restaurar' : 'Anular'}
         </Button>
       ) : (
         <InlineConfirmation
-          pregunta="¿Anular este documento?"
-          detail="Los archivos se conservan. Si es un pago, su importe vuelve al saldo de las facturas."
-          textConfirm="Confirmar anulación"
-          textPending="Anulando…"
+          pregunta={voided ? '¿Restaurar este documento?' : '¿Anular este documento?'}
+          detail={voided ? 'Se volverá a incluir el documento en los saldos.' : 'Los archivos se conservan. Los importes reconocidos pueden modificar los saldos.'}
+          textConfirm={voided ? 'Confirmar restauración' : 'Confirmar anulación'}
+          textPending={voided ? 'Restaurando…' : 'Anulando…'}
           tone="peligro"
           pendiente={pending}
-          onConfirm={() => change(false)}
+          confirmDeshabilitado={financialVersion !== undefined && !reason.trim()}
+          onConfirm={() => change(voided)}
           onCancelar={() => {
             setConfirmando(false)
             button.current?.focus()
           }}
-        />
+        >
+          {financialVersion !== undefined ? <label className="flex flex-col gap-1">Motivo<Input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} required /></label> : null}
+        </InlineConfirmation>
       )}
       {error ? (
         <p role="alert" className="max-w-md text-sm text-destructive">

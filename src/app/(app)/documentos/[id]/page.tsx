@@ -60,7 +60,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
                 deben estar vigentes y tener saldo disponible.
               </AlertDescription>
             </Alert>
-            <ActionsDocument id={id} anulado />
+            <ActionsDocument id={id} anulado financialVersion={['factura', 'orden_pago'].includes(document.tipo) ? document.financial_version : undefined} />
             {aplicaciones.data!.length ? (
               <ul className="flex flex-col gap-2">
                 {aplicaciones.data!.map((item) => (

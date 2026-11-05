@@ -1,0 +1,50 @@
+import Link from 'next/link'
+import { centsToDecimal, formatFinancialAmount, parseAggregateCents, sumCents } from '@/lib/finance/amounts'
+import type { Document } from '@/lib/documents/screens'
+
+type FinancialSummaryProps = {
+  billed: string
+  credited: string
+  withheld: string
+  legacy: string
+  advances: string
+  pendingChecks: string
+  balance: string | null
+  documents: Document[]
+}
+
+export function FinancialSummary({ billed, credited, withheld, legacy, advances, pendingChecks, balance, documents }: FinancialSummaryProps) {
+  const cancelled = centsToDecimal(sumCents([credited, withheld, legacy].map((amount) => parseAggregateCents(amount))))
+  const credit = balance?.startsWith('-')
+  const unresolved = documents
+  return (
+    <section aria-label="Resumen financiero" className="rounded-xl border bg-card p-4 sm:p-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <SummaryItem label="Facturado" value={billed} />
+        <SummaryItem label="Cancelado" value={cancelled} detail={parseAggregateCents(advances) > BigInt(0) ? 'Incluye anticipos' : undefined} />
+        <div>
+          <p className="text-sm text-muted-foreground">{credit ? 'Crédito a favor' : 'Saldo a cobrar'}</p>
+          <p className="text-xl font-semibold tabular-nums" data-testid="saldo-presupuesto">{balance === null ? 'Saldo pendiente de distribución' : formatFinancialAmount(credit ? balance.slice(1) : balance)}</p>
+        </div>
+      </div>
+      <dl className="mt-4 grid gap-2 border-t pt-4 text-sm">
+        <SummaryLine label="Dinero acreditado" value={credited} />
+        <SummaryLine label="Retenciones" value={withheld} />
+        {parseAggregateCents(legacy) > BigInt(0) ? <SummaryLine label="Cancelaciones anteriores sin medio identificado" value={legacy} /> : null}
+      </dl>
+      <dl className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2 sm:gap-6">
+        <SummaryLine label="Anticipos sin aplicar" value={advances} />
+        <SummaryLine label="Cheques pendientes" value={pendingChecks} />
+      </dl>
+      {balance === null ? <p className="mt-4 text-sm text-muted-foreground">Revisá la distribución de las facturas y órdenes de pago vinculadas: {unresolved.map((document, index) => <span key={document.id}>{index ? ', ' : ''}<Link className="text-primary underline" href={`/documentos/${document.id}`}>{document.numero || (document.tipo === 'factura' ? 'Factura sin número' : 'Orden de pago sin número')}</Link></span>)}.</p> : null}
+    </section>
+  )
+}
+
+function SummaryItem({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return <div><p className="text-sm text-muted-foreground">{label}</p><p className="text-xl font-semibold tabular-nums">{formatFinancialAmount(value)}</p>{detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}</div>
+}
+
+function SummaryLine({ label, value }: { label: string; value: string }) {
+  return <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{label}</dt><dd className="font-medium tabular-nums">{formatFinancialAmount(value)}</dd></div>
+}

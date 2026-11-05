@@ -12,6 +12,11 @@ import { cn } from '@/lib/utils'
 
 type RowBudget = Database['public']['Functions']['buscar_presupuestos']['Returns'][number] & { exact_balance: string | null }
 
+function displayBalance(value: string | null) {
+  if (value === null) return 'Saldo pendiente de distribución'
+  return value.startsWith('-') ? `Crédito a favor ${formatFinancialAmount(value.slice(1))}` : formatFinancialAmount(value)
+}
+
 export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
   return (
     <>
@@ -59,7 +64,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
                 <TableCell className="hidden @min-[52rem]/listado:table-cell">
                   <DocumentsBudget presupuesto={budget} column />
                 </TableCell>
-                <TableCell className="text-right font-medium tabular-nums">{budget.exact_balance == null ? 'Saldo por determinar' : formatFinancialAmount(budget.exact_balance)}</TableCell>
+                <TableCell className="text-right font-medium tabular-nums">{displayBalance(budget.exact_balance)}</TableCell>
                 <TableCell className="px-2!">
                   <Link
                     href={`/presupuestos/${budget.id}`}
@@ -94,7 +99,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
               <DocumentsBudget presupuesto={budget} className="mt-3" />
               <dl className="mt-3 flex items-baseline justify-between gap-3 border-t pt-3 text-sm">
                 <dt className="text-muted-foreground">Saldo a cobrar</dt>
-                <dd className="text-right font-semibold tabular-nums">{budget.exact_balance == null ? 'Saldo por determinar' : formatFinancialAmount(budget.exact_balance)}</dd>
+                <dd className="text-right font-semibold tabular-nums">{displayBalance(budget.exact_balance)}</dd>
               </dl>
               <span className="mt-3 inline-flex items-center gap-1 text-xs text-primary">Abrir presupuesto <ArrowUpRight className="size-3.5" aria-hidden /></span>
             </Link>

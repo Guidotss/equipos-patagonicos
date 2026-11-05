@@ -11,7 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Pill } from '@/components/ui/pill'
 import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import { contextoDocument } from '@/lib/documents/queries'
-import { formatFinancialAmount } from '@/lib/finance/amounts'
+import { FinancialSummary } from '@/components/budgets/financial-summary'
+import { unresolvedDocuments } from '@/lib/finance/unresolved-documents'
 import { STATUSES_BUDGET } from '@/lib/budgets/list'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
@@ -29,7 +30,7 @@ export default async function BudgetPage({
   if (!isUuid(id)) notFound()
   const consulta = await searchParams
   const supabase = await createClient()
-  const { data: budget, error } = await supabase.from('v_presupuestos').select('*, exact_balance:saldo::text').eq('id', id).maybeSingle()
+  const { data: budget, error } = await supabase.from('v_presupuestos').select('*, exact_balance:saldo::text, exact_billed:facturado::text, exact_credited:credited_money::text, exact_withheld:withheld_amount::text, exact_legacy:legacy_settled_amount::text, exact_advances:unapplied_advances::text, exact_pending:pending_check_amount::text').eq('id', id).maybeSingle()
   if (error) throw error
   if (!budget) notFound()
   const [contexto, vinculos] = await Promise.all([
@@ -98,20 +99,8 @@ export default async function BudgetPage({
             <AlertDescription>Motivo de anulación: {budget.presupuesto_motivo}</AlertDescription>
           </Alert>
         ) : null}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_1.6fr]">
-          {indicadores.map(([label, value]) => (
-            <div key={label} className="rounded-xl border bg-card px-4 py-3 shadow-tarjeta">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-2xl font-semibold tabular-nums">{value ?? 0}</p>
-            </div>
-          ))}
-          <div className="col-span-2 rounded-xl border bg-card px-4 py-3 shadow-tarjeta sm:col-span-4 lg:col-span-1">
-            <p className="text-xs text-muted-foreground">Saldo a cobrar</p>
-            <p className="text-2xl font-semibold tabular-nums" data-testid="saldo-presupuesto">
-              {budget.exact_balance == null ? 'Por determinar' : formatFinancialAmount(budget.exact_balance)}
-            </p>
-          </div>
-        </div>
+        <FinancialSummary billed={budget.exact_billed} credited={budget.exact_credited} withheld={budget.exact_withheld} legacy={budget.exact_legacy} advances={budget.exact_advances} pendingChecks={budget.exact_pending} balance={budget.exact_balance} documents={unresolvedDocuments(documentos, contexto)} />
+        <p className="text-sm text-muted-foreground">{indicadores.map(([label, value]) => `${value ?? 0} ${label}`).join(' · ')}</p>
         {nuevo && budget.presupuesto_estado !== 'anulado' ? (
           <DocumentForm
             key={`${nuevo}-${deliveryNoteId}-${invoiceId}`}

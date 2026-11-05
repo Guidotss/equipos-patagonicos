@@ -120,7 +120,7 @@ export function SectionsDocuments({
                           ) : null}
                           {pagos.length ? (
                             <p className="text-xs text-muted-foreground">
-                              Aplica a{' '}
+                              Destino declarado (puede incluir importes pendientes):{' '}
                               {pagos
                                 .map((pago) => {
                                   const item = documentos.find((item) => item.id === pago.factura_id)
@@ -172,7 +172,7 @@ export function SectionsDocuments({
                               ) : null}
                             </>
                           ) : null}
-                          <ActionsDocument id={document.id} anulado={Boolean(document.deleted_at)} />
+                          <ActionsDocument id={document.id} anulado={Boolean(document.deleted_at)} financialVersion={['factura', 'orden_pago'].includes(document.tipo) ? document.financial_version : undefined} />
                         </div>
                       </div>
                     </li>

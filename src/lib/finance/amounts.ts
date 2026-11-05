@@ -43,3 +43,10 @@ export function formatFinancialAmount(value: string): string {
   const sign = negative && (BigInt(integer) !== ZERO || BigInt(fraction || '0') !== ZERO) ? '-' : ''
   return `$ ${sign}${new Intl.NumberFormat('es-AR').format(BigInt(integer))},${fraction.padEnd(2, '0')}`
 }
+
+/** Los agregados pueden superar el límite de cada importe individual. */
+export function parseAggregateCents(value: string): bigint {
+  if (!/^\d+(\.\d{1,2})?$/.test(value)) throw new Error('Importe financiero inválido')
+  const [integer, fraction = ''] = value.split('.')
+  return BigInt(integer) * HUNDRED + BigInt(fraction.padEnd(2, '0'))
+}
