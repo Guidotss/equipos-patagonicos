@@ -37,6 +37,8 @@ El caso ilustrado usa factura de 1.000.000, cancelación de 400.000 (350.000 de 
 
 El total reconocido del trabajo incluye anticipos asignados. Cuando los haya, aclarar «Incluye anticipos» junto a Cancelado; la línea Anticipos sin aplicar es un desglose, no otro importe que se suma a Cancelado. Aplicarlos a una factura conserva el total recibido y disminuye ese desglose. Un cheque pendiente con destino sin factura no es un anticipo ya cobrado.
 
+«Aplicar anticipo» usa únicamente un instrumento y una asignación de OP existentes, conservando sus IDs. El crédito histórico protegido de una factura anulada no tiene esos registros: mostrar su factura de origen y enlazar a revisarla/restaurarla, sin crear OP ni medio ficticio. No presentar una transferencia de ese cobro histórico a otra factura como si estuviera implementada; se conserva la fuente protegida original.
+
 Las acciones de acreditar/rechazar sobre un documento guardado deben conservar el formulario. Si hay cambios o archivos sin guardar, pedir guardarlos antes de ejecutar la acción, sin descartarlos ni refrescar silenciosamente. Usar la versión que la pantalla recibió; al completar una acción y refrescar un formulario limpio, inicializar desde el nuevo contexto. Anular/restaurar documentos financieros pide motivo en la confirmación existente, incluyendo deshacer; evitar el deshacer antiguo que reenvía una versión anterior.
 
 ## Facturación por grúa
