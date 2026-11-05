@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
-import { EventEmitter } from 'node:events';
+import { EventEmitter, getEventListeners } from 'node:events';
+import { setImmediate as nextTurn } from 'node:timers/promises';
+import pg from 'pg';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { createUpgradeHooks, runFinancialUpgrade } from './test-financial-upgrade.mjs';
 import { runTests } from './test-runner.mjs';
+import { withUpgradeDatabase } from './financial-upgrade-fixtures.mjs';
+import { crearEnvTests } from './test-env.mjs';
 
 const migrationNames = ['20261104120000_financial_allocations.sql', '20261104121000_financial_operations.sql', '20261104122000_financial_views.sql'];
 const localStatus = { API_URL: 'http://127.0.0.1:55321', DB_URL: 'postgresql://postgres:postgres@127.0.0.1:55322/postgres', PUBLISHABLE_KEY: 'publica-sintetica', SECRET_KEY: 'secreta-sintetica' };
@@ -101,3 +105,67 @@ test('revalida el entorno extendido por un hook antes de lanzar la suite', async
     assert.equal(events.at(-1), 'cleanup');
   });
 });
+
+
+test('abortar una conexión pendiente termina con 143 y libera recursos y bloqueo sin red', async (t) => {
+  await scenario(async (options, events) => {
+    let rejectConnection;
+    let endCalls = 0;
+    let signal;
+    const callback = t.mock.fn();
+    const connection = new Promise((_, reject) => { rejectConnection = reject; });
+    const database = {
+      connect() {
+        queueMicrotask(() => options.signals.emit('SIGTERM'));
+        return connection;
+      },
+      async end() { endCalls++; },
+    };
+    t.mock.method(pg, 'Client', function MockDatabase() { return database; });
+    const running = runFinancialUpgrade({ ...options, seed: (env, context) => {
+      signal = context.signal;
+      return withUpgradeDatabase(env, callback, context);
+    } });
+    let timer;
+    try {
+      const deadline = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('El aborto quedó esperando connect()')), 1000);
+      });
+      assert.equal(await Promise.race([running, deadline]), 143);
+      assert.deepEqual(events, ['start', 'cleanup']);
+      assert.equal(callback.mock.callCount(), 0);
+      assert.equal(endCalls, 1);
+      assert.equal(getEventListeners(signal, 'abort').length, 0);
+    } finally {
+      clearTimeout(timer);
+      // El rechazo tardío también tiene que quedar observado después de cancelar la espera.
+      rejectConnection(new Error('Fallo tardío de conexión sintética'));
+      await running;
+      await nextTurn();
+    }
+  });
+});
+
+for (const outcome of ['success', 'error']) {
+  test(`la conexión ${outcome} cierra el cliente y retira el listener de aborto sin red`, async (t) => {
+    const controller = new AbortController();
+    const error = new Error('Error sintético de conexión');
+    const callback = t.mock.fn(async () => 'resultado');
+    let endCalls = 0;
+    const database = {
+      async connect() { if (outcome === 'error') throw error; },
+      async end() { endCalls++; },
+    };
+    t.mock.method(pg, 'Client', function MockDatabase() { return database; });
+    const env = crearEnvTests(localStatus, 'a1c25470-8da3-4eef-8833-e2d6ac27200d', {});
+    const result = withUpgradeDatabase(env, callback, { signal: controller.signal });
+    if (outcome === 'error') await assert.rejects(result, error);
+    else assert.equal(await result, 'resultado');
+    assert.equal(callback.mock.callCount(), outcome === 'success' ? 1 : 0);
+    assert.equal(endCalls, 1);
+    assert.equal(getEventListeners(controller.signal, 'abort').length, 0);
+    controller.abort();
+    await nextTurn();
+    assert.equal(endCalls, 1);
+  });
+}

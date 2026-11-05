@@ -5,15 +5,30 @@ import { validateEnvTests } from './test-env.mjs';
 
 export async function withUpgradeDatabase(testEnv, callback, { signal } = {}) {
   validateEnvTests(testEnv);
-  const database = new pg.Client({ connectionString: testEnv.SUPABASE_DB_URL });
   signal?.throwIfAborted();
-  const abort = () => { void database.end().catch(() => {}); };
+  const database = new pg.Client({ connectionString: testEnv.SUPABASE_DB_URL });
+  let closing;
+  const close = () => closing ??= Promise.resolve().then(() => database.end());
+  let rejectAbort;
+  const aborted = new Promise((_, reject) => { rejectAbort = reject; });
+  const abort = () => {
+    rejectAbort(signal.reason);
+    void close().catch(() => {});
+  };
   signal?.addEventListener('abort', abort, { once: true });
   try {
-    await database.connect();
+    const connecting = Promise.resolve().then(() => {
+      signal?.throwIfAborted();
+      return database.connect();
+    });
+    // pg puede cerrar el socket sin resolver connect(): el aborto debe terminar la espera por sí mismo.
+    await Promise.race([connecting, aborted]);
+    signal?.throwIfAborted();
     return await callback(database);
+  } finally {
+    signal?.removeEventListener('abort', abort);
+    await close();
   }
-  finally { signal?.removeEventListener('abort', abort); await database.end(); }
 }
 
 export async function readLegacyFinancialSnapshot(database) {
