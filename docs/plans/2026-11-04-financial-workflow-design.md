@@ -15,6 +15,8 @@ Conservar `documentos` y extenderlo con asignaciones explícitas. Añadir solo m
 
 Nuevos identificadores y contratos técnicos en inglés; textos y comentarios en español. Mantener claves españolas existentes y sus comportamientos no financieros. Importes `numeric(14,2)`, positivos, sin redondear silenciosamente entradas de tres decimales. El navegador suma centavos enteros y envía importes decimales explícitos; SQL valida límites en transacción.
 
+El modelo, las operaciones y las vistas se consolidan antes de publicar en **una sola migración financiera aún no aplicada a bases persistentes**, `20261104120000_financial_allocations.sql`, dentro de un único BEGIN/COMMIT. Las tareas siguientes agregan sus secciones a ese archivo sin publicar etapas parciales. Esto evita una ventana entre archivos en la que el servidor anterior pueda crear comprobantes que no tengan asignaciones nuevas. Las migraciones publicadas anteriores nunca se modifican.
+
 ### Modelo
 
 `documentos.payment_condition` es texto, vacío fuera de OP. `financial_version` comienza en 1 y protege modificaciones financieras frente a formularios desactualizados.
@@ -55,6 +57,8 @@ Mantener `registrar_documento` y `actualizar_documento` con su firma; transporta
 `change_payment_instrument_status` controla versión, transición, límites y auditoría. Anular/restaurar deben recibir versión esperada desde la UI para documentos financieros. Extender esas firmas con argumentos opcionales sin dejar overloads ambiguos (recrear firma y grants; no usar CASCADE). Llamadas antiguas de OC/remito siguen funcionando; para factura/OP se exige versión en las acciones nuevas y se rechaza la modificación financiera antigua incompleta.
 
 Reordenar también `importar_factura_historica` (cliente antes de hashes) y `aprobar_con_orden_compra` (cliente antes de cotización). `revertir_aprobacion`/`borrar_cotizacion` verifican importes financieros activos y conservan referencias históricas; no deben permitir borrar un trabajo con anticipo activo no reasignado.
+
+Añadir un control diferido de integridad de documentos financieros que rechace al COMMIT un comprobante sin modelo completo o con sumas inconsistentes. Es una validación de solo lectura, sin tomar tardíamente el bloqueo del cliente: las RPC normales ya lo toman al principio. También cubre una invocación del servidor anterior que hubiese comenzado antes del cambio de funciones y estuviese esperando el DDL; debe fallar atómicamente, nunca confirmar una factura sin reparto. Al final de la migración única, comparar las vistas nuevas contra el snapshot anterior antes del COMMIT.
 
 Tablas nuevas: RLS staff, SELECT autenticado, escrituras solo RPC; guarda de rol antes de validar contenido. Documentos/vínculos/OP ya deniegan DML autenticado directo. No cambiar permisos de Empresa/Equipos ni acceso de gruistas a datos comerciales.
 
