@@ -10,6 +10,8 @@ import { schemaSaveDocument } from '@/lib/documents/screens'
 import { ErrorDocument, prepareUpload, registerDocument } from '@/lib/documents/service'
 import { errorsByPath, databaseErrorMessage } from '@/lib/forms'
 import type { Result } from '@/lib/result'
+import { changeDocumentLifecycle, changePaymentStatus, financialDocumentData } from '@/lib/finance/service'
+import { documentLifecycleSchema, paymentStatusActionSchema } from '@/lib/finance/schemas'
 import { createClient } from '@/lib/supabase/server'
 
 function fallo(error: unknown): Result<never> {
@@ -79,10 +81,10 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
       if (document.cliente_id !== datos.clientId) throw new ErrorDocument('El documento pertenece a otro cliente')
       const { error } = await supabase.rpc('actualizar_documento_con_archivos', {
         p_id: id,
-        p_datos: datos.datos,
+        p_datos: financialDocumentData(datos.datos, datos.finance, datos.paymentCondition),
         p_presupuestos: datos.budgets,
         p_remitos: datos.datos.tipo === 'factura' ? datos.remitos : [],
-        p_aplicaciones: datos.datos.tipo === 'orden_pago' ? datos.aplicaciones : [],
+        p_aplicaciones: datos.finance !== undefined ? null : datos.datos.tipo === 'orden_pago' ? datos.aplicaciones ?? null : [],
         p_archivos: datos.archivos,
         p_quitar: datos.quitar,
       })
@@ -99,7 +101,7 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
       id = await registerDocument(supabase, {
         ...datos,
         remitos: datos.datos.tipo === 'factura' ? datos.remitos : [],
-        aplicaciones: datos.datos.tipo === 'orden_pago' ? datos.aplicaciones : [],
+        ...(datos.finance !== undefined ? {} : { aplicaciones: datos.datos.tipo === 'orden_pago' ? datos.aplicaciones ?? [] : [] }),
       })
     }
     actualizarScreens()
@@ -109,18 +111,26 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
   }
 }
 
-export async function changeVoidingDocument(id: unknown, restore: unknown): Promise<Result> {
+export async function changeVoidingDocument(id: unknown, restore: unknown, finance?: { expectedVersion?: number; correctionReason?: string }): Promise<Result> {
   await requireStaff()
-  const validado = z.object({ id: z.uuid(), restore: z.boolean() }).safeParse({ id, restore })
+  const validado = documentLifecycleSchema.safeParse({ id, restore, ...finance })
   if (!validado.success) return { ok: false, message: 'Documento inválido' }
   try {
-    const { error } = await (
-      await createClient()
-    ).rpc(validado.data.restore ? 'restaurar_documento' : 'anular_documento', { p_id: validado.data.id })
-    if (error) throw error
+    await changeDocumentLifecycle(await createClient(), validado.data)
     actualizarScreens()
     return { ok: true, datos: null }
   } catch (error) {
     return fallo(error)
   }
+}
+
+export async function changeInstrumentStatus(input: unknown): Promise<Result> {
+  await requireStaff()
+  const parsed = paymentStatusActionSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, message: 'Revisá los datos marcados', errors: errorsByPath(parsed.error) }
+  try {
+    await changePaymentStatus(await createClient(), parsed.data)
+    actualizarScreens()
+    return { ok: true, datos: null }
+  } catch (error) { return fallo(error) }
 }

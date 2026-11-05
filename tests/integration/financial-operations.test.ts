@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { FinanceInput } from '@/lib/documents/finance'
 import type { Json } from '@/lib/supabase/database.types'
+import { readFinanceByDocument } from '@/lib/finance/queries'
+import { parseDecimalCents } from '@/lib/finance/amounts'
 import { crearUser, removeUser, sql, withConexion, anonClient, contraTransaccionInCurso } from './helpers'
 import { limpiarDocuments, limpiarFilesSubidos, newBudget, uploadFile } from './documents-helpers'
 
@@ -86,6 +88,53 @@ async function status(opId: string, entryId: string, expectedVersion: number, ne
 }
 
 describe('autoridad monetaria y auditoría financiera', () => {
+  it('proyecta partes desiguales, retenciones, cheques y anulaciones sin duplicar la factura', async () => {
+    const firstBudget = await newBudget(staff.client, clientId, marker)
+    const secondBudget = await newBudget(staff.client, clientId, marker)
+    const id = await invoice('1000', { invoiceAllocations: [billed('800', firstBudget), billed('200', secondBudget)] }, [firstBudget, secondBudget])
+    const cash = instrument('cash', '100')
+    const withholding = instrument('withholding', '50')
+    const check = instrument('check', '200')
+    const op = await register('orden_pago', '350', { paymentInstruments: [cash, withholding, check], paymentAllocations: [
+      { instrumentId: cash.id, budgetId: firstBudget, invoiceId: id, amount: '100' },
+      { instrumentId: withholding.id, budgetId: firstBudget, invoiceId: id, amount: '50' },
+      { instrumentId: check.id, budgetId: secondBudget, invoiceId: id, amount: '200' },
+    ] }, [firstBudget, secondBudget])
+    expect(op.error).toBeNull()
+    const finance = await readFinanceByDocument(staff.client, [id, op.data!])
+    expect(finance[id].invoiceAllocations.map((entry) => entry.amount).sort()).toEqual(['200.00', '800.00'])
+    expect(finance[op.data!].paymentInstruments).toHaveLength(3)
+    expect(finance[op.data!].paymentAllocations).toHaveLength(3)
+    const invoiceView = async () => (await sql('select cobrado::text, saldo::text, credited_money::text, withheld_amount::text, pending_check_amount::text, available_amount::text from public.v_facturas where id = $1', [id]))[0]
+    const budgetViews = async () => sql('select id, facturado::text, saldo::text, balance_determinate from public.v_presupuestos where id = any($1::uuid[]) order by facturado desc', [[firstBudget, secondBudget]])
+    expect(await invoiceView()).toMatchObject({ cobrado: '150.00', saldo: '850.00', credited_money: '100.00', withheld_amount: '50.00', pending_check_amount: '200.00', available_amount: '650.00' })
+    expect(await budgetViews()).toEqual([
+      { id: firstBudget, facturado: '800.00', saldo: '650.00', balance_determinate: true },
+      { id: secondBudget, facturado: '200.00', saldo: '200.00', balance_determinate: true },
+    ])
+    expect((await status(op.data!, check.id, 1, 'cleared', '2024-06-20')).error).toBeNull()
+    expect(await invoiceView()).toMatchObject({ cobrado: '350.00', saldo: '650.00', pending_check_amount: '0' })
+    expect((await budgetViews())[1]).toMatchObject({ saldo: '0.00' })
+    expect((await staff.client.rpc('anular_documento', { p_id: op.data!, p_expected_version: 2, p_reason: 'Anulación de prueba' })).error).toBeNull()
+    expect(await invoiceView()).toMatchObject({ cobrado: '0', saldo: '1000.00' })
+    expect((await staff.client.rpc('restaurar_documento', { p_id: op.data!, p_expected_version: 3, p_reason: 'Restauración de prueba' })).error).toBeNull()
+    expect(await invoiceView()).toMatchObject({ cobrado: '350.00', saldo: '650.00' })
+  })
+
+  it('distingue reparto monetario pendiente de equipo desconocido y fondos sin asignar', async () => {
+    const firstBudget = await newBudget(staff.client, clientId, marker)
+    const secondBudget = await newBudget(staff.client, clientId, marker)
+    await invoice('100', { invoiceAllocations: [billed('100', firstBudget)] }, [firstBudget])
+    expect((await sql('select saldo::text, balance_determinate from public.v_presupuestos where id = $1', [firstBudget]))[0]).toEqual({ saldo: '100.00', balance_determinate: true })
+    await invoice('200', undefined, [firstBudget, secondBudget])
+    expect(await sql('select saldo, balance_determinate, linked_unallocated_invoice_amount::text from public.v_presupuestos where id = any($1::uuid[]) order by id', [[firstBudget, secondBudget]]))
+      .toEqual(expect.arrayContaining([{ saldo: null, balance_determinate: false, linked_unallocated_invoice_amount: '200.00' }, { saldo: null, balance_determinate: false, linked_unallocated_invoice_amount: '200.00' }]))
+    const cash = instrument('cash', '50')
+    const op = await register('orden_pago', '50', { paymentInstruments: [cash] }, [firstBudget])
+    expect(op.error).toBeNull()
+    expect((await sql('select linked_unallocated_instrument_count::int as count, linked_unallocated_instrument_amount::text as amount from public.v_presupuestos where id = $1', [firstBudget]))[0]).toEqual({ count: 1, amount: '50.00' })
+  })
+
   it('requiere medios explícitos y conserva la condición de pago como texto', async () => {
     expect((await register('orden_pago', '100')).error?.message).toContain('Declará los medios')
     const entry = instrument('cash', '100')
@@ -119,6 +168,8 @@ describe('autoridad monetaria y auditoría financiera', () => {
     const opId = await order([entry], id)
     expect((await status(opId, entry.id, 1, 'rejected')).error).toBeNull()
     expect(await totals(id)).toEqual({ money: 0, withholding: 0, legacy: 0, reserved: 0 })
+    expect((await sql('select cobrado::text, pending_check_amount::text, saldo::text from public.v_facturas where id = $1', [id]))[0])
+      .toEqual({ cobrado: '0', pending_check_amount: '0', saldo: '100.00' })
     await order([instrument('cash', '100')], id)
     expect((await status(opId, entry.id, 2, 'pending')).error?.message).toContain('superan')
     expect(await sql('select amount, status from public.payment_instruments where id = $1', [entry.id]))
@@ -254,13 +305,19 @@ describe('autoridad monetaria y auditoría financiera', () => {
   })
 
   it('aplica un anticipo existente sin fabricar otro instrumento ni otro cobro', async () => {
+    const advances = async () => parseDecimalCents((await sql<{ amount: string }>('select unapplied_advances::text as amount from public.v_presupuestos where id = $1', [budgetId]))[0].amount)!
+    const before = await advances()
     const entry = instrument('transfer', '100')
     const opId = await order([entry], null)
+    expect(await advances()).toBe(before + BigInt(10000))
     const id = await invoice('300')
     const [allocation] = await sql<{ id: string }>('select id from public.payment_allocations where instrument_id = $1', [entry.id])
     expect((await edit(opId, 'orden_pago', '100', { expectedVersion: 1, correctionReason: 'Aplicación del anticipo a la factura recibida',
       paymentAllocations: [{ id: allocation.id, instrumentId: entry.id, budgetId, invoiceId: id, amount: '100' }] })).error).toBeNull()
     expect((await totals(id)).money).toBe(100)
+    expect(await advances()).toBe(before)
+    expect((await sql('select cobrado::text, saldo::text from public.v_facturas where id = $1', [id]))[0])
+      .toEqual({ cobrado: '100.00', saldo: '200.00' })
     expect(await sql('select count(*)::int as count, sum(amount)::text as amount from public.payment_instruments where op_id = $1', [opId]))
       .toEqual([{ count: 1, amount: '100.00' }])
     expect(300 - (await totals(id)).money).toBe(200)
@@ -345,7 +402,11 @@ describe('autoridad monetaria y auditoría financiera', () => {
     const id = await invoice('100')
     const entry = instrument('cash', '100')
     await order([entry], id)
+    const [before] = await sql<{ advance: string; credited: string }>('select unapplied_advances::text as advance, credited_money::text as credited from public.v_presupuestos where id = $1', [budgetId])
     expect((await staff.client.rpc('anular_documento', { p_id: id, p_expected_version: 1, p_reason: 'Factura emitida incorrectamente' })).error).toBeNull()
+    const [after] = await sql<{ advance: string; credited: string }>('select unapplied_advances::text as advance, credited_money::text as credited from public.v_presupuestos where id = $1', [budgetId])
+    expect(parseDecimalCents(after.advance)! - parseDecimalCents(before.advance)!).toBe(BigInt(10000))
+    expect(after.credited).toBe(before.credited)
     expect(await sql('select invoice_id, amount from public.payment_allocations where instrument_id = $1', [entry.id]))
       .toEqual([{ invoice_id: id, amount: '100.00' }])
     expect((await totals(id)).money).toBe(100)
@@ -385,9 +446,18 @@ describe('autoridad monetaria y auditoría financiera', () => {
       try {
         const result = await user.client.rpc('registrar_documento', { p_datos: { finance: false }, p_presupuestos: [], p_archivos: [] })
         expect(result.error?.code).toBe('42501')
+        for (const view of ['v_facturas', 'v_presupuestos', 'v_financial_ledger', 'v_payment_instrument_balances'] as const) {
+          const read = await user.client.from(view).select('*')
+          expect(read.error).toBeNull()
+          expect(read.data).toEqual([])
+        }
       } finally { await removeUser(user.id) }
     }
     const result = await anonClient().rpc('registrar_documento', { p_datos: { finance: false } as Json, p_presupuestos: [], p_archivos: [] })
     expect(result.error?.code).toBe('42501')
+    for (const view of ['v_facturas', 'v_presupuestos', 'v_financial_ledger', 'v_payment_instrument_balances'] as const) {
+      const read = await anonClient().from(view).select('*')
+      expect(read.error).not.toBeNull()
+    }
   })
 })

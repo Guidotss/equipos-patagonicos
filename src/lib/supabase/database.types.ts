@@ -284,6 +284,12 @@ isOneToOne: true
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "crane_delivery_notes_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: true
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
+    },{
       foreignKeyName: "crane_delivery_notes_equipment_id_fkey"
       columns: ["equipment_id"]
 isOneToOne: false
@@ -359,6 +365,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documento_archivos_documento_id_fkey"
+      columns: ["documento_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"documento_presupuestos": {
@@ -403,6 +415,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documento_presupuestos_documento_id_fkey"
+      columns: ["documento_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"documentos": {
@@ -453,6 +471,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documentos_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"empresa_config": {
@@ -525,6 +549,12 @@ isOneToOne: true
 isOneToOne: true
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "facturas_historicas_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: true
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"financial_events": {
@@ -551,6 +581,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "financial_events_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"firmantes": {
@@ -597,6 +633,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoice_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"op_facturas": {
@@ -624,6 +666,12 @@ isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "op_facturas_factura_id_fkey"
+      columns: ["factura_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
+    },{
       foreignKeyName: "op_facturas_op_id_fkey"
       columns: ["op_id"]
 isOneToOne: false
@@ -635,6 +683,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "op_facturas_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"payment_allocations": {
@@ -656,6 +710,18 @@ isOneToOne: false
       referencedRelation: "payment_instruments"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "payment_allocations_instrument_id_fkey"
+      columns: ["instrument_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["instrument_id"]
+    },{
+      foreignKeyName: "payment_allocations_instrument_id_fkey"
+      columns: ["instrument_id"]
+isOneToOne: false
+      referencedRelation: "v_payment_instrument_balances"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "payment_allocations_invoice_id_fkey"
       columns: ["invoice_id"]
 isOneToOne: false
@@ -667,6 +733,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"payment_instruments": {
@@ -693,6 +765,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "v_facturas"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_instruments_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
     }
                   ]
                 },"plantillas": {
@@ -790,7 +868,7 @@ isOneToOne: false
                   ]
                 },"v_facturas": {
                   Row: {
-                    "cliente_id": string,"cobrado": number | null,"estado_cobro": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"numero": string,"saldo": number | null,"tipo_comprobante": string | null
+                    "available_amount": number | null,"cliente_id": string,"cobrado": number | null,"credited_money": number | null,"estado_cobro": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"id": string,"legacy_settled_amount": number | null,"monto": number | null,"numero": string,"pending_check_amount": number | null,"reserved_amount": number | null,"saldo": number | null,"tipo_comprobante": string | null,"withheld_amount": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -802,6 +880,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"v_financial_ledger": {
+                  Row: {
+                    "allocation_id": string,"amount": number,"budget_id": string | null,"cliente_id": string,"credited_money": number | null,"instrument_id": string,"invoice_id": string | null,"legacy_settled_amount": number | null,"op_id": string,"pending_check_amount": number | null,"withheld_amount": number | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "documentos_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
+    }
+                  ]
                 },"v_inicio_colas": {
                   Row: {
                     "asunto": string | null,"cliente_id": string | null,"cliente_razon_social": string | null,"cola": string | null,"contacto_nombre": string | null,"dias": number | null,"email": string | null,"fecha": string | null,"fecha_referencia": string | null,"id": string | null,"importe": number | null,"numero": string | null,"presupuesto_id": string | null,"telefono": string | null,"vence_el": string | null
@@ -810,9 +920,41 @@ isOneToOne: false
                   Relationships: [
 
                   ]
+                },"v_payment_instrument_balances": {
+                  Row: {
+                    "allocated_amount": number | null,"amount": number,"cliente_id": string,"id": string,"kind": string,"op_id": string,"recognized": boolean | null,"status": string,"unallocated_amount": number | null,"unresolved_relevant": boolean | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "documentos_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_instruments_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_instruments_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_instruments_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "v_financial_ledger"
+      referencedColumns: ["op_id"]
+    }
+                  ]
                 },"v_presupuestos": {
                   Row: {
-                    "asunto": string,"cliente_id": string,"cliente_razon_social": string,"facturado": number | null,"facturas": number | null,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"formato": string,"id": string,"numero": number,"ordenes_compra": number | null,"ordenes_pago": number | null,"origen": string,"presupuesto_estado": string | null,"presupuesto_motivo": string,"remitos": number | null,"remitos_sin_factura": number | null,"saldo": number | null
+                    "assigned_balance": number | null,"asunto": string,"balance_determinate": boolean | null,"cliente_id": string,"cliente_razon_social": string,"credited_money": number | null,"facturado": number | null,"facturas": number | null,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"formato": string,"id": string,"legacy_settled_amount": number | null,"linked_unallocated_instrument_amount": number | null,"linked_unallocated_instrument_count": number | null,"linked_unallocated_invoice_amount": number | null,"linked_unallocated_invoice_count": number | null,"linked_unallocated_payment_amount": number | null,"linked_unallocated_payment_count": number | null,"linked_unallocated_recognized_amount": number | null,"linked_unclassified_instrument_amount": number | null,"numero": number,"ordenes_compra": number | null,"ordenes_pago": number | null,"origen": string,"pending_check_amount": number | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"remitos": number | null,"remitos_sin_factura": number | null,"saldo": number | null,"unapplied_advances": number | null,"withheld_amount": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -922,9 +1064,12 @@ isOneToOne: false
                            },
 "buscar_presupuestos":
 { Args: { "cliente"?: string,"estado"?: string,"texto"?: string }; Returns: {
-              "asunto": string,
+              "assigned_balance": number | null,
+"asunto": string,
+"balance_determinate": boolean | null,
 "cliente_id": string,
 "cliente_razon_social": string,
+"credited_money": number | null,
 "facturado": number | null,
 "facturas": number | null,
 "fecha": string,
@@ -932,15 +1077,27 @@ isOneToOne: false
 "fecha_proxima_actualizacion": string | null,
 "formato": string,
 "id": string,
+"legacy_settled_amount": number | null,
+"linked_unallocated_instrument_amount": number | null,
+"linked_unallocated_instrument_count": number | null,
+"linked_unallocated_invoice_amount": number | null,
+"linked_unallocated_invoice_count": number | null,
+"linked_unallocated_payment_amount": number | null,
+"linked_unallocated_payment_count": number | null,
+"linked_unallocated_recognized_amount": number | null,
+"linked_unclassified_instrument_amount": number | null,
 "numero": number,
 "ordenes_compra": number | null,
 "ordenes_pago": number | null,
 "origen": string,
+"pending_check_amount": number | null,
 "presupuesto_estado": string | null,
 "presupuesto_motivo": string,
 "remitos": number | null,
 "remitos_sin_factura": number | null,
-"saldo": number | null
+"saldo": number | null,
+"unapplied_advances": number | null,
+"withheld_amount": number | null
             }[]
                           SetofOptions: {
         from: "*"

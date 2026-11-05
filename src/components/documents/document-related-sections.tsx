@@ -2,7 +2,7 @@ import { Card } from '@/components/form/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatAmountTable, formatCurrency } from '@/lib/format/amounts'
+import { centsToDecimal, formatFinancialAmount, parseDecimalCents } from '@/lib/finance/amounts'
 import Link from 'next/link'
 
 import { changeList, type documentFormSelections } from './document-form-model'
@@ -115,13 +115,13 @@ export function PaymentAllocationsSection({
           .filter(
             (item) =>
               item.tipo_comprobante !== 'NC' &&
-              ((item.saldo ?? 0) > 0 || (item.id && allocations[item.id] !== undefined)),
+              ((item.exact_balance != null && (parseDecimalCents(item.exact_balance) ?? BigInt(0)) > BigInt(0)) || (item.id && allocations[item.id] !== undefined)),
           )
           .map((item) => {
             const id = item.id!
-            const available =
-              (item.saldo ?? 0) +
-              (initialAllocations.find((allocation) => allocation.factura_id === id)?.monto_aplicado ?? 0)
+            const balance = item.exact_balance == null ? null : parseDecimalCents(item.exact_balance)
+            const initial = initialAllocations.find((allocation) => allocation.factura_id === id)?.monto_aplicado ?? 0
+            const available = balance == null ? null : centsToDecimal(balance + (parseDecimalCents(String(initial)) ?? BigInt(0)))
             return (
               <div key={id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
                 <label className="flex min-w-0 flex-1 items-start gap-2 text-sm">
@@ -130,13 +130,13 @@ export function PaymentAllocationsSection({
                     className="mt-0.5 size-4 accent-primary"
                     checked={allocations[id] !== undefined}
                     onChange={(event) =>
-                      changeAllocation(id, event.target.checked ? formatAmountTable(available) : null)
+                      changeAllocation(id, event.target.checked ? (available == null ? '' : formatFinancialAmount(available).slice(2)) : null)
                     }
                   />
                   <span>
                     {[item.tipo_comprobante, item.numero || 'Sin número'].join(' ')}
                     <span className="block text-xs text-muted-foreground">
-                      Saldo disponible {formatCurrency(available)}
+                      {available == null ? 'Saldo por determinar' : `Saldo disponible ${formatFinancialAmount(available)}`}
                     </span>
                   </span>
                 </label>
@@ -156,7 +156,7 @@ export function PaymentAllocationsSection({
         {!context.facturas.some(
           (item) =>
             item.tipo_comprobante !== 'NC' &&
-            ((item.saldo ?? 0) > 0 || (item.id && allocations[item.id] !== undefined)),
+            ((item.exact_balance != null && (parseDecimalCents(item.exact_balance) ?? BigInt(0)) > BigInt(0)) || (item.id && allocations[item.id] !== undefined)),
         ) ? (
           <p className="text-sm text-muted-foreground">No hay facturas con saldo para este cliente.</p>
         ) : null}

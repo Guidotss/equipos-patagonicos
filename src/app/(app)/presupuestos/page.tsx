@@ -31,7 +31,7 @@ export default async function BudgetsPage({
         { texto: filters.q, estado: filters.estado, cliente: filters.cliente || undefined },
         { count: 'exact' },
       )
-      .select('*')
+      .select('*, exact_balance:saldo::text')
       .order('numero', { ascending: false })
       .range(home, home + PER_PAGE - 1),
     supabase.from('clientes').select('id, razon_social').order('razon_social'),

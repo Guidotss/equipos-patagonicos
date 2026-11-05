@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
+import { readFinanceByDocument } from '@/lib/finance/queries'
 import type { DocumentContext } from './screens'
 
 export async function contextoDocument(
@@ -14,12 +15,14 @@ export async function contextoDocument(
       .eq('estado', 'aprobada')
       .order('numero', { ascending: false }),
     supabase.from('documentos').select('*').eq('cliente_id', clientId).order('created_at', { ascending: false }),
-    supabase.from('v_facturas').select('*').eq('cliente_id', clientId).order('fecha_vencimiento'),
+    supabase.from('v_facturas').select('*, exact_balance:saldo::text').eq('cliente_id', clientId).order('fecha_vencimiento'),
   ])
   if (budgets.error) throw budgets.error
   if (documents.error) throw documents.error
   if (invoices.error) throw invoices.error
+  const financeByDocument = await readFinanceByDocument(supabase, documents.data.map((document) => document.id))
   const equipmentIds = [...new Set([
+    ...Object.values(financeByDocument).flatMap((finance) => finance.invoiceAllocations.map((allocation) => allocation.equipmentId)),
     ...budgets.data.map((budget) => budget.equipo_id),
     ...documents.data.map((document) => document.equipo_id),
   ].filter((id): id is string => id !== null))]
@@ -41,5 +44,6 @@ export async function contextoDocument(
     documentos: documents.data,
     facturas: invoices.data,
     equipos: equipment.data,
+    financeByDocument,
   }
 }

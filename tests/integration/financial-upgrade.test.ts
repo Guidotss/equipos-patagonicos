@@ -66,6 +66,21 @@ describe.runIf(Boolean(process.env.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT))('actual
         .map(({ row }) => ({ id: (row as Record<string, unknown>).id })))
   })
 
+  it('proyecta el histórico una sola vez y separa el medio heredado sin clasificar', async () => {
+    const { historicalInvoice, historicalBudget, firstBudget, partialOrder } = snapshot.ids
+    expect(await sql('select cobrado::text, legacy_settled_amount::text, saldo::text from public.v_facturas where id = $1', [historicalInvoice]))
+      .toEqual([{ cobrado: '1210.00', legacy_settled_amount: '1210.00', saldo: '0.00' }])
+    expect(await sql('select facturado::text, legacy_settled_amount::text, saldo::text, balance_determinate from public.v_presupuestos where id = $1', [historicalBudget]))
+      .toEqual([{ facturado: '1210.00', legacy_settled_amount: '1210.00', saldo: '0.00', balance_determinate: true }])
+    expect(await sql(`select status, unallocated_amount::text, recognized from public.v_payment_instrument_balances
+      where op_id = $1 order by status`, [partialOrder])).toEqual([
+      { status: 'legacy_recognized', unallocated_amount: '0.00', recognized: true },
+      { status: 'legacy_unclassified', unallocated_amount: '200.00', recognized: false },
+    ])
+    expect((await sql('select balance_determinate, linked_unallocated_invoice_count::int as count from public.v_presupuestos where id = $1', [firstBudget]))[0])
+      .toMatchObject({ balance_determinate: false, count: 1 })
+  })
+
   it('mantiene anulados y reproduce las aplicaciones incluso hacia facturas inactivas', async () => {
     const { inactiveInvoice, inactiveOrder, inactiveInvoiceOrder, firstBudget } = snapshot.ids
     expect(await sql('select id from public.documentos where deleted_at is not null order by id'))
@@ -111,6 +126,55 @@ describe.runIf(Boolean(process.env.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT))('actual
 describe.runIf(Boolean(process.env.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT))('mutaciones sobre registros financieros heredados', () => {
   beforeAll(async () => {
     snapshot ??= JSON.parse(await readFile(process.env.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT!, 'utf8'))
+  })
+  it('redistribuye el cobro histórico sin cambiar la evidencia ni el total global', async () => {
+    await withConexion(async (database) => {
+      await database.query('begin')
+      try {
+        const id = snapshot.ids.historicalInvoice
+        const { rows: [document] } = await database.query('select * from public.documentos where id = $1', [id])
+        const { rows: [allocation] } = await database.query('select id from public.invoice_allocations where invoice_id = $1', [id])
+        const before = (await database.query('select * from public.facturas_historicas where factura_id = $1', [id])).rows
+        const totals = (await database.query('select sum(monto)::text as monto, sum(cobrado)::text as cobrado, sum(saldo)::text as saldo from public.v_facturas')).rows
+        await database.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: snapshot.ids.staffId, role: 'authenticated' })])
+        await database.query('set local role authenticated')
+        await database.query('select public.actualizar_documento($1, $2)', [id, { tipo: 'factura', monto: document.monto,
+          numero: document.numero, numero_oc_ref: document.numero_oc_ref, fecha_vencimiento: document.fecha_vencimiento,
+          tipo_comprobante: document.tipo_comprobante, finance: { expectedVersion: 1, correctionReason: 'Distribución histórica verificada', invoiceAllocations: [
+            { id: allocation.id, budgetId: snapshot.ids.historicalBudget, equipmentId: null, equipmentStatus: 'unknown', amount: '1000', historicalSettledAmount: '1000' },
+            { budgetId: snapshot.ids.firstBudget, equipmentId: null, equipmentStatus: 'unknown', amount: '210', historicalSettledAmount: '210' },
+          ] } }])
+        await database.query('reset role')
+        expect((await database.query('select * from public.facturas_historicas where factura_id = $1', [id])).rows).toEqual(before)
+        expect((await database.query('select sum(monto)::text as monto, sum(cobrado)::text as cobrado, sum(saldo)::text as saldo from public.v_facturas')).rows).toEqual(totals)
+        expect((await database.query('select budget_id, historical_settled_amount::text as amount from public.invoice_allocations where invoice_id = $1 order by amount desc', [id])).rows)
+          .toEqual([{ budget_id: snapshot.ids.firstBudget, amount: '210.00' }, { budget_id: snapshot.ids.historicalBudget, amount: '1000.00' }])
+        await database.query('set local role authenticated')
+        await database.query('select public.anular_documento($1, $2, $3)', [id, 2, 'Anulación verificada'])
+        await database.query('reset role')
+        expect((await database.query('select facturado::text, legacy_settled_amount::text, unapplied_advances::text, saldo::text from public.v_presupuestos where id = $1', [snapshot.ids.historicalBudget])).rows)
+          .toEqual([{ facturado: '0', legacy_settled_amount: '1000.00', unapplied_advances: '1000.00', saldo: '-1000.00' }])
+        expect((await database.query('select * from public.facturas_historicas where factura_id = $1', [id])).rows).toEqual(before)
+        await database.query('set local role authenticated')
+        for (const action of ['revertir_aprobacion', 'borrar_cotizacion']) {
+          await database.query('savepoint protected_budget')
+          await expect(database.query(`select public.${action}($1)`, [snapshot.ids.historicalBudget]))
+            .rejects.toMatchObject({ code: 'P0001', message: expect.stringContaining('distribución financiera') })
+          await database.query('rollback to savepoint protected_budget')
+        }
+        await database.query('select public.restaurar_documento($1, $2, $3)', [id, 3, 'Restauración verificada'])
+        await database.query('select public.actualizar_documento($1, $2)', [id, { tipo: 'factura', monto: document.monto,
+          numero: document.numero, numero_oc_ref: document.numero_oc_ref, fecha_vencimiento: document.fecha_vencimiento,
+          tipo_comprobante: document.tipo_comprobante, finance: { expectedVersion: 4, correctionReason: 'Parte sin trabajo determinado', invoiceAllocations: [
+            { id: allocation.id, budgetId: snapshot.ids.historicalBudget, equipmentId: null, equipmentStatus: 'unknown', amount: '1000', historicalSettledAmount: '1000' },
+            { budgetId: null, equipmentId: null, equipmentStatus: 'unknown', amount: '210', historicalSettledAmount: '210' },
+          ] } }])
+        await database.query('select public.anular_documento($1, $2, $3)', [id, 5, 'Anulación verificada'])
+        await database.query('reset role')
+        expect((await database.query('select assigned_balance::text, saldo, balance_determinate, linked_unallocated_invoice_amount::text from public.v_presupuestos where id = $1', [snapshot.ids.historicalBudget])).rows)
+          .toEqual([{ assigned_balance: '-1000.00', saldo: null, balance_determinate: false, linked_unallocated_invoice_amount: '210.00' }])
+      } finally { await database.query('rollback') }
+    })
   })
   it('preserva metadatos, rechaza reconocimiento fabricado y clasifica solo con fecha y motivo manuales', async () => {
     await withConexion(async (database) => {

@@ -6,7 +6,8 @@ import type { Database } from '@/lib/supabase/database.types'
 import { isUuid } from '@/lib/validation'
 import { withNameOfDownload, pathFile, validateFile, type MimePermitido } from './files'
 import type { DataDocument } from './schemas'
-import type { FinanceInput } from './finance'
+import type { FinanceInput } from '@/lib/finance/contracts'
+import { financialDocumentData } from '@/lib/finance/service'
 
 type Client = SupabaseClient<Database>
 
@@ -45,15 +46,12 @@ export async function registerDocument(
     paymentCondition?: string
     archivos: UploadedFile[]
     remitos?: string[]
-    aplicaciones?: { factura_id: string; monto_aplicado: number }[]
+    aplicaciones?: { factura_id: string; monto_aplicado: number | string }[]
   },
 ): Promise<string> {
+  if (entrada.finance !== undefined && entrada.aplicaciones !== undefined) throw new ErrorDocument('Usá la distribución financiera sin aplicaciones anteriores simultáneas')
   const { data, error } = await supabase.rpc('registrar_documento', {
-    p_datos: {
-      ...entrada.datos, cliente_id: entrada.clientId,
-      ...(entrada.finance ? { finance: entrada.finance } : {}),
-      ...(entrada.paymentCondition !== undefined ? { payment_condition: entrada.paymentCondition } : {}),
-    },
+    p_datos: financialDocumentData({ ...entrada.datos, cliente_id: entrada.clientId }, entrada.finance, entrada.paymentCondition),
     p_presupuestos: entrada.budgets,
     p_archivos: entrada.archivos,
     p_remitos: entrada.remitos ?? [],

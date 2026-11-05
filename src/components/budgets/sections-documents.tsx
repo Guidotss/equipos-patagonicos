@@ -13,6 +13,7 @@ import {
   type Invoice,
 } from '@/lib/documents/screens'
 import { formatCurrency } from '@/lib/format/amounts'
+import { formatFinancialAmount, parseDecimalCents } from '@/lib/finance/amounts'
 import { formatShortDate } from '@/lib/format/dates'
 
 const TITULOS: Record<DocumentType, string> = {
@@ -106,7 +107,7 @@ export function SectionsDocuments({
                             {document.monto
                               ? ` · ${tipo === 'factura' ? 'Total ' : ''}${formatCurrency(document.monto)}`
                               : ''}
-                            {invoice ? ` · Saldo ${formatCurrency(invoice.saldo ?? 0)}` : ''}
+                            {invoice ? ` · ${invoice.exact_balance == null ? 'Saldo por determinar' : `Saldo ${formatFinancialAmount(invoice.exact_balance)}`}` : ''}
                             {document.fecha_vencimiento
                               ? ` · Vence ${formatShortDate(document.fecha_vencimiento)}`
                               : ''}
@@ -160,7 +161,7 @@ export function SectionsDocuments({
                                   </Link>
                                 </Button>
                               ) : null}
-                              {invoice && (invoice.saldo ?? 0) > 0 && !anulados ? (
+                              {invoice?.exact_balance != null && parseDecimalCents(invoice.exact_balance)! > BigInt(0) && !anulados ? (
                                 <Button variant="outline" size="sm" asChild>
                                   <Link
                                     href={`/presupuestos/${budgetId}?nuevo=orden_pago&factura=${document.id}#nuevo-documento`}

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { parsePrice } from '@/lib/format/amounts'
+import { centsToDecimal, parseAmountCents } from '@/lib/finance/amounts'
 import { isUuid } from '@/lib/validation'
 import { isDate } from '@/lib/format/dates'
 
@@ -54,13 +54,13 @@ const amountOptional = z
   .trim()
   .transform((value, ctx) => {
     if (value === '') return null
-    const monto = parsePrice(value)
+    const cents = parseAmountCents(value)
     // El máximo de numeric(14, 2), la columna donde se guarda.
-    if (monto === null || monto <= 0 || monto > 999_999_999_999.99) {
+    if (cents === null || cents <= BigInt(0)) {
       ctx.addIssue({ code: 'custom', message: 'Monto inválido' })
       return z.NEVER
     }
-    return monto
+    return centsToDecimal(cents)
   })
 
 export const schemaDocument = z

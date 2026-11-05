@@ -1,11 +1,12 @@
 import { FIELDS_DOCUMENT } from '@/lib/documents/schemas'
 import type { DocumentContext, Document, OptionBudget } from '@/lib/documents/screens'
 import { formatAmountTable } from '@/lib/format/amounts'
+import { formatFinancialAmount, parseDecimalCents } from '@/lib/finance/amounts'
 
 import type { DocumentFormProps } from './document-form.types'
 
 export type DocumentFormValues = Record<(typeof FIELDS_DOCUMENT)[number], string>
-export const EMPTY_DOCUMENT_CONTEXT: DocumentContext = { budgets: [], documentos: [], facturas: [], equipos: [] }
+export const EMPTY_DOCUMENT_CONTEXT: DocumentContext = { budgets: [], documentos: [], facturas: [], equipos: [], financeByDocument: {} }
 const normalizeNumber = (number: string) =>
   number
     .toLowerCase()
@@ -24,7 +25,7 @@ export function initialDocumentValues({
   initial.tipo = document?.tipo ?? type
   initial.tipo_comprobante = document?.tipo_comprobante ?? 'FA'
   const invoice = initialContext.facturas.find((item) => item.id === invoiceId)
-  if (invoice?.saldo) initial.monto = formatAmountTable(invoice.saldo)
+  if (invoice?.exact_balance && parseDecimalCents(invoice.exact_balance) !== BigInt(0)) initial.monto = formatFinancialAmount(invoice.exact_balance).slice(2)
   else if (document?.monto) initial.monto = formatAmountTable(document.monto)
   return initial
 }
@@ -52,7 +53,8 @@ export function initialAllocations({
       initialAllocations.map((item) => [item.factura_id, formatAmountTable(item.monto_aplicado)]),
     )
   const invoice = initialContext.facturas.find((item) => item.id === invoiceId)
-  return invoice?.id && invoice.saldo ? { [invoice.id]: formatAmountTable(invoice.saldo) } : {}
+  return invoice?.id && invoice.exact_balance && parseDecimalCents(invoice.exact_balance) !== BigInt(0)
+    ? { [invoice.id]: formatFinancialAmount(invoice.exact_balance).slice(2) } : {}
 }
 
 export function documentFormSelections({

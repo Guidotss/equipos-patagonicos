@@ -1,4 +1,4 @@
-import { insertFinancialFixture } from './financial-fixtures'
+import { applyCashFixture, insertFinancialFixture } from './financial-fixtures'
 import { removeFinancialFixtureDocuments } from './documents-helpers'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { addDays } from '@/lib/format/dates'
@@ -141,7 +141,7 @@ describe('Inicio: límites, unicidad y seguridad', () => {
     const dos = await quote({ aprobada: true })
     const invoice = await document('factura', [uno.id, dos.id], 'F-COMPARTIDA', 1200)
     const pago = await document('orden_pago', [uno.id, dos.id], 'OP-COMPARTIDA', 200)
-    await sql('insert into public.op_facturas values ($1, $2, 200)', [pago, invoice])
+    await applyCashFixture(pago, invoice, 200)
     const despues = await activo.client.rpc('inicio_resumen')
     expect(despues.error).toBeNull()
     const previous = antes.data!.find((f) => f.cola === 'cobranzas')!
@@ -149,6 +149,31 @@ describe('Inicio: límites, unicidad y seguridad', () => {
     expect(actual.cantidad - previous.cantidad).toBe(1)
     expect(actual.importe - previous.importe).toBe(1000)
     expect((await pendingListPropios('cobranzas')).find((f) => f.id === invoice)).toMatchObject({ importe: 1000, dias: 45 })
+  })
+
+  it('conserva centavos en el presupuesto y el total global aun con agregados grandes', async () => {
+    const cents = (value: string) => {
+      const [integer, fraction = ''] = value.split('.')
+      return BigInt(integer) * BigInt(100) + BigInt(fraction.padEnd(2, '0'))
+    }
+    const before = await activo.client.rpc('inicio_resumen').select('cola, exact_amount:importe::text').eq('cola', 'cobranzas').single()
+    expect(before.error).toBeNull()
+    const budget = await quote({ aprobada: true })
+    const documents = await insertFinancialFixture<{ id: string }>(`insert into public.documentos
+      (cliente_id, tipo, monto, tipo_comprobante, fecha, notas)
+      select $1, 'factura', 999999999999.99, 'FA', $2, $3 from generate_series(1, 200) returning id`,
+    [clientId, today, marca], [budget.id])
+    await sql('insert into public.documento_presupuestos(documento_id, cotizacion_id) select unnest($1::uuid[]), $2', [documents.map((document) => document.id), budget.id])
+    const view = await activo.client.from('v_presupuestos').select('exact_balance:saldo::text').eq('id', budget.id).single()
+    expect(view.error).toBeNull()
+    expect(view.data!.exact_balance).toBe('199999999999998.00')
+    const search = await activo.client.rpc('buscar_presupuestos', { texto: '', estado: '', cliente: clientId })
+      .select('id, exact_balance:saldo::text').eq('id', budget.id).single()
+    expect(search.error).toBeNull()
+    expect(search.data!.exact_balance).toBe('199999999999998.00')
+    const after = await activo.client.rpc('inicio_resumen').select('cola, exact_amount:importe::text').eq('cola', 'cobranzas').single()
+    expect(after.error).toBeNull()
+    expect(cents(after.data!.exact_amount!) - cents(before.data!.exact_amount!)).toBe(BigInt('19999999999999800'))
   })
 
   it('las acciones de remitos y cobros eligen un presupuesto no anulado o vuelven al documento', async () => {

@@ -100,3 +100,12 @@ export async function confirmedCashFixtureFinance(data: Json, applications: Json
   const prepared = object(await confirmedCashFixtureData(data, applications, budgets))
   return prepared?.finance === undefined ? undefined : schemaFinance.parse(prepared.finance)
 }
+
+/** Atribuye el efectivo de lectura a la factura con la distribución declarada por la fixture. */
+export async function applyCashFixture(opId: string, invoiceId: string, amount: number) {
+  await sql(`insert into public.payment_allocations(instrument_id, budget_id, budget_number, budget_subject, invoice_id, amount, source)
+    select i.id, a.budget_id, a.budget_number, a.budget_subject, $2, $3,
+      case when a.budget_id is null then 'legacy' else 'explicit' end
+    from public.payment_instruments i join public.invoice_allocations a on a.invoice_id = $2
+    where i.op_id = $1`, [opId, invoiceId, amount])
+}

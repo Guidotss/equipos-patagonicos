@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Pill } from '@/components/ui/pill'
 import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import { contextoDocument } from '@/lib/documents/queries'
-import { formatCurrency } from '@/lib/format/amounts'
+import { formatFinancialAmount } from '@/lib/finance/amounts'
 import { STATUSES_BUDGET } from '@/lib/budgets/list'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
@@ -29,7 +29,7 @@ export default async function BudgetPage({
   if (!isUuid(id)) notFound()
   const consulta = await searchParams
   const supabase = await createClient()
-  const { data: budget, error } = await supabase.from('v_presupuestos').select('*').eq('id', id).maybeSingle()
+  const { data: budget, error } = await supabase.from('v_presupuestos').select('*, exact_balance:saldo::text').eq('id', id).maybeSingle()
   if (error) throw error
   if (!budget) notFound()
   const [contexto, vinculos] = await Promise.all([
@@ -108,7 +108,7 @@ export default async function BudgetPage({
           <div className="col-span-2 rounded-xl border bg-card px-4 py-3 shadow-tarjeta sm:col-span-4 lg:col-span-1">
             <p className="text-xs text-muted-foreground">Saldo a cobrar</p>
             <p className="text-2xl font-semibold tabular-nums" data-testid="saldo-presupuesto">
-              {formatCurrency(budget.saldo ?? 0)}
+              {budget.exact_balance == null ? 'Por determinar' : formatFinancialAmount(budget.exact_balance)}
             </p>
           </div>
         </div>

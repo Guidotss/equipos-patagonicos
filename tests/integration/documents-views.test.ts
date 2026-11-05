@@ -1,4 +1,4 @@
-import { insertFinancialFixture } from './financial-fixtures'
+import { applyCashFixture, insertFinancialFixture } from './financial-fixtures'
 // tests/integration/documentos-vistas.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { idsOfExample } from './quotes-helpers'
@@ -65,11 +65,11 @@ describe('v_facturas y v_presupuestos', () => {
     expect(await invoiceInView(invoice)).toEqual({ saldo: 1000, estado_cobro: 'vencida' })
 
     const op1 = await document(p, { tipo: 'orden_pago', monto: 400 })
-    await sql('insert into public.op_facturas (op_id, factura_id, monto_aplicado) values ($1, $2, 400)', [op1, invoice])
+    await applyCashFixture(op1, invoice, 400)
     expect(await invoiceInView(invoice)).toEqual({ saldo: 600, estado_cobro: 'parcial' })
 
     const op2 = await document(p, { tipo: 'orden_pago', monto: 600 })
-    await sql('insert into public.op_facturas (op_id, factura_id, monto_aplicado) values ($1, $2, 600)', [op2, invoice])
+    await applyCashFixture(op2, invoice, 600)
     expect(await invoiceInView(invoice)).toEqual({ saldo: 0, estado_cobro: 'cobrada' })
 
     await sql('update public.documentos set deleted_at = now() where id = $1', [op2])

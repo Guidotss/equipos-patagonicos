@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { Database } from '@/lib/supabase/database.types'
-import { parsePrice } from '@/lib/format/amounts'
+import { centsToDecimal, parseAmountCents } from '@/lib/finance/amounts'
+import { schemaFinance } from '@/lib/finance/schemas'
+import type { FinanceByDocument } from '@/lib/finance/contracts'
 import { schemaDocument } from './schemas'
 
 const ids = z
@@ -17,6 +19,8 @@ export const schemaSaveDocument = z
     clientId: z.uuid(),
     budgets: ids.min(1, 'Elegí al menos un presupuesto'),
     datos: schemaDocument,
+    finance: schemaFinance.optional(),
+    paymentCondition: z.string().max(200, 'Máximo 200 caracteres').optional(),
     archivos: z.array(schemaFileSubido).max(50),
     quitar: ids.default([]),
     remitos: ids.default([]),
@@ -25,20 +29,33 @@ export const schemaSaveDocument = z
         z.object({
           factura_id: z.uuid(),
           monto_aplicado: z.string().transform((value, ctx) => {
-            const monto = parsePrice(value)
-            if (monto === null || monto <= 0 || monto > 999_999_999_999.99) {
+            const cents = parseAmountCents(value)
+            if (cents === null || cents <= BigInt(0)) {
               ctx.addIssue({ code: 'custom', message: 'Ingresá un monto aplicado válido' })
               return z.NEVER
             }
-            return monto
+            return centsToDecimal(cents)
           }),
         }),
       )
       .max(200)
-      .default([]),
+      .optional(),
     cotizacion: z.object({ id: z.uuid(), version: z.iso.datetime({ offset: true }) }).optional(),
   })
   .superRefine((entrada, ctx) => {
+    if (entrada.finance !== undefined && entrada.aplicaciones !== undefined) {
+      ctx.addIssue({ code: 'custom', path: ['finance'], message: 'Usá la distribución financiera sin aplicaciones anteriores simultáneas' })
+    }
+    if (entrada.finance && entrada.id && entrada.finance.expectedVersion === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['finance', 'expectedVersion'], message: 'Falta la versión financiera leída. Volvé a abrir el documento' })
+    }
+    if (entrada.finance && entrada.datos.tipo !== 'factura' && entrada.datos.tipo !== 'orden_pago') {
+      ctx.addIssue({ code: 'custom', path: ['finance'], message: 'Solo facturas y órdenes de pago admiten datos financieros' })
+    }
+    if (entrada.finance && ((entrada.datos.tipo === 'factura' && (entrada.finance.paymentInstruments !== undefined || entrada.finance.paymentAllocations !== undefined))
+      || (entrada.datos.tipo === 'orden_pago' && entrada.finance.invoiceAllocations !== undefined))) {
+      ctx.addIssue({ code: 'custom', path: ['finance'], message: 'La distribución no corresponde al tipo de documento' })
+    }
     if (!entrada.id && entrada.archivos.length === 0)
       ctx.addIssue({ code: 'custom', path: ['archivos'], message: 'Subí al menos un archivo' })
     const folder = `documentos/${entrada.clientId}/`
@@ -61,7 +78,7 @@ export const schemaSaveDocument = z
 
 export type Document = Database['public']['Tables']['documentos']['Row']
 export type FileDocument = Database['public']['Tables']['documento_archivos']['Row']
-export type Invoice = Database['public']['Views']['v_facturas']['Row']
+export type Invoice = Database['public']['Views']['v_facturas']['Row'] & { exact_balance: string | null }
 export type Budget = Database['public']['Views']['v_presupuestos']['Row']
 export type OptionBudget = {
   id: string
@@ -75,6 +92,7 @@ export type DocumentContext = {
   budgets: (OptionBudget & { equipmentId: string | null })[]
   documentos: Document[]
   facturas: Invoice[]
+  financeByDocument: FinanceByDocument
   equipos: { id: string; nombre: string }[]
 }
 

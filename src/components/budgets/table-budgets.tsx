@@ -5,12 +5,12 @@ import { TableListing } from '@/components/listings/table-listing'
 import { Pill } from '@/components/ui/pill'
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatShortDate } from '@/lib/format/dates'
-import { formatCurrency } from '@/lib/format/amounts'
+import { formatFinancialAmount } from '@/lib/finance/amounts'
 import { STATUSES_BUDGET } from '@/lib/budgets/list'
 import type { Database } from '@/lib/supabase/database.types'
 import { cn } from '@/lib/utils'
 
-type RowBudget = Database['public']['Functions']['buscar_presupuestos']['Returns'][number]
+type RowBudget = Database['public']['Functions']['buscar_presupuestos']['Returns'][number] & { exact_balance: string | null }
 
 export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
   return (
@@ -59,7 +59,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
                 <TableCell className="hidden @min-[52rem]/listado:table-cell">
                   <DocumentsBudget presupuesto={budget} column />
                 </TableCell>
-                <TableCell className="text-right font-medium tabular-nums">{formatCurrency(budget.saldo ?? 0)}</TableCell>
+                <TableCell className="text-right font-medium tabular-nums">{budget.exact_balance == null ? 'Saldo por determinar' : formatFinancialAmount(budget.exact_balance)}</TableCell>
                 <TableCell className="px-2!">
                   <Link
                     href={`/presupuestos/${budget.id}`}
@@ -94,7 +94,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
               <DocumentsBudget presupuesto={budget} className="mt-3" />
               <dl className="mt-3 flex items-baseline justify-between gap-3 border-t pt-3 text-sm">
                 <dt className="text-muted-foreground">Saldo a cobrar</dt>
-                <dd className="text-right font-semibold tabular-nums">{formatCurrency(budget.saldo ?? 0)}</dd>
+                <dd className="text-right font-semibold tabular-nums">{budget.exact_balance == null ? 'Saldo por determinar' : formatFinancialAmount(budget.exact_balance)}</dd>
               </dl>
               <span className="mt-3 inline-flex items-center gap-1 text-xs text-primary">Abrir presupuesto <ArrowUpRight className="size-3.5" aria-hidden /></span>
             </Link>

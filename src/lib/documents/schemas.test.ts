@@ -66,7 +66,7 @@ describe('esquemaDocumento', () => {
     const invoice = schemaDocument.parse(
       form({ tipo: 'factura', monto: '1.950.000,50', tipo_comprobante: 'FCE_A', fecha_vencimiento: '2026-11-30' }),
     )
-    expect(invoice).toMatchObject({ monto: 1_950_000.5, tipo_comprobante: 'FCE_A', fecha_vencimiento: '2026-11-30' })
+    expect(invoice).toMatchObject({ monto: '1950000.50', tipo_comprobante: 'FCE_A', fecha_vencimiento: '2026-11-30' })
   })
 
   it('factura con un comprobante que no existe: mensaje en castellano', () => {
@@ -90,7 +90,7 @@ describe('esquemaDocumento', () => {
   })
 
   it('acepta hasta el máximo que guarda la base (numeric(14, 2)) y nada más', () => {
-    expect(schemaDocument.parse(form({ tipo: 'orden_pago', monto: '999.999.999.999,99' })).monto).toBe(999_999_999_999.99)
+    expect(schemaDocument.parse(form({ tipo: 'orden_pago', monto: '999.999.999.999,99' })).monto).toBe('999999999999.99')
     expect(problemas({ tipo: 'orden_pago', monto: '1.000.000.000.000' })).toEqual([{ path: ['monto'], message: 'Monto inválido' }])
   })
 

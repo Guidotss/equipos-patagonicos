@@ -44,9 +44,8 @@ async function register(
     budgets: [budget],
     datos: datos({ tipo, ...fields }),
     archivos: [archivo],
-    ...relaciones,
+    remitos: relaciones.remitos,
     finance: await confirmedCashFixtureFinance(datos({ tipo, ...fields }), relaciones.aplicaciones ?? [], [budget]),
-    aplicaciones: [],
   })
 }
 

@@ -5,7 +5,7 @@ import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 import { Count } from '@/components/ui/count'
 import { Pill } from '@/components/ui/pill'
 import { formatShortDate } from '@/lib/format/dates'
-import { formatCurrency } from '@/lib/format/amounts'
+import { formatFinancialAmount } from '@/lib/finance/amounts'
 import type { PendingHome, ResumenHome } from '@/lib/home/queries'
 import { antiguedadCobranza, QUEUES_HOME, vencimientoPending, type QueueHome } from '@/lib/home/model'
 
@@ -56,7 +56,7 @@ function DetailPending({ fila: row, cola, today }: { fila: PendingHome; cola: Qu
     const antiguedad = antiguedadCobranza(row.dias ?? 0)
     return (
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-semibold tabular-nums">{formatCurrency(row.importe ?? 0)}</p>
+        <p className="font-semibold tabular-nums">{row.exact_amount == null ? 'Saldo por determinar' : formatFinancialAmount(row.exact_amount)}</p>
         <Pill tone={antiguedad.tone}>{antiguedad.texto}</Pill>
         {row.vence_el ? <span className="text-xs text-muted-foreground">Vencimiento {formatShortDate(row.vence_el)}</span> : null}
       </div>
@@ -94,7 +94,7 @@ export function QueueHome({
           {cola === 'cobranzas' ? (
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-1">
               <p className="text-xs text-muted-foreground">Pendiente de cobro</p>
-              <p className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="total-cobranzas">{formatCurrency(resumen?.importe ?? 0)}</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums" data-testid="total-cobranzas">{resumen?.exact_amount == null ? 'Por determinar' : formatFinancialAmount(resumen.exact_amount)}</p>
             </div>
           ) : null}
           {rows.length ? (

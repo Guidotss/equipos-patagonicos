@@ -1258,7 +1258,8 @@ create function private.require_budget_without_finances(budget_id uuid)
 returns void language plpgsql set search_path = '' as $$
 begin
   if exists(select 1 from public.invoice_allocations a join public.documentos d on d.id = a.invoice_id
-      where a.budget_id = require_budget_without_finances.budget_id and d.deleted_at is null)
+      where a.budget_id = require_budget_without_finances.budget_id
+        and (d.deleted_at is null or a.historical_settled_amount > 0))
     or exists(select 1 from public.payment_allocations a join public.payment_instruments i on i.id = a.instrument_id
       join public.documentos d on d.id = i.op_id where a.budget_id = require_budget_without_finances.budget_id and d.deleted_at is null
         and i.status in ('confirmed', 'cleared', 'pending', 'legacy_recognized')) then
@@ -1404,6 +1405,167 @@ begin
       'write_document_finance', 'validate_payment_destination_changes', 'set_document_voided', 'require_budget_without_finances', 'check_document_financial_integrity') loop
     execute format('revoke all on function %s from public, anon, authenticated', helper.signature);
   end loop;
+end;
+$$;
+
+-- Una aplicación se reconoce por el estado efectivo del medio, nunca por su recepción o vencimiento.
+create view public.v_financial_ledger with (security_invoker = true) as
+select a.id as allocation_id, i.id as instrument_id, op.id as op_id, op.cliente_id,
+  a.invoice_id, a.budget_id, a.amount,
+  case when op.deleted_at is null and ((i.kind in ('cash', 'transfer') and i.status = 'confirmed')
+    or (i.kind = 'check' and i.status = 'cleared')) then a.amount else 0 end as credited_money,
+  case when op.deleted_at is null and i.kind = 'withholding' and i.status = 'confirmed'
+    then a.amount else 0 end as withheld_amount,
+  case when op.deleted_at is null and i.status = 'legacy_recognized'
+    then a.amount else 0 end as legacy_settled_amount,
+  case when op.deleted_at is null and i.kind = 'check' and i.status = 'pending'
+    then a.amount else 0 end as pending_check_amount
+from public.payment_allocations a
+join public.payment_instruments i on i.id = a.instrument_id
+join public.documentos op on op.id = i.op_id;
+
+-- Los fondos sin aplicar se obtienen del instrumento completo, no del ledger de aplicaciones.
+create view public.v_payment_instrument_balances with (security_invoker = true) as
+select i.id, i.op_id, op.cliente_id, i.kind, i.status, i.amount,
+  coalesce(a.allocated_amount, 0) as allocated_amount,
+  i.amount - coalesce(a.allocated_amount, 0) as unallocated_amount,
+  op.deleted_at is null and i.status in ('confirmed', 'cleared', 'legacy_recognized') as recognized,
+  op.deleted_at is null and i.status not in ('voided', 'rejected') as unresolved_relevant
+from public.payment_instruments i
+join public.documentos op on op.id = i.op_id
+left join lateral (
+  select sum(pa.amount) as allocated_amount from public.payment_allocations pa where pa.instrument_id = i.id
+) a on true;
+
+grant select on public.v_financial_ledger, public.v_payment_instrument_balances to authenticated;
+
+-- Se conserva el contrato anterior y se agregan desgloses sin duplicar el cobro histórico protegido.
+create or replace view public.v_facturas with (security_invoker = true) as
+select f.id, f.cliente_id, f.numero, f.fecha, f.fecha_vencimiento, f.tipo_comprobante, f.monto,
+  t.credited_money + t.withheld_amount + t.legacy_settled_amount as cobrado,
+  case when f.tipo_comprobante = 'NC' then 0
+    else f.monto - t.credited_money - t.withheld_amount - t.legacy_settled_amount end as saldo,
+  case when f.tipo_comprobante = 'NC' then 'no_aplica'
+    when f.monto - t.credited_money - t.withheld_amount - t.legacy_settled_amount <= 0 then 'cobrada'
+    when t.credited_money + t.withheld_amount + t.legacy_settled_amount > 0 then 'parcial'
+    when f.fecha_vencimiento < (now() at time zone 'America/Argentina/Buenos_Aires')::date then 'vencida'
+    else 'pendiente' end as estado_cobro,
+  t.credited_money, t.withheld_amount, t.legacy_settled_amount, t.pending_check_amount,
+  t.pending_check_amount as reserved_amount,
+  case when f.tipo_comprobante = 'NC' then 0
+    else f.monto - t.credited_money - t.withheld_amount - t.legacy_settled_amount - t.pending_check_amount end as available_amount
+from public.documentos f
+left join public.facturas_historicas h on h.factura_id = f.id
+cross join lateral (
+  select coalesce(sum(l.credited_money), 0) as credited_money,
+    coalesce(sum(l.withheld_amount), 0) as withheld_amount,
+    coalesce(h.cobrado, 0) + coalesce(sum(l.legacy_settled_amount), 0) as legacy_settled_amount,
+    coalesce(sum(l.pending_check_amount), 0) as pending_check_amount
+  from public.v_financial_ledger l where l.invoice_id = f.id
+) t
+where f.tipo = 'factura' and f.deleted_at is null;
+
+-- Los vínculos dan contexto; solo las distribuciones atribuyen dinero a un trabajo.
+create or replace view public.v_presupuestos with (security_invoker = true) as
+with billed as (
+  select a.budget_id, sum(a.amount) as amount
+  from public.invoice_allocations a join public.documentos f on f.id = a.invoice_id
+  where f.deleted_at is null and f.tipo_comprobante <> 'NC' group by a.budget_id
+), historical as (
+  select a.budget_id, sum(a.historical_settled_amount) as settled,
+    sum(a.historical_settled_amount) filter (where f.deleted_at is not null) as voided_settled
+  from public.invoice_allocations a join public.documentos f on f.id = a.invoice_id
+  where f.tipo_comprobante <> 'NC' group by a.budget_id
+), payments as (
+  select l.budget_id, sum(l.credited_money) as credited_money, sum(l.withheld_amount) as withheld_amount,
+    sum(l.legacy_settled_amount) as legacy_settled_amount, sum(l.pending_check_amount) as pending_check_amount,
+    sum(case when f.id is null or f.deleted_at is not null then
+      l.credited_money + l.withheld_amount + l.legacy_settled_amount else 0 end) as unapplied_advances
+  from public.v_financial_ledger l left join public.documentos f on f.id = l.invoice_id
+  group by l.budget_id
+)
+select c.id, c.numero, c.origen, c.formato, c.fecha, c.fecha_aprobacion, c.asunto, c.cliente_id,
+  cl.razon_social as cliente_razon_social, c.presupuesto_estado, c.presupuesto_motivo, c.fecha_proxima_actualizacion,
+  coalesce(d.ordenes_compra, 0) as ordenes_compra, coalesce(d.remitos, 0) as remitos,
+  coalesce(d.facturas, 0) as facturas, coalesce(d.ordenes_pago, 0) as ordenes_pago,
+  coalesce(d.remitos_sin_factura, 0) as remitos_sin_factura,
+  coalesce(b.amount, 0) as facturado,
+  case when w.invoice_count + w.payment_count + w.instrument_count = 0 then t.assigned_balance end as saldo,
+  coalesce(p.credited_money, 0) as credited_money, coalesce(p.withheld_amount, 0) as withheld_amount,
+  coalesce(h.settled, 0) + coalesce(p.legacy_settled_amount, 0) as legacy_settled_amount,
+  coalesce(p.unapplied_advances, 0) + coalesce(h.voided_settled, 0) as unapplied_advances,
+  coalesce(p.pending_check_amount, 0) as pending_check_amount,
+  t.assigned_balance,
+  w.invoice_count + w.payment_count + w.instrument_count = 0 as balance_determinate,
+  w.invoice_count as linked_unallocated_invoice_count, w.invoice_amount as linked_unallocated_invoice_amount,
+  w.payment_count as linked_unallocated_payment_count, w.payment_amount as linked_unallocated_payment_amount,
+  w.instrument_count as linked_unallocated_instrument_count, w.instrument_amount as linked_unallocated_instrument_amount,
+  w.recognized_amount as linked_unallocated_recognized_amount,
+  w.unclassified_amount as linked_unclassified_instrument_amount
+from public.cotizaciones c join public.clientes cl on cl.id = c.cliente_id
+left join billed b on b.budget_id = c.id
+left join historical h on h.budget_id = c.id
+left join payments p on p.budget_id = c.id
+cross join lateral (
+  select coalesce(b.amount, 0) - coalesce(h.settled, 0) - coalesce(p.credited_money, 0)
+    - coalesce(p.withheld_amount, 0) - coalesce(p.legacy_settled_amount, 0) as assigned_balance
+) t
+left join lateral (
+  select count(*) filter (where doc.tipo = 'orden_compra') as ordenes_compra,
+    count(*) filter (where doc.tipo = 'remito') as remitos,
+    count(*) filter (where doc.tipo = 'factura') as facturas,
+    count(*) filter (where doc.tipo = 'orden_pago') as ordenes_pago,
+    count(*) filter (where doc.tipo = 'remito' and not exists (
+      select 1 from public.documentos f where f.id = doc.factura_id and f.deleted_at is null
+    )) as remitos_sin_factura
+  from public.documento_presupuestos dp join public.documentos doc on doc.id = dp.documento_id and doc.deleted_at is null
+  where dp.cotizacion_id = c.id
+) d on true
+cross join lateral (
+  select
+    (select count(distinct a.invoice_id) from public.invoice_allocations a join public.documentos f on f.id = a.invoice_id
+      where a.budget_id is null and (f.deleted_at is null or a.historical_settled_amount > 0) and f.tipo_comprobante <> 'NC'
+        and exists(select 1 from public.documento_presupuestos dp where dp.documento_id = f.id and dp.cotizacion_id = c.id)) as invoice_count,
+    (select coalesce(sum(case when f.deleted_at is null then a.amount else a.historical_settled_amount end), 0) from public.invoice_allocations a join public.documentos f on f.id = a.invoice_id
+      where a.budget_id is null and (f.deleted_at is null or a.historical_settled_amount > 0) and f.tipo_comprobante <> 'NC'
+        and exists(select 1 from public.documento_presupuestos dp where dp.documento_id = f.id and dp.cotizacion_id = c.id)) as invoice_amount,
+    (select count(*) from public.v_financial_ledger l where l.budget_id is null
+      and l.credited_money + l.withheld_amount + l.legacy_settled_amount + l.pending_check_amount > 0
+      and exists(select 1 from public.documento_presupuestos dp where dp.cotizacion_id = c.id
+        and dp.documento_id in (l.op_id, l.invoice_id))) as payment_count,
+    (select coalesce(sum(l.credited_money + l.withheld_amount + l.legacy_settled_amount + l.pending_check_amount), 0)
+      from public.v_financial_ledger l where l.budget_id is null
+      and exists(select 1 from public.documento_presupuestos dp where dp.cotizacion_id = c.id
+        and dp.documento_id in (l.op_id, l.invoice_id))) as payment_amount,
+    (select count(*) from public.v_payment_instrument_balances i
+      where i.unresolved_relevant and i.unallocated_amount > 0
+        and exists(select 1 from public.documento_presupuestos dp where dp.cotizacion_id = c.id and dp.documento_id = i.op_id)) as instrument_count,
+    (select coalesce(sum(i.unallocated_amount), 0) from public.v_payment_instrument_balances i
+      where i.unresolved_relevant and i.unallocated_amount > 0
+        and exists(select 1 from public.documento_presupuestos dp where dp.cotizacion_id = c.id and dp.documento_id = i.op_id)) as instrument_amount,
+    (select coalesce(sum(i.unallocated_amount), 0) from public.v_payment_instrument_balances i
+      where i.recognized and i.unallocated_amount > 0
+        and exists(select 1 from public.documento_presupuestos dp where dp.cotizacion_id = c.id and dp.documento_id = i.op_id)) as recognized_amount,
+    (select coalesce(sum(i.unallocated_amount), 0) from public.v_payment_instrument_balances i
+      where i.unresolved_relevant and i.status = 'legacy_unclassified' and i.unallocated_amount > 0
+        and exists(select 1 from public.documento_presupuestos dp where dp.cotizacion_id = c.id and dp.documento_id = i.op_id)) as unclassified_amount
+) w
+where c.estado = 'aprobada';
+
+comment on column public.v_presupuestos.assigned_balance is 'Saldo solo de importes atribuidos; puede ser acreedor y no incluye advertencias de vínculos.';
+comment on column public.v_presupuestos.linked_unallocated_invoice_amount is 'Advertencia contextual, no aditiva entre trabajos: una factura compartida puede figurar en varios.';
+
+-- Esta comprobación se ejecuta contra las vistas definitivas, después de toda la actualización.
+do $$
+begin
+  if exists ((select * from financial_before_invoices except select id, monto, cobrado, saldo from public.v_facturas)
+    union all (select id, monto, cobrado, saldo from public.v_facturas except select * from financial_before_invoices)) then
+    raise exception 'La proyección financiera definitiva alteró saldos individuales existentes';
+  end if;
+  if (select row(sum(monto), sum(cobrado), sum(saldo)) from financial_before_invoices)
+    is distinct from (select row(sum(monto), sum(cobrado), sum(saldo)) from public.v_facturas) then
+    raise exception 'La proyección financiera definitiva alteró totales globales existentes';
+  end if;
 end;
 $$;
 
