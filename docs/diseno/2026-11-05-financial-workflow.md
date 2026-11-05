@@ -49,4 +49,6 @@ La referencia conserva una tabla de tres columnas en móvil; si importes largos 
 
 ## Verificación pendiente de implementación
 
+El corte de resumen y ciclo de vida (4a) se verificó en `32d8360`: desktop 1200×805, móvil 390×844 y máximo permitido también a 768/1024. Capturas cargadas y abiertas: `verificaciones/2026-11-05-financial-summary/`. E2E real cubre importes separados, crédito, indeterminación, anular/restaurar con motivo, formulario obsoleto y foco con teclado. Dos rondas acotadas: corrección de nombres completos/foco y adaptación por espacio disponible; detector manual una vez sin hallazgos. Las pantallas de medios, distribución de factura y reporte aún requieren su implementación y verificación. La revisión visual fresca y documental final se realiza tras cerrar esos circuitos.
+
 Captura desktop/móvil con datos descartables, estados vacío/error/carga y cheque pendiente/acreditado; una ronda batched, un lote de correcciones y confirmación acotada. Revisar importes largos, foco/etiquetas, filas dinámicas y conservación de archivos. Traspasos frescos de revisión visual y documentación al terminar.
