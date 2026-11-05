@@ -108,6 +108,8 @@ $$;
 revoke all on function private.reject_financial_event_mutation() from public, anon, authenticated;
 create trigger financial_events_append_only before update or delete on public.financial_events
   for each row execute function private.reject_financial_event_mutation();
+create trigger financial_events_reject_truncate before truncate on public.financial_events
+  for each statement execute function private.reject_financial_event_mutation();
 
 comment on table public.financial_events is 'Auditoría de cambios; occurred_at no acredita una fecha de cobro.';
 comment on column public.invoice_allocations.historical_settled_amount is
@@ -199,5 +201,9 @@ begin
   end loop;
 end;
 $$;
+
+-- El registro de auditoría solo admite anexar eventos, incluso con service_role.
+revoke all on public.financial_events from service_role;
+grant select, insert on public.financial_events to service_role;
 
 commit;

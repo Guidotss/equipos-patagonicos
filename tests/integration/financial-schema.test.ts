@@ -83,6 +83,19 @@ describe('contratos del esquema financiero inicial', () => {
       await database.query(insert, [documentId, 1, 2])
       await rejectsConstraint(database, 'update public.financial_events set reason = $1 where document_id = $2', ['Otra razón', documentId], '42501')
       await rejectsConstraint(database, 'delete from public.financial_events where document_id = $1', [documentId], '42501')
+      await rejectsConstraint(database, 'truncate public.financial_events', [], '42501')
+      expect((await database.query(`select
+        has_table_privilege('service_role', 'public.financial_events', 'SELECT') as read,
+        has_table_privilege('service_role', 'public.financial_events', 'INSERT') as append,
+        has_table_privilege('service_role', 'public.financial_events', 'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') as mutate`)).rows)
+        .toEqual([{ read: true, append: true, mutate: false }])
+      await database.query('set local role service_role')
+      await database.query(insert, [documentId, 2, 3])
+      expect((await database.query('select count(*)::int as count from public.financial_events where document_id = $1', [documentId])).rows)
+        .toEqual([{ count: 3 }])
+      await rejectsConstraint(database, 'update public.financial_events set reason = $1 where document_id = $2', ['Otra razón', documentId], '42501')
+      await rejectsConstraint(database, 'delete from public.financial_events where document_id = $1', [documentId], '42501')
+      await rejectsConstraint(database, 'truncate public.financial_events', [], '42501')
     })
   })
 
