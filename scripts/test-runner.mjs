@@ -17,6 +17,7 @@ import {
   crearEnvTests,
   envWithoutConexiones,
   projectTests,
+  validateEnvTests,
 } from './test-env.mjs';
 import {
   checkPorts as checkTestPorts,
@@ -142,6 +143,8 @@ export async function runTests(
     signals = process,
     log = console.error,
     lockPath = path.join(os.tmpdir(), "equipos-patagonicos-test-runner.lock"),
+    afterProjectCopy,
+    beforeTests,
   } = {},
 ) {
   if (!["int", "e2e"].includes(suite)) {
@@ -185,6 +188,8 @@ export async function runTests(
       { mode: 0o600 },
     );
     await prepareProject(root, temp, id, suite);
+    await afterProjectCopy?.({ temp, projectId });
+    controller.signal.throwIfAborted();
     const options = {
       cwd: temp,
       env: envWithoutConexiones(env),
@@ -217,6 +222,20 @@ export async function runTests(
       EP_TESTS_REPO_ROOT: root,
       EP_TESTS_APP_STATE_FILE: path.join(temp, "app-proceso.json"),
     };
+    validateEnvTests(testEnv);
+    await beforeTests?.({
+      temp,
+      projectId,
+      testEnv,
+      signal: controller.signal,
+      run: (command, args, overrides = {}) => run(command, args, {
+        ...options,
+        ...overrides,
+        signal: controller.signal,
+      }),
+    });
+    controller.signal.throwIfAborted();
+    validateEnvTests(testEnv);
     const bin = path.join(
       root,
       "node_modules/.bin",

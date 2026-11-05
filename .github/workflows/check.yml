@@ -28,6 +28,7 @@ jobs:
       - run: npm ci
       - run: npm run test:runner
       - run: npm run test:int
+      - run: npm run test:finance-upgrade
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7

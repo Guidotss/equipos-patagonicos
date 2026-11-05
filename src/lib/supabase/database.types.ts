@@ -407,14 +407,14 @@ isOneToOne: false
                   ]
                 },"documentos": {
                   Row: {
-                    "cliente_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"equipo_id": string | null,"factura_id": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"id": string,"monto": number | null,"notas": string,"numero": string,"numero_normalizado": string | null,"numero_oc_ref": string,"periodo_desde": string | null,"periodo_hasta": string | null,"tipo": string,"tipo_comprobante": string | null,"updated_at": string
+                    "cliente_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"equipo_id": string | null,"factura_id": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"financial_version": number,"id": string,"monto": number | null,"notas": string,"numero": string,"numero_normalizado": string | null,"numero_oc_ref": string,"payment_condition": string,"periodo_desde": string | null,"periodo_hasta": string | null,"tipo": string,"tipo_comprobante": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cliente_id": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo": string,"tipo_comprobante"?: string | null,"updated_at"?: string
+                    "cliente_id": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"financial_version"?: number,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"payment_condition"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo": string,"tipo_comprobante"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "cliente_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo"?: string,"tipo_comprobante"?: string | null,"updated_at"?: string
+                    "cliente_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"financial_version"?: number,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"payment_condition"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo"?: string,"tipo_comprobante"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -527,6 +527,32 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"financial_events": {
+                  Row: {
+                    "action": string,"actor": string | null,"after_financial": NonNullable<Json>,"after_version": number,"before_financial": NonNullable<Json>,"before_version": number,"document_id": string,"id": string,"occurred_at": string,"reason": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"actor"?: string | null,"after_financial": NonNullable<Json>,"after_version": number,"before_financial": NonNullable<Json>,"before_version": number,"document_id": string,"id"?: string,"occurred_at"?: string,"reason"?: string
+                  }
+                  Update: {
+                    "action"?: string,"actor"?: string | null,"after_financial"?: NonNullable<Json>,"after_version"?: number,"before_financial"?: NonNullable<Json>,"before_version"?: number,"document_id"?: string,"id"?: string,"occurred_at"?: string,"reason"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "financial_events_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "financial_events_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"firmantes": {
                   Row: {
                     "activo": boolean,"cargo": string,"created_at": string,"email": string,"id": string,"nombre": string,"telefono": string,"updated_at": string
@@ -540,6 +566,38 @@ isOneToOne: true
                   }
                   Relationships: [
 
+                  ]
+                },"invoice_allocations": {
+                  Row: {
+                    "amount": number,"budget_id": string | null,"budget_number": number | null,"budget_subject": string | null,"created_at": string,"equipment_id": string | null,"equipment_name": string | null,"equipment_status": string,"historical_settled_amount": number,"id": string,"invoice_id": string,"source": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"equipment_id"?: string | null,"equipment_name"?: string | null,"equipment_status": string,"historical_settled_amount"?: number,"id"?: string,"invoice_id": string,"source": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"equipment_id"?: string | null,"equipment_name"?: string | null,"equipment_status"?: string,"historical_settled_amount"?: number,"id"?: string,"invoice_id"?: string,"source"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "invoice_allocations_equipment_id_fkey"
+      columns: ["equipment_id"]
+isOneToOne: false
+      referencedRelation: "equipos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoice_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoice_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"op_facturas": {
                   Row: {
@@ -573,6 +631,64 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "op_facturas_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"payment_allocations": {
+                  Row: {
+                    "amount": number,"budget_id": string | null,"budget_number": number | null,"budget_subject": string | null,"created_at": string,"id": string,"instrument_id": string,"invoice_id": string | null,"source": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"id"?: string,"instrument_id": string,"invoice_id"?: string | null,"source": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"id"?: string,"instrument_id"?: string,"invoice_id"?: string | null,"source"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payment_allocations_instrument_id_fkey"
+      columns: ["instrument_id"]
+isOneToOne: false
+      referencedRelation: "payment_instruments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_allocations_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "v_facturas"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"payment_instruments": {
+                  Row: {
+                    "amount": number,"bank": string,"created_at": string,"due_on": string | null,"id": string,"kind": string,"op_id": string,"received_on": string | null,"reference": string,"settled_on": string | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"bank"?: string,"created_at"?: string,"due_on"?: string | null,"id"?: string,"kind": string,"op_id": string,"received_on"?: string | null,"reference"?: string,"settled_on"?: string | null,"status": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"bank"?: string,"created_at"?: string,"due_on"?: string | null,"id"?: string,"kind"?: string,"op_id"?: string,"received_on"?: string | null,"reference"?: string,"settled_on"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payment_instruments_op_id_fkey"
+      columns: ["op_id"]
+isOneToOne: false
+      referencedRelation: "documentos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_instruments_op_id_fkey"
       columns: ["op_id"]
 isOneToOne: false
       referencedRelation: "v_facturas"
