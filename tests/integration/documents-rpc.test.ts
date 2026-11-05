@@ -1,3 +1,4 @@
+import { confirmedCashFixtureData, registerCashFixture, updateCashFixture, voidFinancialFixture } from './financial-fixtures'
 // tests/integration/documentos-rpc.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Json } from '@/lib/supabase/database.types'
@@ -32,7 +33,7 @@ async function register(
   extra: { budgets?: string[]; remitos?: string[]; aplicaciones?: Json[] } = {},
 ) {
   const archivo = await uploadFile(activo.client, ids.cliente_id)
-  return activo.client.rpc('registrar_documento', {
+  return registerCashFixture(activo.client, {
     p_datos: { cliente_id: ids.cliente_id, notas: MARCA, ...datos },
     p_presupuestos: extra.budgets ?? [budget],
     p_archivos: [archivo],
@@ -59,11 +60,11 @@ async function contraRegistroInCurso<T>(
     activo.id,
     'select public.registrar_documento($1::jsonb, $2::uuid[], $3::jsonb, $4::uuid[], $5::jsonb)',
     [
-      JSON.stringify({ cliente_id: ids.cliente_id, notas: MARCA, ...datos }),
+      JSON.stringify(await confirmedCashFixtureData({ cliente_id: ids.cliente_id, notas: MARCA, ...datos }, extra.aplicaciones ?? [], [budget])),
       [budget],
       JSON.stringify([archivo]),
       extra.remitos ?? [],
-      JSON.stringify(extra.aplicaciones ?? []),
+      JSON.stringify([]),
     ],
     llamada,
   )
@@ -104,14 +105,14 @@ describe('registrar_documento', () => {
   it('exige presupuesto, archivo y que el archivo exista en Storage', async () => {
     expect((await register({ tipo: 'remito' }, { budgets: [] })).error?.message).toMatch(/al menos un presupuesto/)
 
-    const withoutFile = await activo.client.rpc('registrar_documento', {
+    const withoutFile = await registerCashFixture(activo.client, {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
       p_presupuestos: [budget],
       p_archivos: [],
     })
     expect(withoutFile.error?.message).toMatch(/al menos un archivo/)
 
-    const missing = await activo.client.rpc('registrar_documento', {
+    const missing = await registerCashFixture(activo.client, {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
       p_presupuestos: [budget],
       p_archivos: [{ path: `documentos/${ids.cliente_id}/${crypto.randomUUID()}.pdf`, nombre_original: 'x.pdf' }],
@@ -121,7 +122,7 @@ describe('registrar_documento', () => {
 
   it('el archivo tiene que tener nombre y no estar vacío', async () => {
     const registerWith = (archivo: { path: string; nombre_original: string }) =>
-      activo.client.rpc('registrar_documento', {
+      registerCashFixture(activo.client, {
         p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
         p_presupuestos: [budget],
         p_archivos: [archivo],
@@ -144,7 +145,7 @@ describe('registrar_documento', () => {
   it('un mismo archivo no se vincula a dos documentos', async () => {
     const archivo = await uploadFile(activo.client, ids.cliente_id)
     const llamada = () =>
-      activo.client.rpc('registrar_documento', {
+      registerCashFixture(activo.client, {
         p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
         p_presupuestos: [budget],
         p_archivos: [archivo],
@@ -159,7 +160,7 @@ describe('registrar_documento', () => {
 
   it('el mismo archivo dos veces en la lista se rechaza', async () => {
     const archivo = await uploadFile(activo.client, ids.cliente_id)
-    const { error } = await activo.client.rpc('registrar_documento', {
+    const { error } = await registerCashFixture(activo.client, {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
       p_presupuestos: [budget],
       p_archivos: [archivo, archivo],
@@ -200,7 +201,7 @@ describe('registrar_documento', () => {
     const invoiceA = await registerOk(dataInvoice, { remitos: [deliveryNote] })
     const invoiceOfDeliveryNote = async () => (await sql('select factura_id from public.documentos where id = $1', [deliveryNote]))[0]
 
-    const reguardar = await activo.client.rpc('actualizar_documento', {
+    const reguardar = await updateCashFixture(activo.client, {
       p_id: invoiceA,
       p_datos: { ...dataInvoice, notas: MARCA },
       p_presupuestos: [budget],
@@ -211,7 +212,7 @@ describe('registrar_documento', () => {
     expect((await register(dataInvoice, { remitos: [deliveryNote] })).error?.message).toMatch(/ya está cubierto por otra factura/)
     expect(await invoiceOfDeliveryNote()).toEqual({ factura_id: invoiceA })
 
-    expect((await activo.client.rpc('anular_documento', { p_id: invoiceA })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: invoiceA })).error).toBeNull()
     const { data: invoiceB, error } = await register(dataInvoice, { remitos: [deliveryNote] })
     expect(error).toBeNull()
     expect(await invoiceOfDeliveryNote()).toEqual({ factura_id: invoiceB })
@@ -221,15 +222,15 @@ describe('registrar_documento', () => {
     const invoice = await registerOk({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' })
     expect(
       (await register({ tipo: 'orden_pago', monto: 1000 }, { aplicaciones: [{ factura_id: invoice, monto_aplicado: 600 }] })).error?.message,
-    ).toMatch(/supera el saldo/)
+    ).toMatch(/El cobro y las reservas superan/)
     expect(
       (await register({ tipo: 'orden_pago', monto: 100 }, { aplicaciones: [{ factura_id: invoice, monto_aplicado: 200 }] })).error?.message,
-    ).toMatch(/supera el monto de la orden de pago/)
+    ).toMatch(/Las aplicaciones superan el medio/)
   })
 
   describe('facturas canceladas por una orden de pago', () => {
-    const DECIMALES = 'El monto aplicado tiene que ser un número positivo con hasta 2 decimales'
-    const MAXIMO = 'El monto supera el máximo permitido'
+    const DECIMALES = 'Importe financiero inválido: usá texto con hasta 12 enteros y 2 decimales'
+    const MAXIMO = 'Importe financiero inválido: usá texto con hasta 12 enteros y 2 decimales'
     let invoice: string
     beforeAll(async () => {
       invoice = await registerOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
@@ -243,8 +244,8 @@ describe('registrar_documento', () => {
       ['con letras', 'abc', DECIMALES],
       ['negativo', -5, DECIMALES],
       ['con más de 12 dígitos enteros', 1234567890123, MAXIMO],
-      ['que falta', null, DECIMALES],
-      ['cero', '0.00', 'El monto aplicado tiene que ser mayor a cero'],
+      ['que falta', null, 'Declará los medios de pago y sus fechas efectivas; la orden de pago no acredita efectivo automáticamente'],
+      ['cero', '0.00', 'El importe financiero debe ser positivo'],
     ])('rechaza un monto aplicado %s', async (_, monto, message) => {
       const { error } = await op([{ factura_id: invoice, monto_aplicado: monto }])
       expect(result(error)).toEqual({ code: 'P0001', message: message })
@@ -253,16 +254,17 @@ describe('registrar_documento', () => {
     it('rechaza una aplicación sin factura o con una factura que no es un id', async () => {
       for (const aplicacion of [{ monto_aplicado: 10 }, { factura_id: 'abc', monto_aplicado: 10 }, 5]) {
         const { error } = await op([aplicacion])
-        expect(result(error)).toEqual({ code: 'P0001', message: 'Falta la factura en una de las facturas canceladas' })
+        expect(result(error)).toEqual({ code: 'P0001', message: 'Declará los medios de pago y sus fechas efectivas; la orden de pago no acredita efectivo automáticamente' })
       }
     })
 
-    it('la misma factura en minúsculas y en mayúsculas cuenta como repetida', async () => {
-      const { error } = await op([
+    it('agrega aplicaciones parciales a la misma factura normalizando su UUID', async () => {
+      const { data, error } = await op([
         { factura_id: invoice, monto_aplicado: 10 },
         { factura_id: invoice.toUpperCase(), monto_aplicado: 10 },
       ])
-      expect(result(error)).toEqual({ code: 'P0001', message: 'Una factura aparece dos veces en la orden de pago' })
+      expect(error).toBeNull()
+      expect(await sql('select monto_aplicado from public.op_facturas where op_id = $1', [data])).toEqual([{ monto_aplicado: '20.00' }])
     })
 
     it('rechaza lo aplicado que supera la orden de pago aunque la suma pase de 12 dígitos enteros', async () => {
@@ -273,7 +275,7 @@ describe('registrar_documento', () => {
         { tipo: 'orden_pago', monto: MAXIMO },
         { aplicaciones: facturas.map((factura_id) => ({ factura_id, monto_aplicado: 600000000000 })) },
       )
-      expect(result(error)).toEqual({ code: 'P0001', message: 'Lo aplicado a facturas supera el monto de la orden de pago' })
+      expect(result(error)).toEqual({ code: 'P0001', message: 'Las aplicaciones superan el medio o requieren clasificar el importe heredado' })
     })
 
     it('guarda el monto aplicado tal cual, con hasta 2 decimales', async () => {
@@ -290,7 +292,7 @@ describe('registrar_documento', () => {
 
   it('las facturas canceladas tienen que venir como lista', async () => {
     const archivo = await uploadFile(activo.client, ids.cliente_id)
-    const { error } = await activo.client.rpc('registrar_documento', {
+    const { error } = await registerCashFixture(activo.client, {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
       p_presupuestos: [budget],
       p_archivos: [archivo],
@@ -301,7 +303,7 @@ describe('registrar_documento', () => {
   })
 
   it('un usuario inactivo no registra', async () => {
-    const { error } = await inactivo.client.rpc('registrar_documento', {
+    const { error } = await registerCashFixture(inactivo.client, {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito' },
       p_presupuestos: [budget],
       p_archivos: [],
@@ -313,7 +315,7 @@ describe('registrar_documento', () => {
 describe('ruta del archivo', () => {
   const MENSAJE = 'El archivo no corresponde a la carpeta del cliente'
   const registerWith = (archivo: { path: string; nombre_original: string }) =>
-    activo.client.rpc('registrar_documento', {
+    registerCashFixture(activo.client, {
       p_datos: { cliente_id: ids.cliente_id, tipo: 'remito', notas: MARCA },
       p_presupuestos: [budget],
       p_archivos: [archivo],
@@ -403,7 +405,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
 
   it.each(casos)('actualizar_documento: %s', async (_, datos, message) => {
     const deliveryNote = await registerOk({ tipo: 'remito', numero: 'R-sin-vinculos' })
-    const { error } = await activo.client.rpc('actualizar_documento', { p_id: deliveryNote, p_datos: { notas: MARCA, ...datos } })
+    const { error } = await updateCashFixture(activo.client, { p_id: deliveryNote, p_datos: { notas: MARCA, ...datos } })
     expect(result(error)).toEqual({ code: 'P0001', message: message })
     expect((await sql('select tipo, numero from public.documentos where id = $1', [deliveryNote]))[0]).toEqual({
       tipo: 'remito',
@@ -418,7 +420,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     ['nulo', null],
   ])('p_datos que no es un objeto (%s)', async (_, datos) => {
     const MENSAJE = { code: 'P0001', message: 'Los datos del documento tienen que ser un objeto' }
-    const registrado = await activo.client.rpc('registrar_documento', {
+    const registrado = await registerCashFixture(activo.client, {
       p_datos: datos,
       p_presupuestos: [budget],
       p_archivos: [await uploadFile(activo.client, ids.cliente_id)],
@@ -426,7 +428,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     expect(result(registrado.error)).toEqual(MENSAJE)
 
     const deliveryNote = await registerOk({ tipo: 'remito' })
-    const actualizado = await activo.client.rpc('actualizar_documento', { p_id: deliveryNote, p_datos: datos })
+    const actualizado = await updateCashFixture(activo.client, { p_id: deliveryNote, p_datos: datos })
     expect(result(actualizado.error)).toEqual(MENSAJE)
   })
 
@@ -453,7 +455,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     const vacios = { with_date: false, fecha_vencimiento: null, periodo_desde: null, periodo_hasta: null, equipo_id: null }
     expect(await fields()).toEqual(vacios)
 
-    const { error } = await activo.client.rpc('actualizar_documento', {
+    const { error } = await updateCashFixture(activo.client, {
       p_id: id,
       p_datos: { tipo: 'remito', fecha: '', fecha_vencimiento: '', periodo_desde: '', periodo_hasta: '', equipo_id: '', notas: MARCA },
     })
@@ -465,7 +467,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     const ajenas = { id: 'abc', factura_id: 'abc', deleted_at: 'abc', deleted_by: 'abc', created_by: 'abc', created_at: 'abc' }
     const id = await registerOk({ tipo: 'remito', ...ajenas })
 
-    const { error } = await activo.client.rpc('actualizar_documento', {
+    const { error } = await updateCashFixture(activo.client, {
       p_id: id,
       p_datos: { tipo: 'remito', ...ajenas, notas: MARCA },
     })
@@ -504,7 +506,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
     expect(invoice.error).toBeNull()
     expect(await fieldsOf(invoice.data!)).toMatchObject({ tipo_comprobante: 'FA', numero_oc_ref: 'OC-1', periodo_desde: null, equipo_id: null })
 
-    const { error } = await activo.client.rpc('actualizar_documento', {
+    const { error } = await updateCashFixture(activo.client, {
       p_id: deliveryNote.data!,
       p_datos: { tipo: 'orden_compra', ...ofInvoice, ...ofDeliveryNote, notas: MARCA },
     })
@@ -516,7 +518,7 @@ describe('datos inválidos dan P0001 con el mensaje en castellano, nunca el erro
 describe('actualizar, archivos, anular y restaurar', () => {
   it('corrige el tipo de un documento sin vínculos (subí la factura como remito)', async () => {
     const id = await registerOk({ tipo: 'remito', numero: 'F-1', periodo_desde: '2026-10-01' })
-    const { error } = await activo.client.rpc('actualizar_documento', {
+    const { error } = await updateCashFixture(activo.client, {
       p_id: id,
       p_datos: { tipo: 'factura', numero: 'F-1', monto: 300, tipo_comprobante: 'FA', notas: MARCA },
       p_presupuestos: [budget],
@@ -533,26 +535,26 @@ describe('actualizar, archivos, anular y restaurar', () => {
     const invoice = await registerOk({ tipo: 'factura', monto: 1000, tipo_comprobante: 'FA' })
     await registerOk({ tipo: 'orden_pago', monto: 600 }, { aplicaciones: [{ factura_id: invoice, monto_aplicado: 600 }] })
 
-    const changeTipo = await activo.client.rpc('actualizar_documento', {
+    const changeTipo = await updateCashFixture(activo.client, {
       p_id: invoice,
       p_datos: { tipo: 'remito', notas: MARCA },
       p_presupuestos: [budget],
     })
-    expect(changeTipo.error?.message).toMatch(/primero quitá/)
+    expect(changeTipo.error?.message).toMatch(/Corregí sus destinos/)
 
-    const amountMenor = await activo.client.rpc('actualizar_documento', {
+    const amountMenor = await updateCashFixture(activo.client, {
       p_id: invoice,
       p_datos: { tipo: 'factura', monto: 500, tipo_comprobante: 'FA', notas: MARCA },
       p_presupuestos: [budget],
     })
-    expect(amountMenor.error?.message).toMatch(/menor a lo ya cobrado/)
+    expect(amountMenor.error?.message).toMatch(/distribución y el cobro histórico/)
   })
 
   it('un remito cubierto por una factura no cambia de tipo sin desvincularse', async () => {
     const deliveryNote = await registerOk({ tipo: 'remito' })
     const invoice = await registerOk({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [deliveryNote] })
 
-    const { error } = await activo.client.rpc('actualizar_documento', {
+    const { error } = await updateCashFixture(activo.client, {
       p_id: deliveryNote,
       p_datos: { tipo: 'orden_compra', notas: MARCA },
       p_presupuestos: [budget],
@@ -567,9 +569,9 @@ describe('actualizar, archivos, anular y restaurar', () => {
   it('un remito cubierto por una factura anulada sí cambia de tipo (y deja de estar cubierto)', async () => {
     const deliveryNote = await registerOk({ tipo: 'remito' })
     const invoice = await registerOk({ tipo: 'factura', monto: 500, tipo_comprobante: 'FA' }, { remitos: [deliveryNote] })
-    expect((await activo.client.rpc('anular_documento', { p_id: invoice })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: invoice })).error).toBeNull()
 
-    const { error } = await activo.client.rpc('actualizar_documento', {
+    const { error } = await updateCashFixture(activo.client, {
       p_id: deliveryNote,
       p_datos: { tipo: 'orden_compra', notas: MARCA },
     })
@@ -596,14 +598,14 @@ describe('actualizar, archivos, anular y restaurar', () => {
       const id = await registerOk({ tipo: 'orden_compra' }, { budgets: [budget, otro] })
       const ambos = [budget, otro].sort()
 
-      const withoutList = await activo.client.rpc('actualizar_documento', {
+      const withoutList = await updateCashFixture(activo.client, {
         p_id: id,
         p_datos: { tipo: 'orden_compra', numero: 'OC-2', notas: MARCA },
       })
       expect(withoutList.error).toBeNull()
       expect(await budgetsOf(id)).toEqual(ambos)
 
-      const empty = await activo.client.rpc('actualizar_documento', {
+      const empty = await updateCashFixture(activo.client, {
         p_id: id,
         p_datos: { tipo: 'orden_compra', notas: MARCA },
         p_presupuestos: [],
@@ -611,7 +613,7 @@ describe('actualizar, archivos, anular y restaurar', () => {
       expect(empty.error?.message).toMatch(/al menos un presupuesto/)
       expect(await budgetsOf(id)).toEqual(ambos)
 
-      const withList = await activo.client.rpc('actualizar_documento', {
+      const withList = await updateCashFixture(activo.client, {
         p_id: id,
         p_datos: { tipo: 'orden_compra', notas: MARCA },
         p_presupuestos: [otro],
@@ -625,12 +627,12 @@ describe('actualizar, archivos, anular y restaurar', () => {
       const id = await registerOk({ tipo: 'orden_compra', numero: 'OC-1' }, { budgets: [voided] })
       await voidBudget(voided)
 
-      const withoutList = await activo.client.rpc('actualizar_documento', {
+      const withoutList = await updateCashFixture(activo.client, {
         p_id: id,
         p_datos: { tipo: 'orden_compra', numero: 'OC-2', notas: MARCA },
       })
       expect(withoutList.error).toBeNull()
-      const withList = await activo.client.rpc('actualizar_documento', {
+      const withList = await updateCashFixture(activo.client, {
         p_id: id,
         p_datos: { tipo: 'orden_compra', numero: 'OC-3', notas: MARCA },
         p_presupuestos: [voided],
@@ -646,7 +648,7 @@ describe('actualizar, archivos, anular y restaurar', () => {
       await voidBudget(voided)
       const id = await registerOk({ tipo: 'orden_compra' })
 
-      const { error } = await activo.client.rpc('actualizar_documento', {
+      const { error } = await updateCashFixture(activo.client, {
         p_id: id,
         p_datos: { tipo: 'orden_compra', notas: MARCA },
         p_presupuestos: [budget, voided],
@@ -674,13 +676,13 @@ describe('actualizar, archivos, anular y restaurar', () => {
     it('sin p_remitos ni p_aplicaciones los conserva (editar datos no desvincula)', async () => {
       const { remito: deliveryNote, factura: invoice, op } = await invoiceWithDeliveryNoteYOp()
 
-      const factura2 = await activo.client.rpc('actualizar_documento', {
+      const factura2 = await updateCashFixture(activo.client, {
         p_id: invoice,
         p_datos: { ...dataInvoice, numero: 'F-2' },
         p_presupuestos: [budget],
       })
       expect(factura2.error).toBeNull()
-      const op2 = await activo.client.rpc('actualizar_documento', {
+      const op2 = await updateCashFixture(activo.client, {
         p_id: op,
         p_datos: { ...dataOp, numero: 'OP-2' },
         p_presupuestos: [budget],
@@ -693,25 +695,25 @@ describe('actualizar, archivos, anular y restaurar', () => {
 
     it('sin p_aplicaciones, la OP no baja de lo que ya aplicó', async () => {
       const { factura: invoice, op } = await invoiceWithDeliveryNoteYOp()
-      const { error } = await activo.client.rpc('actualizar_documento', {
+      const { error } = await updateCashFixture(activo.client, {
         p_id: op,
         p_datos: { ...dataOp, monto: 500 },
         p_presupuestos: [budget],
       })
-      expect(error?.message).toMatch(/supera el monto de la orden de pago/)
+      expect(error?.message).toMatch(/Las aplicaciones superan el medio/)
       expect(await aplicadoBy(op)).toEqual([{ factura_id: invoice, monto_aplicado: '600.00' }])
     })
 
     it('una lista vacía sí los quita', async () => {
       const { factura: invoice, op } = await invoiceWithDeliveryNoteYOp()
-      const factura2 = await activo.client.rpc('actualizar_documento', {
+      const factura2 = await updateCashFixture(activo.client, {
         p_id: invoice,
         p_datos: dataInvoice,
         p_presupuestos: [budget],
         p_remitos: [],
       })
       expect(factura2.error).toBeNull()
-      const op2 = await activo.client.rpc('actualizar_documento', {
+      const op2 = await updateCashFixture(activo.client, {
         p_id: op,
         p_datos: dataOp,
         p_presupuestos: [budget],
@@ -755,7 +757,7 @@ describe('actualizar, archivos, anular y restaurar', () => {
 
   it('no agrega archivos a un documento anulado', async () => {
     const id = await registerOk({ tipo: 'remito' })
-    expect((await activo.client.rpc('anular_documento', { p_id: id })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: id })).error).toBeNull()
 
     const pagina = await uploadFile(activo.client, ids.cliente_id, 'Página 2.pdf')
     const { error } = await activo.client.rpc('agregar_archivos', { p_documento_id: id, p_archivos: [pagina] })
@@ -768,7 +770,7 @@ describe('actualizar, archivos, anular y restaurar', () => {
 
   it('no quita archivos de un documento anulado', async () => {
     const { id, archivos } = await documentWithDosFiles()
-    expect((await activo.client.rpc('anular_documento', { p_id: id })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: id })).error).toBeNull()
 
     expect((await activo.client.rpc('quitar_archivo', { p_archivo_id: archivos[0] })).error?.message).toMatch(/anulado/)
     expect(await sql('select id from public.documento_archivos where documento_id = $1 order by orden', [id])).toEqual(
@@ -783,18 +785,18 @@ describe('actualizar, archivos, anular y restaurar', () => {
       { aplicaciones: [{ factura_id: invoice, monto_aplicado: 1000 }] },
     )
 
-    expect((await activo.client.rpc('anular_documento', { p_id: op1 })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: op1 })).error).toBeNull()
     await registerOk({ tipo: 'orden_pago', monto: 1000 }, { aplicaciones: [{ factura_id: invoice, monto_aplicado: 1000 }] })
-    expect((await activo.client.rpc('restaurar_documento', { p_id: op1 })).error?.message).toMatch(/ya no tiene saldo/)
+    expect((await voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: op1 })).error?.message).toMatch(/El cobro y las reservas superan/)
 
     const oc = await registerOk({ tipo: 'orden_compra' })
-    expect((await activo.client.rpc('anular_documento', { p_id: oc })).error).toBeNull()
-    expect((await activo.client.rpc('restaurar_documento', { p_id: oc })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: oc })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: oc })).error).toBeNull()
   })
 
   describe('restaurar sin dejar saldo negativo', () => {
-    const anular = (id: string) => activo.client.rpc('anular_documento', { p_id: id })
-    const restore = (id: string) => activo.client.rpc('restaurar_documento', { p_id: id })
+    const anular = (id: string) => voidFinancialFixture(activo.client, 'anular_documento', { p_id: id })
+    const restore = (id: string) => voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: id })
     const cobro = async (invoice: string) =>
       (await sql('select monto, cobrado, saldo from public.v_facturas where id = $1', [invoice]))[0]
 
@@ -813,10 +815,10 @@ describe('actualizar, archivos, anular y restaurar', () => {
     it('una OP no se restaura mientras alguna de sus facturas está anulada', async () => {
       const { factura: invoice, op1 } = await invoiceAnuladaWithOpAnulada()
 
-      expect((await restore(op1)).error?.message).toMatch(/alguna factura está anulada/)
+      expect((await restore(op1)).error?.message).toMatch(/Restaurá primero las facturas anuladas/)
       expect((await restore(invoice)).error).toBeNull()
       expect(await cobro(invoice)).toEqual({ monto: '1000.00', cobrado: '1000.00', saldo: '0.00' })
-      expect((await restore(op1)).error?.message).toMatch(/ya no tiene saldo/)
+      expect((await restore(op1)).error?.message).toMatch(/El cobro y las reservas superan/)
       expect(await cobro(invoice)).toEqual({ monto: '1000.00', cobrado: '1000.00', saldo: '0.00' })
     })
 
@@ -841,7 +843,7 @@ describe('concurrencia', () => {
     const aplicaciones = [{ factura_id: invoice, monto_aplicado: 1000 }]
 
     const segunda = await contraRegistroInCurso(op, { aplicaciones }, () => register(op, { aplicaciones }))
-    expect(segunda.error?.message).toMatch(/supera el saldo/)
+    expect(segunda.error?.message).toMatch(/El cobro y las reservas superan/)
     expect(await saldo(invoice)).toBe(0)
   })
 
@@ -850,12 +852,12 @@ describe('concurrencia', () => {
     const op = { tipo: 'orden_pago', monto: 1000 }
     const aplicaciones = [{ factura_id: invoice, monto_aplicado: 1000 }]
     const anulada = await registerOk(op, { aplicaciones })
-    expect((await activo.client.rpc('anular_documento', { p_id: anulada })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: anulada })).error).toBeNull()
 
     const restore = await contraRegistroInCurso(op, { aplicaciones }, () =>
-      activo.client.rpc('restaurar_documento', { p_id: anulada }),
+      voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: anulada }),
     )
-    expect(restore.error?.message).toMatch(/ya no tiene saldo/)
+    expect(restore.error?.message).toMatch(/El cobro y las reservas superan/)
     expect(await saldo(invoice)).toBe(0)
   })
 

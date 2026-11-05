@@ -840,7 +840,7 @@ isOneToOne: false
 { Args: { "p_archivos": Json,"p_documento_id": string }; Returns: undefined
                            },
 "anular_documento":
-{ Args: { "p_id": string }; Returns: undefined
+{ Args: { "p_expected_version"?: number,"p_id": string,"p_reason"?: string }; Returns: undefined
                            },
 "aprobar_con_orden_compra":
 { Args: { "p_archivos": Json,"p_documento": Json,"p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: string
@@ -954,6 +954,9 @@ isOneToOne: false
 "cargar_cotizacion_existente":
 { Args: { "p_datos": Json }; Returns: string
                            },
+"change_payment_instrument_status":
+{ Args: { "p_expected_version": number,"p_instrument_id": string,"p_op_id": string,"p_reason"?: string,"p_settled_on"?: string,"p_status": string }; Returns: Json
+                           },
 "complete_crane_operator_signup":
 { Args: { "p_actor_id": string,"p_equipment_id": string,"p_name": string,"p_user_id": string }; Returns: undefined
                            },
@@ -1049,7 +1052,7 @@ isOneToOne: false
 { Args: { "p_aplicaciones"?: Json,"p_archivos": Json,"p_datos": Json,"p_presupuestos": (string)[],"p_remitos"?: (string)[] }; Returns: string
                            },
 "restaurar_documento":
-{ Args: { "p_id": string }; Returns: undefined
+{ Args: { "p_expected_version"?: number,"p_id": string,"p_reason"?: string }; Returns: undefined
                            },
 "revertir_aprobacion":
 { Args: { "p_id": string }; Returns: undefined

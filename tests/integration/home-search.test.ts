@@ -1,3 +1,5 @@
+import { insertFinancialFixture } from './financial-fixtures'
+import { removeFinancialFixtureDocuments } from './documents-helpers'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { addDays } from '@/lib/format/dates'
 import { anonClient, removeUser, crearUser, sql } from './helpers'
@@ -34,7 +36,7 @@ afterAll(async () => {
   if (clientId) {
     await sql('delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1)', [clientId])
     await sql('update public.documentos set factura_id = null where cliente_id = $1', [clientId])
-    await sql('delete from public.documentos where cliente_id = $1', [clientId])
+    await removeFinancialFixtureDocuments('cliente_id = $1', [clientId])
     await sql('delete from public.cotizaciones where cliente_id = $1', [clientId])
     await sql('delete from public.clientes where id = $1', [clientId])
   }
@@ -68,10 +70,10 @@ async function envio(id: string, hace: number) {
 }
 
 async function document(tipo: 'factura' | 'orden_compra' | 'orden_pago' | 'remito', budgets: string[], numero: string = tipo, monto = 1000) {
-  const [row] = await sql<{ id: string }>(
+  const [row] = await insertFinancialFixture<{ id: string }>(
     `insert into public.documentos (cliente_id, tipo, numero, notas, monto, tipo_comprobante, fecha)
      values ($1, $2, $3, $4, $5, $6, $7) returning id`,
-    [clientId, tipo, numero, marca, ['factura', 'orden_pago'].includes(tipo) ? monto : null, tipo === 'factura' ? 'FA' : null, addDays(today, -45)],
+    [clientId, tipo, numero, marca, ['factura', 'orden_pago'].includes(tipo) ? monto : null, tipo === 'factura' ? 'FA' : null, addDays(today, -45)], budgets,
   )
   for (const id of budgets) await sql('insert into public.documento_presupuestos values ($1, $2)', [row.id, id])
   return row.id

@@ -1,3 +1,4 @@
+import { insertFinancialFixture } from './financial-fixtures'
 // tests/integration/documentos-vistas.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { idsOfExample } from './quotes-helpers'
@@ -20,10 +21,10 @@ afterAll(async () => {
 
 async function document(budget: string, fields: Record<string, unknown>) {
   const columns = Object.keys(fields)
-  const [row] = await sql<{ id: string }>(
+  const [row] = await insertFinancialFixture<{ id: string }>(
     `insert into public.documentos (cliente_id, ${columns.join(', ')}, notas)
      values ($1, ${columns.map((_, i) => `$${i + 2}`).join(', ')}, $${columns.length + 2}) returning id`,
-    [ids.cliente_id, ...Object.values(fields), MARCA],
+    [ids.cliente_id, ...Object.values(fields), MARCA], [budget],
   )
   await sql('insert into public.documento_presupuestos (documento_id, cotizacion_id) values ($1, $2)', [row.id, budget])
   return row.id

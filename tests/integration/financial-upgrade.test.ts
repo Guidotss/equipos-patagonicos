@@ -106,3 +106,57 @@ describe.runIf(Boolean(process.env.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT))('actual
     }
   })
 })
+
+// Las operaciones nuevas se verifican contra filas realmente creadas antes de la migración.
+describe.runIf(Boolean(process.env.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT))('mutaciones sobre registros financieros heredados', () => {
+  beforeAll(async () => {
+    snapshot ??= JSON.parse(await readFile(process.env.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT!, 'utf8'))
+  })
+  it('preserva metadatos, rechaza reconocimiento fabricado y clasifica solo con fecha y motivo manuales', async () => {
+    await withConexion(async (database) => {
+      await database.query('begin')
+      try {
+        const { rows: [document] } = await database.query('select * from public.documentos where id = $1', [snapshot.ids.partialOrder])
+        const { rows: instruments } = await database.query(`select jsonb_build_object('id', id, 'kind', kind, 'status', status,
+          'amount', amount::text, 'receivedOn', received_on, 'dueOn', due_on, 'settledOn', settled_on,
+          'reference', reference, 'bank', bank) as entry from public.payment_instruments where op_id = $1 order by status`, [document.id])
+        await database.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: snapshot.ids.staffId, role: 'authenticated' })])
+        await database.query('set local role authenticated')
+        const base = { tipo: 'orden_pago', monto: document.monto, numero: document.numero, notas: 'Edición de metadatos heredados' }
+        await database.query('select public.actualizar_documento($1, $2)', [document.id, base])
+        expect((await database.query('select financial_version::int from public.documentos where id = $1', [document.id])).rows)
+          .toEqual([{ financial_version: 1 }])
+        const entries = instruments.map(({ entry }) => entry)
+        const recognized = entries.find((entry) => entry.status === 'legacy_recognized')
+        const unclassified = entries.find((entry) => entry.status === 'legacy_unclassified')
+        for (const forged of [
+          entries.map((entry) => entry.id === recognized.id ? { ...entry, amount: '400' } : { ...entry, amount: '100' }),
+          entries.map((entry) => entry.id === unclassified.id ? { ...entry, status: 'legacy_recognized' } : entry),
+        ]) {
+          await database.query('savepoint forged')
+          await expect(database.query('select public.actualizar_documento($1, $2)', [document.id,
+            { ...base, finance: { expectedVersion: 1, correctionReason: 'No autoriza fabricar cobros', paymentInstruments: forged } }]))
+            .rejects.toMatchObject({ code: 'P0001' })
+          await database.query('rollback to savepoint forged')
+        }
+        const classified = entries.map((entry) => entry.id === recognized.id ? {
+          ...entry, kind: 'transfer', status: 'confirmed', settledOn: '2024-06-20',
+        } : entry)
+        await database.query('savepoint missing_reason')
+        await expect(database.query('select public.actualizar_documento($1, $2)', [document.id,
+          { ...base, finance: { expectedVersion: 1, paymentInstruments: classified } }])).rejects.toMatchObject({ code: 'P0001' })
+        await database.query('rollback to savepoint missing_reason')
+        await database.query('select public.actualizar_documento($1, $2)', [document.id,
+          { ...base, finance: { expectedVersion: 1, correctionReason: 'Transferencia acreditada verificada manualmente', paymentInstruments: classified } }])
+        await database.query('reset role')
+        expect((await database.query(`select sum(money)::text as money, sum(legacy_applied)::text as legacy
+          from private.financial_ledger($1) where op_id = $2`, [document.cliente_id, document.id])).rows)
+          .toEqual([{ money: '300.00', legacy: '0' }])
+        expect((await database.query(`select budget_id, source from public.payment_allocations where instrument_id = $1`, [recognized.id])).rows)
+          .toEqual([{ budget_id: null, source: 'legacy' }])
+        expect((await database.query('select financial_version::int from public.documentos where id = $1', [document.id])).rows)
+          .toEqual([{ financial_version: 2 }])
+      } finally { await database.query('rollback') }
+    })
+  })
+})

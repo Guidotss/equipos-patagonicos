@@ -1,3 +1,4 @@
+import { insertFinancialFixture } from './financial-fixtures'
 // tests/integration/documentos.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { idsOfExample } from './quotes-helpers'
@@ -22,7 +23,7 @@ afterAll(async () => {
 
 async function insert(fields: Record<string, unknown>) {
   const columns = Object.keys(fields)
-  const [row] = await sql<{ id: string; numero_normalizado: string }>(
+  const [row] = await insertFinancialFixture<{ id: string; numero_normalizado: string }>(
     `insert into public.documentos (${columns.join(', ')}, notas)
      values (${columns.map((_, i) => `$${i + 1}`).join(', ')}, $${columns.length + 1})
      returning id, numero_normalizado`,

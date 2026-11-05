@@ -1,3 +1,4 @@
+import { voidFinancialFixture, confirmedCashFixtureFinance } from './financial-fixtures'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { FIELDS_DOCUMENT, schemaDocument } from '@/lib/documents/schemas'
 import { prepareUpload, registerDocument } from '@/lib/documents/service'
@@ -44,6 +45,8 @@ async function register(
     datos: datos({ tipo, ...fields }),
     archivos: [archivo],
     ...relaciones,
+    finance: await confirmedCashFixtureFinance(datos({ tipo, ...fields }), relaciones.aplicaciones ?? [], [budget]),
+    aplicaciones: [],
   })
 }
 
@@ -77,14 +80,14 @@ describe('circuito documental de las pantallas', () => {
     const saldo = async () =>
       (await user.client.from('v_facturas').select('saldo, estado_cobro').eq('id', invoice).single()).data
     expect(await saldo()).toEqual({ saldo: 0, estado_cobro: 'cobrada' })
-    expect((await user.client.rpc('anular_documento', { p_id: pago })).error).toBeNull()
+    expect((await voidFinancialFixture(user.client, 'anular_documento', { p_id: pago })).error).toBeNull()
     expect(await saldo()).toEqual({ saldo: 1000, estado_cobro: 'pendiente' })
-    await user.client.rpc('anular_documento', { p_id: invoice })
-    expect((await user.client.rpc('restaurar_documento', { p_id: pago })).error?.message).toContain(
-      'restaurala primero',
+    await voidFinancialFixture(user.client, 'anular_documento', { p_id: invoice })
+    expect((await voidFinancialFixture(user.client, 'restaurar_documento', { p_id: pago })).error?.message).toContain(
+      'Restaurá primero las facturas anuladas',
     )
-    await user.client.rpc('restaurar_documento', { p_id: invoice })
-    expect((await user.client.rpc('restaurar_documento', { p_id: pago })).error).toBeNull()
+    await voidFinancialFixture(user.client, 'restaurar_documento', { p_id: invoice })
+    expect((await voidFinancialFixture(user.client, 'restaurar_documento', { p_id: pago })).error).toBeNull()
     expect(await saldo()).toEqual({ saldo: 0, estado_cobro: 'cobrada' })
     const { data: resumen } = await user.client
       .from('v_presupuestos')

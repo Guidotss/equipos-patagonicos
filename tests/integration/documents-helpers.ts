@@ -1,7 +1,7 @@
 // tests/integration/documentos-helpers.ts
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
-import { adminClient, sql } from './helpers'
+import { adminClient, sql, withConexion } from './helpers'
 
 type Client = SupabaseClient<Database>
 
@@ -51,7 +51,7 @@ export async function limpiarDocuments(marca: string) {
     [marca],
   )
   await sql(`update public.documentos set factura_id = null where notas = $1`, [marca])
-  await sql('delete from public.documentos where notas = $1', [marca])
+  await removeFinancialFixtureDocuments('notas = $1', [marca])
   await sql('delete from public.cotizaciones where notas = $1', [marca])
 }
 
@@ -67,4 +67,25 @@ export async function limpiarFilesSubidos() {
     if (error) throw new Error('No se pudieron borrar los archivos subidos: ' + error.message)
     for (const path of tanda) subidos.delete(path)
   }
+}
+
+/** Mantenimiento exclusivo del runner desechable: borra solo filas de la fixture dentro de una transacción. */
+export async function removeFinancialFixtureDocuments(predicate: string, parameters: unknown[]) {
+  if (!['notas = $1', 'cliente_id = $1'].includes(predicate)) throw new Error('Filtro de limpieza no permitido')
+  await withConexion(async (database) => {
+    await database.query('begin')
+    try {
+      await database.query('set local session_replication_role = replica')
+      const ids = `select id from public.documentos where ${predicate}`
+      await database.query(`delete from public.financial_events where document_id in (${ids})`, parameters)
+      await database.query(`delete from public.payment_allocations where instrument_id in
+        (select id from public.payment_instruments where op_id in (${ids})) or invoice_id in (${ids})`, parameters)
+      await database.query(`delete from public.payment_instruments where op_id in (${ids})`, parameters)
+      await database.query(`delete from public.invoice_allocations where invoice_id in (${ids})`, parameters)
+      // Se restauran las restricciones para la eliminación habitual de documentos y archivos.
+      await database.query('set local session_replication_role = origin')
+      await database.query(`delete from public.documentos where ${predicate}`, parameters)
+      await database.query('commit')
+    } catch (error) { await database.query('rollback'); throw error }
+  })
 }

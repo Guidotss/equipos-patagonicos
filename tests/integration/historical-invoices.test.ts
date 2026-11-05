@@ -1,3 +1,5 @@
+import { registerCashFixture, updateCashFixture, voidFinancialFixture } from './financial-fixtures'
+import { removeFinancialFixtureDocuments } from './documents-helpers'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { limpiarFilesSubidos, newBudget, uploadFile, uploadFileIn } from './documents-helpers'
@@ -45,7 +47,7 @@ afterAll(async () => {
   try {
     await sql('delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1)', [clientId])
     await sql('delete from public.facturas_historicas where lote = $1', [MARCA])
-    await sql('delete from public.documentos where cliente_id = $1', [clientId])
+    await removeFinancialFixtureDocuments('cliente_id = $1', [clientId])
     await sql('delete from public.cotizaciones where cliente_id = $1', [clientId])
     await sql('delete from public.clientes where id = any($1::uuid[])', [[clientId, otroClientId]])
     await limpiarFilesSubidos()
@@ -90,7 +92,7 @@ async function importOk(entrada?: Entry): Promise<Result> {
 
 async function documentNormal(tipo: 'factura' | 'orden_pago', extra: Record<string, unknown> = {}, aplicaciones: { factura_id: string; monto_aplicado: number }[] = []) {
   const archivo = await uploadFile(activo.client, clientId)
-  return activo.client.rpc('registrar_documento', {
+  return registerCashFixture(activo.client, {
     p_datos: { cliente_id: clientId, tipo, numero: `normal-${crypto.randomUUID()}`, monto: 1222.5,
       ...(tipo === 'factura' ? { tipo_comprobante: 'FA' } : {}), notas: MARCA, ...extra },
     p_presupuestos: [budgetNormal],
@@ -211,7 +213,7 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
       const entrada = await entryNew()
       const normal = await documentNormal('factura', { numero: entrada.numero })
       expect(normal.error).toBeNull()
-      if (anular) expect((await activo.client.rpc('anular_documento', { p_id: normal.data! })).error).toBeNull()
+      if (anular) expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: normal.data! })).error).toBeNull()
       expect((await importar(entrada)).error?.message).toMatch(/ya existe una factura FA/)
     }
   })
@@ -219,9 +221,9 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
   it('no recrea una factura anulada ni un presupuesto cuyo estado cambió', async () => {
     const entrada = await entryNew()
     const result = await importOk(entrada)
-    expect((await activo.client.rpc('anular_documento', { p_id: result.factura_id })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: result.factura_id })).error).toBeNull()
     expect((await importar(entrada)).error?.message).toMatch(/alterados o anulados/)
-    expect((await activo.client.rpc('restaurar_documento', { p_id: result.factura_id })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: result.factura_id })).error).toBeNull()
     expect((await activo.client.rpc('cambiar_estado_presupuesto', { p_id: result.presupuesto_id, p_estado: 'en_curso' })).error).toBeNull()
     expect((await importar(entrada)).error?.message).toMatch(/alterados o anulados/)
     expect(await sql('select count(*) from public.facturas_historicas where entrada->>\'numero\' = $1', [entrada.numero])).toEqual([{ count: '1' }])
@@ -236,32 +238,52 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
       { monto: 1500 }, { numero: '00002-99999999' }, { fecha: '2024-06-21' },
       { fecha_vencimiento: '2024-07-21' }, { tipo_comprobante: 'FB' }, { tipo: 'orden_pago' },
     ]) {
-      expect((await activo.client.rpc('actualizar_documento', { p_id: result.factura_id, p_datos: { ...originales, ...change } })).error?.message)
+      expect((await updateCashFixture(activo.client, { p_id: result.factura_id, p_datos: { ...originales, ...change } })).error?.message)
         .toMatch(/factura histórica están protegidos/)
     }
     await expect(sql('update public.documentos set cliente_id = $1 where id = $2', [otroClientId, result.factura_id]))
       .rejects.toMatchObject({ message: expect.stringMatching(/factura histórica están protegidos/) })
-    expect((await activo.client.rpc('actualizar_documento', { p_id: result.factura_id, p_datos: originales })).error).toBeNull()
-    expect((await activo.client.rpc('anular_documento', { p_id: result.factura_id })).error).toBeNull()
-    expect((await activo.client.rpc('restaurar_documento', { p_id: result.factura_id })).error).toBeNull()
+    expect((await updateCashFixture(activo.client, { p_id: result.factura_id, p_datos: originales })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: result.factura_id })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: result.factura_id })).error).toBeNull()
     expect((await saldos(result.factura_id)).saldo).toBe('0.00')
   })
 
   it('no permite aplicar una OP ni restaurarla contra el cobro histórico', async () => {
     const result = await importOk()
     expect((await documentNormal('orden_pago', {}, [{ factura_id: result.factura_id, monto_aplicado: 1 }])).error?.message)
-      .toMatch(/supera el saldo/)
+      .toMatch(/El cobro y las reservas superan/)
     const op = await documentNormal('orden_pago')
     expect(op.error).toBeNull()
-    expect((await activo.client.rpc('anular_documento', { p_id: op.data! })).error).toBeNull()
-    // Estado legado que no puede armar una RPC actual: aplicación guardada en una OP anulada.
-    await sql('insert into public.op_facturas (op_id, factura_id, monto_aplicado) values ($1, $2, 1)', [op.data, result.factura_id])
-    expect((await activo.client.rpc('restaurar_documento', { p_id: op.data! })).error?.message).toMatch(/ya no tiene saldo/)
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: op.data! })).error).toBeNull()
+    // Aplicación canónica en una OP anulada: se valida su capacidad al restaurar.
+    await sql(`insert into public.payment_allocations(instrument_id, budget_id, budget_number, budget_subject, invoice_id, amount, source)
+      select i.id, a.budget_id, a.budget_number, a.budget_subject, $2, 1, 'explicit'
+      from public.payment_instruments i join public.invoice_allocations a on a.invoice_id = $2 where i.op_id = $1`, [op.data, result.factura_id])
+    expect((await voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: op.data! })).error?.message).toMatch(/El cobro y las reservas superan/)
     expect((await saldos(result.factura_id)).saldo).toBe('0.00')
-    expect((await activo.client.rpc('anular_documento', { p_id: result.factura_id })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: result.factura_id })).error).toBeNull()
     await sql('update public.documentos set deleted_at = null, deleted_by = null where id = $1', [op.data])
-    expect((await activo.client.rpc('restaurar_documento', { p_id: result.factura_id })).error?.message)
-      .toMatch(/cobro histórico y las órdenes de pago superan/)
+    expect((await voidFinancialFixture(activo.client, 'restaurar_documento', { p_id: result.factura_id })).error?.message)
+      .toMatch(/El cobro y las reservas superan/)
+  })
+
+  it('preserva una redistribución explícita del cobro histórico al reintentar la importación', async () => {
+    const entry = await entryNew()
+    const imported = await importOk(entry)
+    const [allocation] = await sql<{ id: string }>('select id from public.invoice_allocations where invoice_id = $1', [imported.factura_id])
+    const finance = { expectedVersion: 1, correctionReason: 'Atribución histórica confirmada por trabajo', invoiceAllocations: [
+      { id: allocation.id, budgetId: imported.presupuesto_id, equipmentId: null, equipmentStatus: 'unknown', amount: '900', historicalSettledAmount: '900' },
+      { budgetId: budgetNormal, equipmentId: null, equipmentStatus: 'none', amount: '322.50', historicalSettledAmount: '322.50' },
+    ] }
+    expect((await activo.client.rpc('actualizar_documento', { p_id: imported.factura_id,
+      p_datos: { tipo: 'factura', numero: entry.numero, fecha: entry.fecha, monto: entry.monto, tipo_comprobante: 'FA',
+        fecha_vencimiento: entry.fecha_vencimiento, notas: MARCA, finance } })).error).toBeNull()
+    const before = await sql('select * from public.invoice_allocations where invoice_id = $1 order by id', [imported.factura_id])
+    expect((await importOk(entry)).ya_importada).toBe(true)
+    expect(await sql('select * from public.invoice_allocations where invoice_id = $1 order by id', [imported.factura_id])).toEqual(before)
+    expect(await sql('select cobrado from public.facturas_historicas where factura_id = $1', [imported.factura_id])).toEqual([{ cobrado: '1222.50' }])
+    expect(await sql('select id from public.payment_allocations where invoice_id = $1', [imported.factura_id])).toEqual([])
   })
 
   it('mantiene el cobro por OP y las ediciones en facturas normales', async () => {
@@ -271,10 +293,13 @@ describe('importación histórica con evidencia y cobro confirmado', () => {
     const op = await documentNormal('orden_pago', { monto: 222.5 }, [{ factura_id: invoice.data!, monto_aplicado: 222.5 }])
     expect(op.error).toBeNull()
     expect(await saldos(invoice.data!)).toEqual({ monto: '1222.50', cobrado: '222.50', saldo: '1000.00', estado_cobro: 'parcial' })
-    expect((await activo.client.rpc('actualizar_documento', { p_id: invoice.data!,
-      p_datos: { tipo: 'factura', numero: 'edición normal', monto: 1500, tipo_comprobante: 'FA', notas: MARCA } })).error).toBeNull()
+    const [allocation] = await sql<{ id: string }>('select id from public.invoice_allocations where invoice_id = $1', [invoice.data])
+    expect((await updateCashFixture(activo.client, { p_id: invoice.data!,
+      p_datos: { tipo: 'factura', numero: 'edición normal', monto: 1500, tipo_comprobante: 'FA', notas: MARCA,
+        finance: { expectedVersion: 1, invoiceAllocations: [{ id: allocation.id, budgetId: budgetNormal, equipmentId: null,
+          equipmentStatus: 'unknown', amount: '1500', historicalSettledAmount: '0' }] } } })).error).toBeNull()
     expect((await saldos(invoice.data!)).saldo).toBe('1277.50')
-    expect((await activo.client.rpc('anular_documento', { p_id: op.data! })).error).toBeNull()
+    expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: op.data! })).error).toBeNull()
     expect((await saldos(invoice.data!)).saldo).toBe('1500.00')
   })
 })
@@ -283,7 +308,7 @@ describe('duplicados entre importación y registro habitual', () => {
   it.each([false, true])('el registro habitual no duplica una histórica (anulada: %s)', async (anulada) => {
     const entrada = await entryNew()
     const { factura_id } = await importOk(entrada)
-    if (anulada) expect((await activo.client.rpc('anular_documento', { p_id: factura_id })).error).toBeNull()
+    if (anulada) expect((await voidFinancialFixture(activo.client, 'anular_documento', { p_id: factura_id })).error).toBeNull()
     const duplicada = await documentNormal('factura', { numero: entrada.numero.replace('-', '/') })
     expect(duplicada.error?.message).toMatch(/Ya existe una factura histórica FA/)
   })
@@ -293,7 +318,7 @@ describe('duplicados entre importación y registro habitual', () => {
     await importOk(entrada)
     const normal = await documentNormal('factura')
     expect(normal.error).toBeNull()
-    expect((await activo.client.rpc('actualizar_documento', { p_id: normal.data!,
+    expect((await updateCashFixture(activo.client, { p_id: normal.data!,
       p_datos: { tipo: 'factura', tipo_comprobante: 'FA', monto: 1222.5, numero: entrada.numero, notas: MARCA },
     })).error?.message).toMatch(/Ya existe una factura histórica FA/)
   })
