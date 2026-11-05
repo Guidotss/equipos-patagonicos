@@ -70,6 +70,11 @@ Los tipos Input reflejan exactamente los registros del diseño sin snapshots/pro
 
 ## Task 4: Formularios de cobros y resumen de trabajos
 
+La ejecución se divide en dos cortes internos para mantener componentes y revisiones acotados; ninguno se publica por separado. El alcance y los criterios finales de esta tarea se conservan.
+
+- [ ] **4a — Resumen y ciclo de vida:** resumen financiero exacto, advertencias/enlaces, anulación/restauración con motivo y versión capturada, pruebas reales focalizadas y capturas desktop/móvil; revisión SPEC y calidad.
+- [ ] **4b — Formularios y circuito completo:** medios/destinos/reparto de factura, acciones de cheques y anticipos, estados sucios/desactualizados, adaptación de pruebas existentes y Playwright integral; revisión SPEC y calidad.
+
 **Files:** crear `src/components/documents/{payment-instruments-section,payment-allocations-section,invoice-allocations-section}.tsx`, hooks/helpers enfocados si el controlador crece, `src/components/budgets/financial-summary.tsx`; modificar formularios/modelos/tipos/acciones de documentos, acciones de anular/restaurar, detalle/listado de presupuestos y `tests/e2e/financial-workflow.spec.ts`.
 
 - [ ] Generar referencia UI antes de implementar sobre capturas vigentes; modo Operate, sistema actual, sin reemplazar DESIGN.md. Mostrar condición textual y lista de medios; cheque con referencia/fechas/estado. Efectivo/transferencia/retención requieren confirmación y fecha propias, sin inventar cuotas.
