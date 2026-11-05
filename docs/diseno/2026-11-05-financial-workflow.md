@@ -35,6 +35,10 @@ Mantener banda, ficha y secciones de documentos. Sustituir los cinco indicadores
 
 El caso ilustrado usa factura de 1.000.000, cancelación de 400.000 (350.000 de dinero + 50.000 de retención), saldo 600.000 y cheque pendiente de 300.000. Son datos sintéticos de composición. Si el saldo asignado es negativo, usar «Crédito a favor». Si falta reparto monetario, mostrar «Saldo pendiente de distribución» y explicar qué factura/cobro resolver; no sustituir por cero ni ocultar los importes conocidos. Equipo desconocido por sí solo no vuelve indeterminado un saldo de trabajo.
 
+El total reconocido del trabajo incluye anticipos asignados. Cuando los haya, aclarar «Incluye anticipos» junto a Cancelado; la línea Anticipos sin aplicar es un desglose, no otro importe que se suma a Cancelado. Aplicarlos a una factura conserva el total recibido y disminuye ese desglose. Un cheque pendiente con destino sin factura no es un anticipo ya cobrado.
+
+Las acciones de acreditar/rechazar sobre un documento guardado deben conservar el formulario. Si hay cambios o archivos sin guardar, pedir guardarlos antes de ejecutar la acción, sin descartarlos ni refrescar silenciosamente. Usar la versión que la pantalla recibió; al completar una acción y refrescar un formulario limpio, inicializar desde el nuevo contexto. Anular/restaurar documentos financieros pide motivo en la confirmación existente, incluyendo deshacer; evitar el deshacer antiguo que reenvía una versión anterior.
+
 ## Facturación por grúa
 
 Referencia `referencias/21-equipment-revenue.png`, generada con la ficha actual para el shell y la grilla vigente de Presupuestos para tabla/filtros. Prompt en `.prompt.txt`. La captura antigua de grilla no contiene las entradas más recientes del sidebar; la navegación real actual prevalece.
