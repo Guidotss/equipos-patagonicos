@@ -19,7 +19,7 @@ export function FinancialSummary({ billed, credited, withheld, legacy, advances,
   const unresolved = documents
   return (
     <section aria-label="Resumen financiero" className="rounded-xl border bg-card p-4 sm:p-6">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4">
         <SummaryItem label="Facturado" value={billed} />
         <SummaryItem label="Cancelado" value={cancelled} detail={parseAggregateCents(advances) > BigInt(0) ? 'Incluye anticipos' : undefined} />
         <div>
@@ -32,7 +32,7 @@ export function FinancialSummary({ billed, credited, withheld, legacy, advances,
         <SummaryLine label="Retenciones" value={withheld} />
         {parseAggregateCents(legacy) > BigInt(0) ? <SummaryLine label="Cancelaciones anteriores sin medio identificado" value={legacy} /> : null}
       </dl>
-      <dl className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2 sm:gap-6">
+      <dl className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-x-6 gap-y-2 border-t pt-4 text-sm">
         <SummaryLine label="Anticipos sin aplicar" value={advances} />
         <SummaryLine label="Cheques pendientes" value={pendingChecks} />
       </dl>
@@ -46,5 +46,5 @@ function SummaryItem({ label, value, detail }: { label: string; value: string; d
 }
 
 function SummaryLine({ label, value }: { label: string; value: string }) {
-  return <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{label}</dt><dd className="font-medium tabular-nums">{formatFinancialAmount(value)}</dd></div>
+  return <div className="flex flex-wrap justify-between gap-x-4 gap-y-1"><dt className="text-muted-foreground">{label}</dt><dd className="font-medium whitespace-nowrap tabular-nums">{formatFinancialAmount(value)}</dd></div>
 }

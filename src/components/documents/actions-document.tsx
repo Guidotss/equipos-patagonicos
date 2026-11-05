@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useLayoutEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { changeVoidingDocument } from '@/app/(app)/documentos/actions'
 import { InlineConfirmation } from '@/components/form/confirmation-inline'
@@ -16,6 +16,13 @@ export function ActionsDocument({ id, anulado: voided, financialVersion }: { id:
   const [error, setError] = useState('')
   const button = useRef<HTMLButtonElement>(null)
   const inCurso = useRef(false)
+  const restoreFocus = useRef(false)
+  useLayoutEffect(() => {
+    if (restoreFocus.current && !confirmando && !pending && button.current) {
+      button.current.focus()
+      restoreFocus.current = false
+    }
+  }, [confirmando, pending])
   function change(restore: boolean) {
     if (inCurso.current) return
     inCurso.current = true
@@ -27,13 +34,13 @@ export function ActionsDocument({ id, anulado: voided, financialVersion }: { id:
           setError(result.message)
           return
         }
+        restoreFocus.current = true
         setConfirmando(false)
         if (!restore && financialVersion === undefined)
           toast('Documento anulado', { action: { label: 'Deshacer', onClick: () => change(true) }, duration: 10000 })
         else toast.success(restore ? 'Documento restaurado' : 'Documento anulado')
         setReason('')
         router.refresh()
-        button.current?.focus()
       } catch {
         setError('No se pudo completar la operación. Reintentá.')
       } finally {
@@ -65,8 +72,8 @@ export function ActionsDocument({ id, anulado: voided, financialVersion }: { id:
           confirmDeshabilitado={financialVersion !== undefined && !reason.trim()}
           onConfirm={() => change(voided)}
           onCancelar={() => {
+            restoreFocus.current = true
             setConfirmando(false)
-            button.current?.focus()
           }}
         >
           {financialVersion !== undefined ? <label className="flex flex-col gap-1">Motivo<Input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} required /></label> : null}

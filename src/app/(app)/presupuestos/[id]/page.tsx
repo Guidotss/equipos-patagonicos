@@ -58,10 +58,10 @@ export default async function BudgetPage({
   const deliveryNoteId = typeof consulta.remito === 'string' && isUuid(consulta.remito) ? consulta.remito : undefined
   const invoiceId = typeof consulta.factura === 'string' && isUuid(consulta.factura) ? consulta.factura : undefined
   const indicadores = [
-    ['OC', budget.ordenes_compra],
-    ['Remitos', budget.remitos],
-    ['Facturas', budget.facturas],
-    ['OP', budget.ordenes_pago],
+    ['orden de compra', 'órdenes de compra', budget.ordenes_compra],
+    ['remito', 'remitos', budget.remitos],
+    ['factura', 'facturas', budget.facturas],
+    ['orden de pago', 'órdenes de pago', budget.ordenes_pago],
   ] as const
   return (
     <>
@@ -100,7 +100,7 @@ export default async function BudgetPage({
           </Alert>
         ) : null}
         <FinancialSummary billed={budget.exact_billed} credited={budget.exact_credited} withheld={budget.exact_withheld} legacy={budget.exact_legacy} advances={budget.exact_advances} pendingChecks={budget.exact_pending} balance={budget.exact_balance} documents={unresolvedDocuments(documentos, contexto)} />
-        <p className="text-sm text-muted-foreground">{indicadores.map(([label, value]) => `${value ?? 0} ${label}`).join(' · ')}</p>
+        <p className="text-sm text-muted-foreground">{indicadores.map(([singular, plural, value]) => `${value ?? 0} ${value === 1 ? singular : plural}`).join(' · ')}</p>
         {nuevo && budget.presupuesto_estado !== 'anulado' ? (
           <DocumentForm
             key={`${nuevo}-${deliveryNoteId}-${invoiceId}`}
