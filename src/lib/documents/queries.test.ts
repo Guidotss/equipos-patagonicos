@@ -9,7 +9,7 @@ vi.mock('@/lib/finance/queries', async (original) => ({
   readFinanceByDocument: vi.fn(async () => ({})),
 }))
 
-function clientWithPages(failDocumentPage = false, withHistoricalEquipment = false) {
+function clientWithPages(failDocumentPage = false) {
   const ranges: Record<string, number[]> = {}
   const orders: Record<string, string[]> = {}
   const rows: Record<string, object[]> = {
@@ -23,10 +23,6 @@ function clientWithPages(failDocumentPage = false, withHistoricalEquipment = fal
       { id: 'historical', nombre: 'Grúa anterior', activo: false },
     ],
   }
-  if (withHistoricalEquipment) {
-    Object.assign(rows.cotizaciones[0], { equipo_id: 'historical' })
-    Object.assign(rows.cotizaciones[1], { equipo_id: 'equipment-0' })
-  }
   const client = {
     from(table: string) {
       let selected = rows[table]
@@ -34,10 +30,6 @@ function clientWithPages(failDocumentPage = false, withHistoricalEquipment = fal
         select: () => query,
         eq(column: string, value: unknown) {
           if (table === 'equipos' && column === 'activo') selected = selected.filter((row) => (row as { activo: boolean }).activo === value)
-          return query
-        },
-        in(column: string, values: string[]) {
-          if (table === 'equipos' && column === 'id') selected = selected.filter((row) => values.includes((row as { id: string }).id))
           return query
         },
         order(column: string) {
@@ -68,7 +60,7 @@ describe('contexto documental completo', () => {
     expect(context.documentos).toHaveLength(1001)
     expect(context.facturas).toHaveLength(1001)
     expect(ranges).toEqual({ cotizaciones: [0, 500, 1000], documentos: [0, 500, 1000], v_facturas: [0, 500, 1000], equipos: [0, 500] })
-    expect(context.equipos).toHaveLength(501)
+    expect(context.equipos).toHaveLength(502)
     expect(orders.documentos).toEqual(['created_at', 'id', 'created_at', 'id', 'created_at', 'id'])
     expect(orders.cotizaciones).toEqual(['numero', 'id', 'numero', 'id', 'numero', 'id'])
     expect(orders.v_facturas).toEqual(['fecha_vencimiento', 'id', 'fecha_vencimiento', 'id', 'fecha_vencimiento', 'id'])
@@ -76,12 +68,12 @@ describe('contexto documental completo', () => {
     expect(context.financeByDocument['document-1']).toEqual({ invoiceAllocations: [], paymentInstruments: [], paymentAllocations: [] })
   })
 
-  it('incluye grúas activas y conserva las históricas vinculadas sin duplicarlas', async () => {
-    const { client } = clientWithPages(false, true)
+  it('incluye también grúas inactivas sin vínculo previo para atribución explícita', async () => {
+    const { client } = clientWithPages()
     const context = await contextoDocument(client, 'client')
     expect(context.equipos).toHaveLength(502)
     expect(context.equipos.filter((equipment) => equipment.id === 'equipment-0')).toHaveLength(1)
-    expect(context.equipos).toContainEqual(expect.objectContaining({ id: 'historical' }))
+    expect(context.equipos).toContainEqual(expect.objectContaining({ id: 'historical', activo: false }))
   })
 
   it('rechaza un error intermedio sin devolver opciones ni iniciar la lectura financiera', async () => {

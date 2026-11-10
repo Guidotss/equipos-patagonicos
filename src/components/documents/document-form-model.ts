@@ -1,7 +1,7 @@
 import { FIELDS_DOCUMENT } from '@/lib/documents/schemas'
 import type { DocumentContext, Document, OptionBudget } from '@/lib/documents/screens'
 import { formatAmountTable } from '@/lib/format/amounts'
-import { formatFinancialAmount, parseDecimalCents } from '@/lib/finance/amounts'
+import { centsToDecimal, formatFinancialAmount, parseDecimalCents, sumCents } from '@/lib/finance/amounts'
 
 import type { DocumentFormProps } from './document-form.types'
 
@@ -26,7 +26,12 @@ export function initialDocumentValues({
   initial.tipo_comprobante = document?.tipo_comprobante ?? 'FA'
   const invoice = initialContext.facturas.find((item) => item.id === invoiceId)
   if (invoice?.exact_balance && parseDecimalCents(invoice.exact_balance) !== BigInt(0)) initial.monto = formatFinancialAmount(invoice.exact_balance).slice(2)
-  else if (document?.monto) initial.monto = formatAmountTable(document.monto)
+  else if (document?.tipo === 'factura') {
+    const finance = initialContext.financeByDocument[document.id]
+    const rows = finance?.invoiceAllocations
+    if (rows?.length) initial.monto = formatFinancialAmount(centsToDecimal(sumCents(rows.map((row) => parseDecimalCents(row.amount) ?? BigInt(0))))).slice(2)
+    else if (document.monto) initial.monto = formatAmountTable(document.monto)
+  } else if (document?.monto) initial.monto = formatAmountTable(document.monto)
   return initial
 }
 
@@ -42,27 +47,11 @@ export function initialDeliveryNotes({
       : []
 }
 
-export function initialAllocations({
-  document,
-  initialContext = EMPTY_DOCUMENT_CONTEXT,
-  initialAllocations = [],
-  invoiceId,
-}: DocumentFormProps): Record<string, string> {
-  if (document)
-    return Object.fromEntries(
-      initialAllocations.map((item) => [item.factura_id, formatAmountTable(item.monto_aplicado)]),
-    )
-  const invoice = initialContext.facturas.find((item) => item.id === invoiceId)
-  return invoice?.id && invoice.exact_balance && parseDecimalCents(invoice.exact_balance) !== BigInt(0)
-    ? { [invoice.id]: formatFinancialAmount(invoice.exact_balance).slice(2) } : {}
-}
-
 export function documentFormSelections({
   values,
   context,
   selectedBudgetIds,
   deliveryNotes,
-  allocations,
   options,
   document,
 }: {
@@ -70,7 +59,6 @@ export function documentFormSelections({
   context: DocumentContext
   selectedBudgetIds: string[]
   deliveryNotes: string[]
-  allocations: Record<string, string>
   options: OptionBudget[]
   document?: Document
 }) {
@@ -94,9 +82,6 @@ export function documentFormSelections({
         (!item.deleted_at &&
           (!item.factura_id || item.factura_id === document?.id || !activeInvoices.has(item.factura_id)))),
   )
-  const voidedInvoices = context.documentos.filter(
-    (item) => item.tipo === 'factura' && item.deleted_at && allocations[item.id] !== undefined,
-  )
   const visibleOptions = options
     .filter((item) => item.presupuesto_estado !== 'anulado')
     .toSorted(
@@ -104,7 +89,7 @@ export function documentFormSelections({
         Number(b.presupuesto_estado === 'en_curso') - Number(a.presupuesto_estado === 'en_curso') ||
         b.numero - a.numero,
     )
-  return { duplicate, clientBudgets, availableDeliveryNotes, voidedInvoices, visibleOptions }
+  return { duplicate, clientBudgets, availableDeliveryNotes, visibleOptions }
 }
 
 export const changeList = (list: string[], id: string, checked: boolean) =>

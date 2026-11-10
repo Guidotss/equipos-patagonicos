@@ -1,20 +1,20 @@
 'use client'
 
-import { readDocumentContext, saveDocument } from '@/app/(app)/documentos/actions'
+import { changeInstrumentStatus, readDocumentContext, saveDocument } from '@/app/(app)/documentos/actions'
 import { AMBIGUOUS_EQUIPMENT_MESSAGE, deliveryNoteEquipment, hasSelectedBudgetContext } from '@/lib/documents/equipment'
 import type { UploadedFile } from '@/lib/documents/service'
-import { formatAmountTable, parsePrice } from '@/lib/format/amounts'
 import { useRouter } from 'next/navigation'
 import { useCallback, useRef, useState, useTransition } from 'react'
 
 import {
   EMPTY_DOCUMENT_CONTEXT,
-  initialAllocations,
   initialDeliveryNotes,
   initialDocumentValues,
   type DocumentFormValues,
 } from './document-form-model'
 import type { DocumentFormProps } from './document-form.types'
+import { useDocumentFinance } from './use-document-finance'
+import type { PaymentInstrument } from '@/lib/finance/contracts'
 
 export function useDocumentForm(props: DocumentFormProps) {
   const {
@@ -39,12 +39,18 @@ export function useDocumentForm(props: DocumentFormProps) {
   const contextRequest = useRef(0)
   const [values, setValues] = useState(() => initialDocumentValues(props))
   const [deliveryNotes, setDeliveryNotes] = useState(() => initialDeliveryNotes(props))
-  const [allocations, setAllocations] = useState(() => initialAllocations(props))
   const [newFiles, setNewFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [remove, setRemovedFileIds] = useState<string[]>([])
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const finance = useDocumentFinance(props)
+  const [statusPending, setStatusPending] = useState(false)
+  const [statusErrors, setStatusErrors] = useState<Record<string, string>>({})
+  const statusSubmitting = useRef(false)
+  const [initialForm] = useState(() => JSON.stringify({ values, deliveryNotes, selectedBudgetIds }))
+  const dirty = finance.dirty || newFiles.length > 0 || remove.length > 0 || uploading ||
+    JSON.stringify({ values, deliveryNotes, selectedBudgetIds }) !== initialForm
   const contextReady = Boolean(quote) || hasSelectedBudgetContext(context, selectedBudgetIds)
   const equipment = deliveryNoteEquipment(context, selectedBudgetIds, document)
   const equipmentLabel = contextReady
@@ -59,16 +65,19 @@ export function useDocumentForm(props: DocumentFormProps) {
 
   async function chooseBudget(id: string) {
     const option = options.find((item) => item.id === id)
+    const request = ++contextRequest.current
     setSelectedBudgetIds(id ? [id] : [])
-    if (!option || (option.cliente_id === clientId && context.budgets.some((budget) => budget.id === id))) return
+    if (!option || (option.cliente_id === clientId && context.budgets.some((budget) => budget.id === id))) {
+      setLoading(false)
+      return
+    }
     if (option.cliente_id !== clientId) {
       setClientId(option.cliente_id)
       setDeliveryNotes([])
-      setAllocations({})
       setNewFiles([])
       setUploading(false)
+      finance.reset()
     }
-    const request = ++contextRequest.current
     setLoading(true)
     try {
       const response = await readDocumentContext(option.cliente_id)
@@ -90,17 +99,39 @@ export function useDocumentForm(props: DocumentFormProps) {
       if (request === contextRequest.current) setLoading(false)
     }
   }
-  function changeAllocation(id: string, value: string | null) {
-    const next = { ...allocations }
-    if (value === null) delete next[id]
-    else next[id] = value
-    setAllocations(next)
-    const total = Object.values(next).reduce((sum, amount) => sum + (parsePrice(amount) ?? 0), 0)
-    changeField('monto', total ? formatAmountTable(total) : '')
+  async function changeStatus(instrument: PaymentInstrument, status: PaymentInstrument['status'], settledOn: string | null, reason: string) {
+    if (statusSubmitting.current || !document || !finance.version) return
+    if (dirty) {
+      setStatusErrors({ [instrument.id]: 'Guardá los cambios y archivos antes de modificar el estado del cheque.' })
+      return
+    }
+    statusSubmitting.current = true
+    setStatusPending(true)
+    setStatusErrors({})
+    try {
+      const result = await changeInstrumentStatus({ opId: document.id, instrumentId: instrument.id,
+        expectedVersion: finance.version, status, settledOn, correctionReason: reason })
+      if (!result.ok) { setStatusErrors({ [instrument.id]: result.message }); return }
+      const refreshed = await readDocumentContext(clientId)
+      if (!refreshed.ok) { setStatusErrors({ [instrument.id]: 'El estado cambió. Volvé a abrir el documento para actualizarlo.' }); return }
+      const refreshedDocument = refreshed.datos.documentos.find((item) => item.id === document.id)
+      const refreshedFinance = refreshed.datos.financeByDocument[document.id]
+      if (!refreshedDocument || !refreshedFinance || refreshedDocument.financial_version !== result.datos.financialVersion) {
+        setStatusErrors({ [instrument.id]: 'El documento volvió a cambiar. Volvé a abrirlo antes de continuar.' })
+        return
+      }
+      setContext(refreshed.datos)
+      finance.synchronize(refreshedFinance, result.datos.financialVersion)
+    } catch {
+      setStatusErrors({ [instrument.id]: 'No se pudo confirmar el estado. Volvé a abrir el documento antes de reintentar.' })
+    } finally {
+      statusSubmitting.current = false
+      setStatusPending(false)
+    }
   }
   function save(event: React.FormEvent) {
     event.preventDefault()
-    if (submitting.current || uploading || loading || !contextReady) return
+    if (submitting.current || statusSubmitting.current || uploading || loading || !contextReady) return
     if (values.tipo === 'remito' && equipment.ambiguous) {
       setMessage(AMBIGUOUS_EQUIPMENT_MESSAGE)
       return
@@ -118,13 +149,9 @@ export function useDocumentForm(props: DocumentFormProps) {
           archivos: newFiles,
           quitar: remove,
           remitos: values.tipo === 'factura' ? deliveryNotes : [],
-          aplicaciones:
-            values.tipo === 'orden_pago'
-              ? Object.entries(allocations).map(([invoiceId, allocatedAmount]) => ({
-                  factura_id: invoiceId,
-                  monto_aplicado: allocatedAmount,
-                }))
-              : [],
+          ...(values.tipo === 'orden_pago' || values.tipo === 'factura'
+            ? { finance: finance.input(values.tipo, values.monto), ...(values.tipo === 'orden_pago' ? { paymentCondition: finance.condition } : {}) }
+            : { aplicaciones: [] }),
           cotizacion: quote,
         })
         if (!result.ok) {
@@ -154,7 +181,6 @@ export function useDocumentForm(props: DocumentFormProps) {
     values,
     deliveryNotes,
     setDeliveryNotes,
-    allocations,
     removedFileIds: remove,
     setRemovedFileIds,
     uploading,
@@ -163,8 +189,11 @@ export function useDocumentForm(props: DocumentFormProps) {
     onChangeFiles,
     changeField,
     chooseBudget,
-    changeAllocation,
     save,
+    finance,
+    statusPending,
+    statusErrors,
+    changeStatus,
   }
 }
 

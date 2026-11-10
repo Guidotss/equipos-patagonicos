@@ -9,7 +9,6 @@ export type DocumentFormProps = {
   document?: Document
   filesExisting?: FileDocument[]
   linkedBudgetIds?: string[]
-  initialAllocations?: { factura_id: string; monto_aplicado: number }[]
   deliveryNoteId?: string
   invoiceId?: string
   quote?: { id: string; version: string }

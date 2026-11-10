@@ -1,12 +1,7 @@
 import { Card } from '@/components/form/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { centsToDecimal, formatFinancialAmount, parseDecimalCents } from '@/lib/finance/amounts'
 import Link from 'next/link'
 
 import { changeList, type documentFormSelections } from './document-form-model'
-import type { DocumentFormProps } from './document-form.types'
 import type { DocumentFormState } from './use-document-form'
 
 type RelatedSelections = ReturnType<typeof documentFormSelections>
@@ -40,7 +35,6 @@ export function LinkedBudgetsSection({
     </Card>
   )
 }
-
 export function InvoiceDeliveryNotesSection({
   availableDeliveryNotes,
   deliveryNotes,
@@ -76,90 +70,6 @@ export function InvoiceDeliveryNotesSection({
         ) : (
           <p className="text-sm text-muted-foreground">No hay remitos pendientes de facturar.</p>
         )}
-      </fieldset>
-    </Card>
-  )
-}
-
-export function PaymentAllocationsSection({
-  voidedInvoices,
-  allocations,
-  changeAllocation,
-  context,
-  initialAllocations,
-}: Pick<RelatedSelections, 'voidedInvoices'> &
-  Pick<DocumentFormState, 'allocations' | 'changeAllocation' | 'context'> & {
-    initialAllocations: NonNullable<DocumentFormProps['initialAllocations']>
-  }) {
-  return (
-    <Card titulo="Facturas que cancela" descripcion="El importe se completa con el saldo disponible; podés ajustarlo.">
-      <fieldset className="flex flex-col gap-3">
-        <legend className="sr-only">Facturas que cancela</legend>
-        {voidedInvoices.map((item) => (
-          <Alert key={item.id} variant="destructive">
-            <AlertDescription>
-              <p>
-                La factura {item.numero || 'sin número'} está anulada.{' '}
-                <Link href={`/documentos/${item.id}`} className="underline">
-                  Abrila para restaurarla
-                </Link>{' '}
-                o quitá esta aplicación antes de guardar.
-              </p>
-              <Button type="button" variant="outline" size="sm" onClick={() => changeAllocation(item.id, null)}>
-                Desvincular factura {item.numero || 'sin número'}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        ))}
-        {context.facturas
-          .filter(
-            (item) =>
-              item.tipo_comprobante !== 'NC' &&
-              ((item.exact_balance != null && (parseDecimalCents(item.exact_balance) ?? BigInt(0)) > BigInt(0)) || (item.id && allocations[item.id] !== undefined)),
-          )
-          .map((item) => {
-            const id = item.id!
-            const balance = item.exact_balance == null ? null : parseDecimalCents(item.exact_balance)
-            const initial = initialAllocations.find((allocation) => allocation.factura_id === id)?.monto_aplicado ?? 0
-            const available = balance == null ? null : centsToDecimal(balance + (parseDecimalCents(String(initial)) ?? BigInt(0)))
-            return (
-              <div key={id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
-                <label className="flex min-w-0 flex-1 items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-4 accent-primary"
-                    checked={allocations[id] !== undefined}
-                    onChange={(event) =>
-                      changeAllocation(id, event.target.checked ? (available == null ? '' : formatFinancialAmount(available).slice(2)) : null)
-                    }
-                  />
-                  <span>
-                    {[item.tipo_comprobante, item.numero || 'Sin número'].join(' ')}
-                    <span className="block text-xs text-muted-foreground">
-                      {available == null ? 'Saldo por determinar' : `Saldo disponible ${formatFinancialAmount(available)}`}
-                    </span>
-                  </span>
-                </label>
-                {allocations[id] !== undefined ? (
-                  <Input
-                    className="w-36"
-                    aria-label={`Importe aplicado a ${item.numero || 'factura sin número'}`}
-                    inputMode="decimal"
-                    value={allocations[id]}
-                    onChange={(event) => changeAllocation(id, event.target.value)}
-                    required
-                  />
-                ) : null}
-              </div>
-            )
-          })}
-        {!context.facturas.some(
-          (item) =>
-            item.tipo_comprobante !== 'NC' &&
-            ((item.exact_balance != null && (parseDecimalCents(item.exact_balance) ?? BigInt(0)) > BigInt(0)) || (item.id && allocations[item.id] !== undefined)),
-        ) ? (
-          <p className="text-sm text-muted-foreground">No hay facturas con saldo para este cliente.</p>
-        ) : null}
       </fieldset>
     </Card>
   )

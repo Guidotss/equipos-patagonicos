@@ -1,7 +1,7 @@
 import { validateEnvTests } from '../../scripts/test-env.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test, type Page } from '@playwright/test'
-import { withBase } from './database'
+import { removeOwnedFinancialData, withBase } from './database'
 import { iniciarSession, sufijoUnico } from './helpers'
 
 const marca = `documentos-e2e-${sufijoUnico()}`
@@ -36,15 +36,16 @@ test.afterAll(async () => {
   if (objects?.length)
     await admin.storage.from('documentos').remove(objects.map((item) => `documentos/${clientId}/${item.name}`))
   await withBase(async (db) => {
-    await db.query(
-      'delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1) or factura_id in (select id from public.documentos where cliente_id = $1)',
-      [clientId],
-    )
+    await db.query('begin')
+    try {
+    await removeOwnedFinancialData(db, clientId)
     await db.query('update public.documentos set factura_id = null where cliente_id = $1', [clientId])
     await db.query('delete from public.documentos where cliente_id = $1', [clientId])
     await db.query('delete from public.cotizaciones where cliente_id = $1', [clientId])
     await db.query('delete from public.clientes where id = $1', [clientId])
     await db.query('delete from public.equipos where id = $1', [historicEquipmentId])
+    await db.query('commit')
+    } catch (error) { await db.query('rollback'); throw error }
   })
 })
 
@@ -109,6 +110,7 @@ test('presupuesto directo → OC → remito → factura → pago; saldo y anulac
   await expect(page.getByLabel('Número (opcional)', { exact: true })).toHaveValue('F-103')
   await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
   await page.getByLabel('Monto total con IVA', { exact: true }).fill('1.000,00')
+  await page.getByRole('button', { name: 'Agregar distribución' }).click()
   await save(page)
   await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 1.000,00')
   await expect(deliveryNote.getByText('Facturado', { exact: true })).toBeVisible()
@@ -116,18 +118,29 @@ test('presupuesto directo → OC → remito → factura → pago; saldo y anulac
   const invoice = page.locator('[data-documento]').filter({ hasText: 'FA F-103' })
   await invoice.getByRole('link', { name: 'Registrar pago', exact: true }).click()
   await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('1.000,00')
-  await expect(page.getByRole('checkbox', { name: /FA F-103/ })).toBeChecked()
   await page.getByLabel('Número (opcional)', { exact: true }).fill('OP-104')
   await attach(page, 'Orden de pago.pdf')
+  await page.getByLabel('Nuevo medio').selectOption('cash')
+  await page.getByRole('button', { name: 'Agregar medio' }).click()
+  await page.getByLabel('Importe', { exact: true }).first().fill('1.000,00')
+  await page.getByLabel('Fecha efectiva').fill('2024-06-20')
+  await page.getByRole('button', { name: 'Agregar destino' }).click()
+  await page.getByLabel('Trabajo', { exact: true }).selectOption(budgetId)
+  const invoiceId = await withBase(async (db) => (await db.query<{ id: string }>("select id from public.documentos where cliente_id = $1 and numero = 'F-103'", [clientId])).rows[0].id)
+  await page.getByLabel('Factura (opcional)').selectOption(invoiceId)
+  await page.getByLabel('Importe', { exact: true }).last().fill('1.000,00')
   await save(page)
   await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 0,00')
   await expect(invoice.getByText('Cobrada', { exact: true })).toBeVisible()
 
   const pago = page.locator('[data-documento]').filter({ hasText: 'OP-104' })
   await pago.getByRole('button', { name: 'Anular', exact: true }).click()
+  await pago.getByLabel('Motivo').fill('Orden incorrecta')
   await pago.getByRole('button', { name: 'Confirmar anulación', exact: true }).click()
   await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 1.000,00')
   await pago.getByRole('button', { name: 'Restaurar', exact: true }).click()
+  await pago.getByLabel('Motivo').fill('Orden verificada')
+  await pago.getByRole('button', { name: 'Confirmar restauración', exact: true }).click()
   await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 0,00')
   await expect(invoice.getByText('Cobrada', { exact: true })).toBeVisible()
 

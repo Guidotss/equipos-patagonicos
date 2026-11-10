@@ -95,7 +95,6 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
             document={document}
             filesExisting={archivos.data!}
             linkedBudgetIds={vinculos.data!.map((item) => item.cotizacion_id)}
-            initialAllocations={aplicaciones.data!}
           />
         )}
       </Content>

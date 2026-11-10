@@ -78,7 +78,7 @@ export const schemaSaveDocument = z
 
 export type Document = Database['public']['Tables']['documentos']['Row']
 export type FileDocument = Database['public']['Tables']['documento_archivos']['Row']
-export type Invoice = Database['public']['Views']['v_facturas']['Row'] & { exact_balance: string | null }
+export type Invoice = Database['public']['Views']['v_facturas']['Row'] & { exact_balance: string | null; exact_available?: string | null }
 export type Budget = Database['public']['Views']['v_presupuestos']['Row']
 export type OptionBudget = {
   id: string
@@ -93,7 +93,7 @@ export type DocumentContext = {
   documentos: Document[]
   facturas: Invoice[]
   financeByDocument: FinanceByDocument
-  equipos: { id: string; nombre: string }[]
+  equipos: { id: string; nombre: string; activo?: boolean }[]
 }
 
 export const STATUSES_COBRO: Record<string, string> = {

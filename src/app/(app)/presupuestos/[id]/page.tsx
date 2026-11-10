@@ -13,6 +13,7 @@ import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import { contextoDocument } from '@/lib/documents/queries'
 import { FinancialSummary } from '@/components/budgets/financial-summary'
 import { unresolvedDocuments } from '@/lib/finance/unresolved-documents'
+import { historicalAdvances } from '@/lib/finance/historical-advances'
 import { STATUSES_BUDGET } from '@/lib/budgets/list'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
@@ -99,7 +100,7 @@ export default async function BudgetPage({
             <AlertDescription>Motivo de anulación: {budget.presupuesto_motivo}</AlertDescription>
           </Alert>
         ) : null}
-        <FinancialSummary billed={budget.exact_billed} credited={budget.exact_credited} withheld={budget.exact_withheld} legacy={budget.exact_legacy} advances={budget.exact_advances} pendingChecks={budget.exact_pending} balance={budget.exact_balance} documents={unresolvedDocuments(documentos, contexto)} />
+        <FinancialSummary billed={budget.exact_billed} credited={budget.exact_credited} withheld={budget.exact_withheld} legacy={budget.exact_legacy} advances={budget.exact_advances} pendingChecks={budget.exact_pending} balance={budget.exact_balance} documents={unresolvedDocuments(documentos, contexto)} historicalAdvances={historicalAdvances(contexto, id)} />
         <p className="text-sm text-muted-foreground">{indicadores.map(([singular, plural, value]) => `${value ?? 0} ${value === 1 ? singular : plural}`).join(' · ')}</p>
         {nuevo && budget.presupuesto_estado !== 'anulado' ? (
           <DocumentForm

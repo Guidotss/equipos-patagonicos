@@ -8,7 +8,7 @@ export async function contextoDocument(
   supabase: SupabaseClient<Database>,
   clientId: string,
 ): Promise<DocumentContext> {
-  const [budgets, documents, invoices, activeEquipment] = await Promise.all([
+  const [budgets, documents, invoices, equipment] = await Promise.all([
     readAllPages((from, to) => supabase
       .from('cotizaciones')
       .select('id, numero, cliente_id, asunto, presupuesto_estado, equipo_id, cliente:clientes(razon_social)')
@@ -17,9 +17,9 @@ export async function contextoDocument(
       .order('numero', { ascending: false }).order('id').range(from, to)),
     readAllPages((from, to) => supabase.from('documentos').select('*').eq('cliente_id', clientId)
       .order('created_at', { ascending: false }).order('id').range(from, to)),
-    readAllPages((from, to) => supabase.from('v_facturas').select('*, exact_balance:saldo::text').eq('cliente_id', clientId)
+    readAllPages((from, to) => supabase.from('v_facturas').select('*, exact_balance:saldo::text, exact_available:available_amount::text').eq('cliente_id', clientId)
       .order('fecha_vencimiento').order('id').range(from, to)),
-    readAllPages((from, to) => supabase.from('equipos').select('id, nombre').eq('activo', true)
+    readAllPages((from, to) => supabase.from('equipos').select('id, nombre, activo')
       .order('nombre').order('id').range(from, to)),
   ])
   const financeByDocument: FinanceByDocument = Object.fromEntries(documents.map((document) => [document.id, {
@@ -27,20 +27,6 @@ export async function contextoDocument(
   }]))
   Object.assign(financeByDocument, await readFinanceByDocument(supabase, documents
     .filter((document) => document.tipo === 'factura' || document.tipo === 'orden_pago').map((document) => document.id)))
-  const equipmentIds = [...new Set([
-    ...Object.values(financeByDocument).flatMap((finance) => finance.invoiceAllocations.map((allocation) => allocation.equipmentId)),
-    ...budgets.map((budget) => budget.equipo_id),
-    ...documents.map((document) => document.equipo_id),
-  ].filter((id): id is string => id !== null))]
-  // Conserva también los equipos inactivos vinculados al historial del cliente.
-  const equipment = [...activeEquipment]
-  for (let index = 0; index < equipmentIds.length; index += 100) {
-    const batch = equipmentIds.slice(index, index + 100)
-    equipment.push(...await readAllPages((from, to) => supabase.from('equipos').select('id, nombre')
-      .in('id', batch).order('nombre').order('id').range(from, to)))
-  }
-  const uniqueEquipment = [...new Map(equipment.map((item) => [item.id, item])).values()]
-  uniqueEquipment.sort((first, second) => first.nombre.localeCompare(second.nombre, 'es'))
   return {
     budgets: budgets.map((budget) => ({
       id: budget.id,
@@ -53,7 +39,7 @@ export async function contextoDocument(
     })),
     documentos: documents,
     facturas: invoices,
-    equipos: uniqueEquipment,
+    equipos: equipment,
     financeByDocument,
   }
 }

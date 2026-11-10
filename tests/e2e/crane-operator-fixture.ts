@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { validateEnvTests } from '../../scripts/test-env.mjs'
-import { withBase } from './database'
+import { removeOwnedFinancialData, withBase } from './database'
 import type { Role } from '../../src/lib/auth/roles'
 
 export type OperatorTestUser = { id: string; email: string; password: string; name: string }
@@ -70,12 +70,17 @@ export function createOperatorFixture() {
       if (error) throw error
     }
     await withBase(async (db) => {
+      await db.query('begin')
+      try {
       await db.query('delete from public.crane_delivery_notes where operator_id=any($1::uuid[])', [users.map((account) => account.id)])
       if (customerId) {
+        await removeOwnedFinancialData(db, customerId)
         await db.query('delete from public.documentos where cliente_id=$1', [customerId])
         await db.query('delete from public.cotizaciones where cliente_id=$1', [customerId])
         await db.query('delete from public.clientes where id=$1', [customerId])
       }
+      await db.query('commit')
+      } catch (error) { await db.query('rollback'); throw error }
     })
     for (const account of users) {
       const { error } = await admin.auth.admin.deleteUser(account.id)

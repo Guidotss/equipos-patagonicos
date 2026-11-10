@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { withBase } from './database'
+import { removeOwnedFinancialData, withBase } from './database'
+import { validateEnvTests } from '../../scripts/test-env.mjs'
 import { iniciarSession, sufijoUnico } from './helpers'
 
 const marca = `inicio-e2e-${sufijoUnico()}`
@@ -46,6 +47,7 @@ test.beforeAll(async () => {
       [clientId, longDeliveryNoteNumber, marca],
     )
     longDeliveryNoteId = longDeliveryNote.rows[0].id
+    await db.query('begin')
     const invoice = await db.query<{ id: string }>(
       `insert into public.documentos (cliente_id, tipo, numero, fecha, monto, tipo_comprobante, notas)
        values ($1, 'factura', $2, '2018-01-01', 125000, 'FA', $3) returning id`,
@@ -53,15 +55,23 @@ test.beforeAll(async () => {
     )
     invoiceId = invoice.rows[0].id
     await db.query('insert into public.documento_presupuestos values ($1, $3), ($2, $3), ($4, $3)', [deliveryNoteId, invoiceId, budgetId, longDeliveryNoteId])
+    await db.query("insert into public.invoice_allocations (invoice_id, budget_id, budget_number, budget_subject, equipment_status, amount, historical_settled_amount, source) select $1, id, numero, asunto, 'unknown', 125000, 0, 'explicit' from public.cotizaciones where id = $2", [invoiceId, budgetId])
+    await db.query('commit')
   })
 })
 
 test.afterAll(async () => {
   if (!clientId) return
+  validateEnvTests()
   await withBase(async (db) => {
+    await db.query('begin')
+    try {
+    await removeOwnedFinancialData(db, clientId)
     await db.query('delete from public.documentos where cliente_id = $1', [clientId])
     await db.query('delete from public.cotizaciones where cliente_id = $1', [clientId])
     await db.query('delete from public.clientes where id = $1', [clientId])
+    await db.query('commit')
+    } catch (error) { await db.query('rollback'); throw error }
   })
 })
 
@@ -103,8 +113,12 @@ test('cinco colas accionables con selección de remito/factura y navegación mó
 
   await page.goto('/?cola=cobranzas')
   await page.locator(`[data-pendiente="${invoiceId}"]`).getByRole('link', { name: /Registrar pago/ }).click()
-  await expect(page.getByRole('checkbox', { name: new RegExp(numberInvoice) })).toBeChecked()
   await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('125.000,00')
+  await page.getByLabel('Nuevo medio').selectOption('cash')
+  await page.getByRole('button', { name: 'Agregar medio' }).click()
+  await page.getByRole('button', { name: 'Agregar destino' }).click()
+  await page.getByLabel('Trabajo', { exact: true }).selectOption(budgetId)
+  await expect(page.getByLabel('Factura (opcional)').locator(`option[value="${invoiceId}"]`)).toHaveText(new RegExp(numberInvoice))
 
   await page.goto('/?cola=seguimiento')
   await page.locator(`[data-pendiente="${quoteId}"]`).getByRole('link', { name: /Registrar respuesta/ }).click()

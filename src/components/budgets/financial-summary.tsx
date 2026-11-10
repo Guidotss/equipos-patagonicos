@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { centsToDecimal, formatFinancialAmount, parseAggregateCents, sumCents } from '@/lib/finance/amounts'
 import type { Document } from '@/lib/documents/screens'
+import type { HistoricalAdvance } from '@/lib/finance/historical-advances'
 
 type FinancialSummaryProps = {
   billed: string
@@ -11,9 +12,10 @@ type FinancialSummaryProps = {
   pendingChecks: string
   balance: string | null
   documents: Document[]
+  historicalAdvances?: HistoricalAdvance[]
 }
 
-export function FinancialSummary({ billed, credited, withheld, legacy, advances, pendingChecks, balance, documents }: FinancialSummaryProps) {
+export function FinancialSummary({ billed, credited, withheld, legacy, advances, pendingChecks, balance, documents, historicalAdvances = [] }: FinancialSummaryProps) {
   const cancelled = centsToDecimal(sumCents([credited, withheld, legacy].map((amount) => parseAggregateCents(amount))))
   const credit = balance?.startsWith('-')
   const unresolved = documents
@@ -36,6 +38,7 @@ export function FinancialSummary({ billed, credited, withheld, legacy, advances,
         <SummaryLine label="Anticipos sin aplicar" value={advances} />
         <SummaryLine label="Cheques pendientes" value={pendingChecks} />
       </dl>
+      {historicalAdvances.length ? <p className="mt-3 text-sm text-muted-foreground">Los anticipos incluyen cancelaciones históricas de facturas anuladas: {historicalAdvances.map(({ document, amount }, index) => <span key={document.id}>{index ? ', ' : ''}<Link className="text-primary underline" href={`/documentos/${document.id}`}>{document.numero || 'Factura sin número'}</Link> ({formatFinancialAmount(amount)})</span>)}. Revisá el comprobante para restaurarlo.</p> : null}
       {balance === null ? <p className="mt-4 text-sm text-muted-foreground">Revisá la distribución de las facturas y órdenes de pago vinculadas: {unresolved.map((document, index) => <span key={document.id}>{index ? ', ' : ''}<Link className="text-primary underline" href={`/documentos/${document.id}`}>{document.numero || (document.tipo === 'factura' ? 'Factura sin número' : 'Orden de pago sin número')}</Link></span>)}.</p> : null}
     </section>
   )

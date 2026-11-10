@@ -3,6 +3,9 @@
 import { ActionsForm, SheetForm } from '@/components/form/structure-form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoaderCircle } from 'lucide-react'
+import { Card } from '@/components/form/card'
+import { Field } from '@/components/form/field'
+import { Input } from '@/components/ui/input'
 
 import { DocumentAttachmentsSection } from './document-attachments-section'
 import { DocumentBudgetTypeSection } from './document-budget-type-section'
@@ -12,12 +15,14 @@ import type { DocumentFormProps } from './document-form.types'
 import {
   LinkedBudgetsSection,
   InvoiceDeliveryNotesSection,
-  PaymentAllocationsSection,
 } from './document-related-sections'
+import { PaymentAllocationsSection } from './payment-allocations-section'
+import { PaymentInstrumentsSection } from './payment-instruments-section'
+import { InvoiceAllocationsSection } from './invoice-allocations-section'
 import { useDocumentForm } from './use-document-form'
 
 export function DocumentForm(props: DocumentFormProps) {
-  const { options, budgetId = '', document, filesExisting = [], initialAllocations = [], quote } = props
+  const { options, budgetId = '', document, filesExisting = [], quote } = props
   const form = useDocumentForm(props)
   const {
     pending,
@@ -32,7 +37,6 @@ export function DocumentForm(props: DocumentFormProps) {
     values,
     deliveryNotes,
     setDeliveryNotes,
-    allocations,
     removedFileIds: remove,
     setRemovedFileIds,
     uploading,
@@ -41,10 +45,13 @@ export function DocumentForm(props: DocumentFormProps) {
     onChangeFiles,
     changeField,
     chooseBudget,
-    changeAllocation,
     save,
+    finance,
+    statusPending,
+    statusErrors,
+    changeStatus,
   } = form
-  const { duplicate, clientBudgets, availableDeliveryNotes, voidedInvoices, visibleOptions } =
+  const { duplicate, clientBudgets, availableDeliveryNotes, visibleOptions } =
     documentFormSelections({ ...form, options, document })
   const back = budgetId ? `/presupuestos/${budgetId}` : '/presupuestos'
 
@@ -62,7 +69,7 @@ export function DocumentForm(props: DocumentFormProps) {
           </AlertDescription>
         </Alert>
       ) : null}
-      <fieldset disabled={pending || loading} className="min-w-0">
+      <fieldset disabled={pending || loading || statusPending} className="min-w-0">
         <legend className="sr-only">Contenido del documento</legend>
         <SheetForm>
           <DocumentBudgetTypeSection
@@ -100,21 +107,20 @@ export function DocumentForm(props: DocumentFormProps) {
             />
           ) : null}
           {values.tipo === 'factura' ? (
-            <InvoiceDeliveryNotesSection
+            <><InvoiceDeliveryNotesSection
               availableDeliveryNotes={availableDeliveryNotes}
               deliveryNotes={deliveryNotes}
               setDeliveryNotes={setDeliveryNotes}
-            />
+            /><InvoiceAllocationsSection finance={finance} context={context} selectedBudgetIds={selectedBudgetIds} total={values.monto} isNew={!document} errors={errors} /></>
           ) : null}
           {values.tipo === 'orden_pago' ? (
-            <PaymentAllocationsSection
-              voidedInvoices={voidedInvoices}
-              allocations={allocations}
-              changeAllocation={changeAllocation}
-              context={context}
-              initialAllocations={initialAllocations}
-            />
+            <>
+              <Card titulo="Condición de pago"><Field id="payment-condition" label="Condición de pago (opcional)"><Input id="payment-condition" maxLength={200} value={finance.condition} onChange={(event) => finance.setCondition(event.target.value)} /></Field></Card>
+              <PaymentInstrumentsSection finance={finance} persistedIds={finance.persistedInstruments} onStatus={changeStatus} errors={statusErrors} fieldErrors={errors} />
+              <PaymentAllocationsSection finance={finance} context={context} selectedBudgetIds={selectedBudgetIds} total={values.monto} errors={errors} persistedIds={finance.persistedInstruments} persistedAllocations={finance.persistedAllocations} />
+            </>
           ) : null}
+          {document && (values.tipo === 'factura' || values.tipo === 'orden_pago') ? <Card titulo="Motivo de corrección"><Field id="financial-reason" label="Motivo (cuando corresponda)"><Input id="financial-reason" maxLength={2000} value={finance.reason} onChange={(event) => finance.setReason(event.target.value)} /></Field></Card> : null}
         </SheetForm>
       </fieldset>
       {Object.entries(errors)
@@ -128,7 +134,7 @@ export function DocumentForm(props: DocumentFormProps) {
         back={back}
         textButton={document ? 'Guardar cambios' : quote ? 'Aprobar y guardar OC' : 'Guardar documento'}
         pendiente={pending}
-        disabled={uploading || loading || !clientId || !contextReady || (values.tipo === 'remito' && equipment.ambiguous)}
+        disabled={statusPending || uploading || loading || !clientId || !contextReady || (values.tipo === 'remito' && equipment.ambiguous)}
       >
         {uploading || loading ? (
           <span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">

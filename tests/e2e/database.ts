@@ -16,6 +16,18 @@ export async function withBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T>
   }
 }
 
+/** Solo para el cierre de fixtures propios, dentro de una transacción descartable. */
+export async function removeOwnedFinancialData(db: pg.Client, clientId: string) {
+  validateEnvTests()
+  await db.query('set local session_replication_role = replica')
+  await db.query('delete from public.financial_events where document_id in (select id from public.documentos where cliente_id = $1)', [clientId])
+  await db.query('delete from public.payment_allocations where instrument_id in (select id from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1))', [clientId])
+  await db.query('delete from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1)', [clientId])
+  await db.query('delete from public.invoice_allocations where invoice_id in (select id from public.documentos where cliente_id = $1)', [clientId])
+  await db.query('set local session_replication_role = origin')
+  await db.query('delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1) or factura_id in (select id from public.documentos where cliente_id = $1)', [clientId])
+}
+
 /** Todos los datos que usa la plantilla por jornada de la semilla, completos. */
 export const DATA_COMPLETOS = {
   ubicacion: 'Loma Campana, Añelo',

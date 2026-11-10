@@ -124,13 +124,14 @@ export async function changeVoidingDocument(id: unknown, restore: unknown, finan
   }
 }
 
-export async function changeInstrumentStatus(input: unknown): Promise<Result> {
+export async function changeInstrumentStatus(input: unknown): Promise<Result<{ financialVersion: number }>> {
   await requireStaff()
   const parsed = paymentStatusActionSchema.safeParse(input)
   if (!parsed.success) return { ok: false, message: 'Revisá los datos marcados', errors: errorsByPath(parsed.error) }
   try {
-    await changePaymentStatus(await createClient(), parsed.data)
+    const data = await changePaymentStatus(await createClient(), parsed.data)
+    const result = z.object({ financialVersion: z.number().int().positive() }).parse(data)
     actualizarScreens()
-    return { ok: true, datos: null }
+    return { ok: true, datos: result }
   } catch (error) { return fallo(error) }
 }
