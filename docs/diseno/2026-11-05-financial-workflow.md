@@ -10,6 +10,8 @@ La cabecera y el contexto del trabajo mantienen su jerarquía; datos generales y
 
 Aplicación del cobro se presenta aparte: cada porción identifica medio, trabajo, factura opcional e importe. Sin factura es un destino del mismo instrumento; al aplicar un anticipo posteriormente no se crea otro cobro. Totales juntos: importe de OP, cancelado, cheques pendientes; debajo dinero acreditado y retenciones por separado. Las filas se apilan en móvil, con etiquetas visibles, controles de al menos 44px y tipografía legible, permitiendo scroll vertical. Barra de acciones existente; sin comprimir todo el formulario en un viewport.
 
+El importe de cabecera se conserva al abrir una OP y se edita por separado: cambiar medios o destinos no lo reemplaza. Para guardar, la suma de medios no anulados debe coincidir con esa cabecera. Los destinos pueden sumar menos; el remanente sigue siendo dinero del cliente sin asignar. Una diferencia de conciliación mantiene campos y archivos para corregirla.
+
 ## Verdad funcional sobre detalles de la generación
 
 - El select de estado de Transferencia móvil aparece etiquetado por error «Importe» en la imagen; debe decir Estado.
@@ -52,5 +54,7 @@ La referencia conserva una tabla de tres columnas en móvil; si importes largos 
 ## Verificación pendiente de implementación
 
 El corte de resumen y ciclo de vida (4a) se verificó en `32d8360`: desktop 1200×805, móvil 390×844 y máximo permitido también a 768/1024. Capturas cargadas y abiertas: `verificaciones/2026-11-05-financial-summary/`. E2E real cubre importes separados, crédito, indeterminación, anular/restaurar con motivo, formulario obsoleto y foco con teclado. Dos rondas acotadas: corrección de nombres completos/foco y adaptación por espacio disponible; detector manual una vez sin hallazgos. Las pantallas de medios, distribución de factura y reporte aún requieren su implementación y verificación. La revisión visual fresca y documental final se realiza tras cerrar esos circuitos.
+
+El 10/11 se recuperó el corte 4b en `e8c8e14`, pendiente de revisión SPEC y calidad. Lint/typecheck, 660 unitarias y 20 históricas verdes. Playwright completo: 105/106; único fallo de selector en el caso nuevo corregido, con cheques/distribución y los dos casos pendientes posteriormente verdes sobre el código final. Se verificó conciliación fallida sin pérdida de archivo, reaplicación desde factura anulada con los mismos IDs y enlace del histórico protegido. Diez capturas abiertas en `verificaciones/2026-11-05-financial-forms/`; detector único de las tres secciones nuevas sin hallazgos. El runner eliminó su stack, recursos y bloqueo. Sin cambios persistentes ni publicación financiera; el reporte queda pendiente.
 
 Captura desktop/móvil con datos descartables, estados vacío/error/carga y cheque pendiente/acreditado; una ronda batched, un lote de correcciones y confirmación acotada. Revisar importes largos, foco/etiquetas, filas dinámicas y conservación de archivos. Traspasos frescos de revisión visual y documentación al terminar.
