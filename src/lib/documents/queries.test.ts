@@ -16,7 +16,7 @@ function clientWithPages(failDocumentPage = false) {
     cotizaciones: Array.from({ length: 1001 }, (_, index) => ({ id: `budget-${index}`, numero: index,
       cliente_id: 'client', asunto: '', presupuesto_estado: 'en_curso', equipo_id: null, cliente: { razon_social: 'Cliente' } })),
     documentos: Array.from({ length: 1001 }, (_, index) => ({ id: `document-${index}`, equipo_id: null,
-      tipo: index % 2 === 0 ? 'factura' : 'remito' })),
+      tipo: index % 2 === 0 ? 'factura' : 'remito', documento_presupuestos: [{ cotizacion_id: `budget-${index}` }] })),
     v_facturas: Array.from({ length: 1001 }, (_, index) => ({ id: `invoice-${index}` })),
     equipos: [
       ...Array.from({ length: 501 }, (_, index) => ({ id: `equipment-${index}`, nombre: `Grúa ${index}`, activo: true })),
@@ -59,6 +59,8 @@ describe('contexto documental completo', () => {
     expect(context.budgets).toHaveLength(1001)
     expect(context.documentos).toHaveLength(1001)
     expect(context.facturas).toHaveLength(1001)
+    expect(context.invoiceBudgetIds['document-1000']).toEqual(['budget-1000'])
+    expect(context.invoiceBudgetIds).not.toHaveProperty('document-999')
     expect(ranges).toEqual({ cotizaciones: [0, 500, 1000], documentos: [0, 500, 1000], v_facturas: [0, 500, 1000], equipos: [0, 500] })
     expect(context.equipos).toHaveLength(502)
     expect(orders.documentos).toEqual(['created_at', 'id', 'created_at', 'id', 'created_at', 'id'])

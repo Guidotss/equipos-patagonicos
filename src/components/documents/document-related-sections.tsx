@@ -1,10 +1,53 @@
 import { Card } from '@/components/form/card'
+import { Field } from '@/components/form/field'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { numberDocument } from '@/lib/documents/screens'
+import { formatCurrency } from '@/lib/format/amounts'
+import { formatShortDate } from '@/lib/format/dates'
 import Link from 'next/link'
 
 import { changeList, type documentFormSelections } from './document-form-model'
 import type { DocumentFormState } from './use-document-form'
 
 type RelatedSelections = ReturnType<typeof documentFormSelections>
+
+export function DeliveryNoteInvoiceSection({
+  linkedInvoice,
+  selectableInvoices,
+  selectedInvoiceId,
+  setRequestedInvoiceId,
+}: Pick<DocumentFormState, 'linkedInvoice' | 'selectableInvoices' | 'selectedInvoiceId' | 'setRequestedInvoiceId'>) {
+  if (linkedInvoice) {
+    return (
+      <Card titulo="Factura vinculada">
+        <Link href={`/documentos/${linkedInvoice.id}`} className="text-sm text-primary underline underline-offset-2">
+          {numberDocument(linkedInvoice)}
+        </Link>
+      </Card>
+    )
+  }
+  if (!selectableInvoices.length) return null
+  return (
+    <Card titulo="Facturación del remito">
+      <Field id="delivery-note-invoice" label="Factura existente (opcional)" help="Elegí la factura que cubre este remito. Si todavía no corresponde ninguna, dejalo sin vincular.">
+        <NativeSelect
+          id="delivery-note-invoice"
+          className="w-full sm:max-w-md"
+          value={selectedInvoiceId}
+          onChange={(event) => setRequestedInvoiceId(event.target.value)}
+        >
+          <NativeSelectOption value="">Sin vincular</NativeSelectOption>
+          {selectableInvoices.map((invoice) => (
+            <NativeSelectOption key={invoice.id} value={invoice.id}>
+              {[numberDocument(invoice), invoice.fecha ? formatShortDate(invoice.fecha) : 'Sin fecha',
+                invoice.monto === null ? null : formatCurrency(invoice.monto)].filter(Boolean).join(' · ')}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </Field>
+    </Card>
+  )
+}
 
 export function LinkedBudgetsSection({
   clientBudgets,

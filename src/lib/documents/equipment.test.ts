@@ -8,7 +8,7 @@ function contextWithEquipment(equipmentIds: (string | null)[]): DocumentContext 
       id: String(index), numero: index, cliente_id: 'client', cliente_razon_social: 'Cliente',
       asunto: 'Trabajo', presupuesto_estado: 'en_curso', equipmentId,
     })),
-    documentos: [], facturas: [], financeByDocument: {}, equipos: [{ id: 'crane', nombre: 'Grúa histórica' }],
+    documentos: [], facturas: [], invoiceBudgetIds: {}, financeByDocument: {}, equipos: [{ id: 'crane', nombre: 'Grúa histórica' }],
   }
 }
 

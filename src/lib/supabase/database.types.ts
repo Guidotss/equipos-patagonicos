@@ -1224,6 +1224,9 @@ isOneToOne: false
 "revertir_aprobacion":
 { Args: { "p_id": string }; Returns: undefined
                            },
+"save_delivery_note_with_invoice":
+{ Args: { "p_archivos": Json,"p_datos": Json,"p_factura_id"?: string,"p_id"?: string,"p_presupuestos": (string)[],"p_quitar"?: (string)[] }; Returns: string
+                           },
 "set_crane_operator_access":
 { Args: { "p_active": boolean,"p_equipment_id"?: string,"p_user_id": string }; Returns: undefined
                            },

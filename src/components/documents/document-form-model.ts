@@ -6,7 +6,7 @@ import { centsToDecimal, formatFinancialAmount, parseDecimalCents, sumCents } fr
 import type { DocumentFormProps } from './document-form.types'
 
 export type DocumentFormValues = Record<(typeof FIELDS_DOCUMENT)[number], string>
-export const EMPTY_DOCUMENT_CONTEXT: DocumentContext = { budgets: [], documentos: [], facturas: [], equipos: [], financeByDocument: {} }
+export const EMPTY_DOCUMENT_CONTEXT: DocumentContext = { budgets: [], documentos: [], facturas: [], invoiceBudgetIds: {}, equipos: [], financeByDocument: {} }
 const normalizeNumber = (number: string) =>
   number
     .toLowerCase()
@@ -46,6 +46,20 @@ export function initialDeliveryNotes({
       ? [deliveryNoteId]
       : []
 }
+
+export function invoiceCoversBudgets(context: DocumentContext, invoiceId: string, budgetIds: string[]) {
+  const invoiceBudgets = context.invoiceBudgetIds[invoiceId] ?? []
+  return budgetIds.length > 0 && budgetIds.every((id) => invoiceBudgets.includes(id))
+}
+
+export function matchingDeliveryNoteInvoices(context: DocumentContext, budgetIds: string[]) {
+  return context.facturas.filter((invoice) =>
+    invoice.tipo_comprobante !== 'NC' && invoiceCoversBudgets(context, invoice.id, budgetIds),
+  )
+}
+
+export const sameIds = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((id) => right.includes(id))
 
 export function documentFormSelections({
   values,

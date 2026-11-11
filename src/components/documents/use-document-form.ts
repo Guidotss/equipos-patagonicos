@@ -10,6 +10,9 @@ import {
   EMPTY_DOCUMENT_CONTEXT,
   initialDeliveryNotes,
   initialDocumentValues,
+  invoiceCoversBudgets,
+  matchingDeliveryNoteInvoices,
+  sameIds,
   type DocumentFormValues,
 } from './document-form-model'
 import type { DocumentFormProps } from './document-form.types'
@@ -31,16 +34,19 @@ export function useDocumentForm(props: DocumentFormProps) {
   const [pending, startTransition] = useTransition()
   const submitting = useRef(false)
   const [context, setContext] = useState(initialContext)
-  const [selectedBudgetIds, setSelectedBudgetIds] = useState(
-    linkedBudgetIds.length ? linkedBudgetIds : budgetId ? [budgetId] : [],
-  )
+  const [selection, setSelection] = useState({
+    budgetIds: linkedBudgetIds.length ? linkedBudgetIds : budgetId ? [budgetId] : [],
+    invoiceId: '',
+  })
+  const { budgetIds: selectedBudgetIds, invoiceId: requestedInvoiceId } = selection
   const [clientId, setClientId] = useState(
     document?.cliente_id ?? options.find((option) => option.id === budgetId)?.cliente_id ?? '',
   )
   const [loading, setLoading] = useState(false)
   const contextRequest = useRef(0)
   const [values, setValues] = useState(() => initialDocumentValues(props))
-  const [deliveryNotes, setDeliveryNotes] = useState(() => initialDeliveryNotes(props))
+  const [originalDeliveryNotes] = useState(() => initialDeliveryNotes(props))
+  const [deliveryNotes, setDeliveryNotes] = useState(originalDeliveryNotes)
   const [newFiles, setNewFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [remove, setRemovedFileIds] = useState<string[]>([])
@@ -60,17 +66,36 @@ export function useDocumentForm(props: DocumentFormProps) {
   const equipmentLabel = contextReady
     ? equipment.ambiguous ? 'Equipos diferentes' : equipment.name
     : loading ? 'Cargando equipo…' : selectedBudgetIds.length ? 'Volvé a seleccionar el presupuesto' : 'Seleccioná un presupuesto'
+  const linkedInvoice = values.tipo === 'remito' && document?.factura_id
+    ? context.facturas.find((invoice) => invoice.id === document.factura_id)
+    : undefined
+  const selectableInvoices = values.tipo === 'remito' && (!document || document.tipo === 'remito') && !linkedInvoice
+    ? matchingDeliveryNoteInvoices(context, selectedBudgetIds)
+    : []
+  const selectedInvoiceId = selectableInvoices.some((invoice) => invoice.id === requestedInvoiceId) ? requestedInvoiceId : ''
   const onChangeFiles = useCallback((files: UploadedFile[], pendingList: boolean) => {
     setNewFiles(files)
     setUploading(pendingList)
   }, [])
-  const changeField = (field: keyof DocumentFormValues, value: string) =>
+  function setRequestedInvoiceId(invoiceId: string) {
+    setSelection((previous) => ({ ...previous, invoiceId }))
+  }
+  function setSelectedBudgetIds(update: (budgetIds: string[]) => string[]) {
+    setSelection((previous) => {
+      const budgetIds = update(previous.budgetIds)
+      const invoiceId = invoiceCoversBudgets(context, previous.invoiceId, budgetIds) ? previous.invoiceId : ''
+      return { budgetIds, invoiceId }
+    })
+  }
+  function changeField(field: keyof DocumentFormValues, value: string) {
+    if (field === 'tipo') setRequestedInvoiceId('')
     setValues((previous) => ({ ...previous, [field]: value }))
+  }
 
   async function chooseBudget(id: string) {
     const option = options.find((item) => item.id === id)
     const request = ++contextRequest.current
-    setSelectedBudgetIds(id ? [id] : [])
+    setSelectedBudgetIds(() => id ? [id] : [])
     if (!option || (option.cliente_id === clientId && context.budgets.some((budget) => budget.id === id))) {
       setLoading(false)
       return
@@ -78,6 +103,7 @@ export function useDocumentForm(props: DocumentFormProps) {
     if (option.cliente_id !== clientId) {
       setClientId(option.cliente_id)
       setDeliveryNotes([])
+      setRequestedInvoiceId('')
       setNewFiles([])
       setUploading(false)
       finance.reset()
@@ -91,13 +117,13 @@ export function useDocumentForm(props: DocumentFormProps) {
         setMessage('')
       } else {
         setContext(EMPTY_DOCUMENT_CONTEXT)
-        setSelectedBudgetIds([])
+        setSelectedBudgetIds(() => [])
         setMessage(response.message)
       }
     } catch {
       if (request !== contextRequest.current) return
       setContext(EMPTY_DOCUMENT_CONTEXT)
-      setSelectedBudgetIds([])
+      setSelectedBudgetIds(() => [])
       setMessage('No se pudieron cargar los documentos del cliente. Volvé a seleccionar el presupuesto.')
     } finally {
       if (request === contextRequest.current) setLoading(false)
@@ -158,6 +184,8 @@ export function useDocumentForm(props: DocumentFormProps) {
     setErrors({})
     startTransition(async () => {
       try {
+        const replaceDeliveryNotes = values.tipo === 'factura' &&
+          (document?.tipo !== 'factura' || !sameIds(deliveryNotes, originalDeliveryNotes))
         const result = await saveDocument({
           id: document?.id,
           clientId,
@@ -165,7 +193,8 @@ export function useDocumentForm(props: DocumentFormProps) {
           datos: { ...values, equipo_id: values.tipo === 'remito' ? equipment.id ?? '' : '' },
           archivos: newFiles,
           quitar: remove,
-          remitos: values.tipo === 'factura' ? deliveryNotes : [],
+          ...(replaceDeliveryNotes ? { remitos: deliveryNotes } : {}),
+          ...(selectedInvoiceId ? { linkedInvoiceId: selectedInvoiceId } : {}),
           ...(values.tipo === 'orden_pago' || values.tipo === 'factura'
             ? { finance: finance.input(values.tipo, values.monto), ...(values.tipo === 'orden_pago' ? { paymentCondition: finance.condition } : {}) }
             : { aplicaciones: [] }),
@@ -198,6 +227,10 @@ export function useDocumentForm(props: DocumentFormProps) {
     values,
     deliveryNotes,
     setDeliveryNotes,
+    linkedInvoice,
+    selectableInvoices,
+    selectedInvoiceId,
+    setRequestedInvoiceId,
     removedFileIds: remove,
     setRemovedFileIds,
     uploading,

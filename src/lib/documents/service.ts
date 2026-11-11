@@ -36,6 +36,30 @@ export async function prepareUpload(
 
 export type UploadedFile = { path: string; nombre_original: string }
 
+export async function saveDeliveryNoteWithInvoice(
+  supabase: Client,
+  input: {
+    id?: string
+    clientId: string
+    budgets: string[]
+    datos: DataDocument
+    archivos: UploadedFile[]
+    quitar: string[]
+    linkedInvoiceId?: string
+  },
+): Promise<string> {
+  const { data, error } = await supabase.rpc('save_delivery_note_with_invoice', {
+    p_datos: { ...input.datos, cliente_id: input.clientId },
+    p_presupuestos: input.budgets,
+    p_archivos: input.archivos,
+    p_factura_id: input.linkedInvoiceId,
+    p_id: input.id,
+    p_quitar: input.quitar,
+  })
+  if (error) throw errorOfRpc(error)
+  return data
+}
+
 export async function registerDocument(
   supabase: Client,
   entrada: {

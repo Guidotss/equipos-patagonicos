@@ -7,7 +7,7 @@ import { requireStaff } from '@/lib/auth'
 import { approveWithPurchaseOrder, ErrorQuote } from '@/lib/quotes/service'
 import { contextoDocument } from '@/lib/documents/queries'
 import { schemaSaveDocument } from '@/lib/documents/screens'
-import { ErrorDocument, prepareUpload, registerDocument } from '@/lib/documents/service'
+import { ErrorDocument, prepareUpload, registerDocument, saveDeliveryNoteWithInvoice } from '@/lib/documents/service'
 import { errorsByPath, databaseErrorMessage } from '@/lib/forms'
 import type { Result } from '@/lib/result'
 import { changeDocumentLifecycle, changePaymentStatus, financialDocumentData } from '@/lib/finance/service'
@@ -81,22 +81,29 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
         .single()
       if (query) throw query
       if (document.cliente_id !== datos.clientId) throw new ErrorDocument('El documento pertenece a otro cliente')
-      if (!datos.budgets.length) {
-        const { data: existingLinks, error: linkError } = await supabase.from('documento_presupuestos')
-          .select('cotizacion_id').eq('documento_id', id).limit(1)
-        if (linkError) throw linkError
-        if (document.tipo !== 'factura' || existingLinks.length) throw new ErrorDocument('Elegí al menos un presupuesto')
+      if (document.tipo === 'remito' && datos.datos.tipo === 'remito') {
+        await saveDeliveryNoteWithInvoice(supabase, datos)
+      } else {
+        if (datos.linkedInvoiceId) throw new ErrorDocument('Solo podés vincular la factura desde un remito')
+        if (!datos.budgets.length) {
+          const { data: existingLinks, error: linkError } = await supabase.from('documento_presupuestos')
+            .select('cotizacion_id').eq('documento_id', id).limit(1)
+          if (linkError) throw linkError
+          if (document.tipo !== 'factura' || existingLinks.length) throw new ErrorDocument('Elegí al menos un presupuesto')
+        }
+        const { error } = await supabase.rpc('actualizar_documento_con_archivos', {
+          p_id: id,
+          p_datos: financialDocumentData(datos.datos, datos.finance, datos.paymentCondition),
+          ...(datos.budgets.length ? { p_presupuestos: datos.budgets } : {}),
+          ...(datos.datos.tipo === 'factura' ? { p_remitos: datos.remitos } : { p_remitos: [] }),
+          p_aplicaciones: datos.finance !== undefined ? null : datos.datos.tipo === 'orden_pago' ? datos.aplicaciones ?? null : [],
+          p_archivos: datos.archivos,
+          p_quitar: datos.quitar,
+        })
+        if (error) throw error
       }
-      const { error } = await supabase.rpc('actualizar_documento_con_archivos', {
-        p_id: id,
-        p_datos: financialDocumentData(datos.datos, datos.finance, datos.paymentCondition),
-        ...(datos.budgets.length ? { p_presupuestos: datos.budgets } : {}),
-        p_remitos: datos.datos.tipo === 'factura' ? datos.remitos : [],
-        p_aplicaciones: datos.finance !== undefined ? null : datos.datos.tipo === 'orden_pago' ? datos.aplicaciones ?? null : [],
-        p_archivos: datos.archivos,
-        p_quitar: datos.quitar,
-      })
-      if (error) throw error
+    } else if (datos.linkedInvoiceId) {
+      id = await saveDeliveryNoteWithInvoice(supabase, datos)
     } else if (datos.cotizacion) {
       id = await approveWithPurchaseOrder(
         supabase,

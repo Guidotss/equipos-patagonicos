@@ -84,6 +84,9 @@ test('presupuesto directo → OC → remito → factura → pago; saldo y anulac
   await page.getByRole('button', { name: 'Crear presupuesto', exact: true }).click()
   await expect(page).toHaveURL(/\/presupuestos\/[0-9a-f-]{36}$/)
   budgetId = page.url().split('/').at(-1)!
+  await withBase((db) => db.query(`insert into public.cotizaciones
+    (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado)
+    values ($1, 'directa', 'jornada', 'Trabajo fuera de la factura', $2, 'aprobada', current_date, 'en_curso')`, [clientId, marca]))
   await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 0,00')
 
   await page.getByRole('link', { name: 'Agregar Orden de compra', exact: true }).click()
@@ -115,7 +118,50 @@ test('presupuesto directo → OC → remito → factura → pago; saldo y anulac
   await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 1.000,00')
   await expect(deliveryNote.getByText('Facturado', { exact: true })).toBeVisible()
 
-  const invoice = page.locator('[data-documento]').filter({ hasText: 'FA F-103' })
+  const invoiceId = await withBase(async (db) => (await db.query<{ id: string }>("select id from public.documentos where cliente_id = $1 and numero = 'F-103'", [clientId])).rows[0].id)
+  const invoice = page.locator(`[data-documento="${invoiceId}"]`)
+  const earlierInvoiceEditor = await page.context().newPage()
+  await earlierInvoiceEditor.goto(`/documentos/${invoiceId}`)
+  await expect(earlierInvoiceEditor.getByRole('checkbox', { name: 'Remito R-102', exact: true })).toBeChecked()
+  await page.getByRole('link', { name: 'Agregar Remito', exact: true }).click()
+  const existingInvoice = page.getByLabel('Factura existente (opcional)', { exact: true })
+  await expect(existingInvoice).toHaveValue('')
+  await existingInvoice.selectOption(invoiceId)
+  const unrelatedBudget = page.getByRole('checkbox', { name: /Trabajo fuera de la factura/ })
+  await unrelatedBudget.check()
+  await expect(existingInvoice).toHaveCount(0)
+  await unrelatedBudget.uncheck()
+  await expect(existingInvoice).toHaveValue('')
+  await existingInvoice.selectOption(invoiceId)
+  await page.getByLabel('Número (opcional)', { exact: true }).fill('R-POSTERIOR')
+  for (const [width, height] of [[1200, 805], [390, 844]]) {
+    await page.setViewportSize({ width, height })
+    await existingInvoice.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath(`factura-existente-${width}.png`), animations: 'disabled' })
+  }
+  await page.setViewportSize({ width: 1200, height: 805 })
+  await attach(page, 'Remito posterior.pdf')
+  await save(page)
+  const lateNote = page.locator('[data-documento]').filter({ hasText: 'R-POSTERIOR' })
+  await expect(lateNote.getByText('Facturado', { exact: true })).toBeVisible()
+  await expect(lateNote.getByRole('link', { name: 'Factura FA F-103', exact: true })).toHaveAttribute('href', `/documentos/${invoiceId}`)
+
+  await earlierInvoiceEditor.getByLabel('Notas (opcional)', { exact: true }).fill('Comprobante revisado')
+  await earlierInvoiceEditor.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await expect(earlierInvoiceEditor).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
+  await earlierInvoiceEditor.close()
+  const coveredNotes = await withBase(async (db) => (await db.query<{ numero: string }>(
+    'select numero from public.documentos where factura_id = $1 order by numero', [invoiceId],
+  )).rows.map((row) => row.numero))
+  expect(coveredNotes).toEqual(['R-102', 'R-POSTERIOR'])
+
+  await lateNote.getByRole('link', { name: 'Editar', exact: true }).click()
+  await unrelatedBudget.check()
+  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'La factura tiene que incluir todos los presupuestos seleccionados' })).toBeVisible()
+  await page.getByRole('link', { name: 'Cancelar', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
+
   await invoice.getByRole('link', { name: 'Registrar pago', exact: true }).click()
   await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('$ 1.000,00')
   await page.getByLabel('Número (opcional)', { exact: true }).fill('OP-104')
@@ -126,7 +172,6 @@ test('presupuesto directo → OC → remito → factura → pago; saldo y anulac
   await page.getByLabel('Fecha efectiva').fill('2024-06-20')
   await page.getByRole('button', { name: 'Agregar destino' }).click()
   await page.getByLabel('Trabajo', { exact: true }).selectOption(budgetId)
-  const invoiceId = await withBase(async (db) => (await db.query<{ id: string }>("select id from public.documentos where cliente_id = $1 and numero = 'F-103'", [clientId])).rows[0].id)
   await page.getByLabel('Factura (opcional)').selectOption(invoiceId)
   await page.getByLabel('Importe', { exact: true }).last().fill('1.000,00')
   await save(page)
@@ -175,6 +220,7 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
   await expect(page.getByLabel('Presupuesto', { exact: true })).toHaveAttribute('required', '')
   await page.getByLabel('Presupuesto', { exact: true }).selectOption(budget.id)
   await expect(page.getByLabel('Equipo', { exact: true })).toHaveValue(`Grúa histórica ${marca}`)
+  await expect(page.getByLabel('Factura existente (opcional)', { exact: true })).toHaveCount(0)
   await expect(page.getByLabel('Equipo', { exact: true })).toHaveAttribute('readonly', '')
   await expect(page.getByLabel('Tomar foto del documento', { exact: true })).toHaveAttribute('capture', 'environment')
   await expect(page.getByLabel('Seleccionar archivos del documento', { exact: true })).toHaveAttribute('multiple', '')

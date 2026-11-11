@@ -14,6 +14,7 @@ import { DocumentDetailsSection } from './document-details-section'
 import { documentFormSelections } from './document-form-model'
 import type { DocumentFormProps } from './document-form.types'
 import {
+  DeliveryNoteInvoiceSection,
   LinkedBudgetsSection,
   InvoiceDeliveryNotesSection,
 } from './document-related-sections'
@@ -106,6 +107,7 @@ export function DocumentForm(props: DocumentFormProps) {
             equipmentLabel={equipmentLabel}
             duplicate={duplicate}
           />
+          {values.tipo === 'remito' ? <DeliveryNoteInvoiceSection {...form} /> : null}
           {!quote && clientBudgets.length ? (
             <LinkedBudgetsSection
               clientBudgets={clientBudgets}

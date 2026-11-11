@@ -38,6 +38,7 @@ export function SectionsDocuments({
   anulados: boolean
   aplicaciones: { op_id: string; factura_id: string; monto_aplicado: number }[]
 }) {
+  const invoicesById = new Map(facturas.map((invoice) => [invoice.id, invoice]))
   return (
     <div className="flex flex-col gap-4">
       {(Object.keys(DOCUMENT_TYPES) as DocumentType[]).map((tipo) => {
@@ -62,8 +63,8 @@ export function SectionsDocuments({
             {list.length ? (
               <ul className="flex flex-col divide-y">
                 {list.map((document) => {
-                  const invoice = facturas.find((item) => item.id === document.id)
-                  const facturado = document.factura_id && facturas.some((item) => item.id === document.factura_id)
+                  const invoice = invoicesById.get(document.id)
+                  const linkedInvoice = document.factura_id ? invoicesById.get(document.factura_id) : undefined
                   const documentFiles = archivos.filter((item) => item.documento_id === document.id)
                   const pagos = aplicaciones.filter((item) => item.op_id === document.id)
                   return (
@@ -97,11 +98,16 @@ export function SectionsDocuments({
                                 {STATUSES_COBRO[invoice.estado_cobro]}
                               </Pill>
                             ) : tipo === 'remito' ? (
-                              <Pill tone={facturado ? 'exito' : 'aviso'}>
-                                {facturado ? 'Facturado' : 'Sin facturar'}
+                              <Pill tone={linkedInvoice ? 'exito' : 'aviso'}>
+                                {linkedInvoice ? 'Facturado' : 'Sin facturar'}
                               </Pill>
                             ) : null}
                           </div>
+                          {linkedInvoice ? (
+                            <Link href={`/documentos/${linkedInvoice.id}`} className="w-fit break-words text-sm text-primary underline underline-offset-2">
+                              Factura {numberDocument(linkedInvoice)}
+                            </Link>
+                          ) : null}
                           <p className="text-sm text-muted-foreground">
                             {document.fecha ? formatShortDate(document.fecha) : 'Sin fecha'}
                             {document.monto
@@ -152,7 +158,7 @@ export function SectionsDocuments({
                               <Button variant="ghost" size="sm" asChild>
                                 <Link href={`/documentos/${document.id}`}>Editar</Link>
                               </Button>
-                              {tipo === 'remito' && !facturado && !anulados ? (
+                              {tipo === 'remito' && !linkedInvoice && !anulados ? (
                                 <Button variant="outline" size="sm" asChild>
                                   <Link
                                     href={`/presupuestos/${budgetId}?nuevo=factura&remito=${document.id}#nuevo-documento`}

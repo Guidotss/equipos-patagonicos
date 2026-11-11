@@ -23,7 +23,8 @@ export const schemaSaveDocument = z
     paymentCondition: z.string().max(200, 'Máximo 200 caracteres').optional(),
     archivos: z.array(schemaFileSubido).max(50),
     quitar: ids.default([]),
-    remitos: ids.default([]),
+    remitos: ids.optional(),
+    linkedInvoiceId: z.uuid().optional(),
     aplicaciones: z
       .array(
         z.object({
@@ -43,6 +44,9 @@ export const schemaSaveDocument = z
     cotizacion: z.object({ id: z.uuid(), version: z.iso.datetime({ offset: true }) }).optional(),
   })
   .superRefine((entrada, ctx) => {
+    if (entrada.linkedInvoiceId && entrada.datos.tipo !== 'remito') {
+      ctx.addIssue({ code: 'custom', path: ['linkedInvoiceId'], message: 'Solo podés vincular la factura desde un remito' })
+    }
     if (!entrada.budgets.length && (!entrada.id || entrada.datos.tipo !== 'factura')) {
       ctx.addIssue({ code: 'custom', path: ['budgets'], message: 'Elegí al menos un presupuesto' })
     }
@@ -95,6 +99,7 @@ export type DocumentContext = {
   budgets: (OptionBudget & { equipmentId: string | null })[]
   documentos: Document[]
   facturas: Invoice[]
+  invoiceBudgetIds: Record<string, string[]>
   financeByDocument: FinanceByDocument
   equipos: { id: string; nombre: string; activo?: boolean }[]
 }
