@@ -7,7 +7,7 @@ import { createStaffCraneOperator } from '@/app/(crane-management)/crane-operato
 import { newCraneOperatorSchema, type NewCraneOperatorInput } from '@/lib/crane-operators/management-schemas'
 import { errorsByPath } from '@/lib/forms'
 
-const initialValues: NewCraneOperatorInput = { name: '', email: '', password: '', equipmentId: '' }
+const initialValues: NewCraneOperatorInput = { name: '', email: '', password: '' }
 
 export function useCreationForm() {
   const router = useRouter()

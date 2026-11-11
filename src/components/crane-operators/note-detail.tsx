@@ -8,14 +8,15 @@ import { formatShortDate } from '@/lib/format/dates'
 export function NoteDetail({ note, staff = false }: { note: CraneDeliveryNoteDetail; staff?: boolean }) {
   const details = [
     ['Número de remito', note.number || 'Sin número'], ['Fecha del servicio', formatShortDate(note.serviceDate)],
-    ['Grúa', note.equipmentName], ['Gruista', note.authorName || 'Sin nombre'], ['Cliente o lugar del trabajo', note.customerName],
+    ['Grúa', note.equipmentName], ['Gruista', note.authorName || 'Sin nombre'],
   ]
+  if (note.customerName) details.push(['Cliente o lugar del trabajo', note.customerName])
   return <div className="flex flex-col gap-5">
     <Alert><AlertDescription>{note.status === 'pending' ? 'Remito recibido. Administración lo vinculará a un presupuesto.' : 'El remito está vinculado a un presupuesto.'}</AlertDescription></Alert>
     <SheetForm>
       <SectionForm titulo="Trabajo" stacked>
-        <dl className="grid gap-5 sm:grid-cols-2">{details.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words">{value || 'Sin informar'}</dd></div>)}</dl>
-        <div><h3 className="text-sm text-muted-foreground">Descripción del trabajo</h3><p className="mt-1 whitespace-pre-wrap break-words">{note.workDescription}</p></div>
+        <dl className="grid gap-5 sm:grid-cols-2">{details.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words">{value}</dd></div>)}</dl>
+        {note.workDescription ? <div><h3 className="text-sm text-muted-foreground">Descripción del trabajo</h3><p className="mt-1 whitespace-pre-wrap break-words">{note.workDescription}</p></div> : null}
         {note.notes ? <div><h3 className="text-sm text-muted-foreground">Observaciones</h3><p className="mt-1 whitespace-pre-wrap break-words">{note.notes}</p></div> : null}
       </SectionForm>
       <SectionForm titulo="Archivos" stacked>

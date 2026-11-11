@@ -43,14 +43,13 @@ describe('directorio limitado a gruistas', () => {
     const result = await listCraneOperators(sessionClient(fetch), { q: ' Juan ', active: 'inactive', page: 2, pageSize: 2 })
     expect(result).toEqual({
       operators: [{ userId, name: row.name, email: row.email, active: false,
-        equipmentId: null, equipmentName: null, equipmentActive: null,
         noteCount: 0, pendingNoteCount: 0, lastSubmissionAt: null }],
       total: 3, page: 2, pageSize: 2,
     })
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
-  it('conserva la grúa inactiva y las estadísticas históricas del autor', async () => {
+  it('conserva las estadísticas históricas aunque la RPC devuelva una asignación anterior', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
       const { request } = readRequest(input, init)
       expect(await request.json()).toEqual({ p_search: '' })
@@ -59,21 +58,22 @@ describe('directorio limitado a gruistas', () => {
       { headers: { 'content-range': '0-0/1' } })
     })
     const result = await listCraneOperators(sessionClient(fetch))
-    expect(result.operators[0]).toMatchObject({ equipmentId, equipmentActive: false, noteCount: 9,
+    expect(result.operators[0]).toMatchObject({ noteCount: 9,
       pendingNoteCount: 3, lastSubmissionAt: '2026-11-02T10:00:00Z' })
+    expect(result.operators[0]).not.toHaveProperty('equipmentId')
   })
 
   it.each([0, 3])('normaliza una página fuera de rango y conserva búsqueda/estado (total %s)', async (total) => {
     const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
       const { request, url } = readRequest(input, init)
-      expect(await request.json()).toEqual({ p_search: 'Grúa 2', p_active: true })
+      expect(await request.json()).toEqual({ p_search: 'Juan', p_active: true })
       if (url.searchParams.get('offset') === '38') {
         return Response.json({ code: 'PGRST103', message: 'Requested range not satisfiable' }, { status: 416 })
       }
       expect(url.searchParams.get('offset')).toBe('0')
       return Response.json(total ? [row, row] : [], { headers: { 'content-range': total ? `0-1/${total}` : '*/0' } })
     })
-    const result = await listCraneOperators(sessionClient(fetch), { q: 'Grúa 2', active: 'active', page: 20, pageSize: 2 })
+    const result = await listCraneOperators(sessionClient(fetch), { q: 'Juan', active: 'active', page: 20, pageSize: 2 })
     expect(result).toMatchObject({ total, page: 1, pageSize: 2 })
     expect(fetch).toHaveBeenCalledTimes(2)
   })

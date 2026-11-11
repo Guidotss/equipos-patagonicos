@@ -6,8 +6,7 @@ import {
 } from './management-schemas'
 
 const userId = '11111111-1111-4111-8111-111111111111'
-const equipmentId = '22222222-2222-4222-8222-222222222222'
-const account = { name: '  Juan Pérez  ', email: '  Juan@Example.test  ', password: ' clave ', equipmentId }
+const account = { name: '  Juan Pérez  ', email: '  Juan@Example.test  ', password: ' clave ' }
 
 describe('alta de gruistas', () => {
   it('normaliza nombre y email sin modificar la contraseña', () => {
@@ -16,20 +15,17 @@ describe('alta de gruistas', () => {
     })
   })
 
-  it.each(['actorId', 'userId', 'role', 'active', 'user_metadata', 'other'])('rechaza el campo extra %s', (field) => {
+  it.each(['actorId', 'userId', 'role', 'active', 'user_metadata', 'equipmentId', 'other'])('rechaza el campo extra %s', (field) => {
     expect(newCraneOperatorSchema.safeParse({ ...account, [field]: userId }).success).toBe(false)
   })
 
-  it('limita nombre, email e identificador de la grúa', () => {
+  it('valida el nombre y el email', () => {
     expect(newCraneOperatorSchema.safeParse({ ...account, name: 'a'.repeat(120) }).success).toBe(true)
     for (const name of ['', '  ', 'a'.repeat(121), 'Juan\u0000']) {
       expect(newCraneOperatorSchema.safeParse({ ...account, name }).success).toBe(false)
     }
     for (const email of ['', 'juan', 'juan@', '@example.test', 'juan@example.test,otro@example.test']) {
       expect(newCraneOperatorSchema.safeParse({ ...account, email }).success).toBe(false)
-    }
-    for (const equipmentId of ['', 'otra', null]) {
-      expect(newCraneOperatorSchema.safeParse({ ...account, equipmentId }).success).toBe(false)
     }
   })
 
@@ -44,17 +40,16 @@ describe('alta de gruistas', () => {
 })
 
 describe('acceso exclusivo de gruistas', () => {
-  const access = { userId, active: true, equipmentId }
+  const access = { userId, active: true }
 
-  it('requiere grúa al activar y admite quitarla al desactivar', () => {
+  it('permite activar y desactivar con el identificador del gruista', () => {
     expect(setCraneOperatorAccessSchema.parse(access)).toEqual(access)
-    expect(setCraneOperatorAccessSchema.safeParse({ ...access, equipmentId: null }).success).toBe(false)
-    expect(setCraneOperatorAccessSchema.parse({ ...access, active: false, equipmentId: null }).active).toBe(false)
+    expect(setCraneOperatorAccessSchema.parse({ ...access, active: false }).active).toBe(false)
   })
 
   it.each([
     { active: 'false' }, { active: 0 }, { userId: 'otro' }, { equipmentId: 'otra' },
-    { role: 'admin' }, { actorId: userId }, { equipmentId: undefined },
+    { role: 'admin' }, { actorId: userId }, { equipmentId: userId },
   ])('rechaza coerciones y atributos ajenos: %j', (change) => {
     expect(setCraneOperatorAccessSchema.safeParse({ ...access, ...change }).success).toBe(false)
   })

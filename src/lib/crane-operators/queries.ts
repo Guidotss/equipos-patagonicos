@@ -14,11 +14,9 @@ import { mapCraneOperatorRpcError } from './errors'
 import {
   craneDeliveryNoteFiltersSchema,
   craneDeliveryNoteStatusSchema,
-  craneOperatorContextSchema,
   paginationSchema,
   userAccessSchema,
   type CraneDeliveryNoteFilters,
-  type CraneOperatorContext,
   type PaginationInput,
   type UserAccess,
 } from './schemas'
@@ -56,12 +54,10 @@ function readFile(row: FileRow): CraneDeliveryNoteFile {
   return { id: row.id, noteId: row.note_id, path: row.path, originalName: row.original_name, mime: row.mime, size: row.size }
 }
 
-export async function getCraneOperatorContext(supabase: Client): Promise<CraneOperatorContext> {
-  const { data, error } = await supabase.rpc('get_crane_operator_context')
+export async function listOperatorCranes(supabase: Client): Promise<EquipmentOption[]> {
+  const { data, error } = await supabase.rpc('list_operator_cranes')
   if (error) throw mapCraneOperatorRpcError(error)
-  const context = craneOperatorContextSchema.safeParse(data)
-  if (!context.success) throw new Error('No se pudo leer el contexto del gruista')
-  return context.data
+  return (data ?? []).map((row) => ({ id: row.equipment_id, name: row.name }))
 }
 
 /** Sin operatorId, devuelve la bandeja del personal o el historial propio según RLS. */
@@ -117,16 +113,9 @@ export async function listUserAccess(supabase: Client): Promise<UserAccess[]> {
   if (error) throw mapCraneOperatorRpcError(error)
   const users = z.array(userAccessSchema).safeParse((data ?? []).map((row) => ({
     userId: row.user_id, name: row.name, email: row.email, role: row.role, active: row.active,
-    equipmentId: row.equipment_id, equipmentName: row.equipment_name,
   })))
   if (!users.success) throw new Error('No se pudo leer el acceso de los usuarios')
   return users.data
-}
-
-export async function listActiveEquipment(supabase: Client): Promise<EquipmentOption[]> {
-  const { data, error } = await supabase.from('equipos').select('id, nombre').eq('activo', true).order('nombre').order('id')
-  if (error) throw error
-  return (data ?? []).map((row) => ({ id: row.id, name: row.nombre }))
 }
 
 /** Solo el personal puede leer presupuestos comerciales, incluso finalizados o sin grúa. */

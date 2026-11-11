@@ -32,19 +32,21 @@ async function expectOriginalDownload(page: Page, href: string, original: Buffer
   expect(await response.body()).toEqual(original)
 }
 
-for (const withBudget of [true, false]) {
-  const scenario = withBudget ? 'con presupuesto seleccionado' : 'sin presupuesto y con vinculación posterior'
+for (const withDetails of [true, false]) {
+  const scenario = withDetails ? 'con datos opcionales' : 'solo con fecha y PDF'
   test(`alta de gruista → envío móvil ${scenario} → documento persistido`, async ({ page, browser }) => {
     test.setTimeout(120_000)
     const fixture = createOperatorFixture()
     let mobileContext: BrowserContext | undefined
     try {
-      const { staff, crane, customerId, budget } = await test.step('Preparar personal, grúa y presupuesto propios', async () => {
+      const { staff, firstCrane, crane, inactiveCrane, customerId, budget } = await test.step('Preparar personal, grúas y presupuesto propios', async () => {
         const staff = await fixture.user('operador', 'personal-flujo')
-        const crane = await fixture.equipment('flujo completo')
+        const firstCrane = await fixture.equipment('A · 70 t')
+        const crane = await fixture.equipment('B · 90 t')
+        const inactiveCrane = await fixture.equipment('C · 30 t', false)
         const customerId = await fixture.customer()
-        const budget = await fixture.budget(crane.id, 'en_curso', `Trabajo ${fixture.marker}`)
-        return { staff, crane, customerId, budget }
+        const budget = await fixture.budget(firstCrane.id, 'en_curso', `Trabajo ${fixture.marker}`)
+        return { staff, firstCrane, crane, inactiveCrane, customerId, budget }
       })
       const worker: OperatorTestUser = {
         id: '',
@@ -53,7 +55,7 @@ for (const withBudget of [true, false]) {
         name: `Gruista ${fixture.marker}`,
       }
       fixture.trackCreatedAccount(worker.email)
-      const number = `R-${fixture.marker}`
+      const number = withDetails ? `R-${fixture.marker}` : ''
       const serviceDate = '2026-11-01'
       const workDescription = `Izaje y montaje ${fixture.marker}`
       const fileName = `Remito ${fixture.marker}.pdf`
@@ -67,15 +69,15 @@ for (const withBudget of [true, false]) {
         await page.getByLabel('Nombre', { exact: true }).fill(worker.name)
         await page.getByLabel('Email', { exact: true }).fill(worker.email)
         await page.getByLabel('Contraseña', { exact: true }).fill(worker.password)
-        await page.getByLabel('Grúa asignada', { exact: true }).selectOption(crane.id)
+        await expect(page.getByLabel('Grúa asignada', { exact: true })).toHaveCount(0)
         await page.getByRole('button', { name: 'Crear gruista', exact: true }).click()
         await expect(page).toHaveURL(/\/crane-operators\/[0-9a-f-]{36}$/)
         worker.id = page.url().split('/').at(-1)!
         const profile = await withBase(async (db) => (await db.query(
-          `select p.rol,p.activo,a.equipment_id,a.assigned_by from public.profiles p
-           join public.crane_operator_assignments a on a.user_id=p.id where p.id=$1`, [worker.id],
+          `select p.rol,p.activo,a.equipment_id from public.profiles p
+           left join public.crane_operator_assignments a on a.user_id=p.id where p.id=$1`, [worker.id],
         )).rows[0])
-        expect(profile).toEqual({ rol: 'crane_operator', activo: true, equipment_id: crane.id, assigned_by: staff.id })
+        expect(profile).toEqual({ rol: 'crane_operator', activo: true, equipment_id: null })
       })
 
       const mobilePage = await test.step('Ingresar con la cuenta recién creada en un contexto móvil independiente', async () => {
@@ -89,19 +91,22 @@ for (const withBudget of [true, false]) {
       })
 
       const noteId = await test.step('Enviar el remito y su PDF desde el formulario móvil', async () => {
-        await mobilePage.goto('/operator/new')
-        const budgetSelect = mobilePage.getByLabel('Presupuesto (opcional)', { exact: true })
-        await expect(budgetSelect).toHaveValue('')
-        if (withBudget) {
-          await budgetSelect.selectOption(budget.id)
-          await expect(mobilePage.getByText('Cliente y lugar del presupuesto', { exact: true })).toBeVisible()
-        } else {
-          await expect(budgetSelect.locator('option:checked')).toHaveText('Trabajo sin presupuesto')
-          await mobilePage.getByLabel('Cliente o lugar del trabajo', { exact: true }).fill(`Obra ${fixture.marker}`)
-        }
+        const choices = mobilePage.getByRole('region', { name: 'Grúas disponibles' })
+        const available = choices.getByRole('link', { name: crane.name, exact: true })
+        await expect(choices.getByRole('link', { name: firstCrane.name, exact: true })).toBeVisible()
+        await expect(choices.getByRole('link', { name: inactiveCrane.name, exact: true })).toHaveCount(0)
+        await available.click()
+        await expect(mobilePage.getByText(crane.name, { exact: true })).toBeVisible()
+        await expect(mobilePage.locator('select')).toHaveCount(0)
+        await expect(mobilePage.getByText(`Trabajo ${fixture.marker}`, { exact: true })).toHaveCount(0)
+        await expect(mobilePage.getByLabel('Número de remito', { exact: true })).not.toBeVisible()
         await mobilePage.getByLabel('Fecha del servicio', { exact: true }).fill(serviceDate)
-        await mobilePage.getByLabel('Número de remito (opcional)', { exact: true }).fill(number)
-        await mobilePage.getByLabel('Descripción del trabajo', { exact: true }).fill(workDescription)
+        if (withDetails) {
+          await mobilePage.locator('summary').filter({ hasText: 'Datos opcionales' }).click()
+          await mobilePage.getByLabel('Cliente o lugar del trabajo', { exact: true }).fill(`Obra ${fixture.marker}`)
+          await mobilePage.getByLabel('Número de remito', { exact: true }).fill(number)
+          await mobilePage.getByLabel('Descripción del trabajo', { exact: true }).fill(workDescription)
+        }
         const fileChooser = mobilePage.waitForEvent('filechooser')
         await mobilePage.getByRole('button', { name: 'Seleccionar archivos', exact: true }).click()
         await (await fileChooser).setFiles({ name: fileName, mimeType: 'application/pdf', buffer: originalFile })
@@ -127,19 +132,19 @@ for (const withBudget of [true, false]) {
         })
         await mobilePage.getByRole('button', { name: 'Enviar remito', exact: true }).click()
         await expect(mobilePage).toHaveURL(/\/operator\/notes\/[0-9a-f-]{36}$/)
-        await expect(mobilePage.getByText(withBudget ? 'Vinculado' : 'Pendiente de vincular', { exact: true })).toBeVisible()
+        await expect(mobilePage.getByText('Pendiente de vincular', { exact: true })).toBeVisible()
         return mobilePage.url().split('/').at(-1)!
       })
 
       const fileId = await test.step('Revisar la actividad y descargar el archivo original como personal', async () => {
         await page.goto(`/crane-operators/${worker.id}`)
-        const activity = page.locator('table:visible').getByRole('row').filter({ hasText: number })
+        const activity = page.locator('table:visible').getByRole('row').filter({ has: page.locator(`a[href="/delivery-notes/${noteId}"]`) })
         await expect(activity).toHaveCount(1)
         await expect(activity).toContainText(crane.name)
-        await expect(activity).toContainText(workDescription)
+        if (withDetails) await expect(activity).toContainText(workDescription)
         await expect(activity).toContainText('Servicio: 01/11/2026')
-        await expect(activity.getByText(withBudget ? 'Vinculado' : 'Pendiente de vincular', { exact: true })).toBeVisible()
-        await activity.getByRole('link', { name: number, exact: true }).click()
+        await expect(activity.getByText('Pendiente de vincular', { exact: true })).toBeVisible()
+        await activity.getByRole('link', { name: number || 'Sin número', exact: true }).click()
         await expect(page).toHaveURL(`/delivery-notes/${noteId}`)
         const fileLink = page.getByRole('link', { name: fileName, exact: true })
         await expect(fileLink).toBeVisible()
@@ -149,17 +154,19 @@ for (const withBudget of [true, false]) {
         return fileHref!.split('/').at(-1)!
       })
 
-      await test.step(withBudget ? 'Confirmar la vinculación automática al presupuesto propio' : 'Vincular el remito pendiente al presupuesto propio desde la UI', async () => {
-        if (withBudget) {
-          await expect(page.getByRole('button', { name: 'Vincular remito', exact: true })).toHaveCount(0)
-        } else {
-          const pending = await withBase(async (db) => (await db.query(
-            'select status,document_id,linked_budget_id from public.crane_delivery_notes where id=$1', [noteId],
-          )).rows[0])
-          expect(pending).toEqual({ status: 'pending', document_id: null, linked_budget_id: null })
-          await selectLinkBudget(page, budget.id)
-          await page.getByRole('button', { name: 'Vincular remito', exact: true }).click()
-        }
+      await test.step('Vincular el remito pendiente a un presupuesto de otra grúa desde la UI', async () => {
+        const pending = await withBase(async (db) => (await db.query(
+          `select operator_id,equipment_id,service_date::text,status,requested_budget_id,document_id,linked_budget_id,
+            number,customer_name,work_description,notes from public.crane_delivery_notes where id=$1`, [noteId],
+        )).rows[0])
+        expect(pending).toEqual({
+          operator_id: worker.id, equipment_id: crane.id, service_date: serviceDate, status: 'pending',
+          requested_budget_id: null, document_id: null, linked_budget_id: null, number,
+          customer_name: withDetails ? `Obra ${fixture.marker}` : '',
+          work_description: withDetails ? workDescription : '', notes: '',
+        })
+        await selectLinkBudget(page, budget.id)
+        await page.getByRole('button', { name: 'Vincular remito', exact: true }).click()
         await expect(page.getByText('Vinculado', { exact: true })).toBeVisible()
         await expect(page.getByRole('link', { name: 'Ver presupuesto vinculado', exact: true })).toHaveAttribute('href', `/presupuestos/${budget.id}`)
       })
@@ -167,7 +174,7 @@ for (const withBudget of [true, false]) {
       await test.step('Recargar actividad, portal y detalle para comprobar el estado persistido', async () => {
         await page.goto(`/crane-operators/${worker.id}`)
         await page.reload()
-        const activity = page.locator('table:visible').getByRole('row').filter({ hasText: number })
+        const activity = page.locator('table:visible').getByRole('row').filter({ has: page.locator(`a[href="/delivery-notes/${noteId}"]`) })
         await expect(activity).toHaveCount(1)
         await expect(activity.getByText('Vinculado', { exact: true })).toBeVisible()
         await expect(activity).toContainText(crane.name)
@@ -175,15 +182,20 @@ for (const withBudget of [true, false]) {
         await expect(mobilePage.getByText('Vinculado', { exact: true })).toBeVisible()
         await expect(mobilePage.getByText(crane.name, { exact: true })).toBeVisible()
         await expect(mobilePage.getByText('01/11/2026', { exact: true })).toBeVisible()
-        await expect(mobilePage.getByText(workDescription, { exact: true })).toBeVisible()
+        if (withDetails) {
+          await expect(mobilePage.getByText(workDescription, { exact: true })).toBeVisible()
+        } else {
+          await expect(mobilePage.getByText('Descripción del trabajo', { exact: true })).toHaveCount(0)
+          await expect(mobilePage.getByText('Cliente o lugar del trabajo', { exact: true })).toHaveCount(0)
+        }
         await expect(mobilePage.getByRole('link', { name: fileName, exact: true })).toBeVisible()
         await expectOriginalDownload(mobilePage, `/operator/files/${fileId}`, originalFile)
         await mobilePage.goto('/operator')
         await mobilePage.reload()
-        const history = mobilePage.locator('ul:visible > li').filter({ has: mobilePage.getByRole('link', { name: `Remito ${number}`, exact: true }) })
+        const history = mobilePage.locator('ul:visible > li').filter({ has: mobilePage.getByRole('link', { name: number ? `Remito ${number}` : 'Remito sin número', exact: true }) })
         await expect(history).toHaveCount(1)
         await expect(history.getByText('Vinculado', { exact: true })).toBeVisible()
-        await history.getByRole('link', { name: `Remito ${number}`, exact: true }).click()
+        await history.getByRole('link', { name: number ? `Remito ${number}` : 'Remito sin número', exact: true }).click()
         await expect(mobilePage).toHaveURL(`/operator/notes/${noteId}`)
         await expect(mobilePage.getByText('Vinculado', { exact: true })).toBeVisible()
       })
@@ -195,7 +207,7 @@ for (const withBudget of [true, false]) {
         )).rows[0])
         expect(note).toMatchObject({
           operator_id: worker.id, equipment_id: crane.id, service_date: serviceDate, status: 'linked',
-          requested_budget_id: withBudget ? budget.id : null, linked_budget_id: budget.id,
+          requested_budget_id: null, linked_budget_id: budget.id,
         })
         const documents = await withBase(async (db) => (await db.query(
           `select d.id,d.created_by,d.equipo_id,d.fecha::text,p.cotizacion_id from public.documentos d
@@ -210,7 +222,7 @@ for (const withBudget of [true, false]) {
         await expect(page.getByRole('heading', { name: 'Remitos · 1', exact: true })).toBeVisible()
         const document = page.locator(`[data-documento="${note.document_id}"]`)
         await expect(document).toHaveCount(1)
-        await expect(document.getByRole('link', { name: number, exact: true })).toHaveAttribute('href', `/documentos/${note.document_id}`)
+        await expect(document.getByRole('link', { name: number || 'Sin número', exact: true })).toHaveAttribute('href', `/documentos/${note.document_id}`)
         const officialFile = document.getByRole('link', { name: fileName, exact: true })
         await expect(officialFile).toBeVisible()
         await expectOriginalDownload(page, (await officialFile.getAttribute('href'))!, originalFile)

@@ -12,6 +12,9 @@ import { createClient } from '@/lib/supabase/server'
 export async function prepareOperatorUpload(input: unknown): Promise<Result<{ path: string; signedUrl: string }>> {
   await requireCraneOperator()
   const parsed = craneDeliveryNoteUploadSchema.safeParse(input)
+  if (!parsed.success && parsed.error.issues.some((issue) => issue.path[0] === 'equipmentId')) {
+    return { ok: false, message: 'Elegí una grúa válida.' }
+  }
   if (!parsed.success) return { ok: false, message: 'Revisá el tipo y el tamaño del archivo (máximo 10 MB).' }
   try {
     const { path, signedUrl } = await prepareCraneDeliveryNoteUpload(await createClient(), parsed.data)

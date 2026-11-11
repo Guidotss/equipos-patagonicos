@@ -30,7 +30,7 @@ export async function createStaffCraneOperator(input: unknown): Promise<Result<N
   const parsed = newCraneOperatorSchema.safeParse(input)
   if (!parsed.success) return { ok: false, message: 'Revisá los datos del gruista.', errors: errorsByPath(parsed.error) }
   try {
-    const result = await provisionCraneOperator({ sessionClient: await createClient(), actorId: user.id, input: parsed.data })
+    const result = await provisionCraneOperator({ actorId: user.id, input: parsed.data })
     revalidateManagement(result.userId)
     return { ok: true, datos: result }
   } catch (error) {

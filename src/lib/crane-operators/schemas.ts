@@ -21,17 +21,13 @@ export const craneDeliveryNoteFileSchema = z.strictObject({
 }, { error: 'El archivo contiene datos no permitidos' })
 
 export const craneDeliveryNoteDataSchema = z.strictObject({
-  budgetId: uuidSchema.nullable(),
-  number: textSchema(100),
+  equipmentId: z.uuid({ error: 'Elegí una grúa válida' }),
+  number: textSchema(100).optional(),
   serviceDate: z.string({ error: 'Ingresá una fecha válida' }).refine(isDate, 'Ingresá una fecha válida'),
-  customerName: textSchema(2000),
-  workDescription: textSchema(2000).refine((value) => value.length > 0, 'Ingresá el trabajo realizado'),
-  notes: textSchema(2000),
-}, { error: 'El remito contiene campos no permitidos' }).superRefine((data, context) => {
-  if (data.budgetId === null && data.customerName === '') {
-    context.addIssue({ code: 'custom', path: ['customerName'], message: 'Ingresá el cliente' })
-  }
-})
+  customerName: textSchema(2000).optional(),
+  workDescription: textSchema(2000).optional(),
+  notes: textSchema(2000).optional(),
+}, { error: 'El remito contiene campos no permitidos' })
 
 export const craneDeliveryNoteSubmissionSchema = z.strictObject({
   id: uuidSchema,
@@ -45,21 +41,11 @@ export const craneDeliveryNoteSubmissionSchema = z.strictObject({
 })
 
 export const craneDeliveryNoteUploadSchema = z.strictObject({
+  equipmentId: craneDeliveryNoteDataSchema.shape.equipmentId,
   mime: z.enum(CRANE_UPLOAD_MIMES, { error: 'Solo se aceptan PDF, JPG o PNG' }),
   size: z.number({ error: 'El tamaño no es válido' }).int('El tamaño no es válido').min(1, 'El archivo está vacío')
     .max(CRANE_UPLOAD_MAX_SIZE, 'El archivo supera los 10 MB'),
 }, { error: 'La carga contiene datos no permitidos' })
-
-export const craneOperatorContextSchema = z.strictObject({
-  equipment: z.strictObject({ id: uuidSchema, name: z.string(), active: z.boolean() }).nullable(),
-  jobs: z.array(z.strictObject({
-    id: uuidSchema,
-    number: z.number().int(),
-    customerName: z.string(),
-    subject: z.string(),
-    location: z.string(),
-  })),
-})
 
 export const paginationSchema = z.strictObject({
   page: z.number({ error: 'La página no es válida' }).int('La página no es válida')
@@ -82,15 +68,7 @@ export const setUserAccessSchema = z.strictObject({
   userId: uuidSchema,
   role: roleSchema,
   active: z.boolean({ error: 'Indicá si el usuario está activo' }),
-  equipmentId: uuidSchema.nullable(),
-}, { error: 'El acceso contiene datos no permitidos' }).superRefine((input, context) => {
-  if (input.role === 'crane_operator' && input.active && input.equipmentId === null) {
-    context.addIssue({ code: 'custom', path: ['equipmentId'], message: 'Asigná una grúa activa para habilitar al gruista' })
-  }
-  if (input.role !== 'crane_operator' && input.equipmentId !== null) {
-    context.addIssue({ code: 'custom', path: ['equipmentId'], message: 'Solo un gruista puede tener una grúa asignada' })
-  }
-})
+}, { error: 'El acceso contiene datos no permitidos' })
 
 export const userAccessSchema = z.strictObject({
   userId: uuidSchema,
@@ -98,14 +76,11 @@ export const userAccessSchema = z.strictObject({
   email: z.string(),
   role: roleSchema,
   active: z.boolean(),
-  equipmentId: uuidSchema.nullable(),
-  equipmentName: z.string().nullable(),
 })
 
 export type CraneDeliveryNoteStatus = (typeof CRANE_DELIVERY_NOTE_STATUSES)[number]
 export type CraneDeliveryNoteSubmissionInput = z.input<typeof craneDeliveryNoteSubmissionSchema>
 export type CraneDeliveryNoteUploadInput = z.input<typeof craneDeliveryNoteUploadSchema>
-export type CraneOperatorContext = z.output<typeof craneOperatorContextSchema>
 export type CraneDeliveryNoteFilters = z.input<typeof craneDeliveryNoteFiltersSchema>
 export type PaginationInput = z.input<typeof paginationSchema>
 export type LinkCraneDeliveryNoteInput = z.input<typeof linkCraneDeliveryNoteSchema>

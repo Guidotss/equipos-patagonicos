@@ -9,7 +9,6 @@ import { newCraneOperatorSchema, type NewCraneOperatorInput } from './management
 type Client = SupabaseClient<Database>
 export type NewCraneOperatorResult = { userId: string; email: string }
 export type ProvisionCraneOperatorOptions = {
-  sessionClient: Client
   actorId: string
   input: NewCraneOperatorInput
   createPrivilegedClient?: () => Client
@@ -20,12 +19,6 @@ export class CraneOperatorProvisioningError extends CraneOperatorError {
   constructor(message: string, readonly pendingUserId: string | null = null) {
     super(message)
   }
-}
-
-async function requireActiveEquipment(supabase: Client, equipmentId: string) {
-  const { data, error } = await supabase.from('equipos').select('id').eq('id', equipmentId).eq('activo', true).maybeSingle()
-  if (error) throw error
-  if (!data) throw new CraneOperatorError('La grúa no existe o está inactiva')
 }
 
 async function deleteCreatedUser(supabase: Client, userId: string): Promise<boolean> {
@@ -46,12 +39,11 @@ function pendingSignupError(userId: string) {
 
 /** El llamador obtiene actorId de requireStaff; la base vuelve a comprobar su acceso al finalizar. */
 export async function provisionCraneOperator(options: ProvisionCraneOperatorOptions): Promise<NewCraneOperatorResult> {
-  const { name, email, password, equipmentId } = newCraneOperatorSchema.parse(options.input)
+  const { name, email, password } = newCraneOperatorSchema.parse(options.input)
   const actorId = z.uuid().parse(options.actorId)
   let privileged: Client | undefined
   let createdUserId: string | undefined
   try {
-    await requireActiveEquipment(options.sessionClient, equipmentId)
     privileged = (options.createPrivilegedClient ?? createDefaultPrivilegedClient)()
     const { data, error } = await privileged.auth.admin.createUser({
       email, password, email_confirm: true, user_metadata: { nombre: name },
@@ -64,7 +56,7 @@ export async function provisionCraneOperator(options: ProvisionCraneOperatorOpti
     }
     createdUserId = z.uuid().parse(data.user?.id)
     const { error: completionError } = await privileged.rpc('complete_crane_operator_signup', {
-      p_user_id: createdUserId, p_name: name, p_equipment_id: equipmentId, p_actor_id: actorId,
+      p_user_id: createdUserId, p_name: name, p_actor_id: actorId,
     })
     if (completionError) throw mapCraneOperatorRpcError(completionError)
     return { userId: createdUserId, email }

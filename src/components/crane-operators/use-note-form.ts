@@ -8,11 +8,9 @@ import type { UploadedFile } from '@/lib/documents/service'
 import { craneDeliveryNoteSubmissionSchema } from '@/lib/crane-operators/schemas'
 import { errorsByPath } from '@/lib/forms'
 
-export const prepareNoteUpload: UploadPreparer = ({ mime, tamano }) => prepareOperatorUpload({ mime, size: tamano })
-
-export function useNoteForm(today: string) {
+export function useNoteForm(equipmentId: string, today: string) {
   const router = useRouter()
-  const [values, setValues] = useState({ budgetId: '', serviceDate: today, number: '', customerName: '', workDescription: '', notes: '' })
+  const [values, setValues] = useState({ serviceDate: today, number: '', customerName: '', workDescription: '', notes: '' })
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -26,8 +24,15 @@ export function useNoteForm(today: string) {
     if (!message) return
     const invalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
     const fallback = formRef.current?.querySelector<HTMLElement>('[data-form-error]')
+    const details = invalid?.closest('details')
+    if (details) details.open = true
     ;(invalid ?? fallback)?.focus()
   }, [errors, message])
+
+  const prepareUpload = useCallback<UploadPreparer>(
+    ({ mime, tamano }) => prepareOperatorUpload({ equipmentId, mime, size: tamano }),
+    [equipmentId],
+  )
 
   const onChangeFiles = useCallback((uploaded: UploadedFile[], busy: boolean) => {
     setFiles(uploaded)
@@ -42,7 +47,7 @@ export function useNoteForm(today: string) {
     event.preventDefault()
     if (submitting.current || uploading) return
     submissionId.current ??= crypto.randomUUID()
-    const input = { id: submissionId.current, data: { ...values, budgetId: values.budgetId || null }, files: files.map((file) => ({ path: file.path, originalName: file.nombre_original })) }
+    const input = { id: submissionId.current, data: { ...values, equipmentId }, files: files.map((file) => ({ path: file.path, originalName: file.nombre_original })) }
     const parsed = craneDeliveryNoteSubmissionSchema.safeParse(input)
     if (!parsed.success) {
       setErrors(errorsByPath(parsed.error))
@@ -69,5 +74,5 @@ export function useNoteForm(today: string) {
     })
   }
 
-  return { values, errors, message, pending, uploading, formRef, changeField, onChangeFiles, submit }
+  return { values, errors, message, pending, uploading, formRef, changeField, prepareUpload, onChangeFiles, submit }
 }

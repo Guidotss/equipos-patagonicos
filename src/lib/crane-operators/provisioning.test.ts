@@ -11,23 +11,20 @@ vi.mock('@/lib/env', () => ({ publicEnv: {
 
 const origin = 'https://supabase.example.test'
 const actorId = '11111111-1111-4111-8111-111111111111'
-const equipmentId = '22222222-2222-4222-8222-222222222222'
 const newUserId = '33333333-3333-4333-8333-333333333333'
 const privateKey = 'sb_secret_clave_ficticia_sin_valor'
-const input = { name: ' Juan Pérez ', email: ' Juan@Example.test ', password: ' clave exacta ', equipmentId }
+const input = { name: ' Juan Pérez ', email: ' Juan@Example.test ', password: ' clave exacta ' }
 
 type Scenario = {
-  equipmentAvailable?: boolean
-  preflightError?: boolean
   authError?: string
   completionError?: { code: string; message: string }
   cleanupError?: boolean
 }
 
-function client(fetch: typeof globalThis.fetch, privileged: boolean) {
-  return createClient<Database>(origin, privileged ? privateKey : 'clave-publicable-ficticia', {
+function client(fetch: typeof globalThis.fetch) {
+  return createClient<Database>(origin, privateKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: { fetch, headers: { Authorization: `Bearer ${privileged ? privateKey : 'sesion-ficticia-del-personal'}` } },
+    global: { fetch, headers: { Authorization: `Bearer ${privateKey}` } },
   })
 }
 
@@ -39,13 +36,6 @@ function setup(scenario: Scenario = {}) {
     expect(url.origin).toBe(origin)
     const body: unknown = request.method === 'GET' ? null : await request.json()
     requests.push({ method: request.method, path: url.pathname, body })
-    if (request.method === 'GET' && url.pathname === '/rest/v1/equipos') {
-      expect(request.headers.get('authorization')).toBe('Bearer sesion-ficticia-del-personal')
-      expect(url.searchParams.get('id')).toBe(`eq.${equipmentId}`)
-      expect(url.searchParams.get('activo')).toBe('eq.true')
-      if (scenario.preflightError) return Response.json({ code: 'XX000', message: `${privateKey} ${input.password}` }, { status: 500 })
-      return Response.json(scenario.equipmentAvailable === false ? [] : [{ id: equipmentId }])
-    }
     expect(request.headers.get('authorization')).toBe(`Bearer ${privateKey}`)
     expect(request.headers.has('cookie')).toBe(false)
     if (request.method === 'POST' && url.pathname === '/auth/v1/admin/users') {
@@ -64,9 +54,8 @@ function setup(scenario: Scenario = {}) {
     }
     throw new Error(`Pedido no previsto: ${request.method} ${url.pathname}`)
   })
-  const createPrivilegedClient = vi.fn(() => client(fetch, true))
-  const sessionClient = client(fetch, false)
-  return { requests, fetch, createPrivilegedClient, options: { sessionClient, actorId, input, createPrivilegedClient } }
+  const createPrivilegedClient = vi.fn(() => client(fetch))
+  return { requests, fetch, createPrivilegedClient, options: { actorId, input, createPrivilegedClient } }
 }
 
 beforeEach(() => {
@@ -78,58 +67,43 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 describe('alta de gruistas desde una sesión autorizada', () => {
-  it('comprueba la grúa antes de crear y confirma/finaliza solo el nuevo ID y el actor del servidor', async () => {
+  it('crea la cuenta sin grúa y finaliza el alta con el nuevo ID y el actor del servidor', async () => {
     const fixture = setup()
     await expect(provisionCraneOperator(fixture.options)).resolves.toEqual({ userId: newUserId, email: 'juan@example.test' })
     expect(fixture.createPrivilegedClient).toHaveBeenCalledTimes(1)
     expect(fixture.requests).toEqual([
-      { method: 'GET', path: '/rest/v1/equipos', body: null },
       { method: 'POST', path: '/auth/v1/admin/users', body: {
         email: 'juan@example.test', password: input.password, email_confirm: true, user_metadata: { nombre: 'Juan Pérez' },
       } },
       { method: 'POST', path: '/rest/v1/rpc/complete_crane_operator_signup', body: {
-        p_user_id: newUserId, p_name: 'Juan Pérez', p_equipment_id: equipmentId, p_actor_id: actorId,
+        p_user_id: newUserId, p_name: 'Juan Pérez', p_actor_id: actorId,
       } },
     ])
-    expect(fixture.fetch).toHaveBeenCalledTimes(3)
+    expect(fixture.fetch).toHaveBeenCalledTimes(2)
     expect(console.error).not.toHaveBeenCalled()
   })
 
-  it.each(['role', 'actorId', 'userId', 'active'])('rechaza %s antes de consultar o crear', async (field) => {
+  it.each(['role', 'actorId', 'userId', 'active', 'equipmentId'])('rechaza %s antes de consultar o crear', async (field) => {
     const fixture = setup()
     await expect(provisionCraneOperator({ ...fixture.options, input: { ...input, [field]: actorId } })).rejects.toThrow()
     expect(fixture.fetch).not.toHaveBeenCalled()
     expect(fixture.createPrivilegedClient).not.toHaveBeenCalled()
   })
 
-  it('rechaza la grúa inválida sin usar el cliente privilegiado', async () => {
-    const fixture = setup()
-    await expect(provisionCraneOperator({ ...fixture.options, input: { ...input, equipmentId: 'otra' } })).rejects.toThrow()
-    expect(fixture.fetch).not.toHaveBeenCalled()
-    expect(fixture.createPrivilegedClient).not.toHaveBeenCalled()
-  })
-
-  it('rechaza una grúa inexistente o inactiva con la sesión antes de invocar Auth', async () => {
-    const fixture = setup({ equipmentAvailable: false })
-    await expect(provisionCraneOperator(fixture.options)).rejects.toThrow('La grúa no existe o está inactiva')
-    expect(fixture.fetch).toHaveBeenCalledTimes(1)
-    expect(fixture.createPrivilegedClient).not.toHaveBeenCalled()
-  })
-
   it.each(['email_exists', 'user_already_exists'])('no busca, modifica ni elimina una cuenta duplicada (%s)', async (authError) => {
     const fixture = setup({ authError })
     await expect(provisionCraneOperator(fixture.options)).rejects.toThrow('Ya existe una cuenta con ese email')
-    expect(fixture.requests.map((request) => request.method)).toEqual(['GET', 'POST'])
+    expect(fixture.requests.map((request) => request.method)).toEqual(['POST'])
   })
 
   it.each([
-    { code: '22023', message: 'La grúa no existe o está inactiva' },
+    { code: '22023', message: 'El destino del alta tiene que ser una cuenta nueva e inactiva' },
     { code: '42501', message: 'El usuario que solicita el alta no está habilitado' },
   ])('compensa la carrera al finalizar: $message', async (completionError) => {
     const fixture = setup({ completionError })
     await expect(provisionCraneOperator(fixture.options)).rejects.toThrow(completionError.message)
     expect(fixture.requests.at(-1)).toEqual({ method: 'DELETE', path: `/auth/v1/admin/users/${newUserId}`, body: { should_soft_delete: false } })
-    expect(fixture.requests).toHaveLength(4)
+    expect(fixture.requests).toHaveLength(3)
   })
 
   it('sanea errores desconocidos de la finalización después de compensar', async () => {
@@ -151,8 +125,8 @@ describe('alta de gruistas desde una sesión autorizada', () => {
     for (const logger of [console.error, console.warn, console.log]) expect(logger).not.toHaveBeenCalled()
   })
 
-  it.each(['preflight', 'auth', 'factory'] as const)('sanea fallos inesperados de %s sin borrar cuentas', async (stage) => {
-    const fixture = setup({ preflightError: stage === 'preflight', authError: stage === 'auth' ? 'unexpected_failure' : undefined })
+  it.each(['auth', 'factory'] as const)('sanea fallos inesperados de %s sin borrar cuentas', async (stage) => {
+    const fixture = setup({ authError: stage === 'auth' ? 'unexpected_failure' : undefined })
     if (stage === 'factory') fixture.createPrivilegedClient.mockImplementation(() => { throw new Error(`${privateKey} ${input.password}`) })
     const error = await provisionCraneOperator(fixture.options).catch((error: unknown) => error)
     expect(error).toMatchObject({ pendingUserId: null, message: 'No se pudo crear el gruista. Volvé a intentar.' })

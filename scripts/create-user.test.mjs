@@ -9,7 +9,8 @@ const password = 'contraseña-exclusiva-de-prueba';
 const secretKey = 'clave-ficticia-sin-acceso';
 const testEnv = { NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.example.test', SUPABASE_SECRET_KEY: secretKey };
 const baseArgs = ['--email', email, '--password', password, '--name', 'Gruista de prueba'];
-const craneArgs = [...baseArgs, '--role', 'crane_operator', '--equipment-id', equipmentId];
+const craneArgs = [...baseArgs, '--role', 'crane_operator'];
+const legacyCraneArgs = [...craneArgs, '--equipment-id', equipmentId];
 
 const equipmentStep = (body = [{ id: equipmentId, activo: true }], status = 200) => ({
   method: 'GET', path: '/rest/v1/equipos', query: { id: `eq.${equipmentId}`, select: 'id,activo' }, body, status,
@@ -69,8 +70,14 @@ async function runWithRequests(t, args, steps, env = testEnv) {
   return { code, requests, output: output.join('\n') };
 }
 
-test('crea un gruista con argumentos canónicos y lo activa después de asignar la grúa', async (t) => {
-  const result = await runWithRequests(t, craneArgs, [equipmentStep(), createStep(), profileStep('crane_operator'), assignmentStep(), activationStep()]);
+test('crea y activa un gruista sin asignarle una grúa', async (t) => {
+  const result = await runWithRequests(t, craneArgs, [createStep(), profileStep('crane_operator'), activationStep()]);
+  assert.equal(result.code, 0);
+  assert.match(result.output, /creado y activo con rol crane_operator/);
+});
+
+test('conserva la opción legada de asignar la grúa antes de activar', async (t) => {
+  const result = await runWithRequests(t, legacyCraneArgs, [equipmentStep(), createStep(), profileStep('crane_operator'), assignmentStep(), activationStep()]);
   assert.equal(result.code, 0);
   assert.match(result.output, /creado y activo con rol crane_operator/);
   assert.equal(result.requests.at(-1).body.activo, true);
@@ -122,11 +129,10 @@ test('valida los datos requeridos, email y contraseña antes de cualquier pedido
   }
 });
 
-test('rechaza roles y UUID inválidos, grúa ausente y grúa para otros roles antes del alta', async (t) => {
+test('rechaza roles y UUID inválidos o grúa para otros roles antes del alta', async (t) => {
   for (const [flags, message] of [
     [['--role', 'operator'], /--role/],
     [['--role', ''], /--role/],
-    [['--role', 'crane_operator'], /--equipment-id/],
     [['--role', 'crane_operator', '--equipment-id', 'inválido'], /UUID/],
     [['--equipment-id', equipmentId], /Solo un gruista/],
     [['--role', 'operador', '--equipment-id', equipmentId], /Solo un gruista/],
@@ -139,7 +145,7 @@ test('rechaza roles y UUID inválidos, grúa ausente y grúa para otros roles an
 
 test('no crea la cuenta si la grúa no existe, está inactiva o falla la verificación', async (t) => {
   for (const step of [equipmentStep([]), equipmentStep([{ id: equipmentId, activo: false }]), failStep(equipmentStep())]) {
-    const result = await runWithRequests(t, craneArgs, [step]);
+    const result = await runWithRequests(t, legacyCraneArgs, [step]);
     assert.equal(result.code, 1);
     assert.match(result.output, /No se creó ningún usuario/);
     assert.deepEqual(result.requests.map((request) => request.method), ['GET']);
@@ -169,7 +175,7 @@ test('borra el usuario recién creado si falla la configuración del perfil', as
 });
 
 test('borra usuario, perfil y asignación por cascada si falla la asignación', async (t) => {
-  const result = await runWithRequests(t, craneArgs, [equipmentStep(), createStep(), profileStep('crane_operator'), failStep(assignmentStep()), cleanupStep()]);
+  const result = await runWithRequests(t, legacyCraneArgs, [equipmentStep(), createStep(), profileStep('crane_operator'), failStep(assignmentStep()), cleanupStep()]);
   assert.equal(result.code, 1);
   assert.match(result.output, /No se pudo asignar la grúa/);
   assert.match(result.output, /perfil y asignación/);
@@ -177,7 +183,7 @@ test('borra usuario, perfil y asignación por cascada si falla la asignación', 
 });
 
 test('borra usuario, perfil y asignación por cascada si falla la activación final', async (t) => {
-  const result = await runWithRequests(t, craneArgs, [equipmentStep(), createStep(), profileStep('crane_operator'), assignmentStep(), failStep(activationStep()), cleanupStep()]);
+  const result = await runWithRequests(t, legacyCraneArgs, [equipmentStep(), createStep(), profileStep('crane_operator'), assignmentStep(), failStep(activationStep()), cleanupStep()]);
   assert.equal(result.code, 1);
   assert.match(result.output, /No se pudo activar/);
   assert.match(result.output, /Se eliminó el usuario/);

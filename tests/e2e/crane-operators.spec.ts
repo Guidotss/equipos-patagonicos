@@ -10,11 +10,11 @@ import { iniciarSession } from './helpers'
 const fixture = createOperatorFixture()
 let worker: OperatorTestUser
 let other: OperatorTestUser
-let unassigned: OperatorTestUser
 let inactive: OperatorTestUser
 let staff: OperatorTestUser
 let crane: { id: string; name: string }
 let replacement: { id: string; name: string }
+let disabledCrane: { id: string; name: string }
 let ownBudget: { id: string; numero: number }
 let finalBudget: { id: string; numero: number }
 let noteId: string
@@ -26,16 +26,16 @@ test.describe.configure({ mode: 'serial' })
 test.beforeAll(async () => {
   worker = await fixture.user('operador', 'gruista')
   other = await fixture.user('crane_operator', 'otro')
-  unassigned = await fixture.user('crane_operator', 'sin-asignar')
   inactive = await fixture.user('crane_operator', 'inactivo', false)
   staff = await fixture.user('operador', 'administracion')
   crane = await fixture.equipment('principal')
   replacement = await fixture.equipment('reemplazo')
+  disabledCrane = await fixture.equipment('inactiva', false)
   await fixture.assign(other.id, crane.id)
   await fixture.customer()
   finalBudget = await fixture.budget(null, 'finalizado', 'Trabajo finalizado sin grúa')
   for (let index = 0; index < 27; index++) await fixture.budget(null, 'finalizado', `Otro trabajo ${index}`)
-  ownBudget = await fixture.budget(crane.id, 'en_curso', 'Trabajo asignado al gruista')
+  ownBudget = await fixture.budget(crane.id, 'en_curso', 'Trabajo comercial')
 })
 test.afterAll(() => fixture.cleanup())
 
@@ -88,11 +88,12 @@ async function attach(page: Page, withPhoto = false) {
 }
 
 async function fillWork(page: Page, number: string) {
-  await page.getByLabel('Número de remito (opcional)', { exact: true }).fill(number)
+  await page.locator('summary').filter({ hasText: 'Datos opcionales' }).click()
+  await page.getByLabel('Número de remito', { exact: true }).fill(number)
   await page.getByLabel('Fecha del servicio', { exact: true }).fill('2026-01-15')
   await page.getByLabel('Cliente o lugar del trabajo', { exact: true }).fill('Obra de montaje en Neuquén')
   await page.getByLabel('Descripción del trabajo', { exact: true }).fill('Izaje de estructura metálica')
-  await page.getByLabel('Observaciones (opcional)', { exact: true }).fill('Trabajo finalizado sin incidentes')
+  await page.getByLabel('Observaciones', { exact: true }).fill('Trabajo finalizado sin incidentes')
 }
 
 async function replayAs(page: Page, original: Request) {
@@ -100,18 +101,20 @@ async function replayAs(page: Page, original: Request) {
   return page.request.post(new URL(original.url()).pathname, { headers: { 'next-action': headers['next-action'], 'content-type': headers['content-type'], origin: new URL(original.url()).origin }, data: original.postData()!, maxRedirects: 0 })
 }
 
-test('administrador asigna una grúa a una cuenta existente', async ({ page }, info) => {
+test('administrador habilita una cuenta existente como gruista sin asignar una grúa', async ({ page }, info) => {
   await iniciarSession(page)
   await page.goto('/configuracion')
-  await page.getByRole('link', { name: /Usuarios y grúas/ }).click()
+  await page.getByRole('link', { name: 'Usuarios', exact: false }).click()
   const form = page.getByRole('form', { name: `Acceso de ${worker.email}` })
   await form.getByLabel('Rol', { exact: true }).selectOption('crane_operator')
-  await form.getByLabel('Grúa asignada', { exact: true }).selectOption(crane.id)
+  await expect(form.getByLabel('Grúa asignada', { exact: true })).toHaveCount(0)
   const request = page.waitForRequest((request) => request.method() === 'POST' && Boolean(request.headers()['next-action']))
   await form.getByRole('button', { name: 'Guardar acceso', exact: true }).click()
   accessRequest = await request
   await expect(form.getByLabel('Rol', { exact: true })).toHaveValue('crane_operator')
-  await expect.poll(() => withBase(async (db) => (await db.query('select equipment_id from public.crane_operator_assignments where user_id=$1', [worker.id])).rows[0]?.equipment_id)).toBe(crane.id)
+  await expect.poll(() => withBase(async (db) => (await db.query(
+    'select p.rol,p.activo,a.equipment_id from public.profiles p left join public.crane_operator_assignments a on a.user_id=p.id where p.id=$1', [worker.id],
+  )).rows[0])).toEqual({ rol: 'crane_operator', activo: true, equipment_id: null })
   await capture(page, info, 'users')
 })
 
@@ -124,13 +127,21 @@ test('gruista móvil envía PDF y foto sin presupuesto, conserva errores e histo
   await expect(page.getByText('Todavía no cargaste remitos. Los envíos aparecerán acá.', { exact: true })).toBeVisible()
   await expect(page.getByRole('search')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Presupuestos', exact: true })).toHaveCount(0)
+  const cranes = page.getByRole('region', { name: 'Grúas disponibles' })
+  await expect(cranes.getByRole('link', { name: crane.name, exact: true })).toBeVisible()
+  await expect(cranes.getByRole('link', { name: replacement.name, exact: true })).toBeVisible()
+  await expect(cranes.getByRole('link', { name: disabledCrane.name, exact: true })).toHaveCount(0)
+  expect(await cranes.getByRole('link').evaluateAll((links) => links.every((link) => link.getBoundingClientRect().height >= 44))).toBe(true)
   await capture(page, info, 'home')
-  await page.getByRole('link', { name: 'Cargar remito', exact: true }).click()
-  await expect(page.getByLabel('Presupuesto (opcional)', { exact: true })).toHaveValue('')
+  await cranes.getByRole('link', { name: replacement.name, exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Cargar remito', exact: true })).toBeVisible()
+  await expect(page.getByText(replacement.name, { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Presupuesto', { exact: false })).toHaveCount(0)
+  await expect(page.getByLabel('Descripción del trabajo', { exact: true })).not.toBeVisible()
   await expect(page.getByLabel('Tomar foto del documento', { exact: true })).toHaveAttribute('capture', 'environment')
   await capture(page, info, 'form')
   await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
-  await expect(page.getByLabel('Cliente o lugar del trabajo', { exact: true })).toBeFocused()
+  await expect(page.locator('#files')).toBeFocused()
   await fillWork(page, `R-${fixture.marker}`)
   let interrupted = false
   await page.route('**/storage/v1/object/upload/sign/**', async (route) => {
@@ -147,7 +158,7 @@ test('gruista móvil envía PDF y foto sin presupuesto, conserva errores e histo
   await expect(page.getByText('Listo para guardar', { exact: true })).toHaveCount(2)
   let failedSubmit = false
   let failedBody: string | null = null
-  await page.route('**/operator/new', async (route) => {
+  await page.route('**/operator/new?*', async (route) => {
     if (route.request().method() === 'POST' && route.request().headers()['next-action'] && !failedSubmit) {
       failedSubmit = true; failedBody = route.request().postData(); await route.abort('internetdisconnected')
     } else await route.continue()
@@ -200,7 +211,7 @@ test('administración descarga pendiente y lo vincula a presupuesto finalizado s
   test.setTimeout(120_000)
   await login(page, staff, 'Inicio')
   await page.goto('/configuracion')
-  await expect(page.getByRole('link', { name: /Usuarios y grúas/ })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Usuarios', exact: false })).toHaveCount(0)
   await page.goto('/configuracion/users')
   await expect(page).toHaveURL(/\/$/)
   await page.goto('/delivery-notes?status=pending&page=9999')
@@ -234,7 +245,7 @@ test('administración descarga pendiente y lo vincula a presupuesto finalizado s
   await expect(page.getByText('Vinculado', { exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Ver presupuesto vinculado', exact: true })).toHaveAttribute('href', `/presupuestos/${finalBudget.id}`)
   const official = await withBase(async (db) => (await db.query(`select d.id,d.numero,d.fecha,d.created_by,d.equipo_id,d.monto,n.document_id,n.linked_budget_id from public.documentos d join public.crane_delivery_notes n on n.document_id=d.id where n.id=$1`, [noteId])).rows[0])
-  expect(official).toMatchObject({ numero: `R-${fixture.marker}`, created_by: worker.id, equipo_id: crane.id, monto: null, linked_budget_id: finalBudget.id })
+  expect(official).toMatchObject({ numero: `R-${fixture.marker}`, created_by: worker.id, equipo_id: replacement.id, monto: null, linked_budget_id: finalBudget.id })
   expect(new Date(official.fecha).toISOString().slice(0, 10)).toBe('2026-01-15')
   const preservation = await withBase(async (db) => (await db.query('select a.path,a.nombre_original from public.documento_archivos a where a.documento_id=$1 order by a.orden', [official.id])).rows)
   expect(preservation.map((file) => file.nombre_original)).toEqual(['Remito de obra.pdf', 'Foto del remito.png'])
@@ -263,110 +274,87 @@ test('administración descarga pendiente y lo vincula a presupuesto finalizado s
   } finally { await workerContext.close() }
 })
 
-test('presupuesto propio aprobado vincula automáticamente y no ofrece presupuestos ajenos', async ({ page }) => {
+test('una selección ausente, inválida o inactiva vuelve al menú y el usuario inactivo sigue sin acceso', async ({ page }) => {
   await login(page, worker)
-  await page.goto('/operator/new')
-  await expect(page.locator('#budgetId option')).toHaveCount(2)
-  await page.getByLabel('Presupuesto (opcional)', { exact: true }).selectOption(ownBudget.id)
-  await expect(page.getByLabel('Cliente o lugar del trabajo', { exact: true })).toHaveCount(0)
-  await expect(page.getByText('Cliente y lugar del presupuesto', { exact: true })).toBeVisible()
-  await page.getByLabel('Descripción del trabajo', { exact: true }).fill('Trabajo del presupuesto asignado')
-  await attach(page)
-  await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
-  await expect(page).toHaveURL(/\/operator\/notes\/[0-9a-f-]{36}$/)
-  await expect(page.getByText('Vinculado', { exact: true })).toBeVisible()
-  const linkedId = page.url().split('/').at(-1)!
-  expect(await withBase(async (db) => (await db.query('select linked_budget_id from public.crane_delivery_notes where id=$1', [linkedId])).rows[0].linked_budget_id)).toBe(ownBudget.id)
-})
-
-test('sin asignación, equipo inactivo y usuario inactivo explican el acceso disponible', async ({ page }) => {
-  await login(page, unassigned)
-  await expect(page.getByText(/Todavía no tenés una grúa asignada/)).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Cargar remito', exact: true })).toHaveCount(0)
-  await page.goto('/operator/new')
-  await expect(page.getByRole('button', { name: 'Enviar remito', exact: true })).toBeDisabled()
+  for (const destination of ['/operator/new', '/operator/new?equipment=invalida', `/operator/new?equipment=${disabledCrane.id}`, `/operator/new?equipment=${crane.id}&equipment=${replacement.id}`]) {
+    await page.goto(destination)
+    await expect(page).toHaveURL(/\/operator$/)
+    await expect(page.getByRole('heading', { name: 'Grúas disponibles' })).toBeVisible()
+  }
+  await expect(page.locator(`a[href="/operator/notes/${noteId}"]`).first()).toBeVisible()
   await page.context().clearCookies()
-  await withBase((db) => db.query('update public.equipos set activo=false where id=$1', [crane.id]))
-  try {
-    await login(page, worker)
-    await expect(page.getByText(/Tu grúa asignada está inactiva/)).toBeVisible()
-    await expect(page.getByText(`R-${fixture.marker}`, { exact: true }).first()).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Cargar remito', exact: true })).toHaveCount(0)
-    await page.context().clearCookies()
-    await login(page, inactive, 'Tu usuario todavía no está habilitado')
-    expect((await page.request.get(`/cotizaciones/${ownBudget.id}/pdf`)).status()).toBe(401)
-    expect((await page.request.post('/cotizaciones/vista-previa', { data: {} })).status()).toBe(401)
-  } finally { await withBase((db) => db.query('update public.equipos set activo=true where id=$1', [crane.id])) }
+  await login(page, inactive, 'Tu usuario todavía no está habilitado')
+  expect((await page.request.get(`/cotizaciones/${ownBudget.id}/pdf`)).status()).toBe(401)
+  expect((await page.request.post('/cotizaciones/vista-previa', { data: {} })).status()).toBe(401)
 })
 
-test('reasignación rechaza archivos anteriores y conserva el historial de la grúa original', async ({ page }) => {
+test('cambiar de grúa descarta los adjuntos del formulario anterior y el historial sigue disponible', async ({ page }) => {
   await login(page, worker)
-  await page.goto('/operator/new')
-  await fillWork(page, 'R-REASIGNACION')
+  await page.getByRole('link', { name: crane.name, exact: true }).click()
+  await fillWork(page, 'R-OTRA-GRUA')
   await attach(page)
-  await fixture.assign(worker.id, replacement.id)
+  await page.getByRole('link', { name: 'Cancelar', exact: true }).click()
+  await page.getByRole('link', { name: replacement.name, exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/operator/new\\?equipment=${replacement.id}$`))
+  await expect(page.getByRole('heading', { name: 'Cargar remito', exact: true })).toBeVisible()
+  await expect(page.getByText(replacement.name, { exact: true })).toBeVisible()
+  await expect(page.getByText('Listo para guardar', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
-  await expect(page.getByText('La carga no te pertenece, venció o ya se utilizó', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('Número de remito (opcional)', { exact: true })).toHaveValue('R-REASIGNACION')
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
-  expect(await withBase(async (db) => (await db.query('select id from public.crane_delivery_notes where operator_id=$1 and number=$2', [worker.id, 'R-REASIGNACION'])).rowCount)).toBe(0)
-  await page.goto('/operator')
-  await expect(page.getByText(replacement.name, { exact: true }).first()).toBeVisible()
-  await page.goto(`/operator/notes/${noteId}`)
-  await expect(page.getByText(crane.name, { exact: true })).toBeVisible()
-  expect((await page.request.get(`/operator/files/${fileId}`)).ok()).toBe(true)
+  await expect(page.locator('#files')).toBeFocused()
 
-  await page.goto('/operator/new')
-  const duringUploadNumber = `R-CARGA-${fixture.marker}`
-  await fillWork(page, duringUploadNumber)
-  let changed = false
-  await page.route('**/storage/v1/object/upload/sign/**', async (route) => {
-    if (route.request().method() === 'PUT' && !changed) { changed = true; await fixture.assign(worker.id, crane.id) }
-    await route.continue()
-  })
-  const chooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Seleccionar archivos', exact: true }).click()
-  await (await chooser).setFiles({ name: 'Reasignado.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 prueba') })
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
-  expect(changed).toBe(true)
-  await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
-  await expect(page.getByText('La carga no te pertenece, venció o ya se utilizó', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('Número de remito (opcional)', { exact: true })).toHaveValue(duringUploadNumber)
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
-  expect(await withBase(async (db) => (await db.query('select id from public.crane_delivery_notes where operator_id=$1 and number=$2', [worker.id, duringUploadNumber])).rowCount)).toBe(0)
+  await attach(page)
+  await withBase((db) => db.query('update public.equipos set activo=false where id=$1', [replacement.id]))
+  try {
+    await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
+    await expect(page.getByText('La grúa no existe o está inactiva', { exact: true })).toBeVisible()
+    await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+    await page.getByRole('link', { name: 'Cancelar', exact: true }).click()
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Grúas disponibles' }).getByRole('link', { name: replacement.name, exact: true })).toHaveCount(0)
+    await page.goto(`/operator/notes/${noteId}`)
+    await expect(page.getByText(replacement.name, { exact: true })).toBeVisible()
+    expect((await page.request.get(`/operator/files/${fileId}`)).ok()).toBe(true)
+  } finally { await withBase((db) => db.query('update public.equipos set activo=true where id=$1', [replacement.id])) }
 })
-
 
 test('el personal edita el remito completo y conserva su historial cuando se elimina el presupuesto original', async ({ page, browser }, info) => {
   test.setTimeout(120_000)
   const imported = await fixture.budget(crane.id, 'en_curso', 'Trabajo importado con remito completo', 'importada')
-  await fixture.assign(worker.id, crane.id)
   const number = 'N'.repeat(100)
   const work = 'Trabajo de izaje. '.repeat(120).slice(0, 1999) + 'X'
   const notes = 'Observación del gruista. '.repeat(100).slice(0, 1999) + 'X'
   await login(page, worker)
-  await page.goto('/operator/new')
-  await page.getByLabel('Presupuesto (opcional)', { exact: true }).selectOption(imported.id)
-  await page.getByLabel('Número de remito (opcional)', { exact: true }).fill(number)
+  await page.getByRole('link', { name: crane.name, exact: true }).click()
+  await page.locator('summary').filter({ hasText: 'Datos opcionales' }).click()
+  await page.getByLabel('Número de remito', { exact: true }).fill(number)
   await page.getByLabel('Fecha del servicio', { exact: true }).fill('2026-01-15')
   await page.getByLabel('Descripción del trabajo', { exact: true }).fill(work)
-  await page.getByLabel('Observaciones (opcional)', { exact: true }).fill(notes)
+  await page.getByLabel('Observaciones', { exact: true }).fill(notes)
   await attach(page)
   await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
   await expect(page).toHaveURL(/\/operator\/notes\/[0-9a-f-]{36}$/)
   const submittedId = page.url().split('/').at(-1)!
-  await expect(page.getByText('Vinculado', { exact: true })).toBeVisible()
-  const original = await withBase(async (db) => (await db.query<{ id: string; numero: string; notas: string }>(
-    'select d.id,d.numero,d.notas from public.documentos d join public.crane_delivery_notes n on n.document_id=d.id where n.id=$1', [submittedId])).rows[0])
-  expect(original.numero).toBe(number)
-  expect(original.notas).toContain(work)
-  expect(original.notas).toContain(notes)
-  expect(original.notas.length).toBeGreaterThan(4000)
+  await expect(page.getByText('Pendiente de vincular', { exact: true })).toBeVisible()
 
   const staffContext = await browser.newContext()
   try {
     const staffPage = await staffContext.newPage()
     await login(staffPage, staff, 'Inicio')
+    await staffPage.goto(`/delivery-notes/${submittedId}`)
+    const importedOption = staffPage.locator(`#link-budget option[value="${imported.id}"]`)
+    while (!await importedOption.count()) {
+      await staffPage.getByRole('button', { name: 'Cargar más presupuestos', exact: true }).click()
+      await expect(staffPage.getByRole('button', { name: 'Cargando…', exact: true })).toHaveCount(0)
+    }
+    await staffPage.getByLabel('Presupuesto', { exact: true }).selectOption(imported.id)
+    await staffPage.getByRole('button', { name: 'Vincular remito', exact: true }).click()
+    await expect(staffPage.getByText('Vinculado', { exact: true })).toBeVisible()
+    const original = await withBase(async (db) => (await db.query<{ id: string; numero: string; notas: string }>(
+      'select d.id,d.numero,d.notas from public.documentos d join public.crane_delivery_notes n on n.document_id=d.id where n.id=$1', [submittedId])).rows[0])
+    expect(original.numero).toBe(number)
+    expect(original.notas).toContain(work)
+    expect(original.notas).toContain(notes)
+    expect(original.notas.length).toBeGreaterThan(4000)
     await staffPage.goto(`/documentos/${original.id}`)
     await expect(staffPage.getByLabel('Número (opcional)', { exact: true })).toHaveValue(number)
     await expect(staffPage.getByLabel('Notas (opcional)', { exact: true })).toHaveValue(original.notas)

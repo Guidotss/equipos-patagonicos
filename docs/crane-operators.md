@@ -1,20 +1,18 @@
 # Gruistas y recepción de remitos
 
-El rol técnico `crane_operator` se muestra como **Gruista**. Permite cargar y consultar los remitos propios, con la grúa asignada por administración. Funciona desde un celular o una computadora.
+El rol técnico `crane_operator` se muestra como **Gruista**. Permite cargar y consultar los remitos propios. El gruista elige la grúa en cada envío. Funciona desde un celular o una computadora.
 
 ## Crear y administrar gruistas
 
 Thomas, Administración y J. Rojas pueden abrir **Gruistas** desde el menú lateral con sus cuentas actuales. También puede ingresar un administrador.
 
 1. Elegir **Nuevo gruista**.
-2. Completar nombre, email, contraseña y una grúa activa.
+2. Completar nombre, email y contraseña.
 3. Crear la cuenta. Queda habilitada como **Gruista** y se abre su ficha.
 
 La contraseña se usa únicamente para crear la cuenta; no se muestra en la ficha. Si el email ya existe, el alta conserva la cuenta y su contraseña anteriores. No se envía una invitación por correo.
 
-El listado permite buscar por nombre, email o grúa y filtrar por acceso activo o inactivo. Incluye a quienes todavía no enviaron remitos. En la ficha se puede cambiar la grúa y activar o desactivar el acceso. Este módulo solo administra gruistas; no cambia los permisos de las cuentas de personal.
-
-Se admite una grúa vigente por persona y varias personas pueden compartir la misma grúa. Cambiar la asignación conserva el autor y la grúa de cada remito anterior. Si la grúa queda inactiva, la persona puede consultar su historial y debe pedir una asignación activa para cargar remitos nuevos.
+El listado permite buscar por nombre o email y filtrar por acceso activo o inactivo. Incluye a quienes todavía no enviaron remitos. En la ficha se puede activar o desactivar el acceso. Este módulo solo administra gruistas; no cambia los permisos de las cuentas de personal.
 
 ## Consultar la actividad
 
@@ -25,8 +23,8 @@ Desactivar el acceso impide que la persona siga usando el portal y conserva su a
 ## Cambiar el rol de una cuenta existente
 
 1. Ingresar con un usuario administrador.
-2. Abrir **Configuración → Usuarios y grúas**.
-3. Elegir **Gruista**, asignar una grúa activa y habilitar el usuario.
+2. Abrir **Configuración → Usuarios**.
+3. Elegir **Gruista** y habilitar el usuario.
 4. Guardar. En su próximo acceso, la persona entra a **Mis remitos**.
 
 Esta pantalla genérica continúa reservada a administradores. Las cuentas de personal gestionan los gruistas desde el módulo específico.
@@ -40,21 +38,19 @@ node --env-file=.env.production.local scripts/create-user.mjs \
   --email persona@equipospatagonicos.com.ar \
   --password 'CONTRASEÑA' \
   --name 'Nombre y apellido' \
-  --role crane_operator \
-  --equipment-id UUID_DE_LA_GRUA
+  --role crane_operator
 ```
 
-La configuración de producción es privada y no se guarda en Git. El comando comprueba la grúa antes de crear la cuenta y la habilita al terminar la asignación. Si falla el proceso, elimina la cuenta recién creada; si esa limpieza también falla, informa el identificador que debe revisarse.
+La configuración de producción es privada y no se guarda en Git. El comando habilita la cuenta al configurar el perfil. La opción legada `--equipment-id` sigue disponible para invocaciones existentes. Si falla el proceso, elimina la cuenta recién creada; si esa limpieza también falla, informa el identificador que debe revisarse.
 
 ## Cargar un remito
 
-1. En **Mis remitos**, elegir **Cargar remito**.
-2. Seleccionar un presupuesto disponible para la grúa, o dejar **Trabajo sin presupuesto**.
-3. Informar la fecha real del servicio, el número opcional y la descripción del trabajo. Sin presupuesto, completar también cliente o lugar como texto.
-4. Adjuntar uno o más archivos PDF, JPG o PNG mediante cámara o selector. Se admiten hasta 50 archivos de 10 MB cada uno; las fotos se comprimen antes de subirlas.
-5. Enviar y consultar el detalle. Una carga enviada conserva sus datos y archivos; el gruista consulta su estado y descarga los adjuntos.
+1. En **Mis remitos**, elegir en **Grúas disponibles** la que se usó para el trabajo.
+2. Informar la fecha del servicio y adjuntar uno o más archivos PDF, JPG o PNG mediante la cámara o el selector. Se admiten hasta 50 archivos de 10 MB cada uno. Las fotos se comprimen antes de subirlas.
+3. Si hace falta, desplegar **Datos opcionales** y completar número, cliente o lugar, descripción y observaciones.
+4. Enviar el remito. Queda **Pendiente de vincular** y se puede consultar en el historial con sus adjuntos.
 
-Con un presupuesto disponible, el remito queda vinculado al enviarse. Sin presupuesto, figura **Pendiente de vincular**. Informar un cliente o lugar no crea una ficha comercial.
+El menú lista las grúas activas. Si el catálogo queda vacío, el historial sigue disponible. Informar un cliente o lugar no crea una ficha comercial.
 
 ## Revisar y vincular
 
@@ -66,7 +62,7 @@ La vinculación crea el remito dentro del presupuesto, conserva la grúa y el au
 
 ## Permisos y verificación
 
-Los roles `admin` y `operador` conservan la gestión comercial y pueden crear gruistas, gestionar su acceso y asignación, y consultar su actividad. Solo `admin` gestiona los roles y las cuentas de personal desde la configuración genérica. El gruista ve su contexto operativo y sus cargas, sin acceso a importes, facturas, cobros ni cotizaciones comerciales.
+Los roles `admin` y `operador` conservan la gestión comercial y pueden crear gruistas, gestionar su acceso, y consultar su actividad. Solo `admin` gestiona los roles y las cuentas de personal desde la configuración genérica. El gruista ve las grúas activas y sus propios remitos. La información comercial está reservada al personal.
 
 El alta desde la aplicación requiere `SUPABASE_SECRET_KEY` en el servidor. Esa credencial es privada, no se publica en el navegador ni se guarda en Git. Si falla la finalización de un alta, el servidor elimina únicamente la cuenta recién creada. Si esa compensación falla, el mensaje informa el identificador pendiente para su revisión administrativa.
 

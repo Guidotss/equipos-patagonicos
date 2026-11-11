@@ -48,9 +48,6 @@ function readOptions(args) {
   if (equipmentId !== undefined && !z.uuid().safeParse(equipmentId).success) {
     throw new CreateUserError('--equipment-id tiene que ser un UUID válido');
   }
-  if (role === 'crane_operator' && !equipmentId) {
-    throw new CreateUserError('Asigná una grúa activa con --equipment-id para habilitar al gruista');
-  }
   if (role !== 'crane_operator' && equipmentId !== undefined) {
     throw new CreateUserError('Solo un gruista puede tener una grúa asignada');
   }
@@ -79,11 +76,11 @@ async function activateUser(admin, userId, { name, role, equipmentId }) {
   const { data: profile, error: profileError } = await admin.from('profiles')
     .update({ nombre: name, rol: role, activo: false }).eq('id', userId).select('id').single();
   if (profileError || profile?.id !== userId) throw new CreateUserError('No se pudo configurar el perfil del usuario');
-  if (role === 'crane_operator') {
+  if (equipmentId) {
     const { error } = await admin.from('crane_operator_assignments').insert({ user_id: userId, equipment_id: equipmentId });
     if (error) throw new CreateUserError('No se pudo asignar la grúa al usuario');
   }
-  // La cuenta se habilita recién cuando el perfil y la asignación están completos.
+  // La cuenta se habilita al terminar de configurar el perfil y, si se pidió, la asignación legada.
   const { data: activatedProfile, error } = await admin.from('profiles').update({ activo: true }).eq('id', userId).select('id').single();
   if (error || activatedProfile?.id !== userId) throw new CreateUserError('No se pudo activar el usuario');
 }

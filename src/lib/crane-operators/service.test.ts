@@ -4,6 +4,7 @@ import type { Database } from '@/lib/supabase/database.types'
 import { CraneOperatorError, prepareCraneDeliveryNoteUpload } from './service'
 
 const userId = '11111111-1111-4111-8111-111111111111'
+const equipmentId = '33333333-3333-4333-8333-333333333333'
 const uploadId = '22222222-2222-4222-8222-222222222222'
 const path = `documentos/crane-operators/${userId}/${uploadId}.pdf`
 const origin = 'https://supabase.example.test'
@@ -28,7 +29,7 @@ describe('preparación de cargas del gruista', () => {
       expect(request.headers.get('authorization')).toBe('Bearer sesion-ficticia-del-usuario')
       expect(request.method).toBe('POST')
       if (requests.length === 1 && url.pathname === '/rest/v1/rpc/create_crane_delivery_note_upload') {
-        expect(await request.clone().json()).toEqual({ p_mime: 'application/pdf', p_size: 100 })
+        expect(await request.clone().json()).toEqual({ p_equipment_id: equipmentId, p_mime: 'application/pdf', p_size: 100 })
         return Response.json([{ upload_id: uploadId, path }])
       }
       if (requests.length === 2 && url.pathname === `/storage/v1/object/upload/sign/documentos/${path}`) {
@@ -38,7 +39,7 @@ describe('preparación de cargas del gruista', () => {
       }
       throw new Error(`Pedido inesperado: ${request.method} ${url.pathname}`)
     })
-    const upload = await prepareCraneDeliveryNoteUpload(sessionClient(fetch), { mime: 'application/pdf', size: 100 })
+    const upload = await prepareCraneDeliveryNoteUpload(sessionClient(fetch), { equipmentId, mime: 'application/pdf', size: 100 })
     expect(requests).toHaveLength(2)
     expect(upload).toEqual({
       uploadId, path, token: 'token-ficticio',
@@ -48,9 +49,9 @@ describe('preparación de cargas del gruista', () => {
 
   it('no firma una URL si la base rechaza la reserva', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({
-      code: '42501', message: 'No tenés una grúa activa asignada',
+      code: '42501', message: 'La grúa no existe o está inactiva',
     }, { status: 403 }))
-    await expect(prepareCraneDeliveryNoteUpload(sessionClient(fetch), { mime: 'application/pdf', size: 100 }))
+    await expect(prepareCraneDeliveryNoteUpload(sessionClient(fetch), { equipmentId, mime: 'application/pdf', size: 100 }))
       .rejects.toBeInstanceOf(CraneOperatorError)
     expect(fetch).toHaveBeenCalledTimes(1)
   })

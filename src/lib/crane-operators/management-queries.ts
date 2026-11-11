@@ -8,18 +8,12 @@ import { craneOperatorFiltersSchema, type CraneOperatorFilters } from './managem
 
 type Client = SupabaseClient<Database>
 type RpcRow = Database['public']['Functions']['list_crane_operators']['Returns'][number]
-// Los LEFT JOIN y el agregado sin remitos devuelven null aunque los tipos generados indiquen lo contrario.
-type ManagedOperatorRow = Omit<RpcRow, 'equipment_id' | 'equipment_name' | 'equipment_active' | 'last_submission_at'> & {
-  equipment_id: string | null
-  equipment_name: string | null
-  equipment_active: boolean | null
-  last_submission_at: string | null
-}
+// El agregado sin remitos devuelve null aunque el tipo generado indique lo contrario.
+type ManagedOperatorRow = Omit<RpcRow, 'last_submission_at'> & { last_submission_at: string | null }
 
 function readOperator(row: ManagedOperatorRow): ManagedCraneOperator {
   return {
     userId: row.user_id, name: row.name, email: row.email, active: row.active,
-    equipmentId: row.equipment_id, equipmentName: row.equipment_name, equipmentActive: row.equipment_active,
     noteCount: row.note_count, pendingNoteCount: row.pending_note_count, lastSubmissionAt: row.last_submission_at,
   }
 }

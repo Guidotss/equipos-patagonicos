@@ -10,18 +10,12 @@ export const newCraneOperatorSchema = z.strictObject({
     .pipe(z.email({ error: 'Ingresá un email válido' })),
   password: z.string({ error: 'Ingresá una contraseña válida' }).min(6, 'La contraseña debe tener al menos 6 caracteres')
     .refine((value) => new TextEncoder().encode(value).byteLength <= 72, 'La contraseña es demasiado larga. Usá una más corta'),
-  equipmentId: uuidSchema,
 }, { error: 'El alta contiene campos no permitidos' })
 
 export const setCraneOperatorAccessSchema = z.strictObject({
   userId: uuidSchema,
   active: z.boolean({ error: 'Elegí el estado del gruista' }),
-  equipmentId: uuidSchema.nullable(),
-}, { error: 'El acceso contiene campos no permitidos' }).superRefine((input, context) => {
-  if (input.active && input.equipmentId === null) {
-    context.addIssue({ code: 'custom', path: ['equipmentId'], message: 'Asigná una grúa activa para habilitar al gruista' })
-  }
-})
+}, { error: 'El acceso contiene campos no permitidos' })
 
 export const craneOperatorFiltersSchema = z.strictObject({
   q: z.string({ error: 'Ingresá una búsqueda válida' }).trim().max(200, 'La búsqueda puede tener hasta 200 caracteres').default(''),

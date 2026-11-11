@@ -26,8 +26,8 @@ export function createOperatorFixture() {
     return result
   }
 
-  async function equipment(suffix: string) {
-    const row = await withBase(async (db) => (await db.query<{ id: string; nombre: string }>('insert into public.equipos(nombre,activo) values($1,true) returning id,nombre', [`Grúa ${suffix} ${marker}`])).rows[0])
+  async function equipment(suffix: string, active = true) {
+    const row = await withBase(async (db) => (await db.query<{ id: string; nombre: string }>('insert into public.equipos(nombre,activo) values($1,$2) returning id,nombre', [`Grúa ${suffix} ${marker}`, active])).rows[0])
     equipmentIds.push(row.id)
     return { id: row.id, name: row.nombre }
   }

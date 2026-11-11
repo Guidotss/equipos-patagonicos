@@ -22,7 +22,7 @@ export default async function SettingsPage() {
       <HeaderSection titulo="Configuración" descripcion="Datos que usan las cotizaciones y sus PDF." />
       <Content>
         <div className="grid gap-6 lg:grid-cols-2">
-          {[...SECCIONES, ...(user.rol === 'admin' ? [{ href: '/configuracion/users', titulo: 'Usuarios y grúas', descripcion: 'Roles, acceso y grúas asignadas al personal.', icon: Users }] : [])].map(({ href, titulo: title, descripcion, icon: Icon }) => (
+          {[...SECCIONES, ...(user.rol === 'admin' ? [{ href: '/configuracion/users', titulo: 'Usuarios', descripcion: 'Roles y acceso del personal.', icon: Users }] : [])].map(({ href, titulo: title, descripcion, icon: Icon }) => (
             <Link
               key={href}
               href={href}

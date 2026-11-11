@@ -25,9 +25,9 @@ export async function prepareCraneDeliveryNoteUpload(
   supabase: Client,
   input: CraneDeliveryNoteUploadInput,
 ): Promise<PreparedCraneDeliveryNoteUpload> {
-  const { mime, size } = craneDeliveryNoteUploadSchema.parse(input)
+  const { equipmentId, mime, size } = craneDeliveryNoteUploadSchema.parse(input)
   const { data: tickets, error: reservationError } = await supabase.rpc('create_crane_delivery_note_upload', {
-    p_mime: mime, p_size: size,
+    p_mime: mime, p_size: size, p_equipment_id: equipmentId,
   })
   if (reservationError) throw mapCraneOperatorRpcError(reservationError)
   const ticket = tickets?.[0]
@@ -56,12 +56,11 @@ export async function linkCraneDeliveryNote(supabase: Client, input: LinkCraneDe
 }
 
 export async function setUserAccess(supabase: Client, input: SetUserAccessInput): Promise<void> {
-  const { userId, role, active, equipmentId } = setUserAccessSchema.parse(input)
+  const { userId, role, active } = setUserAccessSchema.parse(input)
   const { error } = await supabase.rpc('set_user_access', {
     p_user_id: userId,
     p_role: role,
     p_active: active,
-    ...(equipmentId === null ? {} : { p_equipment_id: equipmentId }),
   })
   if (error) throw mapCraneOperatorRpcError(error)
 }

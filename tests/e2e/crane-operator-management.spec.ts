@@ -61,9 +61,9 @@ async function capture(page: Page, info: TestInfo, name: string) {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await page.waitForFunction(() => Math.abs(window.innerHeight + window.scrollY - document.documentElement.scrollHeight) < 2)
-    expect(await page.getByLabel('Grúa asignada', { exact: true }).evaluate((select) => {
+    expect(await page.getByLabel('Contraseña', { exact: true }).evaluate((input) => {
       const button = document.querySelector('form[aria-label="Nuevo gruista"] button[type="submit"]')!
-      return select.getBoundingClientRect().bottom <= button.getBoundingClientRect().top - 8
+      return input.getBoundingClientRect().bottom <= button.getBoundingClientRect().top - 8
     })).toBe(true)
     const destination = info.outputPath('new-mobile-bottom.png')
     await page.screenshot({ path: destination, animations: 'disabled', caret: 'initial' })
@@ -91,13 +91,13 @@ async function fillAccount(page: Page, email = worker.email) {
   await page.getByLabel('Nombre', { exact: true }).fill(worker.name)
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Contraseña', { exact: true }).fill(worker.password)
-  await page.getByLabel('Grúa asignada', { exact: true }).selectOption(crane.id)
 }
 
-async function submitNote(page: Page, number: string, serviceDate: string) {
-  await page.goto('/operator/new')
-  await expect(page.getByLabel('Presupuesto (opcional)', { exact: true })).toHaveValue('')
-  await page.getByLabel('Número de remito (opcional)', { exact: true }).fill(number)
+async function submitNote(page: Page, craneName: string, number: string, serviceDate: string) {
+  await page.getByRole('link', { name: craneName, exact: true }).click()
+  await expect(page.getByText(craneName, { exact: true })).toBeVisible()
+  await page.locator('summary').filter({ hasText: 'Datos opcionales' }).click()
+  await page.getByLabel('Número de remito', { exact: true }).fill(number)
   await page.getByLabel('Fecha del servicio', { exact: true }).fill(serviceDate)
   await page.getByLabel('Cliente o lugar del trabajo', { exact: true }).fill('Obra de montaje en Neuquén')
   await page.getByLabel('Descripción del trabajo', { exact: true }).fill('Izaje de estructura metálica')
@@ -142,7 +142,7 @@ test('personal operador crea un gruista con validación, recuperación y contras
   await page.getByRole('button', { name: 'Crear gruista', exact: true }).click()
   await expect(page.getByLabel('Nombre', { exact: true })).toBeFocused()
   await expect(page.getByText('Ingresá un email válido', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('Grúa asignada', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+  await expect(page.getByLabel('Grúa asignada', { exact: true })).toHaveCount(0)
   await expect(page.getByLabel('Contraseña', { exact: true })).toHaveValue('123')
   await fillAccount(page, staff.email)
   await page.getByRole('button', { name: 'Crear gruista', exact: true }).click()
@@ -178,8 +178,8 @@ test('personal operador crea un gruista con validación, recuperación y contras
   expect(responseBody).not.toContain(worker.password)
   worker.id = page.url().split('/').at(-1)!
   expect(page.url()).not.toContain(worker.password)
-  const profile = await withBase(async (db) => (await db.query('select p.rol,p.activo,a.equipment_id,a.assigned_by from public.profiles p join public.crane_operator_assignments a on a.user_id=p.id where p.id=$1', [worker.id])).rows[0])
-  expect(profile).toEqual({ rol: 'crane_operator', activo: true, equipment_id: crane.id, assigned_by: staff.id })
+  const profile = await withBase(async (db) => (await db.query('select p.rol,p.activo,a.equipment_id from public.profiles p left join public.crane_operator_assignments a on a.user_id=p.id where p.id=$1', [worker.id])).rows[0])
+  expect(profile).toEqual({ rol: 'crane_operator', activo: true, equipment_id: null })
   expect(await withBase(async (db) => (await db.query('select id from auth.users where email=$1', [worker.email])).rowCount)).toBe(1)
   const injectedRole = await replay(page, createRequest, { name: worker.name, email: worker.email, password: worker.password, equipmentId: crane.id, role: 'admin', actorId: admin.id })
   expect(await injectedRole.text()).toContain('El alta contiene campos no permitidos')
@@ -204,10 +204,10 @@ test('personal operador crea un gruista con validación, recuperación y contras
     await page.goto(destination)
     await expect(page).toHaveURL(/\/operator$/)
   }
-  firstNoteId = await submitNote(page, 'R-PRIMERO', '2026-10-25')
+  firstNoteId = await submitNote(page, crane.name, 'R-PRIMERO', '2026-10-25')
 })
 
-test('actividad preserva grúa histórica y ordena por envío luego de reasignar', async ({ page, browser }, info) => {
+test('actividad conserva la grúa de cada remito y ordena por envío', async ({ page, browser }, info) => {
   test.setTimeout(150_000)
   await login(page, staff)
   await page.goto(`/crane-operators/${worker.id}`)
@@ -217,22 +217,22 @@ test('actividad preserva grúa histórica y ordena por envío luego de reasignar
   const fileId = await withBase(async (db) => (await db.query('select id from public.crane_delivery_note_files where note_id=$1', [firstNoteId])).rows[0].id)
   expect((await page.request.get(`/delivery-notes/files/${fileId}`)).ok()).toBe(true)
   await page.goto(`/crane-operators/${worker.id}`)
-  await page.getByLabel('Grúa asignada', { exact: true }).selectOption(replacement.id)
+  await expect(page.getByLabel('Grúa asignada', { exact: true })).toHaveCount(0)
   const request = actionRequest(page)
   await page.getByRole('button', { name: 'Guardar acceso', exact: true }).click()
   accessRequest = await request
-  await expect(page.getByText('Acceso actualizado. El historial de remitos se conserva.', { exact: true })).toBeVisible()
-  await expect.poll(() => withBase(async (db) => (await db.query('select equipment_id from public.crane_operator_assignments where user_id=$1', [worker.id])).rows[0].equipment_id)).toBe(replacement.id)
+  await expect(page.getByText('Acceso actualizado.', { exact: true })).toBeVisible()
+  await expect.poll(() => withBase(async (db) => (await db.query('select equipment_id from public.crane_operator_assignments where user_id=$1', [worker.id])).rows[0]?.equipment_id)).toBeUndefined()
   const workerContext = await browser.newContext()
   try {
     const workerPage = await workerContext.newPage()
     await login(workerPage, worker, 'Mis remitos')
     const denied = await replay(workerPage, accessRequest)
     expect(denied.headers()['x-action-redirect']).toContain('/operator')
-    latestNoteId = await submitNote(workerPage, 'R-RETROACTIVO', '2026-01-10')
+    latestNoteId = await submitNote(workerPage, replacement.name, 'R-RETROACTIVO', '2026-01-10')
   } finally { await workerContext.close() }
   await page.reload()
-  await expect(page.getByLabel('Grúa asignada', { exact: true })).toHaveValue(replacement.id)
+  await expect(page.getByLabel('Grúa asignada', { exact: true })).toHaveCount(0)
   const rows = page.locator('tbody tr')
   await expect(rows).toHaveCount(2)
   await expect(rows.first()).toContainText('R-RETROACTIVO')
@@ -253,14 +253,14 @@ test('segundo personal gestiona acceso y rechaza destinos de personal o administ
   await page.goto(`/crane-operators/${worker.id}`)
   for (const target of [staff, otherStaff, admin]) {
     expect((await page.request.get(`/crane-operators/${target.id}`)).status()).toBe(404)
-    const response = await replay(page, accessRequest, { userId: target.id, active: false, equipmentId: null })
+    const response = await replay(page, accessRequest, { userId: target.id, active: false })
     expect(await response.text()).toContain('El usuario no existe o no es un gruista')
     expect(await withBase(async (db) => (await db.query('select activo from public.profiles where id=$1', [target.id])).rows[0].activo)).toBe(true)
   }
   expect((await page.request.get('/crane-operators/no-es-uuid')).status()).toBe(404)
   await page.getByLabel('Acceso', { exact: true }).selectOption('inactive')
   await page.getByRole('button', { name: 'Guardar acceso', exact: true }).click()
-  await expect(page.getByText('Acceso actualizado. El historial de remitos se conserva.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Acceso actualizado.', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Remitos enviados', exact: true })).toBeVisible()
   await expect(page.locator(`a[href="/delivery-notes/${latestNoteId}"]`).first()).toBeVisible()
   const workerContext = await browser.newContext()
@@ -275,9 +275,20 @@ test('segundo personal gestiona acceso y rechaza destinos de personal o administ
   await expect(page.locator('tbody tr')).toContainText(worker.email)
   await page.goto(`${directoryHref}&active=active`)
   await expect(page.getByText('No encontramos gruistas con estos filtros.', { exact: true })).toBeVisible()
+  await page.goto(`/crane-operators/${worker.id}`)
+  await page.getByLabel('Acceso', { exact: true }).selectOption('active')
+  await page.getByRole('button', { name: 'Guardar acceso', exact: true }).click()
+  await expect(page.getByText('Acceso actualizado.', { exact: true })).toBeVisible()
+  const reactivated = await withBase(async (db) => (await db.query(
+    'select p.activo,a.equipment_id from public.profiles p left join public.crane_operator_assignments a on a.user_id=p.id where p.id=$1',
+    [worker.id],
+  )).rows[0])
+  expect(reactivated).toEqual({ activo: true, equipment_id: null })
+  await logout(page, otherStaff)
+  await login(page, worker, 'Mis remitos')
 })
 
-test('filtros, paginación y grúa inactiva conservan el contexto sin errores', async ({ page }, info) => {
+test('filtros y paginación conviven con las asignaciones históricas', async ({ page }, info) => {
   test.setTimeout(150_000)
   const roster = await Promise.all(Array.from({ length: 25 }, (_, index) => fixture.user('crane_operator', `directorio-${index}`)))
   await withBase((db) => db.query('update public.profiles set nombre=$2 where id=$1', [roster[0].id, 'Nombre muy largo de una persona encargada de la grúa '.repeat(2)]))
@@ -293,9 +304,9 @@ test('filtros, paginación y grúa inactiva conservan el contexto sin errores', 
   await page.locator('form[action="/crane-operators"]').getByRole('button', { name: 'Buscar', exact: true }).click()
   await expect(page).not.toHaveURL(/page=/)
   await expect(page.locator('tbody tr')).toHaveCount(1)
-  await page.goto(`/crane-operators?q=${encodeURIComponent(worker.email)}&active=inactive&page=999999`)
+  await page.goto(`/crane-operators?q=${encodeURIComponent(worker.email)}&active=active&page=999999`)
   await expect(page).not.toHaveURL(/page=/)
-  await expect(page).toHaveURL(/active=inactive/)
+  await expect(page).toHaveURL(/active=active/)
   await expect(page.locator('tbody tr')).toHaveCount(1)
   for (const pageNumber of ['0', 'no-valida', '-1', '9999999999999999999']) {
     await page.goto(`/crane-operators?q=${fixture.marker}-sin-coincidencias&active=active&page=${pageNumber}`)
@@ -303,14 +314,14 @@ test('filtros, paginación y grúa inactiva conservan el contexto sin errores', 
     await expect(page).toHaveURL(/active=active/)
     await expect(page.getByText('No encontramos gruistas con estos filtros.', { exact: true })).toBeVisible()
   }
-  await page.goto(`/crane-operators?q=${encodeURIComponent(crane.name)}`)
-  await expect(page.getByText('Grúa inactiva', { exact: true }).first()).toBeVisible()
+  await page.goto(`${directoryHref}&active=active`)
+  await expect(page.getByRole('searchbox', { name: 'Buscar gruistas' })).toHaveAttribute('placeholder', 'Nombre o email')
+  await expect(page.getByRole('columnheader', { name: 'Grúa asignada' })).toHaveCount(0)
   await assertActivityActionsFit(page)
-  await capture(page, info, 'list-long-inactive')
+  await capture(page, info, 'list-long')
   await page.goto(`/crane-operators/${roster[0].id}`)
-  await expect(page.getByText(/La grúa anterior está inactiva/)).toBeVisible()
+  await expect(page.getByLabel('Grúa asignada', { exact: true })).toHaveCount(0)
   await page.getByLabel('Acceso', { exact: true }).selectOption('inactive')
-  await page.getByLabel('Grúa asignada', { exact: true }).selectOption('')
   await page.getByRole('button', { name: 'Guardar acceso', exact: true }).click()
-  await expect(page.getByText('Acceso actualizado. El historial de remitos se conserva.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Acceso actualizado.', { exact: true })).toBeVisible()
 })

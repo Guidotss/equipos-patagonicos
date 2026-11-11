@@ -14,6 +14,8 @@ const businessMessages = new Set([
   'El usuario no existe',
   'Asigná una grúa activa para habilitar al gruista',
   'La grúa no existe o está inactiva',
+  'Elegí una grúa válida',
+  'Revisá los límites de texto del remito',
   'Solo un gruista puede tener una grúa asignada',
   'Tu usuario no está habilitado',
   'No tenés permiso para acceder a la gestión comercial',
