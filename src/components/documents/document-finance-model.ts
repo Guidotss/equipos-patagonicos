@@ -1,7 +1,21 @@
-import type { DocumentFinance, FinanceInput, InvoiceAllocation } from '@/lib/finance/contracts'
+import type { DocumentFinance, FinanceInput, InvoiceAllocation, PaymentInstrument } from '@/lib/finance/contracts'
 import { centsToDecimal, parseAmountCents, sumCents } from '@/lib/finance/amounts'
 
 const ZERO = BigInt(0)
+
+/** El reemplazo conserva el cheque y mueve sus destinos al nuevo medio. */
+export function replaceTerminalCheck(snapshot: DocumentFinance, id: string, kind: Exclude<PaymentInstrument['kind'], 'legacy_unidentified'>, replacementId: string): DocumentFinance {
+  const original = snapshot.paymentInstruments.find((item) => item.id === id)
+  if (!original || original.kind !== 'check' || !['rejected', 'voided'].includes(original.status)) return snapshot
+  return {
+    ...snapshot,
+    paymentInstruments: [...snapshot.paymentInstruments.map((item) => item.id === id ? { ...item, status: 'voided' as const } : item), {
+      id: replacementId, kind, status: kind === 'check' ? 'pending' : 'confirmed', amount: original.status === 'rejected' ? original.amount : '',
+      receivedOn: null, dueOn: null, settledOn: null, reference: '', bank: '',
+    }],
+    paymentAllocations: snapshot.paymentAllocations.map((row) => row.instrumentId === id ? { ...row, instrumentId: replacementId } : row),
+  }
+}
 
 /** Conserva el texto inválido para que la validación indique la fila correspondiente. */
 export function decimalInput(value: string): string {

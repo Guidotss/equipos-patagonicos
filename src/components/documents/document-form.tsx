@@ -120,7 +120,7 @@ export function DocumentForm(props: DocumentFormProps) {
               <PaymentAllocationsSection finance={finance} context={context} selectedBudgetIds={selectedBudgetIds} total={values.monto} errors={errors} persistedIds={finance.persistedInstruments} persistedAllocations={finance.persistedAllocations} />
             </>
           ) : null}
-          {document && (values.tipo === 'factura' || values.tipo === 'orden_pago') ? <Card titulo="Motivo de corrección"><Field id="financial-reason" label="Motivo (cuando corresponda)"><Input id="financial-reason" maxLength={2000} value={finance.reason} onChange={(event) => finance.setReason(event.target.value)} /></Field></Card> : null}
+          {document && (values.tipo === 'factura' || values.tipo === 'orden_pago') ? <Card titulo="Motivo de corrección"><Field id="financial-reason" label="Motivo (cuando corresponda)" error={errors['finance.correctionReason']}><Input id="financial-reason" maxLength={2000} value={finance.reason} onChange={(event) => finance.setReason(event.target.value)} /></Field></Card> : null}
         </SheetForm>
       </fieldset>
       {Object.entries(errors)

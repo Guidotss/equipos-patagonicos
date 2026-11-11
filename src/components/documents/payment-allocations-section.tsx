@@ -8,6 +8,7 @@ import { centsToDecimal, formatFinancialAmount, parseAmountCents, sumCents } fro
 import type { PaymentAllocation } from '@/lib/finance/contracts'
 import type { DocumentContext } from '@/lib/documents/screens'
 import type { DocumentFinanceState } from './use-document-finance'
+import { paymentInvoiceCapacity } from './payment-capacity'
 
 type Props = { finance: DocumentFinanceState; context: DocumentContext; selectedBudgetIds: string[]; total: string; errors: Record<string, string>; persistedIds: Set<string>; persistedAllocations: PaymentAllocation[] }
 const label = (kind: string) => ({ cash: 'Efectivo', transfer: 'Transferencia', check: 'Cheque', withholding: 'Retención', legacy_unidentified: 'Medio anterior sin identificar' }[kind] ?? kind)
@@ -27,29 +28,7 @@ export function PaymentAllocationsSection({ finance, context, selectedBudgetIds,
   function change(index: number, patch: Partial<PaymentAllocation>) {
     finance.updateAllocations(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row))
   }
-  const capacities = useMemo(() => {
-    const result = new Map<string, bigint>()
-    const add = (invoiceId: string, budgetId: string, value: bigint) => {
-      const key = `${invoiceId}:${budgetId}`
-      result.set(key, (result.get(key) ?? BigInt(0)) + value)
-    }
-    for (const document of context.documentos) {
-      const entry = context.financeByDocument[document.id]
-      if (!entry) continue
-      if (document.tipo === 'factura') for (const row of entry.invoiceAllocations) {
-        if (row.budgetId) add(document.id, row.budgetId, amount(row.amount) - amount(row.historicalSettledAmount))
-      }
-      if (document.tipo === 'orden_pago' && !document.deleted_at) {
-        const reservedIds = new Set(entry.paymentInstruments.filter((item) => ['confirmed', 'cleared', 'pending', 'legacy_recognized'].includes(item.status)).map((item) => item.id))
-        for (const row of entry.paymentAllocations) {
-          if (row.invoiceId && row.budgetId && reservedIds.has(row.instrumentId)) add(row.invoiceId, row.budgetId, -amount(row.amount))
-        }
-      }
-    }
-    return result
-  }, [context])
-  const hasWorkCapacity = (invoiceId: string, budgetId: string | null) =>
-    budgetId !== null && (capacities.get(`${invoiceId}:${budgetId}`) ?? BigInt(0)) > BigInt(0)
+  const capacity = useMemo(() => paymentInvoiceCapacity(context, persistedIds, finance.snapshot), [context, persistedIds, finance.snapshot])
   return <Card titulo="Aplicación del cobro" descripcion="Asigná cada porción de un medio a un trabajo y, si corresponde, a una factura.">
     <div className="flex flex-col gap-4">
       {rows.map((row, index) => {
@@ -57,7 +36,7 @@ export function PaymentAllocationsSection({ finance, context, selectedBudgetIds,
         return <div key={row.id ?? index} className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field id={`${prefix}-instrument`} label="Medio"><NativeSelect id={`${prefix}-instrument`} className="w-full" value={row.instrumentId} onChange={(event) => change(index, { instrumentId: event.target.value })}>{active.map((item, number) => <NativeSelectOption key={item.id} value={item.id}>{label(item.kind)} {number + 1}</NativeSelectOption>)}{!active.some((item) => item.id === row.instrumentId) ? <NativeSelectOption value={row.instrumentId}>Medio anulado o no disponible</NativeSelectOption> : null}</NativeSelect></Field>
           <Field id={`${prefix}-budget`} label="Trabajo"><NativeSelect id={`${prefix}-budget`} className="w-full" value={row.budgetId ?? ''} onChange={(event) => change(index, { budgetId: event.target.value || null, invoiceId: null })}><NativeSelectOption value="">Trabajo desconocido</NativeSelectOption>{context.budgets.filter((item) => selectedBudgetIds.includes(item.id)).map((item) => <NativeSelectOption key={item.id} value={item.id}>N° {item.numero} · {item.asunto}</NativeSelectOption>)}{row.budgetId && !context.budgets.some((item) => selectedBudgetIds.includes(item.id) && item.id === row.budgetId) ? <NativeSelectOption value={row.budgetId}>Trabajo anterior no disponible</NativeSelectOption> : null}</NativeSelect></Field>
-          <Field id={`${prefix}-invoice`} label="Factura (opcional)"><NativeSelect id={`${prefix}-invoice`} className="w-full" value={row.invoiceId ?? ''} onChange={(event) => change(index, { invoiceId: event.target.value || null })}><NativeSelectOption value="">Sin factura</NativeSelectOption>{context.facturas.filter((item) => item.id && item.tipo_comprobante !== 'NC' && (item.id === row.invoiceId || ((item.exact_available == null || amount(item.exact_available) > BigInt(0)) && hasWorkCapacity(item.id, row.budgetId)))).map((item) => <NativeSelectOption key={item.id} value={item.id!}>{item.tipo_comprobante} {item.numero || 'Sin número'}</NativeSelectOption>)}{row.invoiceId && !context.facturas.some((item) => item.id === row.invoiceId) ? <NativeSelectOption value={row.invoiceId}>Factura anulada o no disponible</NativeSelectOption> : null}</NativeSelect></Field>
+          <Field id={`${prefix}-invoice`} label="Factura (opcional)"><NativeSelect id={`${prefix}-invoice`} className="w-full" value={row.invoiceId ?? ''} onChange={(event) => change(index, { invoiceId: event.target.value || null })}><NativeSelectOption value="">Sin factura</NativeSelectOption>{context.facturas.filter((item) => item.id && item.tipo_comprobante !== 'NC' && (item.id === row.invoiceId || capacity(item.id, row) > BigInt(0))).map((item) => <NativeSelectOption key={item.id} value={item.id!}>{item.tipo_comprobante} {item.numero || 'Sin número'}</NativeSelectOption>)}{row.invoiceId && !context.facturas.some((item) => item.id === row.invoiceId) ? <NativeSelectOption value={row.invoiceId}>Factura anulada o no disponible</NativeSelectOption> : null}</NativeSelect></Field>
           <Field id={`${prefix}-amount`} label="Importe" error={errors[`finance.paymentAllocations.${index}.amount`]}><Input id={`${prefix}-amount`} inputMode="decimal" value={row.amount} onChange={(event) => change(index, { amount: event.target.value })} /></Field>
           <Button type="button" variant="outline" onClick={() => finance.updateAllocations(rows.filter((_, rowIndex) => rowIndex !== index))}>Quitar destino {index + 1}</Button>
           {(!row.invoiceId || context.documentos.some((item) => item.id === row.invoiceId && item.tipo === 'factura' && item.deleted_at)) && row.budgetId && row.id && persistedAllocations.some((item) => item.id === row.id && item.instrumentId === row.instrumentId && item.budgetId === row.budgetId && item.invoiceId === row.invoiceId) && persistedIds.has(row.instrumentId) && instruments.some((item) => item.id === row.instrumentId && ['confirmed', 'cleared', 'legacy_recognized'].includes(item.status)) ? <Button type="button" variant="outline" onClick={() => document.getElementById(`${prefix}-invoice`)?.focus()}>Aplicar anticipo</Button> : null}

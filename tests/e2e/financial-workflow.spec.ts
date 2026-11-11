@@ -293,3 +293,110 @@ test('conserva la evidencia histórica y explica el anticipo al anular la factur
   const means = await withBase(async (db) => (await db.query<{ count: string }>('select count(*)::text from public.payment_instruments i join public.documentos d on d.id = i.op_id where d.cliente_id = $1 and d.numero = $2', [clientId, 'FA-HISTORICA'])).rows[0].count)
   expect(means).toBe('0')
 })
+
+test('recupera la capacidad propia y reemplaza un cheque rechazado conservando evidencia', async ({ page }, testInfo) => {
+  await iniciarSession(page)
+  await page.goto(`/presupuestos/${budgetId}`)
+  async function attach(name: string) {
+    await page.getByLabel('Seleccionar archivos del documento').setInputFiles({ name, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
+    await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+  }
+  async function save(name: string) {
+    await page.getByRole('button', { name, exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
+  }
+  async function capture(name: string) {
+    await page.setViewportSize({ width: 1200, height: 805 })
+    await page.evaluate(() => document.fonts.ready)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await page.screenshot({ path: testInfo.outputPath(`${name}-desktop.png`), fullPage: true, animations: 'disabled' })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: testInfo.outputPath(`${name}-mobile.png`), fullPage: true, animations: 'disabled' })
+    await page.setViewportSize({ width: 1200, height: 805 })
+  }
+  await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
+  await page.getByLabel('Número (opcional)').fill('FA-CAPACIDAD')
+  await page.getByLabel('Monto total con IVA').fill('100')
+  await attach('factura-capacidad.pdf')
+  await page.getByRole('button', { name: 'Agregar distribución' }).click()
+  await save('Guardar documento')
+  const invoiceId = await withBase(async (db) => (await db.query<{ id: string }>('select id from public.documentos where cliente_id = $1 and numero = $2', [clientId, 'FA-CAPACIDAD'])).rows[0].id)
+
+  await page.getByRole('link', { name: 'Agregar Orden de pago', exact: true }).click()
+  await page.getByLabel('Número (opcional)').fill('OP-CAPACIDAD')
+  await page.getByLabel('Monto de la orden de pago').fill('100')
+  await attach('orden-capacidad.pdf')
+  for (const kind of ['cash', 'check']) {
+    await page.getByLabel('Nuevo medio').selectOption(kind)
+    await page.getByRole('button', { name: 'Agregar medio' }).click()
+  }
+  await page.getByLabel('Importe', { exact: true }).nth(0).fill('60')
+  await page.getByLabel('Importe', { exact: true }).nth(1).fill('40')
+  await page.getByLabel('Fecha efectiva').fill('2024-06-20')
+  await page.getByLabel('Referencia').fill('CH-REEMPLAZO')
+  await page.getByLabel('Banco').fill('Banco original')
+  await page.getByLabel('Fecha de recepción').fill('2024-06-10')
+  await page.getByLabel('Vencimiento').fill('2024-07-20')
+  for (const [index, amount] of ['60', '40'].entries()) {
+    await page.getByRole('button', { name: 'Agregar destino' }).click()
+    await page.getByLabel('Medio', { exact: true }).nth(index + 2).selectOption({ index })
+    await page.getByLabel('Trabajo', { exact: true }).nth(index).selectOption(budgetId)
+    await page.getByLabel('Factura (opcional)').nth(index).selectOption(invoiceId)
+    await page.getByLabel('Importe', { exact: true }).nth(index + 2).fill(amount)
+  }
+  await save('Guardar documento')
+  const [opId, checkId] = await withBase(async (db) => {
+    const { rows: [entry] } = await db.query<{ op_id: string; check_id: string }>(`select d.id as op_id, i.id as check_id from public.documentos d
+      join public.payment_instruments i on i.op_id = d.id and i.kind = 'check' where d.cliente_id = $1 and d.numero = 'OP-CAPACIDAD'`, [clientId])
+    return [entry.op_id, entry.check_id]
+  })
+  const originalCapacity = await withBase(async (db) => (await db.query<{ available: string }>('select available_amount::text as available from public.v_facturas where id = $1', [invoiceId])).rows[0].available)
+  expect(originalCapacity).toMatch(/^0(?:\.00)?$/)
+  await page.goto(`/documentos/${opId}`)
+  const invoices = page.getByLabel('Factura (opcional)')
+  await invoices.first().selectOption('')
+  await expect(invoices.first().locator(`option[value="${invoiceId}"]`)).toHaveCount(1)
+  await invoices.first().selectOption(invoiceId)
+  for (const index of [0, 1, 2, 3]) await page.getByLabel('Importe', { exact: true }).nth(index).fill('50')
+  await page.getByRole('button', { name: 'Agregar destino' }).click()
+  await page.getByLabel('Trabajo', { exact: true }).last().selectOption(budgetId)
+  await expect(invoices.last().locator(`option[value="${invoiceId}"]`)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Quitar destino 3' }).click()
+  await capture('capacidad-propia')
+  const reason = page.getByLabel('Motivo (cuando corresponda)')
+  await reason.fill('Redistribución del importe entre medios')
+  await save('Guardar cambios')
+
+  await page.goto(`/documentos/${opId}`)
+  const checkStatus = page.locator(`#instrument-${checkId}-status`)
+  await page.getByRole('button', { name: 'Rechazar cheque' }).click()
+  await expect(checkStatus).toHaveValue('rejected')
+  for (const field of ['kind', 'amount', 'reference', 'bank', 'received', 'due']) {
+    await expect(page.locator(`#instrument-${checkId}-${field}`)).toBeDisabled()
+  }
+  const evidence = () => withBase(async (db) => (await db.query<{ id: string; kind: string; status: string; amount: string; reference: string; bank: string; received_on: string; due_on: string }>(`select id, kind, status, amount::text, reference, bank, received_on::text, due_on::text from public.payment_instruments where id = $1`, [checkId])).rows[0])
+  const rejected = await evidence()
+  expect(rejected).toEqual({ id: checkId, kind: 'check', status: 'rejected', amount: '50.00', reference: 'CH-REEMPLAZO', bank: 'Banco original', received_on: '2024-06-10', due_on: '2024-07-20' })
+  await attach('comprobante-reemplazo.pdf')
+  await page.getByLabel('Medio de reemplazo').selectOption('cash')
+  await page.getByRole('button', { name: 'Reemplazar cheque' }).click()
+  await page.getByLabel('Fecha efectiva').last().fill('2024-06-21')
+  await page.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(page.getByRole('alert').first()).toContainText('Indicá el motivo del reemplazo')
+  await expect(reason).toBeFocused()
+  await expect(page.getByText('comprobante-reemplazo.pdf', { exact: true })).toBeVisible()
+  await expect(checkStatus).toHaveValue('voided')
+  expect(await evidence()).toEqual(rejected)
+  await capture('reemplazo-cheque')
+  await reason.fill('Efectivo recibido tras rechazar el cheque')
+  await save('Guardar cambios')
+  expect(await evidence()).toEqual({ ...rejected, status: 'voided' })
+  const result = await withBase(async (db) => {
+    const instruments = (await db.query<{ id: string; status: string; amount: string }>(`select id, status, amount::text from public.payment_instruments where op_id = $1 and kind = 'cash' order by settled_on`, [opId])).rows
+    const invoice = (await db.query<{ received: string; pending: string; balance: string }>(`select cobrado::text as received, pending_check_amount::text as pending, saldo::text as balance from public.v_facturas where id = $1`, [invoiceId])).rows[0]
+    return { instruments, invoice }
+  })
+  expect(result.instruments).toEqual([{ id: expect.any(String), status: 'confirmed', amount: '50.00' }, { id: expect.any(String), status: 'confirmed', amount: '50.00' }])
+  expect(new Set([checkId, ...result.instruments.map((item) => item.id)]).size).toBe(3)
+  expect(result.invoice).toEqual({ received: '100.00', pending: '0', balance: '0.00' })
+})

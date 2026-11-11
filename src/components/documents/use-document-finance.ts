@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { DocumentFinance, InvoiceAllocation, PaymentAllocation, PaymentInstrument } from '@/lib/finance/contracts'
 import type { DocumentFormProps } from './document-form.types'
-import { financeInput } from './document-finance-model'
+import { financeInput, replaceTerminalCheck } from './document-finance-model'
 import { parseDecimalCents, sumCents } from '@/lib/finance/amounts'
 
 const EMPTY_FINANCE: DocumentFinance = { invoiceAllocations: [], paymentInstruments: [], paymentAllocations: [] }
@@ -19,6 +19,7 @@ export function useDocumentFinance({ document, initialContext }: DocumentFormPro
   const [reason, setReason] = useState('')
   const [condition, setCondition] = useState(document?.payment_condition ?? '')
   const [dirty, setDirty] = useState(false)
+  const [replacedInstruments, setReplacedInstruments] = useState<Set<string>>(() => new Set())
 
   function update(next: DocumentFinance) {
     setDirty(true)
@@ -31,21 +32,30 @@ export function useDocumentFinance({ document, initialContext }: DocumentFormPro
     update({ ...snapshot, paymentInstruments: snapshot.paymentInstruments.filter((item) => item.id !== id),
       paymentAllocations: snapshot.paymentAllocations.filter((item) => item.instrumentId !== id) })
   }
+  function replaceInstrument(id: string, kind: Exclude<PaymentInstrument['kind'], 'legacy_unidentified'>) {
+    if (!persistedInstruments.has(id) || replacedInstruments.has(id)) return
+    const next = replaceTerminalCheck(snapshot, id, kind, crypto.randomUUID())
+    if (next === snapshot) return
+    setReplacedInstruments((previous) => new Set([...previous, id]))
+    update(next)
+  }
   function reset() {
     setSnapshot(EMPTY_FINANCE)
     setVersion(undefined)
     setReason('')
     setCondition('')
     setDirty(false)
+    setReplacedInstruments(new Set())
   }
   function synchronize(finance: DocumentFinance, financialVersion: number) {
     setSnapshot(finance)
     setVersion(financialVersion)
     setReason('')
     setDirty(false)
+    setReplacedInstruments(new Set())
   }
   return {
-    snapshot, version, reason, condition, dirty, historicalTotal, persistedInstruments, persistedAllocations, updateInvoices, updateInstruments, updateAllocations, removeInstrument,
+    snapshot, version, reason, condition, dirty, historicalTotal, persistedInstruments, persistedAllocations, updateInvoices, updateInstruments, updateAllocations, removeInstrument, replaceInstrument, replacedInstruments,
     setReason: (value: string) => { setDirty(true); setReason(value) },
     setCondition: (value: string) => { setDirty(true); setCondition(value) },
     reset, synchronize,

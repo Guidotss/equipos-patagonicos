@@ -13,6 +13,17 @@ const STATUSES = { confirmed: 'Confirmado', pending: 'Pendiente', cleared: 'Acre
 type StatusHandler = (instrument: PaymentInstrument, status: PaymentInstrument['status'], date: string | null, reason: string) => Promise<void>
 type Props = { finance: DocumentFinanceState; persistedIds: Set<string>; onStatus: StatusHandler; errors: Record<string, string>; fieldErrors: Record<string, string> }
 
+function CheckReplacement({ instrument, finance }: { instrument: PaymentInstrument; finance: DocumentFinanceState }) {
+  const [kind, setKind] = useState('')
+  const id = `replacement-${instrument.id}`
+  if (finance.replacedInstruments.has(instrument.id)) return <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">Cheque conservado como anulado. Completá el nuevo medio y el motivo del reemplazo.</p>
+  return <div className="flex flex-col gap-3 sm:col-span-2 lg:col-span-4">
+    <p className="text-sm text-muted-foreground">El cheque conserva su evidencia. Reemplazarlo lo anula y traslada sus destinos a un medio nuevo; requiere motivo al guardar.</p>
+    <Field id={id} label="Medio de reemplazo"><NativeSelect id={id} value={kind} onChange={(event) => setKind(event.target.value)}><NativeSelectOption value="">Elegí un medio</NativeSelectOption>{Object.entries(KINDS).filter(([value]) => value !== 'legacy_unidentified').map(([value, label]) => <NativeSelectOption key={value} value={value}>{label}</NativeSelectOption>)}</NativeSelect></Field>
+    <Button type="button" variant="outline" disabled={!kind} onClick={() => finance.replaceInstrument(instrument.id, kind as Exclude<PaymentInstrument['kind'], 'legacy_unidentified'>)}>Reemplazar cheque</Button>
+  </div>
+}
+
 function CheckActions({ instrument, onStatus, error }: { instrument: PaymentInstrument; onStatus: StatusHandler; error?: string }) {
   const [date, setDate] = useState('')
   const [reason, setReason] = useState('')
@@ -41,7 +52,9 @@ function CheckActions({ instrument, onStatus, error }: { instrument: PaymentInst
 export function PaymentInstrumentsSection({ finance, persistedIds, onStatus, errors, fieldErrors }: Props) {
   const [newKind, setNewKind] = useState('')
   const rows = finance.snapshot.paymentInstruments
+  const isTerminalCheck = (row: PaymentInstrument) => persistedIds.has(row.id) && row.kind === 'check' && ['rejected', 'voided'].includes(row.status)
   function change(index: number, patch: Partial<PaymentInstrument>) {
+    if (isTerminalCheck(rows[index])) return
     finance.updateInstruments(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row))
   }
   function add() {
@@ -55,26 +68,27 @@ export function PaymentInstrumentsSection({ finance, persistedIds, onStatus, err
       <div className="flex flex-col gap-4">
         {rows.map((row, index) => {
           const prefix = `instrument-${row.id}`
+          const terminal = isTerminalCheck(row)
           return <div key={row.id} className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Field id={`${prefix}-kind`} label="Medio"><NativeSelect id={`${prefix}-kind`} className="w-full" value={row.kind} onChange={(event) => {
+            <Field id={`${prefix}-kind`} label="Medio"><NativeSelect id={`${prefix}-kind`} className="w-full" disabled={terminal} value={row.kind} onChange={(event) => {
               const kind = event.target.value as PaymentInstrument['kind']
               change(index, { kind, status: kind === 'check' ? 'pending' : 'confirmed', settledOn: null })
             }}>
               {Object.entries(KINDS).filter(([kind]) => kind !== 'legacy_unidentified' || row.kind === kind).map(([kind, label]) => <NativeSelectOption key={kind} value={kind}>{label}</NativeSelectOption>)}
             </NativeSelect></Field>
-            <Field id={`${prefix}-amount`} label="Importe" error={fieldErrors[`finance.paymentInstruments.${index}.amount`]}><Input id={`${prefix}-amount`} inputMode="decimal" value={row.amount} onChange={(event) => change(index, { amount: event.target.value })} /></Field>
+            <Field id={`${prefix}-amount`} label="Importe" error={fieldErrors[`finance.paymentInstruments.${index}.amount`]}><Input id={`${prefix}-amount`} disabled={terminal} inputMode="decimal" value={row.amount} onChange={(event) => change(index, { amount: event.target.value })} /></Field>
             <Field id={`${prefix}-status`} label="Estado"><NativeSelect id={`${prefix}-status`} className="w-full" value={row.status} disabled={persistedIds.has(row.id) || row.kind !== 'check'} onChange={(event) => change(index, { status: event.target.value as PaymentInstrument['status'], settledOn: null })}>
               {(row.kind === 'check' && !persistedIds.has(row.id) ? ['pending', 'cleared'] : [row.status]).map((status) => <NativeSelectOption key={status} value={status}>{STATUSES[status as keyof typeof STATUSES]}</NativeSelectOption>)}
             </NativeSelect></Field>
-            {['confirmed', 'cleared'].includes(row.status) ? <Field id={`${prefix}-settled`} label="Fecha efectiva" error={fieldErrors[`finance.paymentInstruments.${index}.settledOn`]}><Input id={`${prefix}-settled`} type="date" value={row.settledOn ?? ''} onChange={(event) => change(index, { settledOn: event.target.value || null })} /></Field> : null}
+            {['confirmed', 'cleared'].includes(row.status) || (terminal && row.settledOn) ? <Field id={`${prefix}-settled`} label="Fecha efectiva" error={fieldErrors[`finance.paymentInstruments.${index}.settledOn`]}><Input id={`${prefix}-settled`} type="date" disabled={terminal} value={row.settledOn ?? ''} onChange={(event) => change(index, { settledOn: event.target.value || null })} /></Field> : null}
             {row.kind === 'check' ? <>
-              <Field id={`${prefix}-reference`} label="Referencia"><Input id={`${prefix}-reference`} value={row.reference} onChange={(event) => change(index, { reference: event.target.value })} /></Field>
-              <Field id={`${prefix}-bank`} label="Banco"><Input id={`${prefix}-bank`} value={row.bank} onChange={(event) => change(index, { bank: event.target.value })} /></Field>
-              <Field id={`${prefix}-received`} label="Fecha de recepción"><Input id={`${prefix}-received`} type="date" value={row.receivedOn ?? ''} onChange={(event) => change(index, { receivedOn: event.target.value || null })} /></Field>
-              <Field id={`${prefix}-due`} label="Vencimiento"><Input id={`${prefix}-due`} type="date" value={row.dueOn ?? ''} onChange={(event) => change(index, { dueOn: event.target.value || null })} /></Field>
+              <Field id={`${prefix}-reference`} label="Referencia"><Input id={`${prefix}-reference`} disabled={terminal} value={row.reference} onChange={(event) => change(index, { reference: event.target.value })} /></Field>
+              <Field id={`${prefix}-bank`} label="Banco"><Input id={`${prefix}-bank`} disabled={terminal} value={row.bank} onChange={(event) => change(index, { bank: event.target.value })} /></Field>
+              <Field id={`${prefix}-received`} label="Fecha de recepción"><Input id={`${prefix}-received`} disabled={terminal} type="date" value={row.receivedOn ?? ''} onChange={(event) => change(index, { receivedOn: event.target.value || null })} /></Field>
+              <Field id={`${prefix}-due`} label="Vencimiento"><Input id={`${prefix}-due`} disabled={terminal} type="date" value={row.dueOn ?? ''} onChange={(event) => change(index, { dueOn: event.target.value || null })} /></Field>
             </> : null}
             {row.kind === 'check' && persistedIds.has(row.id) ? <CheckActions instrument={row} onStatus={onStatus} error={errors[row.id]} /> : null}
-            <Button type="button" variant="outline" onClick={() => finance.removeInstrument(row.id)}>Quitar medio {index + 1}</Button>
+            {terminal ? <CheckReplacement instrument={row} finance={finance} /> : <Button type="button" variant="outline" onClick={() => finance.removeInstrument(row.id)}>Quitar medio {index + 1}</Button>}
           </div>
         })}
         <div className="flex flex-wrap items-end gap-3">

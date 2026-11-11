@@ -132,6 +132,13 @@ export function useDocumentForm(props: DocumentFormProps) {
   function save(event: React.FormEvent) {
     event.preventDefault()
     if (submitting.current || statusSubmitting.current || uploading || loading || !contextReady) return
+    if (finance.replacedInstruments.size && !finance.reason.trim()) {
+      const error = 'Indicá el motivo del reemplazo del cheque antes de guardar.'
+      setMessage(error)
+      setErrors({ 'finance.correctionReason': error })
+      globalThis.document.getElementById('financial-reason')?.focus()
+      return
+    }
     if (values.tipo === 'remito' && equipment.ambiguous) {
       setMessage(AMBIGUOUS_EQUIPMENT_MESSAGE)
       return
