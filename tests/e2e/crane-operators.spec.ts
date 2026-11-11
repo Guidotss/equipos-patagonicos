@@ -53,10 +53,13 @@ async function capture(page: Page, info: TestInfo, name: string, review = name) 
     await page.setViewportSize({ width, height })
     await page.evaluate(() => window.scrollTo(0, 0))
     await page.waitForFunction(() => window.scrollY === 0 && document.fonts.status === 'loaded')
+    if (name === 'form') {
+      await expect(page.getByRole('button', { name: 'Enviar remito', exact: true })).toHaveCSS('flex-grow', label === 'desktop' ? '0' : '1')
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     for (const fullPage of [false, true]) {
       const destination = info.outputPath(`${name}-${label}-${fullPage ? 'full' : 'first'}.png`)
-      await page.screenshot({ path: destination, fullPage })
+      await page.screenshot({ path: destination, fullPage, animations: 'disabled' })
       if (fullPage || name === 'form') await cp(destination, path.resolve('.impeccable/review', `${review}-${label}${fullPage ? '' : '-first'}.png`))
     }
     if (name === 'form') await cp(info.outputPath(`form-${label}-full.png`), path.resolve('.impeccable/review', `${label}.png`))
@@ -147,6 +150,7 @@ test('gruista móvil envía PDF y foto sin presupuesto, conserva errores e histo
   const noteNumber = page.getByLabel('Número de remito', { exact: true })
   await expect(noteNumber).toBeFocused()
   expect(await noteNumber.evaluate((input) => input.getBoundingClientRect().bottom <= document.querySelector('[data-note-actions]')!.getBoundingClientRect().top)).toBe(true)
+  await page.screenshot({ path: '.impeccable/review/form-mobile-keyboard.png', animations: 'disabled' })
   await optionalDetails.click()
   await page.getByRole('button', { name: 'Enviar remito', exact: true }).click()
   await expect(page.locator('#files')).toBeFocused()

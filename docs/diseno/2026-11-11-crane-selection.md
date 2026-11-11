@@ -7,3 +7,5 @@ Mis remitos conserva su cabecera e historial. Entre ambos, una lista plana con e
 Cargar remito mantiene el nombre de la grúa a la vista. Fecha del servicio y Archivos ocupan el primer tramo de la hoja. Número, cliente o lugar, descripción y observaciones quedan bajo Datos opcionales. Usar la barra inferior existente y el selector de archivos común. Administración vincula el remito después desde su bandeja. No hay selección comercial en el portal de gruistas.
 
 En Presupuestos, el mismo componente muestra Pendiente con tono azul antes de facturación o de una orden de pago, amarillo durante el cobro y Finalizado en verde por cancelación completa o confirmación manual. Conservar las etiquetas y tokens del sistema.
+
+La [verificación en escritorio y móvil](verificaciones/2026-11-11-crane-selection/README.md) usa datos descartables e incluye el recorrido de teclado sobre la barra de acciones.
