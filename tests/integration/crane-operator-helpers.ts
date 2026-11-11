@@ -90,8 +90,8 @@ export function createCraneFixture() {
     })
   }
 
-  async function reserve(client: TestClient, mime = 'application/pdf', size = 14) {
-    const { data, error } = await client.rpc('create_crane_delivery_note_upload', { p_mime: mime, p_size: size })
+  async function reserve(client: TestClient, mime = 'application/pdf', size = 14, equipmentId?: string) {
+    const { data, error } = await client.rpc('create_crane_delivery_note_upload', { p_mime: mime, p_size: size, ...(equipmentId ? { p_equipment_id: equipmentId } : {}) })
     if (error) throw error
     const ticket = data![0]
     paths.push(ticket.path)
@@ -108,9 +108,9 @@ export function createCraneFixture() {
     return { path: ticket.path, originalName: 'Remito de obra.pdf' }
   }
 
-  async function upload(client: TestClient) {
+  async function upload(client: TestClient, equipmentId?: string) {
     const content = '%PDF-1.4 test\n'
-    const ticket = await reserve(client, 'application/pdf', Buffer.byteLength(content))
+    const ticket = await reserve(client, 'application/pdf', Buffer.byteLength(content), equipmentId)
     return uploadSigned(client, ticket, 'application/pdf', content)
   }
 

@@ -137,7 +137,7 @@ describe('gestión de gruistas por personal activo', () => {
     expect(reassigned.profiles[0]).toMatchObject({ nombre: before.profiles[0].nombre, rol: 'crane_operator', activo: true })
     expect(reassigned.assignments).toEqual([expect.objectContaining({ equipment_id: otherEquipmentId, assigned_by: admin.id })])
     expect((await setAccess(staff.client, target.id, false)).error).toBeNull()
-    expect((await accountState(target.id)).assignments).toEqual([])
+    expect((await accountState(target.id)).assignments).toEqual(reassigned.assignments)
     expect((await accountState(target.id)).profiles[0]).toMatchObject({ rol: 'crane_operator', activo: false })
   })
 
@@ -153,21 +153,23 @@ describe('gestión de gruistas por personal activo', () => {
 
   it('valida estado y grúa activa, con rollback de todos los cambios', async () => {
     const before = await accountState(worker.id)
-    for (const [active, craneId] of [[true, null], [true, inactiveEquipmentId], [false, inactiveEquipmentId],
+    for (const [active, craneId] of [[true, inactiveEquipmentId], [false, inactiveEquipmentId],
       [true, crypto.randomUUID()], [null, equipmentId]] as const) {
       expect((await setAccess(staff.client, worker.id, active as never, craneId)).error?.code).toBe('22023')
       expect(await accountState(worker.id)).toEqual(before)
     }
   })
 
-  it('muestra la asignación histórica aunque la grúa esté inactiva y permite quitarla', async () => {
+  it('conserva la asignación histórica aunque se reactive al gruista sin especificar grúa', async () => {
     const target = await fixture.user()
     const craneId = await fixture.equipment()
     expect((await setAccess(staff.client, target.id, true, craneId)).error).toBeNull()
     await sql('update public.equipos set activo=false where id=$1', [craneId])
     expect(await listWorker(target.id)).toMatchObject({ equipment_id: craneId, equipment_active: false })
     expect((await setAccess(staff.client, target.id, false)).error).toBeNull()
-    expect(await listWorker(target.id)).toMatchObject({ active: false, equipment_id: null, equipment_active: null })
+    expect(await listWorker(target.id)).toMatchObject({ active: false, equipment_id: craneId, equipment_active: false })
+    expect((await setAccess(staff.client, target.id, true)).error).toBeNull()
+    expect(await listWorker(target.id)).toMatchObject({ active: true, equipment_id: craneId, equipment_active: false })
   })
 
   it('revalida el rol del destino después de esperar un cambio concurrente', async () => {
@@ -201,8 +203,9 @@ describe('gestión de gruistas por personal activo', () => {
     expect((await setAccess(staff.client, author.id, true, otherEquipmentId)).error).toBeNull()
     const budgetId = await fixture.budget(otherEquipmentId)
     const newFile = await fixture.upload(author.client)
-    const newNote = await submitNote(author.client, [newFile], { ...NOTE_DATA, budgetId, serviceDate: '2026-01-01' })
+    const newNote = await submitNote(author.client, [newFile], { ...NOTE_DATA, serviceDate: '2026-01-01' })
     expect(newNote.error).toBeNull()
+    expect((await staff.client.rpc('link_crane_delivery_note', { p_note_id: newNote.data!, p_budget_id: budgetId })).error).toBeNull()
     expect((await setAccess(staff.client, otherAuthor.id, true, equipmentId)).error).toBeNull()
     expect((await submitNote(otherAuthor.client, [await fixture.upload(otherAuthor.client)])).error).toBeNull()
     await sql('update public.crane_delivery_notes set created_at=$2 where id=$1', [oldNote.data, '2026-01-02T00:00:00Z'])
@@ -212,7 +215,7 @@ describe('gestión de gruistas por personal activo', () => {
       note_count: 2, pending_note_count: 1, last_submission_at: '2026-01-03T00:00:00+00:00' })
     expect(await listWorker(otherAuthor.id)).toMatchObject({ note_count: 1, pending_note_count: 1 })
     expect((await setAccess(staff.client, author.id, false)).error).toBeNull()
-    expect(await listWorker(author.id)).toMatchObject({ active: false, equipment_id: null,
+    expect(await listWorker(author.id)).toMatchObject({ active: false, equipment_id: otherEquipmentId,
       note_count: 2, pending_note_count: 1, last_submission_at: '2026-01-03T00:00:00+00:00' })
     expect(await sql('select * from public.crane_delivery_notes where operator_id=$1 order by id', [author.id])).toEqual(notesBefore)
   })
@@ -228,6 +231,19 @@ describe('finalización de altas reservada al servidor', () => {
     expect(state.profiles[0]).toMatchObject({ nombre: 'Gruista habilitado', rol: 'crane_operator', activo: true })
     expect(state.assignments).toEqual([expect.objectContaining({ user_id: target.id, equipment_id: equipmentId, assigned_by: actor.id })])
     expect((await target.client.rpc('get_crane_operator_context')).data).toMatchObject({ equipment: { id: equipmentId } })
+  })
+
+  it.each(['admin', 'operador'] as const)('habilita una cuenta sin asignar grúa desde el servidor con actor %s', async (role) => {
+    const actor = role === 'admin' ? admin : staff
+    const target = await fixture.signupUser()
+    const args = { p_user_id: target.id, p_name: 'Gruista sin asignación' }
+    expect((await adminClient().rpc('complete_crane_operator_signup', args)).error?.code).toBe('42501')
+    expect((await adminClient().rpc('complete_crane_operator_signup', { ...args, p_actor_id: actor.id })).error).toBeNull()
+    expect((await accountState(target.id)).assignments).toEqual([])
+    expect((await accountState(target.id)).profiles[0]).toMatchObject({ rol: 'crane_operator', activo: true })
+    expect((await setAccess(actor.client, target.id, false)).error).toBeNull()
+    expect((await setAccess(actor.client, target.id, true)).error).toBeNull()
+    expect((await accountState(target.id)).assignments).toEqual([])
   })
 
   it('ningún cliente autenticado ni anónimo puede invocar el finalizador aunque declare un actor válido', async () => {
@@ -281,7 +297,7 @@ describe('finalización de altas reservada al servidor', () => {
       expect((await completeSignup(target.id, staff.id, name as never)).error?.code).toBe('22023')
       expect(await accountState(target.id)).toEqual(before)
     }
-    for (const craneId of [null, inactiveEquipmentId, crypto.randomUUID()]) {
+    for (const craneId of [inactiveEquipmentId, crypto.randomUUID()]) {
       expect((await completeSignup(target.id, staff.id, 'Gruista', craneId as never)).error?.code).toBe('22023')
       expect(await accountState(target.id)).toEqual(before)
     }

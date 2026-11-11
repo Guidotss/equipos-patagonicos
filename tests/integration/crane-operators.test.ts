@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createCraneFixture, type TestUser } from './crane-operator-helpers'
-import { sql } from './helpers'
+import { anonClient, sql } from './helpers'
 
 const fixture = createCraneFixture()
 let admin: TestUser
@@ -46,7 +46,7 @@ describe('acceso de gruistas', () => {
 
   it('valida rol, equipo activo, cuenta existente y protección del propio administrador', async () => {
     const inactiveEquipmentId = await fixture.equipment(false)
-    for (const id of [null, inactiveEquipmentId, crypto.randomUUID()]) {
+    for (const id of [inactiveEquipmentId, crypto.randomUUID()]) {
       expect((await fixture.assign(admin.client, other.id, id)).error?.code).toBe('22023')
     }
     expect((await admin.client.rpc('set_user_access', { p_user_id: other.id, p_role: 'owner', p_active: true })).error?.code).toBe('22023')
@@ -54,6 +54,8 @@ describe('acceso de gruistas', () => {
     expect((await admin.client.rpc('set_user_access', { p_user_id: admin.id, p_role: 'operador', p_active: true })).error?.message).toMatch(/No podés desactivarte/)
     expect((await admin.client.rpc('set_user_access', { p_user_id: admin.id, p_role: 'admin', p_active: false })).error?.message).toMatch(/No podés desactivarte/)
     expect((await fixture.assign(admin.client, other.id, null, false)).error).toBeNull()
+    expect((await fixture.assign(admin.client, other.id, null)).error).toBeNull()
+    expect(await sql('select * from public.crane_operator_assignments where user_id=$1', [other.id])).toEqual([])
   })
 
   it('permite compartir una grúa y elimina la asignación al cambiar el rol por RPC o perfil', async () => {
@@ -66,27 +68,45 @@ describe('acceso de gruistas', () => {
     expect(await sql('select * from public.crane_operator_assignments where user_id=$1', [other.id])).toEqual([])
   })
 
-  it('proyecta solamente trabajos aprobados en curso de la grúa asignada', async () => {
-    const ownBudgetId = await fixture.budget(equipmentId)
-    await fixture.budget(otherEquipmentId)
-    await fixture.budget(equipmentId, 'finalizado')
-    await fixture.budget(equipmentId, 'anulado')
+  it('el contexto anterior conserva su forma sin mostrar presupuestos', async () => {
+    await fixture.budget(equipmentId)
     const context = await worker.client.rpc('get_crane_operator_context')
     expect(context.error).toBeNull()
-    expect(context.data).toEqual({ equipment: { id: equipmentId, name: `Grúa de prueba ${equipmentId}`, active: true },
-      jobs: [{ id: ownBudgetId, number: expect.any(Number), customerName: expect.any(String), subject: 'Trabajo de prueba', location: 'Neuquén' }] })
+    expect(context.data).toEqual({ equipment: { id: equipmentId, name: `Grúa de prueba ${equipmentId}`, active: true }, jobs: [] })
   })
 
-  it('una cuenta sin asignación o con equipo inactivo no recibe trabajos ni puede iniciar cargas', async () => {
+  it('el catálogo devuelve todas las grúas activas sin exigir asignación ni exponer otros datos', async () => {
     const unassigned = await fixture.user()
-    expect((await unassigned.client.rpc('get_crane_operator_context')).data).toEqual({ equipment: null, jobs: [] })
-    expect((await unassigned.client.rpc('create_crane_delivery_note_upload', { p_mime: 'application/pdf', p_size: 1 })).error?.code).toBe('42501')
     const inactiveWorker = await fixture.user('crane_operator', false)
-    expect((await inactiveWorker.client.rpc('get_crane_operator_context')).error?.code).toBe('42501')
+    const inactiveEquipmentId = await fixture.equipment(false)
+    expect((await unassigned.client.rpc('get_crane_operator_context')).data).toEqual({ equipment: null, jobs: [] })
+    const expected = [equipmentId, otherEquipmentId].sort().map(id => ({ equipment_id: id, name: `Grúa de prueba ${id}` }))
+    for (const client of [unassigned.client, worker.client]) {
+      const catalog = await client.rpc('list_operator_cranes')
+      expect(catalog.error).toBeNull()
+      expect(catalog.data?.filter(row => [equipmentId, otherEquipmentId, inactiveEquipmentId].includes(row.equipment_id))).toEqual(expected)
+    }
+    for (const client of [inactiveWorker.client, staff.client, admin.client, anonClient()]) {
+      expect((await client.rpc('list_operator_cranes')).error?.code).toBe('42501')
+    }
+  })
+
+  it('la carga exige una grúa activa y la firma anterior usa solo la asignación vigente', async () => {
+    const unassigned = await fixture.user()
+    const inactiveWorker = await fixture.user('crane_operator', false)
+    const args = { p_mime: 'application/pdf', p_size: 1 }
+    expect((await unassigned.client.rpc('create_crane_delivery_note_upload', args)).error?.code).toBe('42501')
+    expect((await inactiveWorker.client.rpc('create_crane_delivery_note_upload', { ...args, p_equipment_id: equipmentId })).error?.code).toBe('42501')
     await sql('update public.equipos set activo=false where id=$1', [equipmentId])
     try {
       expect((await worker.client.rpc('get_crane_operator_context')).data).toMatchObject({ equipment: { id: equipmentId, active: false }, jobs: [] })
-      expect((await worker.client.rpc('create_crane_delivery_note_upload', { p_mime: 'application/pdf', p_size: 1 })).error?.code).toBe('42501')
+      expect((await worker.client.rpc('create_crane_delivery_note_upload', args)).error?.code).toBe('42501')
+      for (const id of [equipmentId, crypto.randomUUID()]) {
+        expect((await unassigned.client.rpc('create_crane_delivery_note_upload', { ...args, p_equipment_id: id })).error?.code).toBe('42501')
+      }
+      const ticket = await fixture.reserve(unassigned.client, 'application/pdf', 1, otherEquipmentId)
+      expect((await unassigned.client.from('crane_delivery_note_uploads').select('equipment_id').eq('id', ticket.upload_id).single()).data)
+        .toEqual({ equipment_id: otherEquipmentId })
     } finally {
       await sql('update public.equipos set activo=true where id=$1', [equipmentId])
     }
@@ -118,7 +138,7 @@ describe('acceso de gruistas', () => {
     const functions = await sql<{ name: string; arguments: string[] }>(`select p.proname as name, p.proargnames[1:p.pronargs] as arguments
       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       where n.nspname='public' and p.prosecdef and has_function_privilege('authenticated',p.oid,'execute')
-        and p.proname not in ('list_user_access','set_user_access','get_crane_operator_context',
+        and p.proname not in ('list_user_access','set_user_access','get_crane_operator_context','list_operator_cranes',
           'create_crane_delivery_note_upload','submit_crane_delivery_note','link_crane_delivery_note')`)
     expect(functions.length).toBeGreaterThan(15)
     for (const fn of functions) {

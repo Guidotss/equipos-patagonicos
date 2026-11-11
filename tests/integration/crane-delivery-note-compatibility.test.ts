@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getLiveDeliveryNoteBudgetId } from '@/lib/crane-operators/queries'
 import type { Database } from '@/lib/supabase/database.types'
 import { createCraneFixture, NOTE_DATA, submitNote, type TestUser } from './crane-operator-helpers'
+import { sql } from './helpers'
 
 type DocumentRow = Database['public']['Tables']['documentos']['Row']
 const fixture = createCraneFixture()
@@ -43,6 +44,14 @@ async function deleteImportedBudget(id: string) {
   expect((await staff.client.from('cotizaciones').select('id').eq('id', id)).data).toEqual([])
 }
 
+// Reproduce la forma persistida por el envío anterior, que vinculaba directamente desde obra.
+async function recordLegacyBudgetRequest(noteId: string, requestedBudgetId: string) {
+  await sql(`update public.crane_delivery_notes set requested_budget_id=$2, linked_by=operator_id,
+    submission_data=jsonb_set(submission_data, '{budgetId}', to_jsonb($2::uuid)),
+    customer_name=(select cl.razon_social from public.cotizaciones c join public.clientes cl on cl.id=c.cliente_id where c.id=$2)
+    where id=$1`, [noteId, requestedBudgetId])
+}
+
 describe('compatibilidad de remitos recibidos con el circuito comercial', () => {
   it.each(['X', '🦺'])('edita fecha y presupuesto conservando la grúa real y los campos máximos (%s)', async (character) => {
     const data = { ...NOTE_DATA, number: character.repeat(100), customerName: character.repeat(2000),
@@ -78,10 +87,11 @@ describe('compatibilidad de remitos recibidos con el circuito comercial', () => 
 
   it.each(['X', '🦺'])('aplica los límites SQL exactos de 100 y 6200 al editar un remito (%s)', async (character) => {
     const file = await fixture.upload(worker.client)
-    const submitted = await submitNote(worker.client, [file], { ...NOTE_DATA, budgetId })
+    const submitted = await submitNote(worker.client, [file])
     expect(submitted.error).toBeNull()
-    const note = await worker.client.from('crane_delivery_notes').select('document_id').eq('id', submitted.data!).single()
-    const document = await readDocument(note.data!.document_id!)
+    const linked = await staff.client.rpc('link_crane_delivery_note', { p_note_id: submitted.data!, p_budget_id: budgetId })
+    expect(linked.error).toBeNull()
+    const document = await readDocument(linked.data!)
     const changes = { numero: character.repeat(100), notas: character.repeat(6200) }
     expect((await editDocument(document, [budgetId], changes)).error).toBeNull()
     const saved = await readDocument(document.id)
@@ -95,11 +105,12 @@ describe('compatibilidad de remitos recibidos con el circuito comercial', () => 
     const importedBudgetId = await fixture.importedBudget(staff.client, equipmentId)
     const file = await fixture.upload(worker.client)
     const data = { ...NOTE_DATA, budgetId: requested ? importedBudgetId : null }
-    const submitted = await submitNote(worker.client, [file], data)
+    const submitted = await submitNote(worker.client, [file])
     expect(submitted.error).toBeNull()
     expect(await getLiveDeliveryNoteBudgetId(staff.client, importedBudgetId)).toBe(importedBudgetId)
     const linked = await staff.client.rpc('link_crane_delivery_note', { p_note_id: submitted.data!, p_budget_id: importedBudgetId })
     expect(linked.error).toBeNull()
+    if (requested) await recordLegacyBudgetRequest(submitted.data!, importedBudgetId)
     const before = await worker.client.from('crane_delivery_notes').select('*').eq('id', submitted.data!).single()
     const filesBefore = await worker.client.from('crane_delivery_note_files').select('*').eq('note_id', submitted.data!)
     expect((await staff.client.rpc('anular_documento', { p_id: linked.data! })).error).toBeNull()
@@ -121,8 +132,11 @@ describe('compatibilidad de remitos recibidos con el circuito comercial', () => 
     const importedBudgetId = await fixture.importedBudget(staff.client, equipmentId)
     const file = await fixture.upload(worker.client)
     const data = { ...NOTE_DATA, budgetId: importedBudgetId }
-    const submitted = await submitNote(worker.client, [file], data)
+    const submitted = await submitNote(worker.client, [file])
     expect(submitted.error).toBeNull()
+    const linked = await staff.client.rpc('link_crane_delivery_note', { p_note_id: submitted.data!, p_budget_id: importedBudgetId })
+    expect(linked.error).toBeNull()
+    await recordLegacyBudgetRequest(submitted.data!, importedBudgetId)
     const note = await worker.client.from('crane_delivery_notes').select('*').eq('id', submitted.data!).single()
     const document = await readDocument(note.data!.document_id!)
     expect((await editDocument(document, [budgetId])).error).toBeNull()

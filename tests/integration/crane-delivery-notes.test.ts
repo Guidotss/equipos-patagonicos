@@ -69,20 +69,20 @@ describe('recepción de remitos de gruistas', () => {
     }
   })
 
-  it('no acepta campos de actor, equipo, estado, documento ni importes', async () => {
+  it('no acepta campos de actor, estado, documento ni importes', async () => {
     const file = await fixture.upload(worker.client)
-    for (const key of ['operatorId', 'operator_id', 'equipmentId', 'equipment_id', 'status', 'amount', 'monto', 'documentId']) {
+    for (const key of ['operatorId', 'operator_id', 'equipment_id', 'status', 'amount', 'monto', 'documentId']) {
       const result = await submitNote(worker.client, [file], { ...NOTE_DATA, [key]: key === 'monto' ? 5 : crypto.randomUUID() })
       expect(result.error?.code, key).toBe('22023')
     }
     expect((await submitNote(worker.client, [{ ...file, size: 1 }])).error?.code).toBe('22023')
   })
 
-  it('valida fechas reales, textos obligatorios y límites de cada campo', async () => {
+  it('valida fechas reales, identificadores y límites de cada campo', async () => {
     const file = await fixture.upload(worker.client)
     const invalidData = [
       { serviceDate: '2026-02-30' }, { serviceDate: '01/02/2026' }, { serviceDate: null },
-      { serviceDate: 12 }, { budgetId: 'abc' }, { customerName: '' }, { workDescription: ' ' },
+      { serviceDate: 12 }, { budgetId: 'abc' }, { equipmentId: 'abc' }, { equipmentId: null },
       { number: 'x'.repeat(101) }, { notes: 'x'.repeat(2001) }, { customerName: 'x'.repeat(2001) },
       { workDescription: 'x'.repeat(2001) },
     ]
@@ -198,45 +198,70 @@ describe('recepción de remitos de gruistas', () => {
       path: 'a', original_name: 'a', mime: 'application/pdf', size: 1, position: 1 })).error?.code).toBe('42501')
   })
 
-  it('revisa la autorización al registrar aunque una URL firmada siga vigente tras reasignar', async () => {
+  it('las cargas explícitas conservan su grúa aunque cambie la asignación anterior', async () => {
     const own = await pendingNote()
-    const ticket = await fixture.reserve(worker.client, 'application/pdf', 13)
-    const bucket = worker.client.storage.from('documentos')
-    const signed = await bucket.createSignedUploadUrl(ticket.path)
-    expect(signed.error).toBeNull()
+    const ticket = await fixture.reserve(worker.client, 'application/pdf', 14, equipmentId)
     await fixture.assign(admin.client, worker.id, otherEquipmentId)
     try {
-      const uploaded = await bucket.uploadToSignedUrl(ticket.path, signed.data!.token,
-        new Blob(['%PDF-1.4 test\n'], { type: 'application/pdf' }), { contentType: 'application/pdf' })
-      expect(uploaded.error).toBeNull()
-      expect((await submitNote(worker.client, [{ path: ticket.path, originalName: 'Remito.pdf' }])).error?.code).toBe('42501')
-      expect((await bucket.createSignedUploadUrl(ticket.path)).error).not.toBeNull()
+      const file = await fixture.uploadSigned(worker.client, ticket)
+      expect((await submitNote(worker.client, [file], { ...NOTE_DATA, equipmentId: otherEquipmentId })).error?.code).toBe('42501')
+      expect((await submitNote(worker.client, [file], { ...NOTE_DATA, equipmentId })).error).toBeNull()
       expect((await worker.client.from('crane_delivery_notes').select('id').eq('id', own.id)).data).toEqual([{ id: own.id }])
-      expect((await bucket.createSignedUrl(own.file.path, 60)).error).toBeNull()
+      expect((await worker.client.storage.from('documentos').createSignedUrl(own.file.path, 60)).error).toBeNull()
     } finally {
       await fixture.assign(admin.client, worker.id, equipmentId)
     }
   })
 
+  it('rechaza archivos de distintas grúas o de otro gruista y revierte todos los cambios', async () => {
+    const unassigned = await fixture.user()
+    const first = await fixture.upload(unassigned.client, equipmentId)
+    const second = await fixture.upload(unassigned.client, otherEquipmentId)
+    const foreign = await fixture.upload(other.client, equipmentId)
+    const data = { equipmentId, serviceDate: NOTE_DATA.serviceDate }
+    const id = crypto.randomUUID()
+    for (const rejected of [second, foreign]) {
+      expect((await submitNote(unassigned.client, [first, rejected], data, id)).error?.code).toBe('42501')
+      expect(await sql('select id from public.crane_delivery_notes where id=$1', [id])).toEqual([])
+      expect(await sql('select consumed_note_id from public.crane_delivery_note_uploads where path=$1', [first.path]))
+        .toEqual([{ consumed_note_id: null }])
+    }
+    expect((await submitNote(unassigned.client, [first], data, id)).data).toBe(id)
+    expect((await submitNote(unassigned.client, [first], data, id)).data).toBe(id)
+    expect((await submitNote(unassigned.client, [first], { ...data, equipmentId: otherEquipmentId }, id)).error?.code).toBe('23505')
+    expect((await submitNote(unassigned.client, [first], { ...data, equipmentId: otherEquipmentId })).error?.code).toBe('42501')
+    const next = await submitNote(unassigned.client, [second], { ...data, equipmentId: otherEquipmentId })
+    expect(next.error).toBeNull()
+    const saved = await unassigned.client.from('crane_delivery_notes').select('id,equipment_id')
+    expect(saved.data).toEqual(expect.arrayContaining([
+      { id, equipment_id: equipmentId }, { id: next.data, equipment_id: otherEquipmentId },
+    ]))
+  })
+
   it('desactivar la cuenta o el equipo invalida la recepción de un archivo ya subido', async () => {
     const historical = await pendingNote()
-    const file = await fixture.upload(worker.client)
+    const file = await fixture.upload(worker.client, equipmentId)
+    const data = { ...NOTE_DATA, equipmentId }
+    const bucket = worker.client.storage.from('documentos')
+    const unused = await fixture.reserve(worker.client, 'application/pdf', 1, equipmentId)
     await sql('update public.profiles set activo=false where id=$1', [worker.id])
     try {
-      expect((await submitNote(worker.client, [file])).error?.code).toBe('42501')
+      expect((await submitNote(worker.client, [file], data)).error?.code).toBe('42501')
       expect((await worker.client.storage.from('documentos').createSignedUrl(file.path, 60)).error).not.toBeNull()
     } finally {
       await sql('update public.profiles set activo=true where id=$1', [worker.id])
     }
     await sql('update public.equipos set activo=false where id=$1', [equipmentId])
     try {
-      expect((await submitNote(worker.client, [file])).error?.code).toBe('42501')
+      expect((await submitNote(worker.client, [file], data)).error?.code).toBe('42501')
+      expect((await bucket.createSignedUploadUrl(unused.path)).error).not.toBeNull()
     } finally {
       await sql('update public.equipos set activo=true where id=$1', [equipmentId])
     }
     await sql('delete from public.crane_operator_assignments where user_id=$1', [worker.id])
     try {
       expect((await submitNote(worker.client, [file])).error?.code).toBe('42501')
+      expect((await submitNote(worker.client, [file], data)).error).toBeNull()
       expect((await worker.client.storage.from('documentos').createSignedUrl(file.path, 60)).error).toBeNull()
       expect((await worker.client.from('crane_delivery_notes').select('id').eq('id', historical.id)).data).toEqual([{ id: historical.id }])
     } finally {
@@ -256,29 +281,34 @@ describe('recepción de remitos de gruistas', () => {
     expect((await sql('select id from public.crane_delivery_note_files where note_id=$1', [id]))).toHaveLength(1)
   })
 
-  it('el presupuesto elegido crea un remito atómico sin dinero y conserva intacta la cotización', async () => {
+  it('solo requiere fecha y archivo para la grúa elegida; Administración vincula el remito pendiente', async () => {
+    const unassigned = await fixture.user()
     const [before] = await sql('select to_jsonb(c) as snapshot from public.cotizaciones c where id=$1', [budgetId])
-    const file = await fixture.upload(worker.client)
+    const file = await fixture.upload(unassigned.client, otherEquipmentId)
+    const data = { serviceDate: NOTE_DATA.serviceDate, equipmentId: otherEquipmentId }
     const id = crypto.randomUUID()
-    const data = { ...NOTE_DATA, budgetId, customerName: 'Intento de cambiar cliente' }
-    const results = await Promise.all([submitNote(worker.client, [file], data, id), submitNote(worker.client, [file], data, id)])
-    expect(results.map(result => result.error)).toEqual([null, null])
-    const [note] = await sql<{ document_id: string; customer_name: string }>('select document_id,customer_name from public.crane_delivery_notes where id=$1', [id])
-    expect(note.customer_name).not.toBe(data.customerName)
-    const [document] = await sql(`select * from public.documentos where id=$1`, [note.document_id])
-    expect(document).toMatchObject({ tipo: 'remito', numero: NOTE_DATA.number, equipo_id: equipmentId, created_by: worker.id,
+    expect((await submitNote(unassigned.client, [file], { ...data, budgetId }, id)).error?.code).toBe('42501')
+    expect(await sql('select id from public.crane_delivery_notes where id=$1', [id])).toEqual([])
+    expect((await submitNote(unassigned.client, [file], data, id)).data).toBe(id)
+    const [note] = await sql('select * from public.crane_delivery_notes where id=$1', [id])
+    expect(note).toMatchObject({ status: 'pending', document_id: null, requested_budget_id: null, linked_budget_id: null,
+      equipment_id: otherEquipmentId, equipment_name: `Grúa de prueba ${otherEquipmentId}`, number: '', customer_name: '',
+      work_description: '', notes: '' })
+    expect(await sql('select id from public.documentos where created_by=$1', [unassigned.id])).toEqual([])
+    const linked = await staff.client.rpc('link_crane_delivery_note', { p_note_id: id, p_budget_id: budgetId })
+    expect(linked.error).toBeNull()
+    const [document] = await sql('select * from public.documentos where id=$1', [linked.data])
+    expect(document).toMatchObject({ tipo: 'remito', numero: '', notas: '', equipo_id: otherEquipmentId, created_by: unassigned.id,
       monto: null, factura_id: null, tipo_comprobante: null, fecha_vencimiento: null })
-    expect(document.notas).toContain(NOTE_DATA.workDescription)
-    expect(document.notas).toContain(NOTE_DATA.notes)
-    expect(document.notas).toContain(note.customer_name)
-    expect((await sql('select path from public.documento_archivos where documento_id=$1', [note.document_id]))).toEqual([{ path: file.path }])
+    expect(await sql('select path from public.documento_archivos where documento_id=$1', [linked.data])).toEqual([{ path: file.path }])
     expect((await sql('select to_jsonb(c) as snapshot from public.cotizaciones c where id=$1', [budgetId]))[0]).toEqual(before)
-    expect((await worker.client.from('documentos').select('id').eq('id', note.document_id)).data).toEqual([])
+    expect((await unassigned.client.from('documentos').select('id').eq('id', linked.data!)).data).toEqual([])
+    expect((await submitNote(unassigned.client, [file], data, id)).data).toBe(id)
   })
 
-  it('el gruista no puede elegir presupuestos de otra grúa, cerrados, anulados ni inexistentes', async () => {
+  it('el gruista no puede enviar ningún presupuesto en un remito nuevo', async () => {
     const file = await fixture.upload(worker.client)
-    const budgetIds = [await fixture.budget(otherEquipmentId), await fixture.budget(equipmentId, 'finalizado'),
+    const budgetIds = [budgetId, await fixture.budget(otherEquipmentId), await fixture.budget(equipmentId, 'finalizado'),
       await fixture.budget(equipmentId, 'anulado'), await fixture.budget(null), crypto.randomUUID()]
     for (const id of budgetIds) {
       expect((await submitNote(worker.client, [file], { ...NOTE_DATA, budgetId: id })).error?.code).toBe('42501')

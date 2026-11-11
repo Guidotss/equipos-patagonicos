@@ -1115,10 +1115,10 @@ isOneToOne: false
 { Args: { "p_expected_version": number,"p_instrument_id": string,"p_op_id": string,"p_reason"?: string,"p_settled_on"?: string,"p_status": string }; Returns: Json
                            },
 "complete_crane_operator_signup":
-{ Args: { "p_actor_id": string,"p_equipment_id": string,"p_name": string,"p_user_id": string }; Returns: undefined
+{ Args: { "p_actor_id"?: string,"p_equipment_id"?: string,"p_name": string,"p_user_id": string }; Returns: undefined
                            },
 "create_crane_delivery_note_upload":
-{ Args: { "p_mime": string,"p_size": number }; Returns: {
+{ Args: { "p_equipment_id"?: string,"p_mime": string,"p_size": number }; Returns: {
               "path": string,"upload_id": string
             }[]
                            },
@@ -1183,6 +1183,11 @@ isOneToOne: false
 "list_crane_operators":
 { Args: { "p_active"?: boolean,"p_search"?: string }; Returns: {
               "active": boolean,"email": string,"equipment_active": boolean,"equipment_id": string,"equipment_name": string,"last_submission_at": string,"name": string,"note_count": number,"pending_note_count": number,"user_id": string
+            }[]
+                           },
+"list_operator_cranes":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "equipment_id": string,"name": string
             }[]
                            },
 "list_user_access":
