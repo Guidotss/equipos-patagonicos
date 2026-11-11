@@ -113,7 +113,7 @@ test('cinco colas accionables con selección de remito/factura y navegación mó
 
   await page.goto('/?cola=cobranzas')
   await page.locator(`[data-pendiente="${invoiceId}"]`).getByRole('link', { name: /Registrar pago/ }).click()
-  await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('125.000,00')
+  await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('$ 125.000,00')
   await page.getByLabel('Nuevo medio').selectOption('cash')
   await page.getByRole('button', { name: 'Agregar medio' }).click()
   await page.getByRole('button', { name: 'Agregar destino' }).click()

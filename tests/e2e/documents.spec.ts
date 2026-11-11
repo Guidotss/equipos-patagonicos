@@ -117,7 +117,7 @@ test('presupuesto directo → OC → remito → factura → pago; saldo y anulac
 
   const invoice = page.locator('[data-documento]').filter({ hasText: 'FA F-103' })
   await invoice.getByRole('link', { name: 'Registrar pago', exact: true }).click()
-  await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('1.000,00')
+  await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('$ 1.000,00')
   await page.getByLabel('Número (opcional)', { exact: true }).fill('OP-104')
   await attach(page, 'Orden de pago.pdf')
   await page.getByLabel('Nuevo medio').selectOption('cash')
@@ -208,6 +208,10 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
   await expect(page.getByRole('button', { name: 'Reintentar', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Reintentar', exact: true }).click()
   await expect(page.getByText('Listo para guardar', { exact: true })).toHaveCount(2)
+  const amount = page.getByLabel('Monto (opcional)', { exact: true })
+  await amount.fill('5612000')
+  await amount.press('Tab')
+  await expect(amount).toHaveValue('$ 5.612.000,00')
   await page.screenshot({ path: testInfo.outputPath('documento-equipo-movil.png'), fullPage: true })
   await page.getByLabel('Número (opcional)', { exact: true }).fill('R-MOVIL-105')
   await page.getByRole('button', { name: 'Guardar documento', exact: true }).click()
@@ -217,13 +221,14 @@ test('subida móvil múltiple, compresión de foto, reintento y edición de arch
   const archivo = await withBase(
     async (db) =>
       (
-        await db.query<{ mime: string; tamano: string }>(
-          `select a.mime, a.tamano from public.documento_archivos a join public.documentos d on d.id = a.documento_id where d.cliente_id = $1 and d.numero = 'R-MOVIL-105' and a.nombre_original = 'Remito foto.png'`,
+        await db.query<{ mime: string; tamano: string; amount: string }>(
+          `select a.mime, a.tamano, d.monto::text as amount from public.documento_archivos a join public.documentos d on d.id = a.documento_id where d.cliente_id = $1 and d.numero = 'R-MOVIL-105' and a.nombre_original = 'Remito foto.png'`,
           [clientId],
         )
       ).rows[0],
   )
   expect(archivo.mime).toBe('image/jpeg')
+  expect(archivo.amount).toBe('5612000.00')
   expect(Number(archivo.tamano)).toBeLessThan(10 * 1024 * 1024)
   await deliveryNote.getByRole('link', { name: 'Editar', exact: true }).click()
   await expect(page.getByLabel('Equipo', { exact: true })).toHaveValue(`Grúa histórica ${marca}`)

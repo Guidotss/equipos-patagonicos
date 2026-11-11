@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Card } from '@/components/form/card'
 import { Field } from '@/components/form/field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -6,6 +7,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { AMBIGUOUS_EQUIPMENT_MESSAGE } from '@/lib/documents/equipment'
 import { getDocumentTextLimits, INVOICE_TYPES } from '@/lib/documents/schemas'
+import { centsToDecimal, formatFinancialAmount, parseAmountCents } from '@/lib/finance/amounts'
 
 import type { DocumentFormValues } from './document-form-model'
 import type { DocumentFormState } from './use-document-form'
@@ -18,6 +20,9 @@ export function DocumentDetailsSection({
   equipmentLabel,
   duplicate,
 }: Pick<DocumentFormState, 'values' | 'changeField' | 'errors' | 'equipment' | 'equipmentLabel'> & { duplicate: string | boolean }) {
+  const [editingAmount, setEditingAmount] = useState(false)
+  const amountCents = editingAmount ? null : parseAmountCents(values.monto)
+  const displayedAmount = amountCents === null ? values.monto : formatFinancialAmount(centsToDecimal(amountCents))
   const textLimits = getDocumentTextLimits(values.tipo)
   // maxlength cuenta UTF-16: dos unidades por punto de código evitan recortar caracteres suplementarios.
   const inputLengthMultiplier = values.tipo === 'remito' ? 2 : 1
@@ -27,8 +32,10 @@ export function DocumentDetailsSection({
       <Field id={name} label={label} error={errors[`datos.${name}`]}>
         <Input
           id={name}
-          value={values[name]}
+          value={name === 'monto' ? displayedAmount : values[name]}
           onChange={(event) => changeField(name, event.target.value)}
+          onFocus={name === 'monto' ? () => setEditingAmount(true) : undefined}
+          onBlur={name === 'monto' ? () => setEditingAmount(false) : undefined}
           type={inputType}
           required={required}
           maxLength={name === 'numero' ? textLimits.number * inputLengthMultiplier : name === 'numero_oc_ref' ? 50 : undefined}

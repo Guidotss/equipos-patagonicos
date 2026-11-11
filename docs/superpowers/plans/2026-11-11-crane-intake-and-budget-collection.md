@@ -29,4 +29,6 @@ La rama `codex/financial-workflow` contiene el modelo exacto de cobros aún sin 
 
 ## 4. Verificación
 
+- [ ] Mostrar el monto del documento con pesos, miles y dos decimales al salir del campo. Conservar los centavos exactos y el texto durante la edición. Comprobar $ 5.612.000,00 en el recorrido de remito.
 - [ ] Revisar cada cambio y ejecutar verificaciones estáticas, integración, upgrade financiero y Playwright en el runner aislado. Confirmar limpieza del stack y revisar capturas. Aplicar y publicar únicamente cuando el conjunto esté verificado.
+- [ ] Tras desplegar el portal con selección por remito, desactivar en producción la entrada inicial Grúa telescópica XCMG QY70K-1 40 TN, según la decisión del usuario. Verificar las seis grúas activas.
