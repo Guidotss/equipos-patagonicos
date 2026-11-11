@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import type { PaymentInstrument } from '@/lib/finance/contracts'
 import type { DocumentFinanceState } from './use-document-finance'
+import type { InstrumentStatusError } from './use-document-form'
 
 const KINDS = { cash: 'Efectivo', transfer: 'Transferencia', check: 'Cheque', withholding: 'Retención', legacy_unidentified: 'Medio anterior sin identificar' } as const
 const STATUSES = { confirmed: 'Confirmado', pending: 'Pendiente', cleared: 'Acreditado', rejected: 'Rechazado', voided: 'Anulado', legacy_recognized: 'Cancelación anterior reconocida', legacy_unclassified: 'Importe anterior sin clasificar' } as const
 
 type StatusHandler = (instrument: PaymentInstrument, status: PaymentInstrument['status'], date: string | null, reason: string) => Promise<void>
-type Props = { finance: DocumentFinanceState; persistedIds: Set<string>; onStatus: StatusHandler; errors: Record<string, string>; fieldErrors: Record<string, string> }
+type Props = { finance: DocumentFinanceState; persistedIds: Set<string>; onStatus: StatusHandler; errors: Record<string, InstrumentStatusError>; fieldErrors: Record<string, string> }
 
 function CheckReplacement({ instrument, finance }: { instrument: PaymentInstrument; finance: DocumentFinanceState }) {
   const [kind, setKind] = useState('')
@@ -24,21 +25,26 @@ function CheckReplacement({ instrument, finance }: { instrument: PaymentInstrume
   </div>
 }
 
-function CheckActions({ instrument, onStatus, error }: { instrument: PaymentInstrument; onStatus: StatusHandler; error?: string }) {
+function CheckActions({ instrument, onStatus, error }: { instrument: PaymentInstrument; onStatus: StatusHandler; error?: InstrumentStatusError }) {
   const [date, setDate] = useState('')
   const [reason, setReason] = useState('')
   const previousStatus = useRef(instrument.status)
   const container = useRef<HTMLDivElement>(null)
+  const dateInput = useRef<HTMLInputElement>(null)
+  const dateError = error && 'settledOn' in error ? error.settledOn : undefined
   useLayoutEffect(() => {
     if (previousStatus.current !== instrument.status) container.current?.focus()
     previousStatus.current = instrument.status
   }, [instrument.status])
+  useLayoutEffect(() => {
+    if (error && 'settledOn' in error) dateInput.current?.focus()
+  }, [error])
   if (instrument.status === 'voided') return null
   const id = `check-action-${instrument.id}`
   return <div ref={container} tabIndex={-1} className="flex flex-col gap-3 sm:col-span-2 lg:col-span-4">
-    {instrument.status === 'pending' ? <Field id={`${id}-date`} label="Fecha de acreditación"><Input id={`${id}-date`} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Field> : null}
+    {instrument.status === 'pending' ? <Field id={`${id}-date`} label="Fecha de acreditación" error={dateError}><Input ref={dateInput} id={`${id}-date`} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Field> : null}
     <Field id={`${id}-reason`} label="Motivo de la acción"><Input id={`${id}-reason`} maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} /></Field>
-    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+    {error && 'message' in error ? <p role="alert" className="text-sm text-destructive">{error.message}</p> : null}
     <div className="flex flex-wrap gap-2">
       {instrument.status === 'pending' ? <>
         <Button type="button" variant="outline" disabled={!date} onClick={() => onStatus(instrument, 'cleared', date, reason)}>Acreditar cheque</Button>

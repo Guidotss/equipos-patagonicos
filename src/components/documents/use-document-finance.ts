@@ -9,27 +9,26 @@ import { parseDecimalCents, sumCents } from '@/lib/finance/amounts'
 const EMPTY_FINANCE: DocumentFinance = { invoiceAllocations: [], paymentInstruments: [], paymentAllocations: [] }
 
 export function useDocumentFinance({ document, initialContext }: DocumentFormProps) {
-  const [snapshot, setSnapshot] = useState<DocumentFinance>(() =>
-    document ? initialContext?.financeByDocument[document.id] ?? EMPTY_FINANCE : EMPTY_FINANCE,
-  )
+  const [baseline, setBaseline] = useState(() => ({
+    snapshot: document ? initialContext?.financeByDocument[document.id] ?? EMPTY_FINANCE : EMPTY_FINANCE,
+    condition: document?.payment_condition ?? '',
+  }))
+  const [snapshot, setSnapshot] = useState(baseline.snapshot)
   const [version, setVersion] = useState(document?.financial_version)
   const [persistedInstruments] = useState(() => new Set(snapshot.paymentInstruments.map((item) => item.id)))
   const [persistedAllocations] = useState(() => snapshot.paymentAllocations)
   const [historicalTotal] = useState(() => sumCents(snapshot.invoiceAllocations.map((row) => parseDecimalCents(row.historicalSettledAmount) ?? BigInt(0))))
   const [reason, setReason] = useState('')
-  const [condition, setCondition] = useState(document?.payment_condition ?? '')
-  const [dirty, setDirty] = useState(false)
+  const [condition, setCondition] = useState(baseline.condition)
   const [replacedInstruments, setReplacedInstruments] = useState<Set<string>>(() => new Set())
+  const dirty = replacedInstruments.size > 0 || reason !== '' || condition !== baseline.condition ||
+    (snapshot !== baseline.snapshot && JSON.stringify(snapshot) !== JSON.stringify(baseline.snapshot))
 
-  function update(next: DocumentFinance) {
-    setDirty(true)
-    setSnapshot(next)
-  }
-  function updateInvoices(invoiceAllocations: InvoiceAllocation[]) { update({ ...snapshot, invoiceAllocations }) }
-  function updateInstruments(paymentInstruments: PaymentInstrument[]) { update({ ...snapshot, paymentInstruments }) }
-  function updateAllocations(paymentAllocations: PaymentAllocation[]) { update({ ...snapshot, paymentAllocations }) }
+  function updateInvoices(invoiceAllocations: InvoiceAllocation[]) { setSnapshot({ ...snapshot, invoiceAllocations }) }
+  function updateInstruments(paymentInstruments: PaymentInstrument[]) { setSnapshot({ ...snapshot, paymentInstruments }) }
+  function updateAllocations(paymentAllocations: PaymentAllocation[]) { setSnapshot({ ...snapshot, paymentAllocations }) }
   function removeInstrument(id: string) {
-    update({ ...snapshot, paymentInstruments: snapshot.paymentInstruments.filter((item) => item.id !== id),
+    setSnapshot({ ...snapshot, paymentInstruments: snapshot.paymentInstruments.filter((item) => item.id !== id),
       paymentAllocations: snapshot.paymentAllocations.filter((item) => item.instrumentId !== id) })
   }
   function replaceInstrument(id: string, kind: Exclude<PaymentInstrument['kind'], 'legacy_unidentified'>) {
@@ -37,27 +36,22 @@ export function useDocumentFinance({ document, initialContext }: DocumentFormPro
     const next = replaceTerminalCheck(snapshot, id, kind, crypto.randomUUID())
     if (next === snapshot) return
     setReplacedInstruments((previous) => new Set([...previous, id]))
-    update(next)
+    setSnapshot(next)
   }
   function reset() {
-    setSnapshot(EMPTY_FINANCE)
-    setVersion(undefined)
-    setReason('')
-    setCondition('')
-    setDirty(false)
-    setReplacedInstruments(new Set())
+    synchronize(EMPTY_FINANCE, undefined, '')
   }
-  function synchronize(finance: DocumentFinance, financialVersion: number) {
+  function synchronize(finance: DocumentFinance, financialVersion: number | undefined, paymentCondition: string) {
+    setBaseline({ snapshot: finance, condition: paymentCondition })
     setSnapshot(finance)
     setVersion(financialVersion)
     setReason('')
-    setDirty(false)
+    setCondition(paymentCondition)
     setReplacedInstruments(new Set())
   }
   return {
     snapshot, version, reason, condition, dirty, historicalTotal, persistedInstruments, persistedAllocations, updateInvoices, updateInstruments, updateAllocations, removeInstrument, replaceInstrument, replacedInstruments,
-    setReason: (value: string) => { setDirty(true); setReason(value) },
-    setCondition: (value: string) => { setDirty(true); setCondition(value) },
+    setReason, setCondition,
     reset, synchronize,
     input: (type: string, total: string) => financeInput(type, snapshot, version, reason, total),
   }

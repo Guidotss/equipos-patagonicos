@@ -16,6 +16,8 @@ import type { DocumentFormProps } from './document-form.types'
 import { useDocumentFinance } from './use-document-finance'
 import type { PaymentInstrument } from '@/lib/finance/contracts'
 
+export type InstrumentStatusError = { message: string } | { settledOn: string }
+
 export function useDocumentForm(props: DocumentFormProps) {
   const {
     options,
@@ -46,7 +48,7 @@ export function useDocumentForm(props: DocumentFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const finance = useDocumentFinance(props)
   const [statusPending, setStatusPending] = useState(false)
-  const [statusErrors, setStatusErrors] = useState<Record<string, string>>({})
+  const [statusErrors, setStatusErrors] = useState<Record<string, InstrumentStatusError>>({})
   const statusSubmitting = useRef(false)
   const [initialForm] = useState(() => JSON.stringify({ values, deliveryNotes, selectedBudgetIds }))
   const dirty = finance.dirty || newFiles.length > 0 || remove.length > 0 || uploading ||
@@ -101,8 +103,9 @@ export function useDocumentForm(props: DocumentFormProps) {
   }
   async function changeStatus(instrument: PaymentInstrument, status: PaymentInstrument['status'], settledOn: string | null, reason: string) {
     if (statusSubmitting.current || !document || !finance.version) return
+    const showError = (message: string) => setStatusErrors({ [instrument.id]: { message } })
     if (dirty) {
-      setStatusErrors({ [instrument.id]: 'Guardá los cambios y archivos antes de modificar el estado del cheque.' })
+      showError('Guardá los cambios y archivos antes de modificar el estado del cheque.')
       return
     }
     statusSubmitting.current = true
@@ -111,19 +114,24 @@ export function useDocumentForm(props: DocumentFormProps) {
     try {
       const result = await changeInstrumentStatus({ opId: document.id, instrumentId: instrument.id,
         expectedVersion: finance.version, status, settledOn, correctionReason: reason })
-      if (!result.ok) { setStatusErrors({ [instrument.id]: result.message }); return }
+      if (!result.ok) {
+        const dateError = result.errors?.settledOn
+        if (dateError) setStatusErrors({ [instrument.id]: { settledOn: dateError } })
+        else showError(result.message)
+        return
+      }
       const refreshed = await readDocumentContext(clientId)
-      if (!refreshed.ok) { setStatusErrors({ [instrument.id]: 'El estado cambió. Volvé a abrir el documento para actualizarlo.' }); return }
+      if (!refreshed.ok) { showError('El estado cambió. Volvé a abrir el documento para actualizarlo.'); return }
       const refreshedDocument = refreshed.datos.documentos.find((item) => item.id === document.id)
       const refreshedFinance = refreshed.datos.financeByDocument[document.id]
       if (!refreshedDocument || !refreshedFinance || refreshedDocument.financial_version !== result.datos.financialVersion) {
-        setStatusErrors({ [instrument.id]: 'El documento volvió a cambiar. Volvé a abrirlo antes de continuar.' })
+        showError('El documento volvió a cambiar. Volvé a abrirlo antes de continuar.')
         return
       }
       setContext(refreshed.datos)
-      finance.synchronize(refreshedFinance, result.datos.financialVersion)
+      finance.synchronize(refreshedFinance, result.datos.financialVersion, refreshedDocument.payment_condition ?? '')
     } catch {
-      setStatusErrors({ [instrument.id]: 'No se pudo confirmar el estado. Volvé a abrir el documento antes de reintentar.' })
+      showError('No se pudo confirmar el estado. Volvé a abrir el documento antes de reintentar.')
     } finally {
       statusSubmitting.current = false
       setStatusPending(false)
