@@ -19,6 +19,7 @@ import {
   databaseErrorMessage,
   type StatusForm,
 } from '@/lib/forms'
+import { EQUIPMENT_REVENUE_PATH } from '@/lib/finance/report'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 
@@ -113,6 +114,7 @@ export async function actualizarEquipment(
   if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/equipos')
+  revalidatePath(EQUIPMENT_REVENUE_PATH)
   return success('Equipo guardado')
 }
 
@@ -123,6 +125,7 @@ export async function changeStatusEquipment(id: string, activo: boolean): Promis
   const { error } = await supabase.from('equipos').update({ activo }).eq('id', id)
   if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/configuracion/equipos')
+  revalidatePath(EQUIPMENT_REVENUE_PATH)
 }
 
 export async function renameTemplate(

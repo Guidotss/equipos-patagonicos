@@ -121,6 +121,42 @@ describe('autoridad monetaria y auditoría financiera', () => {
     expect(await invoiceView()).toMatchObject({ cobrado: '350.00', saldo: '650.00' })
   })
 
+  it('versiona las fechas de factura y rechaza que un formulario anterior las sobrescriba', async () => {
+    const id = await invoice('100')
+    const update = (data: Record<string, Json | undefined>) => staff.client.rpc('actualizar_documento', {
+      p_id: id,
+      p_datos: { tipo: 'factura', monto: '100', tipo_comprobante: 'FA', notas: marker, ...data },
+    })
+    const dates = () => sql('select fecha::text, fecha_vencimiento::text from public.documentos where id = $1', [id])
+    const audit = () => sql(`select before_version::int, after_version::int,
+      before_financial -> 'issuedOn' as issued_before, after_financial -> 'issuedOn' as issued_after,
+      before_financial -> 'dueOn' as due_before, after_financial -> 'dueOn' as due_after
+      from public.financial_events where document_id = $1 and action = 'updated' order by after_version`, [id])
+
+    expect.soft((await update({ fecha: '2024-06-20' })).error).toMatchObject({ message: expect.stringContaining('Falta la versión financiera') })
+    expect((await update({ fecha: '2024-06-20', finance: { expectedVersion: 1 } })).error).toBeNull()
+    expect.soft(await version(id)).toBe('2')
+    expect.soft((await update({ fecha: '2024-06-21', finance: { expectedVersion: 1 } })).error).toMatchObject({ message: expect.stringContaining('cambió') })
+    expect.soft(await dates()).toEqual([{ fecha: '2024-06-20', fecha_vencimiento: null }])
+
+    expect.soft((await update({ fecha_vencimiento: '2024-07-20' })).error).toMatchObject({ message: expect.stringContaining('Falta la versión financiera') })
+    expect.soft((await update({ fecha_vencimiento: '2024-07-20', finance: { expectedVersion: 2 } })).error).toBeNull()
+    expect.soft((await update({ fecha_vencimiento: '2024-07-21', finance: { expectedVersion: 2 } })).error).toMatchObject({ message: expect.stringContaining('cambió') })
+    expect.soft(await dates()).toEqual([{ fecha: '2024-06-20', fecha_vencimiento: '2024-07-20' }])
+
+    expect.soft((await update({ fecha_vencimiento: '2024-07-20', notas: `${marker} editada` })).error).toBeNull()
+    expect.soft(await sql('select notas from public.documentos where id = $1', [id])).toEqual([{ notas: `${marker} editada` }])
+    expect.soft(await version(id)).toBe('3')
+    expect.soft(await audit()).toEqual([
+      { before_version: 1, after_version: 2, issued_before: null, issued_after: '2024-06-20', due_before: null, due_after: null },
+      { before_version: 2, after_version: 3, issued_before: '2024-06-20', issued_after: '2024-06-20', due_before: null, due_after: '2024-07-20' },
+    ])
+    expect.soft((await update({ fecha: null, finance: { expectedVersion: 3 } })).error).toBeNull()
+    expect.soft(await dates()).toEqual([{ fecha: null, fecha_vencimiento: null }])
+    expect.soft(await version(id)).toBe('4')
+    await sql('update public.documentos set notas = $2 where id = $1', [id, marker])
+  })
+
   it('distingue reparto monetario pendiente de equipo desconocido y fondos sin asignar', async () => {
     const firstBudget = await newBudget(staff.client, clientId, marker)
     const secondBudget = await newBudget(staff.client, clientId, marker)

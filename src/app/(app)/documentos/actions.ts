@@ -11,6 +11,7 @@ import { ErrorDocument, prepareUpload, registerDocument } from '@/lib/documents/
 import { errorsByPath, databaseErrorMessage } from '@/lib/forms'
 import type { Result } from '@/lib/result'
 import { changeDocumentLifecycle, changePaymentStatus, financialDocumentData } from '@/lib/finance/service'
+import { EQUIPMENT_REVENUE_PATH } from '@/lib/finance/report'
 import { documentLifecycleSchema, paymentStatusActionSchema } from '@/lib/finance/schemas'
 import { createClient } from '@/lib/supabase/server'
 
@@ -27,6 +28,7 @@ function fallo(error: unknown): Result<never> {
 function actualizarScreens() {
   revalidatePath('/presupuestos', 'layout')
   revalidatePath('/documentos', 'layout')
+  revalidatePath(EQUIPMENT_REVENUE_PATH)
   revalidatePath('/')
 }
 

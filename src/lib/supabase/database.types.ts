@@ -1202,6 +1202,9 @@ isOneToOne: false
 "reabrir_cotizacion":
 { Args: { "p_id": string }; Returns: undefined
                            },
+"read_equipment_revenue":
+{ Args: { "p_from"?: string,"p_page"?: number,"p_review"?: string,"p_to"?: string }; Returns: Json
+                           },
 "rechazar_cotizacion":
 { Args: { "p_id": string }; Returns: undefined
                            },
