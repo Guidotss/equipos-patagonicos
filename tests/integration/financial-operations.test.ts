@@ -106,19 +106,60 @@ describe('autoridad monetaria y auditoría financiera', () => {
     expect(finance[op.data!].paymentInstruments).toHaveLength(3)
     expect(finance[op.data!].paymentAllocations).toHaveLength(3)
     const invoiceView = async () => (await sql('select cobrado::text, saldo::text, credited_money::text, withheld_amount::text, pending_check_amount::text, available_amount::text from public.v_facturas where id = $1', [id]))[0]
-    const budgetViews = async () => sql('select id, facturado::text, saldo::text, balance_determinate from public.v_presupuestos where id = any($1::uuid[]) order by facturado desc', [[firstBudget, secondBudget]])
+    const budgetViews = async () => sql('select id, facturado::text, saldo::text, balance_determinate, display_status from public.v_presupuestos where id = any($1::uuid[]) order by facturado desc', [[firstBudget, secondBudget]])
     expect(await invoiceView()).toMatchObject({ cobrado: '150.00', saldo: '850.00', credited_money: '100.00', withheld_amount: '50.00', pending_check_amount: '200.00', available_amount: '650.00' })
     expect(await budgetViews()).toEqual([
-      { id: firstBudget, facturado: '800.00', saldo: '650.00', balance_determinate: true },
-      { id: secondBudget, facturado: '200.00', saldo: '200.00', balance_determinate: true },
+      { id: firstBudget, facturado: '800.00', saldo: '650.00', balance_determinate: true, display_status: 'en_curso' },
+      { id: secondBudget, facturado: '200.00', saldo: '200.00', balance_determinate: true, display_status: 'en_curso' },
     ])
     expect((await status(op.data!, check.id, 1, 'cleared', '2024-06-20')).error).toBeNull()
     expect(await invoiceView()).toMatchObject({ cobrado: '350.00', saldo: '650.00', pending_check_amount: '0' })
-    expect((await budgetViews())[1]).toMatchObject({ saldo: '0.00' })
+    expect((await budgetViews())[1]).toMatchObject({ saldo: '0.00', display_status: 'finalizado' })
+    const closed = await staff.client.rpc('buscar_presupuestos', { estado: 'finalizado', cliente: clientId })
+    expect(closed.error).toBeNull()
+    expect(closed.data?.map((item) => item.id)).toContain(secondBudget)
+    expect(closed.data?.map((item) => item.id)).not.toContain(firstBudget)
     expect((await staff.client.rpc('anular_documento', { p_id: op.data!, p_expected_version: 2, p_reason: 'Anulación de prueba' })).error).toBeNull()
     expect(await invoiceView()).toMatchObject({ cobrado: '0', saldo: '1000.00' })
+    expect((await budgetViews())[1]).toMatchObject({ display_status: 'en_curso' })
     expect((await staff.client.rpc('restaurar_documento', { p_id: op.data!, p_expected_version: 3, p_reason: 'Restauración de prueba' })).error).toBeNull()
     expect(await invoiceView()).toMatchObject({ cobrado: '350.00', saldo: '650.00' })
+    expect((await budgetViews())[1]).toMatchObject({ display_status: 'finalizado' })
+  })
+
+  it('deja pendiente el anticipo sin aplicar y el remito sin facturar, con cierre manual explícito', async () => {
+    const workId = await newBudget(staff.client, clientId, marker)
+    const state = async () => (await sql('select presupuesto_estado, display_status, paid_in_full from public.v_presupuestos where id = $1', [workId]))[0]
+    const billId = await invoice('100', { invoiceAllocations: [billed('100', workId)] }, [workId])
+    const entry = instrument('transfer', '100')
+    const payment = await register('orden_pago', '100', {
+      paymentInstruments: [entry],
+      paymentAllocations: [{ instrumentId: entry.id, budgetId: workId, invoiceId: null, amount: '100' }],
+    }, [workId])
+    expect(payment.error).toBeNull()
+    expect(await state()).toEqual({ presupuesto_estado: 'en_curso', display_status: 'en_curso', paid_in_full: false })
+    const [allocation] = await sql<{ id: string }>('select id from public.payment_allocations where instrument_id = $1', [entry.id])
+    expect((await edit(payment.data!, 'orden_pago', '100', {
+      expectedVersion: 1,
+      correctionReason: 'Aplicación del anticipo al comprobante',
+      paymentAllocations: [{ id: allocation.id, instrumentId: entry.id, budgetId: workId, invoiceId: billId, amount: '100' }],
+    })).error).toBeNull()
+    expect(await state()).toEqual({ presupuesto_estado: 'en_curso', display_status: 'finalizado', paid_in_full: true })
+
+    const file = await uploadFile(staff.client, clientId)
+    const deliveryNote = await staff.client.rpc('registrar_documento', {
+      p_datos: { cliente_id: clientId, tipo: 'remito', notas: marker, fecha: '2024-06-21' },
+      p_presupuestos: [workId],
+      p_archivos: [file],
+    })
+    expect(deliveryNote.error).toBeNull()
+    expect(await state()).toMatchObject({ display_status: 'en_curso', paid_in_full: false })
+    expect((await staff.client.rpc('cambiar_estado_presupuesto', { p_id: workId, p_estado: 'finalizado' })).error).toBeNull()
+    expect(await state()).toEqual({ presupuesto_estado: 'finalizado', display_status: 'finalizado', paid_in_full: false })
+    expect((await staff.client.rpc('cambiar_estado_presupuesto', { p_id: workId, p_estado: 'en_curso' })).error).toBeNull()
+    expect(await state()).toMatchObject({ display_status: 'en_curso' })
+    expect((await staff.client.rpc('cambiar_estado_presupuesto', { p_id: workId, p_estado: 'anulado', p_motivo: 'Prueba de estado' })).error).toBeNull()
+    expect(await state()).toMatchObject({ display_status: 'anulado' })
   })
 
   it('versiona las fechas de factura y rechaza que un formulario anterior las sobrescriba', async () => {

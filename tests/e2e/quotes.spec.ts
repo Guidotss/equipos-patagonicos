@@ -1606,7 +1606,7 @@ test.describe('flujo completo de una cotización', () => {
       .getByRole('button', { name: 'Aprobar', exact: true })
       .click()
     const finish = page.getByRole('group', {
-      name: `Esta cotización reemplaza a la N° ${numero}, que sigue en curso como presupuesto.`,
+      name: `¿El trabajo del presupuesto N° ${numero} ya está cobrado?`,
     })
     await finish.getByRole('button', { name: `Finalizar el presupuesto N° ${numero}` }).click()
     await expect(page.getByText(`Se finalizó el presupuesto N° ${numero}`)).toBeVisible()

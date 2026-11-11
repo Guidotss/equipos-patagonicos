@@ -191,11 +191,11 @@ export function QuoteActionConfirmation({
         <InlineConfirmation
           {...shared}
           tone="exito"
-          pregunta={`Esta cotización reemplaza a la N° ${confirmation.previous.numero}, que sigue en curso como presupuesto.`}
-          detail="Si el trabajo sigue con esta, finalizá el anterior."
+          pregunta={`¿El trabajo del presupuesto N° ${confirmation.previous.numero} ya está cobrado?`}
+          detail="Podés dejar pendiente el presupuesto anterior si todavía falta cobrarlo."
           textConfirm={`Finalizar el presupuesto N° ${confirmation.previous.numero}`}
           textPending={actions.currentAction === 'finalizar' ? 'Finalizando…' : undefined}
-          textCancelar="Dejarlo en curso"
+          textCancelar="Dejarlo pendiente"
           onConfirm={() => void actions.finish()}
         />
       )

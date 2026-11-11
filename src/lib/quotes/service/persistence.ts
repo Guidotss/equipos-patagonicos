@@ -38,12 +38,12 @@ export async function previousInProgress(
 ): Promise<{ id: string; numero: number } | null> {
   if (!replacesA) return null
   const { data, error } = await supabase
-    .from('cotizaciones')
-    .select('id, numero, estado, presupuesto_estado')
+    .from('v_presupuestos')
+    .select('id, numero, display_status')
     .eq('id', replacesA)
     .maybeSingle()
   if (error || !data) return null
-  return data.estado === 'aprobada' && data.presupuesto_estado === 'en_curso'
+  return data.display_status === 'en_curso' && data.id && data.numero !== null
     ? { id: data.id, numero: data.numero }
     : null
 }

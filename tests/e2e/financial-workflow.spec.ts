@@ -54,6 +54,8 @@ test.afterAll(async () => {
 test('guarda un anticipo con medio y destino explícitos', async ({ page }, testInfo) => {
   await iniciarSession(page)
   await page.goto(`/presupuestos/${budgetId}`)
+  const budgetHeader = page.locator('header').filter({ has: page.getByRole('heading', { name: /Presupuesto N°/ }) })
+  await expect(budgetHeader.getByText('Pendiente', { exact: true })).toHaveClass(/bg-blue-100/)
   await page.getByRole('link', { name: 'Agregar Orden de pago', exact: true }).click()
   await page.getByLabel('Número (opcional)').fill('OP-CIRCUITO')
   await page.getByLabel('Monto de la orden de pago').fill('120,00')
@@ -80,6 +82,7 @@ test('guarda un anticipo con medio y destino explícitos', async ({ page }, test
   await page.getByLabel('Monto de la orden de pago').fill('100,00')
   await page.getByRole('button', { name: 'Guardar documento' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
+  await expect(budgetHeader.getByText('Pendiente', { exact: true })).toHaveClass(/bg-amber-100/)
   const records = await withBase(async (db) => (await db.query<{ id: string; kind: string; status: string; amount: string; budget_id: string; invoice_id: string | null }>(`select i.id, i.kind, i.status, i.amount::text, a.budget_id, a.invoice_id
     from public.documentos d join public.payment_instruments i on i.op_id = d.id
     join public.payment_allocations a on a.instrument_id = i.id where d.cliente_id = $1 and d.numero = 'OP-CIRCUITO'`, [clientId])).rows)
@@ -110,10 +113,12 @@ test('guarda un anticipo con medio y destino explícitos', async ({ page }, test
   const applied = await withBase(async (db) => (await db.query<{ id: string; allocation_id: string; invoice_id: string; count: string }>(`select i.id, a.id as allocation_id, a.invoice_id, count(*) over()::text from public.payment_instruments i
     join public.payment_allocations a on a.instrument_id = i.id where i.op_id = (select id from public.documentos where cliente_id = $1 and numero = 'OP-CIRCUITO')`, [clientId])).rows)
   expect(applied).toEqual([{ id: records[0].id, allocation_id: expect.any(String), invoice_id: invoiceId, count: '1' }])
+  await expect(budgetHeader.getByText('Finalizado', { exact: true })).toHaveClass(/bg-green-100/)
   const invoiceRow = page.locator(`[data-documento="${invoiceId}"]`)
   await invoiceRow.getByRole('button', { name: 'Anular', exact: true }).click()
   await invoiceRow.getByLabel('Motivo').fill('Factura reemplazada')
   await invoiceRow.getByRole('button', { name: 'Confirmar anulación' }).click()
+  await expect(budgetHeader.getByText('Pendiente', { exact: true })).toHaveClass(/bg-amber-100/)
   await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
   await page.getByLabel('Número (opcional)').fill('FA-REEMPLAZO')
   await page.getByLabel('Monto total con IVA').fill('100')

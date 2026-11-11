@@ -1529,7 +1529,13 @@ select c.id, c.numero, c.origen, c.formato, c.fecha, c.fecha_aprobacion, c.asunt
   w.payment_count as linked_unallocated_payment_count, w.payment_amount as linked_unallocated_payment_amount,
   w.instrument_count as linked_unallocated_instrument_count, w.instrument_amount as linked_unallocated_instrument_amount,
   w.recognized_amount as linked_unallocated_recognized_amount,
-  w.unclassified_amount as linked_unclassified_instrument_amount
+  w.unclassified_amount as linked_unclassified_instrument_amount,
+  completion.paid_in_full,
+  case
+    when c.presupuesto_estado = 'anulado' then 'anulado'
+    when c.presupuesto_estado = 'finalizado' or completion.paid_in_full then 'finalizado'
+    else c.presupuesto_estado
+  end as display_status
 from public.cotizaciones c join public.clientes cl on cl.id = c.cliente_id
 left join billed b on b.budget_id = c.id
 left join historical h on h.budget_id = c.id
@@ -1578,10 +1584,27 @@ cross join lateral (
       where i.unresolved_relevant and i.status = 'legacy_unclassified' and i.unallocated_amount > 0
         and exists(select 1 from public.documento_presupuestos dp where dp.cotizacion_id = c.id and dp.documento_id = i.op_id)) as unclassified_amount
 ) w
+cross join lateral (
+  -- Los anticipos son crédito del trabajo, pero no cancelan facturas hasta su aplicación.
+  select coalesce(b.amount, 0) > 0
+    and w.invoice_count + w.payment_count + w.instrument_count = 0
+    and t.assigned_balance + coalesce(p.unapplied_advances, 0) + coalesce(h.voided_settled, 0) <= 0
+    and coalesce(p.pending_check_amount, 0) = 0
+    and coalesce(d.remitos_sin_factura, 0) = 0 as paid_in_full
+) completion
 where c.estado = 'aprobada';
 
 comment on column public.v_presupuestos.assigned_balance is 'Saldo solo de importes atribuidos; puede ser acreedor y no incluye advertencias de vínculos.';
 comment on column public.v_presupuestos.linked_unallocated_invoice_amount is 'Advertencia contextual, no aditiva entre trabajos: una factura compartida puede figurar en varios.';
+
+create or replace function public.buscar_presupuestos(texto text default '', estado text default '', cliente uuid default null)
+returns setof public.v_presupuestos language sql stable security invoker set search_path = '' as $$
+  select p.* from public.v_presupuestos p
+  where (coalesce(estado, '') = '' or p.display_status = estado)
+    and (cliente is null or p.cliente_id = cliente)
+    and (coalesce(texto, '') = '' or extensions.unaccent(lower(p.cliente_razon_social || ' ' || p.asunto || ' ' || p.numero::text))
+      like '%' || replace(replace(replace(extensions.unaccent(lower(texto)), '\', '\\'), '%', '\%'), '_', '\_') || '%');
+$$;
 
 create view private.equipment_revenue_allocations as
 select a.invoice_id, f.numero, f.fecha, a.equipment_id, a.equipment_name, a.amount,

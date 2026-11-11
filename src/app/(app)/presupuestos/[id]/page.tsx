@@ -6,15 +6,14 @@ import { notFound } from 'next/navigation'
 import { BarCrumbs, Content, HeaderFicha } from '@/components/app-shell/header'
 import { DocumentForm } from '@/components/documents/document-form'
 import { ActionsBudget } from '@/components/budgets/actions-budget'
+import { BudgetStatus } from '@/components/budgets/budget-status'
 import { SectionsDocuments } from '@/components/budgets/sections-documents'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Pill } from '@/components/ui/pill'
 import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/schemas'
 import { contextoDocument } from '@/lib/documents/queries'
 import { FinancialSummary } from '@/components/budgets/financial-summary'
 import { unresolvedDocuments } from '@/lib/finance/unresolved-documents'
 import { historicalAdvances } from '@/lib/finance/historical-advances'
-import { STATUSES_BUDGET } from '@/lib/budgets/list'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 
@@ -70,19 +69,7 @@ export default async function BudgetPage({
       <HeaderFicha
         titulo={`Presupuesto N° ${budget.numero}`}
         recuadro={<FileText className="size-10 text-primary" />}
-        estado={
-          <Pill
-            tone={
-              budget.presupuesto_estado === 'en_curso'
-                ? 'info'
-                : budget.presupuesto_estado === 'finalizado'
-                  ? 'exito'
-                  : 'neutro'
-            }
-          >
-            {STATUSES_BUDGET[budget.presupuesto_estado as keyof typeof STATUSES_BUDGET]}
-          </Pill>
-        }
+        estado={<BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} />}
         datos={
           <>
             <Link href={`/clientes/${budget.cliente_id}`} className="hover:underline">
@@ -92,7 +79,7 @@ export default async function BudgetPage({
             {budget.asunto}
           </>
         }
-        actions={<ActionsBudget id={id} estado={budget.presupuesto_estado} />}
+        actions={<ActionsBudget id={id} status={budget.presupuesto_estado} paidInFull={budget.paid_in_full === true} />}
       />
       <Content>
         {budget.presupuesto_motivo ? (

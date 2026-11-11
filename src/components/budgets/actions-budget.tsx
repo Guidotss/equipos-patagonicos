@@ -7,18 +7,22 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Field } from '@/components/form/field'
 
-export function ActionsBudget({ id, estado }: { id: string; estado: string | null }) {
-  const [destination, setDestination] = useState<string | null>(null)
-  const [motivo, setReason] = useState('')
+type BudgetTransition = 'en_curso' | 'finalizado' | 'anulado'
+
+export function ActionsBudget({ id, status, paidInFull }: { id: string; status: string | null; paidInFull: boolean }) {
+  const [destination, setDestination] = useState<BudgetTransition | null>(null)
+  const [reason, setReason] = useState('')
   const [error, setError] = useState('')
   const [pending, startTransition] = useTransition()
-  const inCurso = useRef(false)
+  const submitting = useRef(false)
+  const open = status === 'en_curso'
+  const cancelled = status === 'anulado'
   function change() {
-    if (inCurso.current) return
-    inCurso.current = true
+    if (!destination || submitting.current) return
+    submitting.current = true
     startTransition(async () => {
       try {
-        const result = await changeStatusBudget({ id, estado: destination, motivo })
+        const result = await changeStatusBudget({ id, estado: destination, motivo: reason })
         if (!result.ok) {
           setError(result.message)
           return
@@ -29,7 +33,7 @@ export function ActionsBudget({ id, estado }: { id: string; estado: string | nul
       } catch {
         setError('No se pudo cambiar el estado. Reintentá.')
       } finally {
-        inCurso.current = false
+        submitting.current = false
       }
     })
   }
@@ -41,13 +45,14 @@ export function ActionsBudget({ id, estado }: { id: string; estado: string | nul
             destination === 'anulado'
               ? '¿Anular este presupuesto?'
               : destination === 'finalizado'
-                ? '¿Finalizar este presupuesto?'
-                : '¿Volver a ponerlo en curso?'
+                ? '¿Confirmás que el trabajo está cobrado?'
+                : cancelled ? '¿Restaurar este presupuesto?' : '¿Quitar el cierre manual?'
           }
+          detail={destination === 'en_curso' && !cancelled ? 'El estado volverá a depender del cobro registrado.' : undefined}
           textConfirm={destination === 'anulado' ? 'Confirmar anulación' : 'Confirmar'}
           pendiente={pending}
           tone={destination === 'anulado' ? 'peligro' : 'aviso'}
-          confirmDeshabilitado={destination === 'anulado' && !motivo.trim()}
+          confirmDeshabilitado={destination === 'anulado' && !reason.trim()}
           onConfirm={change}
           onCancelar={() => {
             setDestination(null)
@@ -58,8 +63,8 @@ export function ActionsBudget({ id, estado }: { id: string; estado: string | nul
             <Field id="motivo-anulacion" label="Motivo de anulación">
               <Textarea
                 id="motivo-anulacion"
-                value={motivo}
-                onChange={(evento) => setReason(evento.target.value)}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
                 maxLength={2000}
                 disabled={pending}
                 required
@@ -69,10 +74,12 @@ export function ActionsBudget({ id, estado }: { id: string; estado: string | nul
         </InlineConfirmation>
       ) : (
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setDestination(estado === 'en_curso' ? 'finalizado' : 'en_curso')}>
-            {estado === 'en_curso' ? 'Finalizar' : 'Volver a en curso'}
-          </Button>
-          {estado !== 'anulado' ? (
+          {!open || !paidInFull ? (
+            <Button variant="outline" onClick={() => setDestination(open ? 'finalizado' : 'en_curso')}>
+              {open ? 'Finalizar' : cancelled ? 'Restaurar presupuesto' : 'Quitar cierre manual'}
+            </Button>
+          ) : null}
+          {!cancelled ? (
             <Button variant="destructive" onClick={() => setDestination('anulado')}>
               Anular presupuesto
             </Button>

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const STATUSES_BUDGET = { en_curso: 'En curso', finalizado: 'Finalizado', anulado: 'Anulado' } as const
+export const STATUSES_BUDGET = { en_curso: 'Pendiente', finalizado: 'Finalizado', anulado: 'Anulado' } as const
 export const PER_PAGE = 25
 const first = (value: unknown) => (Array.isArray(value) ? value[0] : value)
 const schema = z.object({

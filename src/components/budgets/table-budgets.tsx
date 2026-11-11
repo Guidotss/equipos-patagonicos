@@ -2,13 +2,12 @@ import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { RowListing } from '@/components/listings/row-listing'
 import { TableListing } from '@/components/listings/table-listing'
-import { Pill } from '@/components/ui/pill'
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatShortDate } from '@/lib/format/dates'
 import { formatFinancialAmount } from '@/lib/finance/amounts'
-import { STATUSES_BUDGET } from '@/lib/budgets/list'
 import type { Database } from '@/lib/supabase/database.types'
 import { cn } from '@/lib/utils'
+import { BudgetStatus } from './budget-status'
 
 type RowBudget = Database['public']['Functions']['buscar_presupuestos']['Returns'][number] & { exact_balance: string | null }
 
@@ -60,7 +59,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
                   <p className="mt-1 text-sm leading-5 text-muted-foreground">{budget.asunto || 'Sin trabajo indicado'}</p>
                   <DocumentsBudget presupuesto={budget} className="mt-3 @min-[52rem]/listado:hidden" />
                 </TableCell>
-                <TableCell><StatusBudget estado={budget.presupuesto_estado} /></TableCell>
+                <TableCell><BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} /></TableCell>
                 <TableCell className="hidden @min-[52rem]/listado:table-cell">
                   <DocumentsBudget presupuesto={budget} column />
                 </TableCell>
@@ -92,7 +91,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
                   <p className="font-semibold text-primary tabular-nums">N° {budget.numero}</p>
                   <p className="mt-1 text-xs text-muted-foreground tabular-nums">{dateApproval(budget)}</p>
                 </div>
-                <StatusBudget estado={budget.presupuesto_estado} />
+                <BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} />
               </div>
               <p className="font-medium leading-6 [overflow-wrap:anywhere]">{budget.cliente_razon_social}</p>
               <p className="mt-1 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{budget.asunto || 'Sin trabajo indicado'}</p>
@@ -131,11 +130,6 @@ function DocumentsBudget({ presupuesto: budget, column = false, className }: {
       ))}
     </dl>
   )
-}
-
-function StatusBudget({ estado }: { estado: string | null }) {
-  const tone = estado === 'en_curso' ? 'info' : estado === 'finalizado' ? 'exito' : 'neutro'
-  return <Pill tone={tone}>{STATUSES_BUDGET[estado as keyof typeof STATUSES_BUDGET] ?? 'Sin estado'}</Pill>
 }
 
 function dateApproval(budget: RowBudget) {
