@@ -1,5 +1,6 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
 import { ActionsForm, SheetForm } from '@/components/form/structure-form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoaderCircle } from 'lucide-react'
@@ -21,8 +22,14 @@ import { PaymentInstrumentsSection } from './payment-instruments-section'
 import { InvoiceAllocationsSection } from './invoice-allocations-section'
 import { useDocumentForm } from './use-document-form'
 
+const subscribeToFormReadiness = () => () => undefined
+const isBrowserFormReady = () => true
+const isServerFormReady = () => false
+
 export function DocumentForm(props: DocumentFormProps) {
   const { options, budgetId = '', document, filesExisting = [], quote } = props
+  // Las selecciones necesitan sus eventos de React antes de aceptar cambios.
+  const ready = useSyncExternalStore(subscribeToFormReadiness, isBrowserFormReady, isServerFormReady)
   const form = useDocumentForm(props)
   const {
     pending,
@@ -69,7 +76,7 @@ export function DocumentForm(props: DocumentFormProps) {
           </AlertDescription>
         </Alert>
       ) : null}
-      <fieldset disabled={pending || loading || statusPending} className="min-w-0">
+      <fieldset disabled={!ready || pending || loading || statusPending} className="min-w-0">
         <legend className="sr-only">Contenido del documento</legend>
         <SheetForm>
           <DocumentBudgetTypeSection
@@ -134,7 +141,7 @@ export function DocumentForm(props: DocumentFormProps) {
         back={back}
         textButton={document ? 'Guardar cambios' : quote ? 'Aprobar y guardar OC' : 'Guardar documento'}
         pendiente={pending}
-        disabled={statusPending || uploading || loading || !clientId || !contextReady || (values.tipo === 'remito' && equipment.ambiguous)}
+        disabled={!ready || statusPending || uploading || loading || !clientId || !contextReady || (values.tipo === 'remito' && equipment.ambiguous)}
       >
         {uploading || loading ? (
           <span role="status" className="flex items-center gap-2 text-sm text-muted-foreground">

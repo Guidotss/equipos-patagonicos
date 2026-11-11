@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Route } from '@playwright/test'
 import { validateEnvTests } from '../../scripts/test-env.mjs'
 import { withBase } from './database'
 import { iniciarSession } from './helpers'
@@ -292,10 +292,26 @@ test('conserva la evidencia histórica y explica el anticipo al anular la factur
     } catch (error) { await db.query('rollback'); throw error }
   })
   await iniciarSession(page)
-  await page.goto(`/documentos/${fixture.invoice}`)
-  await expect(page.getByLabel('Grúa')).toHaveValue('unknown')
+  const scripts = '**/_next/static/**/*.js'
+  const { promise: hydrationAllowed, resolve: allowHydration } = Promise.withResolvers<void>()
+  const pauseHydration = async (route: Route) => {
+    await hydrationAllowed
+    await route.continue()
+  }
+  const equipment = page.getByLabel('Grúa', { exact: true })
+  await page.route(scripts, pauseHydration)
+  try {
+    await page.goto(`/documentos/${fixture.invoice}`, { waitUntil: 'commit' })
+    await expect(equipment).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
+  } finally {
+    allowHydration()
+  }
+  await expect(equipment).toBeEnabled()
+  await page.unroute(scripts, pauseHydration)
+  await expect(equipment).toHaveValue('unknown')
   await expect(page.getByLabel('Cancelación histórica atribuida')).toHaveValue('100.00')
-  await page.getByLabel('Grúa').selectOption(equipmentIds[1])
+  await equipment.selectOption(equipmentIds[1])
   await page.getByLabel('Motivo (cuando corresponda)').fill('Identificación por documentación')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${fixture.budget}$`))
