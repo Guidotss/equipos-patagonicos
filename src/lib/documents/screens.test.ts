@@ -44,6 +44,17 @@ describe('entrada de documentos desde el navegador', () => {
       }).success,
     ).toBe(false)
   })
+  it('solo admite editar una factura cuando se envía la lista de presupuestos vacía', () => {
+    const noBudgets = { ...entrada(), budgets: [] }
+    const invoice = { ...noBudgets, datos: { ...noBudgets.datos, tipo: 'factura', tipo_comprobante: 'FA', monto: '100' } }
+    expect(schemaSaveDocument.safeParse(invoice).success).toBe(false)
+    expect(schemaSaveDocument.safeParse({ ...invoice, id: crypto.randomUUID(), archivos: [] }).success).toBe(true)
+    for (const tipo of ['orden_compra', 'remito', 'orden_pago']) {
+      expect(schemaSaveDocument.safeParse({
+        ...noBudgets, id: crypto.randomUUID(), datos: { ...noBudgets.datos, tipo, monto: tipo === 'orden_pago' ? '100' : '' },
+      }).error?.issues).toContainEqual(expect.objectContaining({ path: ['budgets'] }))
+    }
+  })
   it('rechaza año cero y aplicaciones sin monto o con más decimales de los que admite la base', () => {
     expect(
       schemaSaveDocument.safeParse({ ...entrada(), datos: { ...entrada().datos, fecha: '0000-01-01' } }).success,

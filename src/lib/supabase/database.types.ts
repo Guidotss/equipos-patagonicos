@@ -973,7 +973,7 @@ isOneToOne: false
 { Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
                            },
 "actualizar_documento_con_archivos":
-{ Args: { "p_aplicaciones": Json,"p_archivos"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos": (string)[],"p_quitar"?: (string)[],"p_remitos": (string)[] }; Returns: undefined
+{ Args: { "p_aplicaciones"?: Json,"p_archivos"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_quitar"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
                            },
 "actualizar_seguimiento_cotizacion":
 { Args: { "p_fecha"?: string,"p_id": string,"p_notas": string,"p_updated_at": string }; Returns: undefined

@@ -17,7 +17,7 @@ export const schemaSaveDocument = z
   .object({
     id: z.uuid().optional(),
     clientId: z.uuid(),
-    budgets: ids.min(1, 'Elegí al menos un presupuesto'),
+    budgets: ids,
     datos: schemaDocument,
     finance: schemaFinance.optional(),
     paymentCondition: z.string().max(200, 'Máximo 200 caracteres').optional(),
@@ -43,6 +43,9 @@ export const schemaSaveDocument = z
     cotizacion: z.object({ id: z.uuid(), version: z.iso.datetime({ offset: true }) }).optional(),
   })
   .superRefine((entrada, ctx) => {
+    if (!entrada.budgets.length && (!entrada.id || entrada.datos.tipo !== 'factura')) {
+      ctx.addIssue({ code: 'custom', path: ['budgets'], message: 'Elegí al menos un presupuesto' })
+    }
     if (entrada.finance !== undefined && entrada.aplicaciones !== undefined) {
       ctx.addIssue({ code: 'custom', path: ['finance'], message: 'Usá la distribución financiera sin aplicaciones anteriores simultáneas' })
     }

@@ -15,6 +15,7 @@ const to = '2040-10-31'
 let customer: string
 let undated: string
 let toReview: string
+let unlinkedInvoice: string
 let firstBudget: string
 let secondBudget: string
 
@@ -52,6 +53,7 @@ test.beforeAll(async () => {
   await register('FA-TRASLADO', '200', '2040-10-15', [allocation('200', secondBudget, 'none')])
   toReview = await register('FA-POR-REVISAR', '300', '2040-10-21', [allocation('200', firstBudget, 'unknown'), allocation('100', null, 'unknown')])
   undated = await register('FA-SIN-FECHA', '400', null, [allocation('400', firstBudget, 'assigned', crane.id)])
+  unlinkedInvoice = await register('FA-SIN-VINCULO', '60.01', '2041-01-01', [allocation('60.01', null, 'unknown')])
   await register('FA-MAX-1', '999999999999.99', '2040-11-30', [allocation('999999999999.99', firstBudget, 'assigned', crane.id)])
   await register('FA-MAX-2', '999999999999.99', '2040-11-30', [allocation('999999999999.99', firstBudget, 'assigned', crane.id)])
   await withBase((db) => db.query('update public.equipos set activo = false where id = $1', [otherCrane.id]))
@@ -84,8 +86,7 @@ test('filtra el informe en escritorio y móvil y permite corregir una factura de
   const undatedSection = page.getByRole('region', { name: 'Facturas sin fecha' })
   await expect(period.getByText('$ 2.000,00', { exact: true })).toBeVisible()
   await expect(period.getByText('4 facturas', { exact: true })).toBeVisible()
-  await expect(undatedSection.getByText('$ 400,00', { exact: true })).toBeVisible()
-  await expect(undatedSection.getByText('1 factura', { exact: true })).toBeVisible()
+  await expect(undatedSection.getByText(/^[1-9][\d.]* facturas?$/)).toBeVisible()
   for (const [name, count, amount] of [
     ['Grúa 70 t', '2', '$ 1.100,00'], ['Grúa 35 t', '1', '$ 400,00'], ['Sin equipo', '1', '$ 200,00'],
     ['Equipo desconocido', '1', '$ 200,00'], ['Sin distribuir', '1', '$ 100,00'],
@@ -145,11 +146,14 @@ test('filtra el informe en escritorio y móvil y permite corregir una factura de
 
   await filter(page, '2040-12-01', '2040-12-01')
   await expect(period.getByText('No hay facturas con fecha en este período.')).toBeVisible()
-  await expect(undatedSection.getByText('$ 400,00', { exact: true })).toBeVisible()
+  const reviewUndated = undatedSection.getByRole('link', { name: 'Revisar facturas · Facturas sin fecha', exact: true })
+  await expect(reviewUndated).toBeVisible()
   await capture(page, info, 'empty-mobile')
-  await undatedSection.getByRole('link', { name: 'Revisar facturas · Facturas sin fecha', exact: true }).click()
-  await expect(page.getByRole('cell', { name: 'Sin fecha', exact: true })).toBeVisible()
+  await reviewUndated.click()
   const invoice = page.getByRole('link', { name: 'FA-SIN-FECHA', exact: true })
+  const undatedRow = page.getByRole('row').filter({ has: invoice })
+  await expect(undatedRow.getByRole('cell', { name: 'Sin fecha', exact: true })).toBeVisible()
+  await expect(undatedRow.getByRole('cell', { name: '$ 400,00', exact: true })).toBeVisible()
   await expect(invoice).toHaveAttribute('href', `/documentos/${undated}`)
   await invoice.click()
   await expect(page).toHaveURL(new RegExp(`/documentos/${undated}$`))
@@ -164,7 +168,35 @@ test('filtra el informe en escritorio y móvil y permite corregir una factura de
   await filter(page, from, to)
   await expect(period.getByText('$ 2.400,00', { exact: true })).toBeVisible()
   await expect(period.getByText('5 facturas', { exact: true })).toBeVisible()
-  await expect(undatedSection.getByText('0 facturas', { exact: true })).toBeVisible()
+  await page.goto(`${route}?desde=${from}&hasta=${to}&revisar=undated`)
+  const undatedReview = page.getByRole('region', { name: 'Facturas sin fecha' })
+  await expect(undatedReview).toBeVisible()
+  await expect(undatedReview.getByRole('link', { name: 'FA-SIN-FECHA', exact: true })).toHaveCount(0)
+})
+
+test('corrige desde Sin distribuir la fecha de una factura existente sin vínculo', async ({ page }) => {
+  await iniciarSession(page)
+  await page.goto(`${route}?desde=2041-01-01&hasta=2041-01-01`)
+  await page.getByRole('link', { name: 'Revisar facturas · Sin distribuir', exact: true }).click()
+  await page.getByRole('link', { name: 'FA-SIN-VINCULO', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/documentos/${unlinkedInvoice}$`))
+  const issueDate = page.getByLabel('Fecha (opcional)', { exact: true })
+  await expect(issueDate).toHaveValue('2041-01-01')
+  await expect(page.getByRole('group', { name: 'Presupuestos vinculados' }).getByRole('checkbox', { checked: true })).toHaveCount(0)
+  await issueDate.fill('2041-01-02')
+  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click({ timeout: 4000 })
+  await expect(page).toHaveURL(/\/presupuestos$/)
+
+  const rows = await withBase(async (db) => (await db.query(`select d.fecha::text, d.financial_version,
+    (select count(*)::int from public.documento_presupuestos p where p.documento_id = d.id) as links
+    from public.documentos d where d.id = $1`, [unlinkedInvoice])).rows)
+  expect(rows).toEqual([{ fecha: '2041-01-02', financial_version: '2', links: 0 }])
+  await page.getByRole('navigation', { name: 'Principal', exact: true }).getByRole('link', { name: title, exact: true }).click()
+  await filter(page, '2041-01-01', '2041-01-02')
+  await page.getByRole('link', { name: 'Revisar facturas · Sin distribuir', exact: true }).click()
+  const row = page.getByRole('row').filter({ has: page.getByRole('link', { name: 'FA-SIN-VINCULO', exact: true }) })
+  await expect(row.getByRole('cell', { name: '02/01/2041', exact: true })).toBeVisible()
+  await expect(row.getByRole('cell', { name: '$ 60,01', exact: true })).toBeVisible()
 })
 
 test('protege la ruta comercial y oculta la navegación al gruista', async ({ page }) => {

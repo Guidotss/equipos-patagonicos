@@ -53,7 +53,9 @@ export function useDocumentForm(props: DocumentFormProps) {
   const [initialForm] = useState(() => JSON.stringify({ values, deliveryNotes, selectedBudgetIds }))
   const dirty = finance.dirty || newFiles.length > 0 || remove.length > 0 || uploading ||
     JSON.stringify({ values, deliveryNotes, selectedBudgetIds }) !== initialForm
-  const contextReady = Boolean(quote) || hasSelectedBudgetContext(context, selectedBudgetIds)
+  const unlinkedInvoice = document?.tipo === 'factura' && values.tipo === 'factura' &&
+    !linkedBudgetIds.length && !budgetId && !selectedBudgetIds.length
+  const contextReady = Boolean(quote) || unlinkedInvoice || hasSelectedBudgetContext(context, selectedBudgetIds)
   const equipment = deliveryNoteEquipment(context, selectedBudgetIds, document)
   const equipmentLabel = contextReady
     ? equipment.ambiguous ? 'Equipos diferentes' : equipment.name
@@ -174,7 +176,7 @@ export function useDocumentForm(props: DocumentFormProps) {
           setErrors(result.errors ?? {})
           return
         }
-        router.push(`/presupuestos/${result.datos.presupuesto}`)
+        router.push(result.datos.presupuesto ? `/presupuestos/${result.datos.presupuesto}` : '/presupuestos')
         router.refresh()
       } catch {
         setMessage('No se pudo guardar. Tus datos y archivos siguen acá para reintentar.')

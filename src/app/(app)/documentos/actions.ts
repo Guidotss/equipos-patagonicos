@@ -64,7 +64,7 @@ export async function readDocumentContext(clientId: unknown) {
   }
 }
 
-export async function saveDocument(entrada: unknown): Promise<Result<{ id: string; presupuesto: string }>> {
+export async function saveDocument(entrada: unknown): Promise<Result<{ id: string; presupuesto: string | null }>> {
   await requireStaff()
   const validado = schemaSaveDocument.safeParse(entrada)
   if (!validado.success)
@@ -76,15 +76,21 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
     if (id) {
       const { data: document, error: query } = await supabase
         .from('documentos')
-        .select('cliente_id')
+        .select('cliente_id, tipo')
         .eq('id', id)
         .single()
       if (query) throw query
       if (document.cliente_id !== datos.clientId) throw new ErrorDocument('El documento pertenece a otro cliente')
+      if (!datos.budgets.length) {
+        const { data: existingLinks, error: linkError } = await supabase.from('documento_presupuestos')
+          .select('cotizacion_id').eq('documento_id', id).limit(1)
+        if (linkError) throw linkError
+        if (document.tipo !== 'factura' || existingLinks.length) throw new ErrorDocument('Elegí al menos un presupuesto')
+      }
       const { error } = await supabase.rpc('actualizar_documento_con_archivos', {
         p_id: id,
         p_datos: financialDocumentData(datos.datos, datos.finance, datos.paymentCondition),
-        p_presupuestos: datos.budgets,
+        ...(datos.budgets.length ? { p_presupuestos: datos.budgets } : {}),
         p_remitos: datos.datos.tipo === 'factura' ? datos.remitos : [],
         p_aplicaciones: datos.finance !== undefined ? null : datos.datos.tipo === 'orden_pago' ? datos.aplicaciones ?? null : [],
         p_archivos: datos.archivos,
@@ -107,7 +113,7 @@ export async function saveDocument(entrada: unknown): Promise<Result<{ id: strin
       })
     }
     actualizarScreens()
-    return { ok: true, datos: { id, presupuesto: datos.budgets[0] } }
+    return { ok: true, datos: { id, presupuesto: datos.budgets[0] ?? null } }
   } catch (error) {
     return fallo(error)
   }
