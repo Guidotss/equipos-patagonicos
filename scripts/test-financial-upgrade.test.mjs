@@ -11,7 +11,7 @@ import { runTests } from './test-runner.mjs';
 import { withUpgradeDatabase } from './financial-upgrade-fixtures.mjs';
 import { crearEnvTests } from './test-env.mjs';
 
-const migrationNames = ['20261104120000_financial_allocations.sql', '20261104121000_financial_operations.sql', '20261104122000_financial_views.sql'];
+const migrationNames = ['20261104120000_financial_allocations.sql', '20261104121000_financial_operations.sql', '20261104122000_financial_views.sql', '20261111150000_crane_operator_equipment_selection.sql'];
 const localStatus = { API_URL: 'http://127.0.0.1:55321', DB_URL: 'postgresql://postgres:postgres@127.0.0.1:55322/postgres', PUBLISHABLE_KEY: 'publica-sintetica', SECRET_KEY: 'secreta-sintetica' };
 
 async function scenario(callback, failure) {

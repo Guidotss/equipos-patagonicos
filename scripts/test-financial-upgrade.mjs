@@ -5,7 +5,12 @@ import { validateEnvTests } from './test-env.mjs';
 import { runTests } from './test-runner.mjs';
 import { seedLegacyFinancialData } from './financial-upgrade-fixtures.mjs';
 
-const financialMigration = /^(20261104120000|20261104121000|20261104122000)_.+\.sql$/;
+const firstFinancialVersion = '20261104120000';
+
+function isUpgradeMigration(name) {
+  const version = /^(\d{14})_.+\.sql$/.exec(name)?.[1];
+  return version !== undefined && version >= firstFinancialVersion;
+}
 
 async function assertOwnedCopy(temp, projectId) {
   if (!path.basename(temp).startsWith('.test-run-')) throw new Error('Se requiere una copia temporal propia del runner');
@@ -19,8 +24,8 @@ export function createUpgradeHooks({ seed = seedLegacyFinancialData } = {}) {
     async afterProjectCopy({ temp, projectId }) {
       await assertOwnedCopy(temp, projectId);
       const directory = path.join(temp, 'supabase/migrations');
-      migrations = (await readdir(directory)).filter((name) => financialMigration.test(name)).sort();
-      if (!migrations.some((name) => name.startsWith('20261104120000_'))) throw new Error('Falta la primera migración financiera');
+      migrations = (await readdir(directory)).filter(isUpgradeMigration).sort();
+      if (!migrations.some((name) => name.startsWith(`${firstFinancialVersion}_`))) throw new Error('Falta la primera migración financiera');
       await mkdir(path.join(temp, 'financial-migrations'));
       for (const name of migrations) await rename(path.join(directory, name), path.join(temp, 'financial-migrations', name));
     },
