@@ -954,7 +954,7 @@ isOneToOne: false
                   ]
                 },"v_presupuestos": {
                   Row: {
-                    "assigned_balance": number | null,"asunto": string,"balance_determinate": boolean | null,"cliente_id": string,"cliente_razon_social": string,"credited_money": number | null,"facturado": number | null,"facturas": number | null,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"formato": string,"id": string,"legacy_settled_amount": number | null,"linked_unallocated_instrument_amount": number | null,"linked_unallocated_instrument_count": number | null,"linked_unallocated_invoice_amount": number | null,"linked_unallocated_invoice_count": number | null,"linked_unallocated_payment_amount": number | null,"linked_unallocated_payment_count": number | null,"linked_unallocated_recognized_amount": number | null,"linked_unclassified_instrument_amount": number | null,"numero": number,"ordenes_compra": number | null,"ordenes_pago": number | null,"origen": string,"pending_check_amount": number | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"remitos": number | null,"remitos_sin_factura": number | null,"saldo": number | null,"unapplied_advances": number | null,"withheld_amount": number | null
+                    "assigned_balance": number | null,"asunto": string,"balance_determinate": boolean | null,"cliente_id": string,"cliente_razon_social": string,"credited_money": number | null,"display_status": string | null,"facturado": number | null,"facturas": number | null,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"formato": string,"id": string,"legacy_settled_amount": number | null,"linked_unallocated_instrument_amount": number | null,"linked_unallocated_instrument_count": number | null,"linked_unallocated_invoice_amount": number | null,"linked_unallocated_invoice_count": number | null,"linked_unallocated_payment_amount": number | null,"linked_unallocated_payment_count": number | null,"linked_unallocated_recognized_amount": number | null,"linked_unclassified_instrument_amount": number | null,"numero": number,"ordenes_compra": number | null,"ordenes_pago": number | null,"origen": string,"paid_in_full": boolean | null,"pending_check_amount": number | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"remitos": number | null,"remitos_sin_factura": number | null,"saldo": number | null,"unapplied_advances": number | null,"withheld_amount": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -1070,6 +1070,7 @@ isOneToOne: false
 "cliente_id": string,
 "cliente_razon_social": string,
 "credited_money": number | null,
+"display_status": string | null,
 "facturado": number | null,
 "facturas": number | null,
 "fecha": string,
@@ -1090,6 +1091,7 @@ isOneToOne: false
 "ordenes_compra": number | null,
 "ordenes_pago": number | null,
 "origen": string,
+"paid_in_full": boolean | null,
 "pending_check_amount": number | null,
 "presupuesto_estado": string | null,
 "presupuesto_motivo": string,

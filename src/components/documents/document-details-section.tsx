@@ -33,8 +33,11 @@ export function DocumentDetailsSection({
         <Input
           id={name}
           value={name === 'monto' ? displayedAmount : values[name]}
-          onChange={(event) => changeField(name, event.target.value)}
-          onFocus={name === 'monto' ? () => setEditingAmount(true) : undefined}
+          onChange={(event) => {
+            // Mantener el texto al tomar el foco para no perder la selección ni mover el cursor.
+            if (name === 'monto') setEditingAmount(true)
+            changeField(name, event.target.value)
+          }}
           onBlur={name === 'monto' ? () => setEditingAmount(false) : undefined}
           type={inputType}
           required={required}

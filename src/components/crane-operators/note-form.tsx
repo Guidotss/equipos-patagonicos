@@ -15,7 +15,7 @@ export function NoteForm({ equipmentId, today }: { equipmentId: string; today: s
   const { values, errors, message, pending, uploading, formRef, changeField, prepareUpload, onChangeFiles, submit } = useNoteForm(equipmentId, today)
   return <form ref={formRef} onSubmit={submit} noValidate className="flex min-w-0 flex-col gap-5 pb-24">
     {message ? <div tabIndex={-1} data-form-error className="rounded-lg outline-ring focus-visible:outline-2"><Alert variant="destructive"><AlertDescription>{message}</AlertDescription></Alert></div> : null}
-    <fieldset disabled={pending} className="min-w-0">
+    <fieldset disabled={pending} className="min-w-0 [&_:is(input,textarea,button,summary,[tabindex])]:scroll-mb-28">
       <legend className="sr-only">Carga de remito</legend>
       <SheetForm>
         <div className="p-4 sm:p-6">
@@ -47,11 +47,11 @@ export function NoteForm({ equipmentId, today }: { equipmentId: string; today: s
         </details>
       </SheetForm>
     </fieldset>
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+    <div data-note-actions className="fixed inset-x-0 bottom-0 z-20 border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-end gap-3">
         {uploading ? <p role="status" className="w-full text-sm text-muted-foreground sm:mr-auto sm:w-auto">Subiendo archivos…</p> : null}
-        <Button asChild variant="outline" className="h-11 flex-1 sm:flex-none"><Link href="/operator">Cancelar</Link></Button>
-        <Button type="submit" disabled={pending || uploading} className="h-11 flex-1 sm:flex-none">{pending ? 'Enviando…' : 'Enviar remito'}</Button>
+        <Button asChild variant="outline" className="h-11 px-5 max-sm:flex-1"><Link href="/operator">Cancelar</Link></Button>
+        <Button type="submit" disabled={pending || uploading} className="h-11 px-5 max-sm:flex-1">{pending ? 'Enviando…' : 'Enviar remito'}</Button>
       </div>
     </div>
   </form>
