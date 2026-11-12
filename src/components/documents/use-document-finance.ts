@@ -53,7 +53,13 @@ export function useDocumentFinance({ document, initialContext }: DocumentFormPro
     snapshot, version, reason, condition, dirty, historicalTotal, persistedInstruments, persistedAllocations, updateInvoices, updateInstruments, updateAllocations, removeInstrument, replaceInstrument, replacedInstruments,
     setReason, setCondition,
     reset, synchronize,
-    input: (type: string, total: string) => financeInput(type, snapshot, version, reason, total),
+    input: (type: string, total: string, defaultInvoiceAllocation?: InvoiceAllocation) => financeInput(
+      type,
+      defaultInvoiceAllocation ? { ...snapshot, invoiceAllocations: [defaultInvoiceAllocation] } : snapshot,
+      version,
+      reason,
+      total,
+    ),
   }
 }
 

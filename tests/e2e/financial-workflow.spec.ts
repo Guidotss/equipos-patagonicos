@@ -51,6 +51,41 @@ test.afterAll(async () => {
   })
 })
 
+test('asigna el total de una factura ya cargada sin volver a ingresar el importe', async ({ page }) => {
+  const [work] = await withBase(async (db) => (await db.query<{ id: string; numero: string }>(
+    `insert into public.cotizaciones (cliente_id, origen, formato, asunto, estado, fecha_aprobacion, presupuesto_estado)
+     values ($1, 'directa', 'jornada', $2, 'aprobada', current_date, 'en_curso') returning id, numero`,
+    [clientId, `${marker}-sin-distribuir`],
+  )).rows)
+  await iniciarSession(page)
+  await page.goto(`/presupuestos/${work.id}`)
+  await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
+  await page.getByLabel('Número (opcional)', { exact: true }).fill('FA-SIN-DISTRIBUIR')
+  await page.getByLabel('Monto total con IVA', { exact: true }).fill('2783000')
+  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
+    name: 'factura.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+  })
+  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+  await page.getByRole('checkbox', { name: /Asignar el total al presupuesto/ }).uncheck()
+  await page.getByRole('button', { name: 'Guardar documento', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/presupuestos/${work.id}$`))
+  await expect(page.getByTestId('saldo-presupuesto')).toHaveText('Saldo pendiente de distribución')
+  await page.locator('[data-documento]').filter({ hasText: 'FA-SIN-DISTRIBUIR' })
+    .getByRole('link', { name: 'Editar', exact: true }).click()
+  await page.getByRole('button', { name: `Asignar $ 2.783.000,00 al presupuesto N° ${work.numero}`, exact: true }).click()
+  await expect(page.getByLabel('Trabajo', { exact: true })).toHaveValue(work.id)
+  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/presupuestos/${work.id}$`))
+  await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 2.783.000,00')
+
+  const rows = await withBase(async (db) => (await db.query(
+    `select d.monto::text as total, a.amount::text as amount, a.budget_id, a.equipment_status
+     from public.documentos d join public.invoice_allocations a on a.invoice_id=d.id
+     where d.cliente_id=$1 and d.numero='FA-SIN-DISTRIBUIR'`, [clientId],
+  )).rows)
+  expect(rows).toEqual([{ total: '2783000.00', amount: '2783000.00', budget_id: work.id, equipment_status: 'unknown' }])
+})
+
 test('guarda un anticipo con medio y destino explícitos', async ({ page }, testInfo) => {
   await iniciarSession(page)
   await page.goto(`/presupuestos/${budgetId}`)

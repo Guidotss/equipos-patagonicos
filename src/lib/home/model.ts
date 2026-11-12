@@ -17,7 +17,7 @@ export const QUEUES_HOME = {
   },
   para_facturar: {
     titulo: 'Para facturar',
-    descripcion: 'Remitos que todavía no tienen una factura activa.',
+    descripcion: 'Remitos sin vínculo con una factura vigente.',
     empty: 'No hay remitos pendientes de facturación.',
     enlaceEmpty: '/documentos/nuevo',
     actionEmpty: 'Subir documento',

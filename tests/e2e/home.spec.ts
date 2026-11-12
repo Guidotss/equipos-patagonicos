@@ -108,7 +108,10 @@ test('cinco colas accionables con selección de remito/factura y navegación mó
   await expect(page.getByRole('radio', { name: 'Orden de compra', exact: true })).toBeChecked()
 
   await page.goto('/?cola=para_facturar')
-  await page.locator(`[data-pendiente="${deliveryNoteId}"]`).getByRole('link', { name: /Facturar/ }).click()
+  const pendingNote = page.locator(`[data-pendiente="${deliveryNoteId}"]`)
+  await expect(pendingNote.getByRole('link', { name: /Vincular factura/ }))
+    .toHaveAttribute('href', `/documentos/${deliveryNoteId}#delivery-note-invoice`)
+  await pendingNote.getByRole('link', { name: /Nueva factura/ }).click()
   await expect(page.getByRole('checkbox', { name: `Remito ${numberDeliveryNote}`, exact: true })).toBeChecked()
 
   await page.goto('/?cola=cobranzas')
@@ -152,4 +155,21 @@ test('cinco colas accionables con selección de remito/factura y navegación mó
   const longDeliveryNoteOption = page.getByRole('checkbox', { name: `Remito ${longDeliveryNoteNumber}`, exact: true })
   await expect(longDeliveryNoteOption).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})
+
+test('vincula un remito pendiente desde Inicio eligiendo la factura existente', async ({ page }) => {
+  await iniciarSession(page)
+  await page.goto('/?cola=para_facturar')
+  await page.locator(`[data-pendiente="${deliveryNoteId}"]`).getByRole('link', { name: /Vincular factura/ }).click()
+  const invoice = page.getByLabel('Factura existente (opcional)', { exact: true })
+  await expect(invoice).toHaveValue('')
+  await invoice.selectOption(invoiceId)
+  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await expect(page).toHaveURL(`/presupuestos/${budgetId}`)
+  const notes = page.locator('[data-documento]')
+  await expect(notes.filter({ hasText: numberDeliveryNote }).getByText('Facturado', { exact: true })).toBeVisible()
+  await page.goto('/?cola=para_facturar')
+  await expect(page.getByRole('heading', { name: 'Para facturar', exact: true })).toBeVisible()
+  await expect(page.locator(`[data-pendiente="${deliveryNoteId}"]`)).toHaveCount(0)
+  await expect(page.locator(`[data-pendiente="${longDeliveryNoteId}"]`)).toBeVisible()
 })

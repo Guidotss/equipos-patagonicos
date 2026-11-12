@@ -120,7 +120,9 @@ export function DocumentForm(props: DocumentFormProps) {
               availableDeliveryNotes={availableDeliveryNotes}
               deliveryNotes={deliveryNotes}
               setDeliveryNotes={setDeliveryNotes}
-            /><InvoiceAllocationsSection finance={finance} context={context} selectedBudgetIds={selectedBudgetIds} total={values.monto} isNew={!document} errors={errors} /></>
+            /><InvoiceAllocationsSection finance={finance} context={context} selectedBudgetIds={selectedBudgetIds}
+              total={values.monto} isNew={!document} errors={errors} invoiceBudget={form.invoiceBudget}
+              assignTotal={form.assignInvoiceTotal} setAssignTotal={form.setAssignInvoiceTotal} /></>
           ) : null}
           {values.tipo === 'orden_pago' ? (
             <>

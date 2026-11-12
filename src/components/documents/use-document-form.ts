@@ -18,6 +18,7 @@ import {
 import type { DocumentFormProps } from './document-form.types'
 import { useDocumentFinance } from './use-document-finance'
 import type { PaymentInstrument } from '@/lib/finance/contracts'
+import { parseAmountCents } from '@/lib/finance/amounts'
 
 export type InstrumentStatusError = { message: string } | { settledOn: string }
 
@@ -53,6 +54,7 @@ export function useDocumentForm(props: DocumentFormProps) {
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const finance = useDocumentFinance(props)
+  const [assignInvoiceTotal, setAssignInvoiceTotal] = useState(true)
   const [statusPending, setStatusPending] = useState(false)
   const [statusErrors, setStatusErrors] = useState<Record<string, InstrumentStatusError>>({})
   const statusSubmitting = useRef(false)
@@ -73,6 +75,9 @@ export function useDocumentForm(props: DocumentFormProps) {
     ? matchingDeliveryNoteInvoices(context, selectedBudgetIds)
     : []
   const selectedInvoiceId = selectableInvoices.some((invoice) => invoice.id === requestedInvoiceId) ? requestedInvoiceId : ''
+  const invoiceBudget = values.tipo === 'factura' && values.tipo_comprobante !== 'NC' && selectedBudgetIds.length === 1
+    ? context.budgets.find((budget) => budget.id === selectedBudgetIds[0] && budget.presupuesto_estado !== 'anulado')
+    : undefined
   const onChangeFiles = useCallback((files: UploadedFile[], pendingList: boolean) => {
     setNewFiles(files)
     setUploading(pendingList)
@@ -184,6 +189,17 @@ export function useDocumentForm(props: DocumentFormProps) {
     setErrors({})
     startTransition(async () => {
       try {
+        const invoiceTotal = parseAmountCents(values.monto)
+        const defaultInvoiceAllocation = !document && assignInvoiceTotal && invoiceBudget &&
+          !finance.snapshot.invoiceAllocations.length && invoiceTotal !== null && invoiceTotal > BigInt(0)
+          ? {
+              budgetId: invoiceBudget.id,
+              equipmentId: invoiceBudget.equipmentId,
+              equipmentStatus: invoiceBudget.equipmentId ? 'assigned' as const : 'unknown' as const,
+              amount: values.monto,
+              historicalSettledAmount: '0',
+            }
+          : undefined
         const replaceDeliveryNotes = values.tipo === 'factura' &&
           (document?.tipo !== 'factura' || !sameIds(deliveryNotes, originalDeliveryNotes))
         const result = await saveDocument({
@@ -196,7 +212,7 @@ export function useDocumentForm(props: DocumentFormProps) {
           ...(replaceDeliveryNotes ? { remitos: deliveryNotes } : {}),
           ...(selectedInvoiceId ? { linkedInvoiceId: selectedInvoiceId } : {}),
           ...(values.tipo === 'orden_pago' || values.tipo === 'factura'
-            ? { finance: finance.input(values.tipo, values.monto), ...(values.tipo === 'orden_pago' ? { paymentCondition: finance.condition } : {}) }
+            ? { finance: finance.input(values.tipo, values.monto, defaultInvoiceAllocation), ...(values.tipo === 'orden_pago' ? { paymentCondition: finance.condition } : {}) }
             : { aplicaciones: [] }),
           cotizacion: quote,
         })
@@ -231,6 +247,9 @@ export function useDocumentForm(props: DocumentFormProps) {
     selectableInvoices,
     selectedInvoiceId,
     setRequestedInvoiceId,
+    invoiceBudget,
+    assignInvoiceTotal,
+    setAssignInvoiceTotal,
     removedFileIds: remove,
     setRemovedFileIds,
     uploading,

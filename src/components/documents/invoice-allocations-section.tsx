@@ -15,17 +15,25 @@ type Props = {
   total: string
   isNew: boolean
   errors: Record<string, string>
+  invoiceBudget?: DocumentContext['budgets'][number]
+  assignTotal: boolean
+  setAssignTotal: (checked: boolean) => void
 }
 
-export function InvoiceAllocationsSection({ finance, context, selectedBudgetIds, total, isNew, errors }: Props) {
+export function InvoiceAllocationsSection({ finance, context, selectedBudgetIds, total, isNew, errors, invoiceBudget, assignTotal, setAssignTotal }: Props) {
   const rows = finance.snapshot.invoiceAllocations
   const history = sumCents(rows.map((row) => parseAmountCents(row.historicalSettledAmount) ?? BigInt(0)))
   const protectedHistory = finance.historicalTotal
   const amounts = rows.map((row) => parseAmountCents(row.amount))
   const totalCents = parseAmountCents(total)
+  const suggestTotal = isNew && !rows.length && invoiceBudget
+  const suggestedEquipment = suggestTotal ? context.equipos.find((equipment) => equipment.id === suggestTotal.equipmentId) : undefined
+  const unassignedRow = !isNew && invoiceBudget && rows.length === 1 && rows[0].budgetId === null &&
+    protectedHistory === BigInt(0) && totalCents !== null && amounts[0] === totalCents ? rows[0] : undefined
   const remainder = totalCents === null || amounts.some((amount) => amount === null)
     ? null : totalCents - sumCents(amounts as bigint[])
-  const unassigned = remainder === null ? null : remainder + sumCents(rows.filter((row) => row.budgetId === null).map((row) => parseAmountCents(row.amount) ?? BigInt(0)))
+  const unassigned = remainder === null ? null : suggestTotal && assignTotal ? BigInt(0)
+    : remainder + sumCents(rows.filter((row) => row.budgetId === null).map((row) => parseAmountCents(row.amount) ?? BigInt(0)))
   function change(index: number, patch: Partial<InvoiceAllocation>) {
     finance.updateInvoices(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row))
   }
@@ -44,6 +52,22 @@ export function InvoiceAllocationsSection({ finance, context, selectedBudgetIds,
     <Card titulo="Distribución de factura" descripcion="Indicá el importe correspondiente a cada trabajo y grúa. El resto queda sin distribuir.">
       <div className="flex flex-col gap-4">
         <p className="text-sm">Total de la factura: {totalCents === null ? '—' : formatFinancialAmount(centsToDecimal(totalCents))}</p>
+        {suggestTotal ? (
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input type="checkbox" className="size-4 shrink-0 accent-primary" checked={assignTotal}
+              onChange={(event) => setAssignTotal(event.target.checked)} />
+            <span>
+              Asignar el total al presupuesto N° {suggestTotal.numero}
+              {assignTotal && suggestedEquipment ? <span className="block text-xs text-muted-foreground">Grúa del presupuesto: {suggestedEquipment.nombre}</span> : null}
+            </span>
+          </label>
+        ) : null}
+        {unassignedRow && invoiceBudget && totalCents !== null ? (
+          <Button type="button" variant="outline" className="h-auto min-h-10 w-fit max-w-full whitespace-normal"
+            onClick={() => finance.updateInvoices([{ ...unassignedRow, budgetId: invoiceBudget.id }])}>
+            Asignar {formatFinancialAmount(centsToDecimal(totalCents))} al presupuesto N° {invoiceBudget.numero}
+          </Button>
+        ) : null}
         {rows.map((row, index) => {
           const prefix = `invoice-allocation-${index}`
           return (

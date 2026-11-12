@@ -16,7 +16,7 @@ function actionPending(row: PendingHome, cola: QueueHome) {
     case 'falta_oc': return { href: `${budget}?nuevo=orden_compra`, texto: 'Cargar OC' }
     case 'para_facturar': return {
       href: row.presupuesto_id ? `${budget}?nuevo=factura&remito=${row.id}` : `/documentos/${row.id}`,
-      texto: row.presupuesto_id ? 'Facturar' : 'Ver remito',
+      texto: row.presupuesto_id ? (row.canLinkInvoice ? 'Nueva factura' : 'Facturar') : 'Ver remito',
     }
     case 'cobranzas': return {
       href: row.presupuesto_id ? `${budget}?nuevo=orden_pago&factura=${row.id}` : `/documentos/${row.id}`,
@@ -112,9 +112,16 @@ export function QueueHome({
                     </Link>
                     {row.asunto && cola !== 'seguimiento' ? <p className="line-clamp-2 text-xs text-muted-foreground">{row.asunto}</p> : null}
                     <DetailPending fila={row} cola={cola} today={today} />
-                    <Link href={accion.href} className="self-end text-sm font-medium text-primary underline-offset-4 hover:underline">
-                      {accion.texto}<span className="sr-only"> · {row.numero || row.cliente_razon_social}</span>
-                    </Link>
+                    <div className="flex flex-wrap justify-end gap-x-4 gap-y-2 text-sm font-medium">
+                      {cola === 'para_facturar' && row.canLinkInvoice ? (
+                        <Link href={`/documentos/${row.id}#delivery-note-invoice`} className="text-primary underline-offset-4 hover:underline">
+                          Vincular factura<span className="sr-only"> · {row.numero || row.cliente_razon_social}</span>
+                        </Link>
+                      ) : null}
+                      <Link href={accion.href} className="text-primary underline-offset-4 hover:underline">
+                        {accion.texto}<span className="sr-only"> · {row.numero || row.cliente_razon_social}</span>
+                      </Link>
+                    </div>
                   </li>
                 )
               })}
