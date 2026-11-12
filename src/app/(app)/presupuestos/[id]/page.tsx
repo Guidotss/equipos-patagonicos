@@ -16,6 +16,7 @@ import { unresolvedDocuments } from '@/lib/finance/unresolved-documents'
 import { historicalAdvances } from '@/lib/finance/historical-advances'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
+import { withBudgetSubjects } from '@/lib/budgets/subjects'
 
 export const metadata: Metadata = { title: 'Presupuesto' }
 export default async function BudgetPage({
@@ -33,9 +34,10 @@ export default async function BudgetPage({
   const { data: budget, error } = await supabase.from('v_presupuestos').select('*, exact_balance:saldo::text, exact_billed:facturado::text, exact_credited:credited_money::text, exact_withheld:withheld_amount::text, exact_legacy:legacy_settled_amount::text, exact_advances:unapplied_advances::text, exact_pending:pending_check_amount::text').eq('id', id).maybeSingle()
   if (error) throw error
   if (!budget) notFound()
-  const [contexto, vinculos] = await Promise.all([
+  const [contexto, vinculos, [displayBudget]] = await Promise.all([
     contextoDocument(supabase, budget.cliente_id),
     supabase.from('documento_presupuestos').select('documento_id').eq('cotizacion_id', id),
+    withBudgetSubjects(supabase, [budget]),
   ])
   if (vinculos.error) throw vinculos.error
   const ids = vinculos.data.map((item) => item.documento_id)
@@ -76,7 +78,7 @@ export default async function BudgetPage({
               {budget.cliente_razon_social}
             </Link>
             <span className="mx-2">·</span>
-            {budget.asunto}
+            {displayBudget.displaySubject || 'Sin trabajo indicado'}
           </>
         }
         actions={<ActionsBudget id={id} status={budget.presupuesto_estado} paidInFull={budget.paid_in_full === true} />}

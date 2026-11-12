@@ -11,6 +11,7 @@ import { TableBudgets } from '@/components/budgets/table-budgets'
 import { Button } from '@/components/ui/button'
 import { Count } from '@/components/ui/count'
 import { hrefBudgets, readFiltersBudgets, PER_PAGE } from '@/lib/budgets/list'
+import { withBudgetSubjects } from '@/lib/budgets/subjects'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Presupuestos' }
@@ -42,6 +43,7 @@ export default async function BudgetsPage({
   const total = search.count ?? 0
   const pages = Math.ceil(total / PER_PAGE)
   if (total > 0 && filters.pagina > pages) redirect(hrefBudgets(filters, pages))
+  const budgets = await withBudgetSubjects(supabase, search.data)
   return (
     <>
       <BarCrumbs crumbs={[{ texto: 'Presupuestos' }]} />
@@ -72,8 +74,8 @@ export default async function BudgetsPage({
           tools={<FiltersBudgets filters={filters} clientes={clientes.data} />}
           pie={<PaginationListing total={total} pagina={filters.pagina} tamano={PER_PAGE} href={(pagina) => hrefBudgets(filters, pagina)} />}
         >
-          {search.data.length ? (
-            <TableBudgets budgets={search.data} />
+          {budgets.length ? (
+            <TableBudgets budgets={budgets} />
           ) : (
             <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
               <p className="text-muted-foreground">

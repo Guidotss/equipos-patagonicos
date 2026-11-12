@@ -9,7 +9,10 @@ import type { Database } from '@/lib/supabase/database.types'
 import { cn } from '@/lib/utils'
 import { BudgetStatus } from './budget-status'
 
-type RowBudget = Database['public']['Functions']['buscar_presupuestos']['Returns'][number] & { exact_balance: string | null }
+type RowBudget = Database['public']['Functions']['buscar_presupuestos']['Returns'][number] & {
+  exact_balance: string | null
+  displaySubject: string
+}
 
 function displayBalance(value: string | null) {
   if (value === null) return 'Saldo pendiente de distribución'
@@ -56,7 +59,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
                   <Link href={`/presupuestos/${budget.id}`} className="font-medium leading-5 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
                     {budget.cliente_razon_social}
                   </Link>
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{budget.asunto || 'Sin trabajo indicado'}</p>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{budget.displaySubject || 'Sin trabajo indicado'}</p>
                   <DocumentsBudget presupuesto={budget} className="mt-3 @min-[52rem]/listado:hidden" />
                 </TableCell>
                 <TableCell><BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} /></TableCell>
@@ -94,7 +97,7 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
                 <BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} />
               </div>
               <p className="font-medium leading-6 [overflow-wrap:anywhere]">{budget.cliente_razon_social}</p>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{budget.asunto || 'Sin trabajo indicado'}</p>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{budget.displaySubject || 'Sin trabajo indicado'}</p>
               <DocumentsBudget presupuesto={budget} className="mt-3" />
               <dl className="mt-3 flex items-baseline justify-between gap-3 border-t pt-3 text-sm">
                 <dt className="text-muted-foreground">Saldo a cobrar</dt>

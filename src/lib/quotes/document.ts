@@ -79,7 +79,11 @@ function formatCapacity(capacity: number | null | undefined): string {
 }
 
 /** Valor de cada variable de plantilla para esta cotización. */
-export function valuesVariables(source: SourceDocument): Partial<Record<NameVariable, string>> {
+export function valuesVariables(source: {
+  cotizacion: Pick<SourceDocument['cotizacion'], 'numero' | 'validez_dias' | 'datos'>
+  equipo: SourceDocument['equipo']
+  empresa?: Pick<SourceDocument['empresa'], 'indice_base' | 'proxima_actualizacion'>
+}): Partial<Record<NameVariable, string>> {
   const datos = readData(source.cotizacion.datos)
   return {
     numero: source.cotizacion.numero === null ? '' : String(source.cotizacion.numero),
@@ -92,8 +96,8 @@ export function valuesVariables(source: SourceDocument): Partial<Record<NameVari
     duracion_estimada: datos.duracion_estimada,
     forma_pago: datos.forma_pago,
     disponibilidad: datos.disponibilidad,
-    indice_base: datos.indice_base || source.empresa.indice_base,
-    proxima_actualizacion: datos.proxima_actualizacion || source.empresa.proxima_actualizacion,
+    indice_base: datos.indice_base || source.empresa?.indice_base || '',
+    proxima_actualizacion: datos.proxima_actualizacion || source.empresa?.proxima_actualizacion || '',
   }
 }
 

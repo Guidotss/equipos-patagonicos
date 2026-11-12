@@ -6,6 +6,7 @@ const marca = `grilla-e2e-${sufijoUnico()}`
 let clientes: string[] = []
 let quote: string
 let budget: string
+let templateBudgets: { id: string; numero: string; equipo_id: string | null; asunto: string }[]
 
 test.beforeAll(async () => {
   await withBase(async (db) => {
@@ -23,12 +24,18 @@ test.beforeAll(async () => {
        values($1,'directa','jornada','Izaje para prueba de filtros','aprobada',current_date,'en_curso',$2) returning id`,
       [clientes[0], marca],
     )).rows[0].id
+    templateBudgets = (await db.query<typeof templateBudgets[number]>(
+      `insert into public.cotizaciones (cliente_id, equipo_id, formato, asunto, estado, fecha_aprobacion, presupuesto_estado, notas)
+       select c.cliente_id, equipment.id, c.formato, c.asunto, 'aprobada', current_date, 'en_curso', c.notas
+       from public.cotizaciones c cross join lateral (values (c.equipo_id), (null::uuid)) equipment(id)
+       where c.id=$1 returning id, numero, equipo_id, asunto`, [quote],
+    )).rows
   })
 })
 
 test.afterAll(async () => {
   await withBase(async (db) => {
-    await db.query('delete from public.cotizaciones where id=any($1::uuid[])', [[quote, budget]])
+    await db.query('delete from public.cotizaciones where id=any($1::uuid[])', [[quote, budget, ...(templateBudgets ?? []).map(({ id }) => id)]])
     await db.query('delete from public.clientes where id=any($1::uuid[])', [clientes])
   })
 })
@@ -112,4 +119,27 @@ test('Presupuestos sincroniza los controles al limpiar filtros y al volver', asy
   await expect(page).toHaveURL(/estado=finalizado/)
   await expect(estado).toHaveValue('finalizado')
   await expect(page.getByRole('searchbox', { name: 'Buscar presupuestos' })).toHaveValue(marca)
+})
+
+test('Presupuestos completa el asunto de plantilla en la grilla y la ficha', async ({ page }) => {
+  const withEquipment = templateBudgets.find((item) => item.equipo_id)!
+  const withoutEquipment = templateBudgets.find((item) => !item.equipo_id)!
+  const fullSubject = `Cotización N° ${withEquipment.numero} alquiler de 1 (una) Grúa Telescópica capacidad 70 TN con operador.`
+  const partialSubject = `Cotización N° ${withoutEquipment.numero} alquiler de 1 (una) Grúa Telescópica con operador.`
+  await iniciarSession(page)
+  await page.goto(`/presupuestos?q=${marca}`)
+  await expect(page.getByRole('table', { name: 'Presupuestos' }).getByText(fullSubject, { exact: true })).toBeVisible()
+  await expect(page.getByText(partialSubject, { exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText('Izaje para prueba de filtros', { exact: true }).filter({ visible: true })).toBeVisible()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.getByText(fullSubject, { exact: true }).filter({ visible: true })).toBeVisible()
+  await page.getByRole('link', { name: `Abrir presupuesto ${withEquipment.numero}`, exact: true }).click()
+  await expect(page.getByRole('heading', { name: `Presupuesto N° ${withEquipment.numero}` })).toBeVisible()
+  await expect(page.getByText(fullSubject, { exact: false })).toBeVisible()
+
+  const [saved] = await withBase(async (db) => (await db.query<{ asunto: string }>(
+    'select asunto from public.cotizaciones where id = $1', [withEquipment.id],
+  )).rows)
+  expect(saved.asunto).toBe(withEquipment.asunto)
 })
