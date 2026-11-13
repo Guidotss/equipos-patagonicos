@@ -11,7 +11,10 @@ export const GROUPS_SEARCH = {
 
 export type GroupSearch = keyof typeof GROUPS_SEARCH
 
-export const schemaSearch = z.string().max(200, 'La búsqueda admite hasta 200 caracteres.').trim()
+export const schemaSearch = z
+  .string()
+  .max(200, 'La búsqueda admite hasta 200 caracteres.')
+  .trim()
 
 export function isGroupSearch(value: unknown): value is GroupSearch {
   return typeof value === 'string' && Object.hasOwn(GROUPS_SEARCH, value)

@@ -10,7 +10,10 @@ export function nameFileQuote(numero: number, razonSocial: string): string {
 }
 
 /** Encabezado Content-Disposition con nombre ASCII de respaldo y el nombre real en UTF-8 (RFC 6266). */
-export function contentDisposition(nombre: string, tipo: 'inline' | 'attachment' = 'inline'): string {
+export function contentDisposition(
+  nombre: string,
+  tipo: 'inline' | 'attachment' = 'inline',
+): string {
   const ascii = nombre.replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '')
   return `${tipo}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(nombre)}`
 }

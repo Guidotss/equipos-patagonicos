@@ -1,5 +1,12 @@
 import type { z } from 'zod'
-import type { documentLifecycleSchema, invoiceAllocationSchema, paymentAllocationSchema, paymentInstrumentSchema, paymentStatusActionSchema, schemaFinance } from './schemas'
+import type {
+  documentLifecycleSchema,
+  invoiceAllocationSchema,
+  paymentAllocationSchema,
+  paymentInstrumentSchema,
+  paymentStatusActionSchema,
+  schemaFinance,
+} from './schemas'
 
 export type FinanceInput = z.infer<typeof schemaFinance>
 export type InvoiceAllocation = z.infer<typeof invoiceAllocationSchema>

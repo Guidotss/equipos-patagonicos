@@ -1,7 +1,12 @@
 import { InlineConfirmation } from '@/components/form/confirmation-inline'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { ID_FIELD, changesOfContent, templatesOfFormat, type EditorDispatch } from '@/lib/quotes/editor-screen'
+import {
+  ID_FIELD,
+  changesOfContent,
+  templatesOfFormat,
+  type EditorDispatch,
+} from '@/lib/quotes/editor-screen'
 import type { StatusEditor, TemplateEditor } from '@/lib/quotes/editor/types'
 import { FORMATS, type Format } from '@/lib/templates/content'
 import Link from 'next/link'
@@ -20,7 +25,8 @@ export function SelectorTemplate({
 }) {
   const [pending, setPending] = useState<TemplateEditor | null>(null)
   const group = useRef<HTMLDivElement>(null)
-  const current = templates.find((template) => template.id === state.templateId) ?? null
+  const current =
+    templates.find((template) => template.id === state.templateId) ?? null
   const ofFormat = templatesOfFormat(templates, state.formato)
 
   function choose(template: TemplateEditor | undefined) {
@@ -32,14 +38,19 @@ export function SelectorTemplate({
   // Al cerrar la confirmación el foco vuelve a la opción elegida (después del render).
   function close() {
     setPending(null)
-    requestAnimationFrame(() => group.current?.querySelector<HTMLElement>('[data-state="on"]')?.focus())
+    requestAnimationFrame(() =>
+      group.current?.querySelector<HTMLElement>('[data-state="on"]')?.focus(),
+    )
   }
 
   if (templates.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         No hay plantillas activas.{' '}
-        <Link href="/configuracion/plantillas" className="text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/configuracion/plantillas"
+          className="text-primary underline-offset-4 hover:underline"
+        >
           Revisalas en Configuración
         </Link>
         .
@@ -77,7 +88,13 @@ export function SelectorTemplate({
             id={ID_FIELD.plantilla}
             aria-label="Plantilla"
             value={state.templateId}
-            onChange={(event) => choose(templates.find((template) => template.id === event.target.value))}
+            onChange={(event) =>
+              choose(
+                templates.find(
+                  (template) => template.id === event.target.value,
+                ),
+              )
+            }
             className="min-w-0 flex-1"
           >
             {ofFormat.map((template) => (

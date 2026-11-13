@@ -15,7 +15,11 @@ import { CardItems } from './card-items'
 import { CardSubject } from './card-subject'
 import { CardTexts } from './card-texts'
 import { HeaderEditor } from './header-editor'
-import { MobilePreviewButton, ColumnViewPreview, PreviewSidebar } from './panel-preview'
+import {
+  MobilePreviewButton,
+  ColumnViewPreview,
+  PreviewSidebar,
+} from './panel-preview'
 
 import type { QuoteEditorProps } from './quote-editor.types'
 import { useQuoteEditor } from './use-quote-editor'
@@ -66,8 +70,17 @@ export function EditorQuote(props: QuoteEditorProps) {
           onSave={() => void save()}
           actions={
             <>
-              <SaveTemplate state={state} disabled={busy} beforeOpen={applySectionDrafts} />
-              <ActionsHeader state={state} context={context} pendingList={pendingList} actions={actions} />
+              <SaveTemplate
+                state={state}
+                disabled={busy}
+                beforeOpen={applySectionDrafts}
+              />
+              <ActionsHeader
+                state={state}
+                context={context}
+                pendingList={pendingList}
+                actions={actions}
+              />
             </>
           }
         />
@@ -81,7 +94,12 @@ export function EditorQuote(props: QuoteEditorProps) {
         />
         {state.id && state.estado === 'enviada' ? (
           <div className="mb-4">
-            <Button type="button" variant="outline" disabled={busy} onClick={preparePurchaseOrder}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={preparePurchaseOrder}
+            >
               Aprobar y cargar orden de compra
             </Button>
           </div>
@@ -104,7 +122,9 @@ export function EditorQuote(props: QuoteEditorProps) {
           {/* Aprobada o rechazada: todo de solo lectura, pero legible (sin la opacidad de :disabled). Mientras corre
               una transición, también: no se tipea sobre algo que se está enviando, aprobando o rechazando. */}
           <fieldset
-            disabled={!editable || actions.transitioning || preparingPurchaseOrder}
+            disabled={
+              !editable || actions.transitioning || preparingPurchaseOrder
+            }
             className="min-w-0 [&_:disabled]:opacity-100! [&_[data-slot=native-select-wrapper]]:opacity-100!"
           >
             <legend className="sr-only">Contenido de la cotización</legend>
@@ -135,7 +155,11 @@ export function EditorQuote(props: QuoteEditorProps) {
               />
               <CardTexts
                 blocks={state.bloques}
-                template={catalogs.plantillas.find((template) => template.id === state.templateId) ?? null}
+                template={
+                  catalogs.plantillas.find(
+                    (template) => template.id === state.templateId,
+                  ) ?? null
+                }
                 errors={errorsBlocks}
                 dispatch={dispatch}
               />
@@ -154,7 +178,12 @@ export function EditorQuote(props: QuoteEditorProps) {
         viewPreview={
           <>
             <PreviewSidebar view={view} line={lineView} />
-            <MobilePreviewButton mode={view.mode} busy={busy} validate={validateForPreview} saveForPreview={saveForPreview} />
+            <MobilePreviewButton
+              mode={view.mode}
+              busy={busy}
+              validate={validateForPreview}
+              saveForPreview={saveForPreview}
+            />
           </>
         }
       />

@@ -16,7 +16,12 @@ export type ItemEditor = {
   isComplimentary?: boolean
   unidad: Unit
 }
-export type BlockEditor = { clave: string; titulo: string; contenido: string; hidden: boolean }
+export type BlockEditor = {
+  clave: string
+  titulo: string
+  contenido: string
+  hidden: boolean
+}
 
 export type StatusEditor = {
   id: string | null
@@ -55,8 +60,20 @@ export type TemplateEditor = {
 
 export type CatalogsEditor = {
   plantillas: TemplateEditor[]
-  equipos: { id: string; nombre: string; capacidad_tn: number | null; descripcion: string; activo: boolean }[]
-  firmantes: { id: string; nombre: string; cargo: string; telefono: string; activo: boolean }[]
+  equipos: {
+    id: string
+    nombre: string
+    capacidad_tn: number | null
+    descripcion: string
+    activo: boolean
+  }[]
+  firmantes: {
+    id: string
+    nombre: string
+    cargo: string
+    telefono: string
+    activo: boolean
+  }[]
   empresa: SourceDocument['empresa']
 }
 
@@ -110,7 +127,11 @@ export type ActionEditor =
   | { tipo: 'duplicarItem'; clave: string }
   | { tipo: 'renombrarSeccion'; clave: string; seccion: string }
   | { tipo: 'agregarSeccion'; nombre: string }
-  | { tipo: 'bloque'; clave: string; changes: Partial<Omit<BlockEditor, 'clave'>> }
+  | {
+      tipo: 'bloque'
+      clave: string
+      changes: Partial<Omit<BlockEditor, 'clave'>>
+    }
   | { tipo: 'moverBloque'; clave: string; direccion: -1 | 1 }
   | { tipo: 'restaurarBloques'; bloques: Block[] }
   | { tipo: 'guardado'; id: string; version: string; numero: number }
@@ -127,7 +148,10 @@ export type FieldEditor =
   | 'asunto'
   | 'intro'
 
-export type PayloadSave = { p_datos: Record<string, unknown>; p_items: Record<string, unknown>[] }
+export type PayloadSave = {
+  p_datos: Record<string, unknown>
+  p_items: Record<string, unknown>[]
+}
 
 export type PendingList = {
   variables: NameVariable[]

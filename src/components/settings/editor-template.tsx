@@ -4,14 +4,21 @@ import { useRouter } from 'next/navigation'
 import { useLayoutEffect, useReducer, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
-import { deleteTemplate, saveTemplateEditor } from '@/app/(app)/cotizaciones/specials-actions'
+import {
+  deleteTemplate,
+  saveTemplateEditor,
+} from '@/app/(app)/cotizaciones/specials-actions'
 import { Content } from '@/components/app-shell/header'
 import { CardSubject } from '@/components/quotes/editor/card-subject'
 import { CardItems } from '@/components/quotes/editor/card-items'
 import { CardTexts } from '@/components/quotes/editor/card-texts'
 import { Field } from '@/components/form/field'
 import { InlineConfirmation } from '@/components/form/confirmation-inline'
-import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import {
+  ActionsForm,
+  HeaderForm,
+  SheetForm,
+} from '@/components/form/structure-form'
 import { Card } from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -100,7 +107,12 @@ export function EditorTemplate({
         titulo={`Editar plantilla: ${initialName}`}
         descripcion="Los cambios se aplican a futuras cotizaciones. Las existentes conservan su contenido."
         actions={
-          <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirming(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => setConfirming(true)}
+          >
             Eliminar plantilla
           </Button>
         }
@@ -118,14 +130,22 @@ export function EditorTemplate({
       ) : null}
       <form onSubmit={save}>
         <fieldset disabled={busy} className="min-w-0 space-y-6">
-          {message ? <p role="alert" className="text-sm text-destructive">{message}</p> : null}
+          {message ? (
+            <p role="alert" className="text-sm text-destructive">
+              {message}
+            </p>
+          ) : null}
           <SheetForm>
             <Card
               titulo="Datos de la plantilla"
               descripcion="Nombre, formato y validez de las cotizaciones nuevas."
             >
               <div className="grid gap-4 @md:grid-cols-2">
-                <Field id="plantilla-nombre" label="Nombre" className="@md:col-span-2">
+                <Field
+                  id="plantilla-nombre"
+                  label="Nombre"
+                  className="@md:col-span-2"
+                >
                   <Input
                     id="plantilla-nombre"
                     value={name}
@@ -139,13 +159,22 @@ export function EditorTemplate({
                     id="plantilla-formato"
                     className="w-full"
                     value={state.formato}
-                    onChange={(event) => dispatch({
-                      tipo: 'reemplazar',
-                      estado: { ...state, formato: event.target.value as 'jornada' | 'mensual' },
-                    })}
+                    onChange={(event) =>
+                      dispatch({
+                        tipo: 'reemplazar',
+                        estado: {
+                          ...state,
+                          formato: event.target.value as 'jornada' | 'mensual',
+                        },
+                      })
+                    }
                   >
-                    <NativeSelectOption value="jornada">Por jornada</NativeSelectOption>
-                    <NativeSelectOption value="mensual">Mensual</NativeSelectOption>
+                    <NativeSelectOption value="jornada">
+                      Por jornada
+                    </NativeSelectOption>
+                    <NativeSelectOption value="mensual">
+                      Mensual
+                    </NativeSelectOption>
                   </NativeSelect>
                 </Field>
                 <Field id="plantilla-validez" label="Validez (días)">
@@ -155,7 +184,13 @@ export function EditorTemplate({
                     min={1}
                     max={365}
                     value={state.validezDias}
-                    onChange={(event) => dispatch({ tipo: 'campo', campo: 'validezDias', value: event.target.value })}
+                    onChange={(event) =>
+                      dispatch({
+                        tipo: 'campo',
+                        campo: 'validezDias',
+                        value: event.target.value,
+                      })
+                    }
                   />
                 </Field>
               </div>
@@ -170,9 +205,18 @@ export function EditorTemplate({
               dispatch={dispatch}
               onChangeDraftSection={registerDraft}
             />
-            <CardTexts blocks={state.bloques} template={template} errors={{}} dispatch={dispatch} />
+            <CardTexts
+              blocks={state.bloques}
+              template={template}
+              errors={{}}
+              dispatch={dispatch}
+            />
           </SheetForm>
-          <ActionsForm back={LIST_CLASS} textButton="Guardar plantilla" pendiente={busy} />
+          <ActionsForm
+            back={LIST_CLASS}
+            textButton="Guardar plantilla"
+            pendiente={busy}
+          />
         </fieldset>
       </form>
     </Content>

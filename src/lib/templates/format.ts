@@ -26,12 +26,20 @@ export function parsearFormat(texto: string): NodoFormat[] {
     if (line.trim() === '') continue
     const nivel2 = VINETA_NIVEL_2.exec(line)
     if (nivel2) {
-      nodos.push({ tipo: 'vineta', nivel: 2, segmentos: parsearNegritas(nivel2[1]) })
+      nodos.push({
+        tipo: 'vineta',
+        nivel: 2,
+        segmentos: parsearNegritas(nivel2[1]),
+      })
       continue
     }
     const nivel1 = VINETA_NIVEL_1.exec(line)
     if (nivel1) {
-      nodos.push({ tipo: 'vineta', nivel: 1, segmentos: parsearNegritas(nivel1[1]) })
+      nodos.push({
+        tipo: 'vineta',
+        nivel: 1,
+        segmentos: parsearNegritas(nivel1[1]),
+      })
       continue
     }
     nodos.push({ tipo: 'parrafo', segmentos: parsearNegritas(line.trim()) })

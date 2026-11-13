@@ -1,13 +1,24 @@
 import { nameFileQuote } from '@/lib/pdf/file-name'
 import { renderQuote } from '@/lib/pdf/render'
 import { VARIABLES } from '@/lib/templates/variables'
-import { buildDocument, type DocumentQuote, type SourceDocument } from '../document'
+import {
+  buildDocument,
+  type DocumentQuote,
+  type SourceDocument,
+} from '../document'
 import { sourceFromEditor } from '../editor/document'
 import type { CatalogsEditor, StatusEditor } from '../editor/types'
 
 import type { QuoteServiceClient as Client } from './contracts'
 import { ErrorQuote } from './contracts'
-import { loadQuoteSource, readClient, readCompany, readContact, readEquipment, readSigner } from './source'
+import {
+  loadQuoteSource,
+  readClient,
+  readCompany,
+  readContact,
+  readEquipment,
+  readSigner,
+} from './source'
 
 const BUCKET = 'documentos'
 
@@ -16,10 +27,14 @@ export function documentComplete(source: SourceDocument): DocumentQuote {
   const document = buildDocument(source)
   const issues: string[] = []
   if (document.faltantes.length) {
-    issues.push(`Faltan completar: ${document.faltantes.map((name) => VARIABLES[name]).join(', ')}`)
+    issues.push(
+      `Faltan completar: ${document.faltantes.map((name) => VARIABLES[name]).join(', ')}`,
+    )
   }
   if (document.desconocidas.length) {
-    issues.push(`Hay variables mal escritas: ${document.desconocidas.map((name) => `{{${name}}}`).join(', ')}`)
+    issues.push(
+      `Hay variables mal escritas: ${document.desconocidas.map((name) => `{{${name}}}`).join(', ')}`,
+    )
   }
   if (issues.length) throw new ErrorQuote(issues.join('. '))
   return document
@@ -40,11 +55,16 @@ export type EntryViewPreview = { estado: StatusEditor }
  * equipo, el firmante y la empresa se releen de la base (un id que no existe, o un contacto de otro cliente,
  * queda vacío).
  */
-export async function viewPreview(supabase: Client, { estado: state }: EntryViewPreview): Promise<Buffer> {
+export async function viewPreview(
+  supabase: Client,
+  { estado: state }: EntryViewPreview,
+): Promise<Buffer> {
   const clientId = state.cliente?.id
   const [client, contact, equipment, signer, company] = await Promise.all([
     clientId ? readClient(supabase, clientId) : null,
-    clientId && state.contactoId ? readContact(supabase, clientId, state.contactoId) : null,
+    clientId && state.contactoId
+      ? readContact(supabase, clientId, state.contactoId)
+      : null,
     state.equipoId ? readEquipment(supabase, state.equipoId) : null,
     state.firmanteId ? readSigner(supabase, state.firmanteId) : null,
     readCompany(supabase),
@@ -57,7 +77,9 @@ export async function viewPreview(supabase: Client, { estado: state }: EntryView
   }
   // sourceFromEditor toma equipo y firmante de los catálogos por id, y usa hoy si la fecha está a medio escribir.
   const reloadedState: StatusEditor = { ...state, cliente: client }
-  const document = buildDocument(sourceFromEditor(reloadedState, catalogs, contact))
+  const document = buildDocument(
+    sourceFromEditor(reloadedState, catalogs, contact),
+  )
   return renderQuote(document, { highlightVariables: true })
 }
 
@@ -68,7 +90,10 @@ async function downloadPdf(supabase: Client, path: string): Promise<Buffer> {
 }
 
 /** La ruta del PDF del último envío de la cotización, o null si nunca se envió. */
-async function pathLastSend(supabase: Client, id: string): Promise<string | null> {
+async function pathLastSend(
+  supabase: Client,
+  id: string,
+): Promise<string | null> {
   const { data, error } = await supabase
     .from('cotizacion_envios')
     .select('pdf_path')
@@ -118,13 +143,21 @@ export async function pdfForShow(
   // Un presupuesto directo no tiene PDF: generarlo mostraría una cotización que nunca existió.
   if (row.origen === 'directa') return null
 
-  const current = options.actual === true && row.origen === 'app' && row.estado !== 'aprobada'
+  const current =
+    options.actual === true && row.origen === 'app' && row.estado !== 'aprobada'
   const saved = current
     ? null
     : (row.pdf_aprobado_path ??
       row.archivo_original_path ??
-      (WITH_SEND.includes(row.estado) ? await pathLastSend(supabase, id) : null))
+      (WITH_SEND.includes(row.estado)
+        ? await pathLastSend(supabase, id)
+        : null))
   if (saved) return { pdf: await downloadPdf(supabase, saved), nameFile }
 
-  return { pdf: await renderQuote(buildDocument(source), { highlightVariables: current }), nameFile }
+  return {
+    pdf: await renderQuote(buildDocument(source), {
+      highlightVariables: current,
+    }),
+    nameFile,
+  }
 }

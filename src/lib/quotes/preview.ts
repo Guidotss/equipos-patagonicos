@@ -27,10 +27,16 @@ export type ModeViewPreview =
   /** Un presupuesto directo no tiene PDF. */
   | { type: 'sin-pdf' }
 
-export function modeViewPreview(state: Pick<StatusEditor, 'id' | 'estado' | 'origen' | 'cliente'>): ModeViewPreview {
+export function modeViewPreview(
+  state: Pick<StatusEditor, 'id' | 'estado' | 'origen' | 'cliente'>,
+): ModeViewPreview {
   if (state.origen === 'directa') return { type: 'sin-pdf' }
-  const frozen = state.origen === 'importada' || state.estado === 'aprobada' || state.estado === 'rechazada'
-  if (state.id && frozen) return { type: 'guardada', url: `/cotizaciones/${state.id}/pdf` }
+  const frozen =
+    state.origen === 'importada' ||
+    state.estado === 'aprobada' ||
+    state.estado === 'rechazada'
+  if (state.id && frozen)
+    return { type: 'guardada', url: `/cotizaciones/${state.id}/pdf` }
   if (!state.cliente) return { type: 'sin-cliente' }
   return { type: 'generada' }
 }
@@ -44,9 +50,15 @@ export function dateOfMark(timestamp: string): string {
  * La vista previa generada ya no muestra lo que hay en pantalla. El número cuenta aparte porque no está en lo que
  * se guarda: la primera vista previa de una nueva lo muestra como {{numero}} y, después de guardar, ya lo tiene.
  */
-export function isPreviewOutdated(generatedFrom: StatusEditor | null, current: StatusEditor): boolean {
+export function isPreviewOutdated(
+  generatedFrom: StatusEditor | null,
+  current: StatusEditor,
+): boolean {
   if (!generatedFrom) return false
-  return generatedFrom.numero !== current.numero || hasChanges(generatedFrom, current)
+  return (
+    generatedFrom.numero !== current.numero ||
+    hasChanges(generatedFrom, current)
+  )
 }
 
 /** La línea gris bajo el título "Vista previa". */
@@ -68,19 +80,26 @@ export function lineViewPreview(args: {
     case 'guardada':
       if (args.origen === 'importada') return 'PDF original cargado'
       if (args.estado === 'aprobada') {
-        return args.dateApproval ? `PDF aprobado el ${formatShortDate(args.dateApproval)}` : 'PDF aprobado'
+        return args.dateApproval
+          ? `PDF aprobado el ${formatShortDate(args.dateApproval)}`
+          : 'PDF aprobado'
       }
-      return args.lastSend ? `Último envío · ${dateOfMark(args.lastSend)}` : 'Versión guardada'
+      return args.lastSend
+        ? `Último envío · ${dateOfMark(args.lastSend)}`
+        : 'Versión guardada'
     case 'generada':
       if (args.desactualizada) return 'Hay cambios sin reflejar'
-      if (args.lastSend) return `Versión actual · el último envío es del ${dateOfMark(args.lastSend)}`
+      if (args.lastSend)
+        return `Versión actual · el último envío es del ${dateOfMark(args.lastSend)}`
       return 'Con lo que hay en pantalla, aunque no esté guardado'
   }
 }
 
 /** Mensaje del panel cuando la vista previa no se pudo generar (status null: no hubo respuesta). */
 export function messageErrorViewPreview(status: number | null): string {
-  if (status === 401) return 'Tu sesión venció: volvé a ingresar para ver la vista previa.'
-  if (status === 400) return 'Hay datos que todavía no se pueden dibujar: revisalos y probá de nuevo.'
+  if (status === 401)
+    return 'Tu sesión venció: volvé a ingresar para ver la vista previa.'
+  if (status === 400)
+    return 'Hay datos que todavía no se pueden dibujar: revisalos y probá de nuevo.'
   return 'No se pudo generar la vista previa.'
 }

@@ -3,7 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireStaff } from '@/lib/auth'
-import { FIELDS_CLIENT, FIELDS_CONTACT, schemaClient, schemaContact } from '@/lib/clients/schemas'
+import {
+  FIELDS_CLIENT,
+  FIELDS_CONTACT,
+  schemaClient,
+  schemaContact,
+} from '@/lib/clients/schemas'
 import {
   success,
   databaseFailure,
@@ -15,20 +20,30 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 
-const CUIT_REPETIDO = { campo: 'cuit', message: 'Ya existe un cliente con ese CUIT' }
+const CUIT_REPETIDO = {
+  campo: 'cuit',
+  message: 'Ya existe un cliente con ese CUIT',
+}
 
 function requireUuid(...ids: string[]) {
   if (!ids.every(isUuid)) throw new Error('Identificador inválido')
 }
 
-export async function crearClient(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
+export async function crearClient(
+  _previous: StatusForm,
+  formData: FormData,
+): Promise<StatusForm> {
   await requireStaff()
   const values = readFields(formData, FIELDS_CLIENT)
   const datos = schemaClient.safeParse(values)
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
-  const { data, error } = await supabase.from('clientes').insert(datos.data).select('id').single()
+  const { data, error } = await supabase
+    .from('clientes')
+    .insert(datos.data)
+    .select('id')
+    .single()
   if (error) return databaseFailure(error, values, CUIT_REPETIDO)
 
   revalidatePath('/clientes')
@@ -47,7 +62,10 @@ export async function actualizarClient(
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
-  const { error } = await supabase.from('clientes').update(datos.data).eq('id', id)
+  const { error } = await supabase
+    .from('clientes')
+    .update(datos.data)
+    .eq('id', id)
   if (error) return databaseFailure(error, values, CUIT_REPETIDO)
 
   revalidatePath('/clientes')
@@ -55,11 +73,17 @@ export async function actualizarClient(
   return success('Cliente guardado')
 }
 
-export async function changeStatusClient(id: string, activo: boolean): Promise<void> {
+export async function changeStatusClient(
+  id: string,
+  activo: boolean,
+): Promise<void> {
   await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
-  const { error } = await supabase.from('clientes').update({ activo }).eq('id', id)
+  const { error } = await supabase
+    .from('clientes')
+    .update({ activo })
+    .eq('id', id)
   if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/clientes')
   revalidatePath(`/clientes/${id}`)
@@ -77,7 +101,9 @@ export async function crearContact(
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
-  const { error } = await supabase.from('contactos').insert({ ...datos.data, cliente_id: clientId })
+  const { error } = await supabase
+    .from('contactos')
+    .insert({ ...datos.data, cliente_id: clientId })
   if (error) return databaseFailure(error, values)
 
   revalidatePath(`/clientes/${clientId}`)
@@ -108,11 +134,18 @@ export async function actualizarContact(
   return success('Contacto guardado')
 }
 
-export async function removeContact(clientId: string, contactId: string): Promise<void> {
+export async function removeContact(
+  clientId: string,
+  contactId: string,
+): Promise<void> {
   await requireStaff()
   requireUuid(clientId, contactId)
   const supabase = await createClient()
-  const { error } = await supabase.from('contactos').delete().eq('id', contactId).eq('cliente_id', clientId)
+  const { error } = await supabase
+    .from('contactos')
+    .delete()
+    .eq('id', contactId)
+    .eq('cliente_id', clientId)
   if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath(`/clientes/${clientId}`)
 }

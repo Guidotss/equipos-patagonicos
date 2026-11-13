@@ -51,14 +51,20 @@ export function FormAction({
   // Con errores, el foco va al primer campo marcado: en celular el botón de guardar puede quedar lejos del error.
   useEffect(() => {
     if (estado.ok || Object.keys(estado.errors).length === 0) return
-    document.getElementById(form)?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+    document
+      .getElementById(form)
+      ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      ?.focus()
   }, [estado, form])
 
   return (
     <>
       {header?.({ pendiente: pending, form })}
       <form id={form} action={despachar} noValidate className="space-y-4">
-        <fieldset disabled={soloQuery || pending} className={cn('min-w-0', className)}>
+        <fieldset
+          disabled={soloQuery || pending}
+          className={cn('min-w-0', className)}
+        >
           {children(estado, pending)}
         </fieldset>
         {/* Sin botón propio, el formulario muestra el mensaje donde ubica su botón. */}

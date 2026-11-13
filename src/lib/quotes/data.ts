@@ -30,17 +30,28 @@ export type DataQuote = z.infer<typeof schemaData>
 
 /** Lee el jsonb `datos` sin fallar: lo que no sea texto queda en "". El largo se valida al guardar (esquemaDatos). */
 export function readData(value: unknown): DataQuote {
-  const object = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const object =
+    value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
   return Object.fromEntries(
-    FIELDS_DATA.map((field) => [field, typeof object[field] === 'string' ? (object[field] as string).trim() : '']),
+    FIELDS_DATA.map((field) => [
+      field,
+      typeof object[field] === 'string' ? (object[field] as string).trim() : '',
+    ]),
   ) as DataQuote
 }
 
 // Todos los mensajes en castellano: el editor los muestra junto a cada celda de la grilla.
 export const schemaItem = z.object({
   seccion: z.string().trim().max(100, 'Máximo 100 caracteres').default(''),
-  descripcion: z.string().trim().min(1, 'Falta la descripción').max(500, 'Máximo 500 caracteres'),
-  cantidad: z.number().positive('La cantidad tiene que ser mayor a 0').max(999_999, 'La cantidad es demasiado grande'),
+  descripcion: z
+    .string()
+    .trim()
+    .min(1, 'Falta la descripción')
+    .max(500, 'Máximo 500 caracteres'),
+  cantidad: z
+    .number()
+    .positive('La cantidad tiene que ser mayor a 0')
+    .max(999_999, 'La cantidad es demasiado grande'),
   is_complimentary: z.boolean().default(false),
   precio_unitario: z
     .number()

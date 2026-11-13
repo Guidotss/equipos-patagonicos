@@ -83,7 +83,8 @@ export function ItemRowControls({
               // se volvería a abrir). Los de detail 0 abren: así activa un lector de pantalla en modo exploración. El
               // teclado no duplica: Enter abre en el keydown (Radix) y lo previene, así que no genera clic, y el
               // keydown de Espacio lo previene el arrastre.
-              const ignoreClick = wasDragging.current || menuOpenOnPointerDown.current
+              const ignoreClick =
+                wasDragging.current || menuOpenOnPointerDown.current
               wasDragging.current = false
               menuOpenOnPointerDown.current = false
               if (!ignoreClick) setMenuOpen(true)
@@ -102,11 +103,17 @@ export function ItemRowControls({
           }}
         >
           <DropdownMenuGroup>
-            <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(-1)}>
+            <DropdownMenuItem
+              disabled={index === 0}
+              onSelect={() => onMove(-1)}
+            >
               <ArrowUp aria-hidden />
               Subir
             </DropdownMenuItem>
-            <DropdownMenuItem disabled={index === quantityItems - 1} onSelect={() => onMove(1)}>
+            <DropdownMenuItem
+              disabled={index === quantityItems - 1}
+              onSelect={() => onMove(1)}
+            >
               <ArrowDown aria-hidden />
               Bajar
             </DropdownMenuItem>

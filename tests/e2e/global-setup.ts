@@ -6,16 +6,24 @@ import { validateEnvTests } from '../../scripts/test-env.mjs'
 export default async function globalSetup() {
   const { baseURL } = validateEnvTests()
 
-  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  )
 
-  const { data: list, error: errorList } = await admin.auth.admin.listUsers({ perPage: 1000 })
+  const { data: list, error: errorList } = await admin.auth.admin.listUsers({
+    perPage: 1000,
+  })
   if (errorList) throw errorList
 
   let id = list.users.find((u) => u.email === E2E_EMAIL)?.id
   if (id) {
-    const { error } = await admin.auth.admin.updateUserById(id, { password: E2E_PASSWORD })
+    const { error } = await admin.auth.admin.updateUserById(id, {
+      password: E2E_PASSWORD,
+    })
     if (error) throw error
   } else {
     const { data, error } = await admin.auth.admin.createUser({
@@ -28,10 +36,14 @@ export default async function globalSetup() {
     id = data.user.id
   }
 
-  const { error } = await admin.from('profiles').update({ activo: true, rol: 'admin', nombre: E2E_NAME }).eq('id', id)
+  const { error } = await admin
+    .from('profiles')
+    .update({ activo: true, rol: 'admin', nombre: E2E_NAME })
+    .eq('id', id)
   if (error) throw error
 
   // Compila el login antes de abrir varios navegadores contra next dev en frío.
   const login = await fetch(`${baseURL}/login`)
-  if (!login.ok) throw new Error(`No se pudo preparar el login (${login.status})`)
+  if (!login.ok)
+    throw new Error(`No se pudo preparar el login (${login.status})`)
 }

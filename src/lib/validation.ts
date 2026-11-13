@@ -14,7 +14,10 @@ export const emailOptional = z
   .string()
   .trim()
   .max(200, 'Máximo 200 caracteres')
-  .refine((value) => value === '' || z.email().safeParse(value).success, 'El email no es válido')
+  .refine(
+    (value) => value === '' || z.email().safeParse(value).success,
+    'El email no es válido',
+  )
 
 /** CUIT informado sin validación fiscal; vacío → null. */
 export const cuitOptional = z

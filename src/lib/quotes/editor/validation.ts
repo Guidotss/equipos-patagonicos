@@ -23,7 +23,13 @@ export const schemaStatusEditor = z.object({
   numero: z.number().int().positive().nullable(),
   estado: z.enum(EDITOR_STATUSES),
   origen: z.enum(EDITOR_ORIGINS),
-  cliente: z.object({ id: z.uuid(), razon_social: textFree, cuit: z.string().nullable() }).nullable(),
+  cliente: z
+    .object({
+      id: z.uuid(),
+      razon_social: textFree,
+      cuit: z.string().nullable(),
+    })
+    .nullable(),
   contactoId: idOptional,
   templateId: idOptional,
   formato: z.enum(EDITOR_FORMATS),
@@ -59,7 +65,14 @@ export const schemaStatusEditor = z.object({
     )
     .max(500),
   bloques: z
-    .array(z.object({ clave: z.string().max(64), titulo: textFree, contenido: textFree, hidden: z.boolean() }))
+    .array(
+      z.object({
+        clave: z.string().max(64),
+        titulo: textFree,
+        contenido: textFree,
+        hidden: z.boolean(),
+      }),
+    )
     .max(100),
   replacesA: z.uuid().nullable(),
 }) satisfies z.ZodType<StatusEditor>
@@ -79,7 +92,10 @@ function uuidOptional(message: string) {
 }
 
 const clientChosen = z.unknown().transform((client, ctx) => {
-  const id = client !== null && typeof client === 'object' ? (client as { id?: unknown }).id : undefined
+  const id =
+    client !== null && typeof client === 'object'
+      ? (client as { id?: unknown }).id
+      : undefined
   if (typeof id === 'string' && isUuid(id)) return id
   ctx.addIssue({ code: 'custom', message: 'Elegí el cliente' })
   return z.NEVER
@@ -90,7 +106,10 @@ const quantityWritten = z
   .transform((text, ctx) => {
     const quantity = parsePrice(text)
     if (quantity === null) {
-      ctx.addIssue({ code: 'custom', message: text.trim() ? 'Cantidad inválida' : 'Ingresá la cantidad' })
+      ctx.addIssue({
+        code: 'custom',
+        message: text.trim() ? 'Cantidad inválida' : 'Ingresá la cantidad',
+      })
       return z.NEVER
     }
     return quantity
@@ -114,7 +133,12 @@ const priceWritten = z
 // ('items.2.precio'), no los de la base ('precio_unitario').
 const schemaItemEditor = z.preprocess(
   (value) => {
-    if (value && typeof value === 'object' && 'isComplimentary' in value && value.isComplimentary === true) {
+    if (
+      value &&
+      typeof value === 'object' &&
+      'isComplimentary' in value &&
+      value.isComplimentary === true
+    ) {
       return { ...value, precio: '0' }
     }
     return value
@@ -131,7 +155,11 @@ const schemaItemEditor = z.preprocess(
     .superRefine((item, ctx) => {
       // El total de la fila es numeric(16,2) en la base: si no entra, la base contestaría con un error de desborde.
       if (item.precio !== null && item.cantidad * item.precio >= 1e14) {
-        ctx.addIssue({ code: 'custom', path: ['precio'], message: 'El total de la fila es demasiado grande' })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['precio'],
+          message: 'El total de la fila es demasiado grande',
+        })
       }
     })
     .transform((item) => ({
@@ -167,7 +195,9 @@ const schemaEditor = z.object({
     .transform(Number)
     .refine((days) => days >= 1 && days <= 365, MESSAGE_VALIDITY),
   mostrarTotal: z.boolean(),
-  proximaActualizacion: z.string(MESSAGE_MONTH).refine((month) => month === '' || isMonth(month), MESSAGE_MONTH),
+  proximaActualizacion: z
+    .string(MESSAGE_MONTH)
+    .refine((month) => month === '' || isMonth(month), MESSAGE_MONTH),
   asunto: z.string().trim().max(500, 'Máximo 500 caracteres'),
   intro: z.string().trim().max(5000, 'Máximo 5000 caracteres'),
   datos: schemaData,
@@ -187,7 +217,9 @@ const schemaEditor = z.object({
  */
 export function payloadSave(
   state: StatusEditor,
-): { ok: true; payload: PayloadSave } | { ok: false; errors: Record<string, string> } {
+):
+  | { ok: true; payload: PayloadSave }
+  | { ok: false; errors: Record<string, string> } {
   const result = schemaEditor.safeParse(state)
   if (!result.success) return { ok: false, errors: errorsByPath(result.error) }
   const valid = result.data
@@ -206,12 +238,17 @@ export function payloadSave(
         intro: valid.intro,
         datos: {
           ...valid.datos,
-          proxima_actualizacion: nextUpdateInText(valid.proximaActualizacion, valid.datos.proxima_actualizacion),
+          proxima_actualizacion: nextUpdateInText(
+            valid.proximaActualizacion,
+            valid.datos.proxima_actualizacion,
+          ),
         },
         bloques: valid.bloques,
         validez_dias: valid.validezDias,
         mostrar_total: valid.mostrarTotal,
-        fecha_proxima_actualizacion: valid.proximaActualizacion ? `${valid.proximaActualizacion}-01` : null,
+        fecha_proxima_actualizacion: valid.proximaActualizacion
+          ? `${valid.proximaActualizacion}-01`
+          : null,
         reemplaza_a: valid.replacesA,
       },
       p_items: valid.items,
@@ -225,8 +262,19 @@ function fingerprint(state: StatusEditor): string {
   if (result.ok) return `payload:${JSON.stringify(result.payload)}`
   return `estado:${JSON.stringify({
     ...state,
-    items: state.items.map((item) => [item.seccion, item.descripcion, item.cantidad, item.precio, item.unidad, item.isComplimentary ?? false]),
-    bloques: state.bloques.map((block) => [block.titulo, block.contenido, block.hidden]),
+    items: state.items.map((item) => [
+      item.seccion,
+      item.descripcion,
+      item.cantidad,
+      item.precio,
+      item.unidad,
+      item.isComplimentary ?? false,
+    ]),
+    bloques: state.bloques.map((block) => [
+      block.titulo,
+      block.contenido,
+      block.hidden,
+    ]),
   })}`
 }
 
@@ -234,6 +282,9 @@ function fingerprint(state: StatusEditor): string {
  * true si guardar cambiaría algo. Compara lo que se mandaría a la base, no las claves ni cómo está escrito
  * ("39000000" y "39.000.000" son el mismo precio).
  */
-export function hasChanges(saved: StatusEditor, current: StatusEditor): boolean {
+export function hasChanges(
+  saved: StatusEditor,
+  current: StatusEditor,
+): boolean {
   return fingerprint(saved) !== fingerprint(current)
 }

@@ -4,7 +4,11 @@ import { phrasesWithVariables } from './phrases'
 const plantillas = [
   {
     bloques: [
-      { titulo: 'Condiciones', contenido: '- Grúa de **{{capacidad}} TN** en {{ubicacion}}.\nSin variables.\n  - {{equipo_descripcion}}' },
+      {
+        titulo: 'Condiciones',
+        contenido:
+          '- Grúa de **{{capacidad}} TN** en {{ubicacion}}.\nSin variables.\n  - {{equipo_descripcion}}',
+      },
     ],
   },
   { bloques: [{ titulo: '', contenido: '{{equipo_descripcion}}' }] },
@@ -12,7 +16,9 @@ const plantillas = [
 
 describe('frasesConVariables', () => {
   it('devuelve las oraciones que usan esas variables, sin viñetas, negritas ni repetidas', () => {
-    expect(phrasesWithVariables(plantillas, ['capacidad', 'equipo_descripcion'])).toEqual([
+    expect(
+      phrasesWithVariables(plantillas, ['capacidad', 'equipo_descripcion']),
+    ).toEqual([
       'Grúa de {{capacidad}} TN en {{ubicacion}}.',
       '{{equipo_descripcion}}',
     ])

@@ -18,8 +18,17 @@ export const SELECT_EDITOR = `id, numero, estado, origen, fecha, formato, asunto
  * que vio la pantalla ya no es la de la fila. El servicio da el mismo error antes de generar un PDF y el editor lo
  * reconoce para ofrecer "Recargar" (acciones-estado.ts): si cambia en la base, cambia acá.
  */
-export const MESSAGE_CONFLICT = 'La cotización cambió desde que la abriste; volvé a intentarlo'
+export const MESSAGE_CONFLICT =
+  'La cotización cambió desde que la abriste; volvé a intentarlo'
 
-export const EDITOR_STATUSES = ['borrador', 'enviada', 'aprobada', 'rechazada'] as const
+export const EDITOR_STATUSES = [
+  'borrador',
+  'enviada',
+  'aprobada',
+  'rechazada',
+] as const
 export const EDITOR_ORIGINS = ['app', 'importada', 'directa'] as const
-export const EDITOR_FORMATS = ['mensual', 'jornada'] as const satisfies readonly Format[]
+export const EDITOR_FORMATS = [
+  'mensual',
+  'jornada',
+] as const satisfies readonly Format[]

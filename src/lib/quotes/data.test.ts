@@ -17,7 +17,11 @@ describe('leerDatos', () => {
   })
 
   it('leer no falla con valores largos o de otro tipo (la validación es al guardar)', () => {
-    const datos = readData({ ubicacion: 'x'.repeat(600), horario: 8, forma_pago: null })
+    const datos = readData({
+      ubicacion: 'x'.repeat(600),
+      horario: 8,
+      forma_pago: null,
+    })
     expect(datos.ubicacion).toHaveLength(600)
     expect(datos.horario).toBe('')
     expect(datos.forma_pago).toBe('')
@@ -26,9 +30,30 @@ describe('leerDatos', () => {
 
 describe('esquemaItem', () => {
   it('acepta un ítem sin precio (borrador) y rechaza precios negativos o unidades desconocidas', () => {
-    expect(schemaItem.parse({ descripcion: 'Jornada', cantidad: 1, precio_unitario: null, unidad: 'JORNADA' }).seccion).toBe('')
-    expect(schemaItem.safeParse({ descripcion: 'x', cantidad: 1, precio_unitario: -1, unidad: 'HORA' }).success).toBe(false)
-    expect(schemaItem.safeParse({ descripcion: 'x', cantidad: 1, precio_unitario: 1, unidad: 'LITRO' }).success).toBe(false)
+    expect(
+      schemaItem.parse({
+        descripcion: 'Jornada',
+        cantidad: 1,
+        precio_unitario: null,
+        unidad: 'JORNADA',
+      }).seccion,
+    ).toBe('')
+    expect(
+      schemaItem.safeParse({
+        descripcion: 'x',
+        cantidad: 1,
+        precio_unitario: -1,
+        unidad: 'HORA',
+      }).success,
+    ).toBe(false)
+    expect(
+      schemaItem.safeParse({
+        descripcion: 'x',
+        cantidad: 1,
+        precio_unitario: 1,
+        unidad: 'LITRO',
+      }).success,
+    ).toBe(false)
   })
 
   it('explica cada error en castellano', () => {
@@ -39,7 +64,12 @@ describe('esquemaItem', () => {
       precio_unitario: 1_000_000_000_000,
       unidad: 'LITRO',
     })
-    expect(result.error?.issues.map((issue) => [issue.path.join('.'), issue.message])).toEqual([
+    expect(
+      result.error?.issues.map((issue) => [
+        issue.path.join('.'),
+        issue.message,
+      ]),
+    ).toEqual([
       ['seccion', 'Máximo 100 caracteres'],
       ['descripcion', 'Máximo 500 caracteres'],
       ['cantidad', 'La cantidad es demasiado grande'],

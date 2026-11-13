@@ -26,12 +26,16 @@ export function isVariable(nombre: string): nombre is NameVariable {
 }
 
 export function usedVariables(texto: string): string[] {
-  return [...new Set(Array.from(texto.matchAll(PATRON_VARIABLE), (m) => m[1].trim()))]
+  return [
+    ...new Set(Array.from(texto.matchAll(PATRON_VARIABLE), (m) => m[1].trim())),
+  ]
 }
 
 /** "con base en {{ indice_base }}." → ['con base en ', 'indice_base', '.']: los nombres quedan en las posiciones impares. */
 export function partirVariables(texto: string): string[] {
-  return texto.split(PATRON_VARIABLE).map((parte, index) => (index % 2 === 1 ? parte.trim() : parte))
+  return texto
+    .split(PATRON_VARIABLE)
+    .map((parte, index) => (index % 2 === 1 ? parte.trim() : parte))
 }
 
 export function variablesDesconocidas(texto: string): string[] {
@@ -44,15 +48,18 @@ export function resolverVariables(
   values: Partial<Record<NameVariable, string>>,
 ): { texto: string; faltantes: NameVariable[] } {
   const faltantes = new Set<NameVariable>()
-  const result = texto.replace(PATRON_VARIABLE, (original, capturado: string) => {
-    const nombre = capturado.trim()
-    if (!isVariable(nombre)) return original
-    const value = values[nombre]?.trim()
-    if (!value) {
-      faltantes.add(nombre)
-      return original
-    }
-    return value
-  })
+  const result = texto.replace(
+    PATRON_VARIABLE,
+    (original, capturado: string) => {
+      const nombre = capturado.trim()
+      if (!isVariable(nombre)) return original
+      const value = values[nombre]?.trim()
+      if (!value) {
+        faltantes.add(nombre)
+        return original
+      }
+      return value
+    },
+  )
   return { texto: result, faltantes: [...faltantes] }
 }

@@ -26,7 +26,9 @@ const ICON_CLASS = 'text-muted-foreground'
  * textarea (Ctrl/⌘+Z lo deshace) y dispara input, que React toma por onChange. false si el navegador no lo soporta.
  */
 function replaceSelection(replacement: string): boolean {
-  return replacement === '' ? document.execCommand('delete') : document.execCommand('insertText', false, replacement)
+  return replacement === ''
+    ? document.execCommand('delete')
+    : document.execCommand('insertText', false, replacement)
 }
 
 export function EditorBlock({
@@ -54,7 +56,9 @@ export function EditorBlock({
   const pendingSelection = useRef<TextSelection | null>(null)
   // Al ocultar el foco va a "Mostrar" y al mostrar vuelve a "Ocultar" (cada botón se monta de nuevo). Al subir o bajar,
   // sigue en el botón que se tocó: React mueve el nodo del bloque y el foco se perdería.
-  const focusTarget = useRef<'mostrar' | 'ocultar' | 'subir' | 'bajar' | null>(null)
+  const focusTarget = useRef<'mostrar' | 'ocultar' | 'subir' | 'bajar' | null>(
+    null,
+  )
   const moveUpButton = useRef<HTMLButtonElement>(null)
   const moveDownButton = useRef<HTMLButtonElement>(null)
   const [confirming, setConfirming] = useState(false)
@@ -78,7 +82,9 @@ export function EditorBlock({
     focusTarget.current = null
     // En la punta, el botón que se tocó queda deshabilitado: el foco pasa al otro del mismo bloque.
     const [touched, other] =
-      moved === 'subir' ? [moveUpButton.current, moveDownButton.current] : [moveDownButton.current, moveUpButton.current]
+      moved === 'subir'
+        ? [moveUpButton.current, moveDownButton.current]
+        : [moveDownButton.current, moveUpButton.current]
     const destination = touched && !touched.disabled ? touched : other
     destination?.focus()
   }, [index])
@@ -103,11 +109,16 @@ export function EditorBlock({
    * Aplica una edición de la barra (o Ctrl/⌘+B) con el mismo mecanismo que el pegado: elige el tramo que cambia y lo
    * reemplaza con insertText, así Ctrl/⌘+Z la deshace. Si el navegador no lo soporta, la aplica el reducer.
    */
-  function edit(operation: (text: string, selection: TextSelection) => Editing) {
+  function edit(
+    operation: (text: string, selection: TextSelection) => Editing,
+  ) {
     const element = area.current
     if (!element) return
     const previous = element.value
-    const { texto: text, seleccion: selection } = operation(previous, { inicio: element.selectionStart, fin: element.selectionEnd })
+    const { texto: text, seleccion: selection } = operation(previous, {
+      inicio: element.selectionStart,
+      fin: element.selectionEnd,
+    })
     // Con el teclado, el foco puede estar en el botón de la barra: insertText actúa sobre el elemento enfocado.
     element.focus()
     if (text !== previous) {
@@ -141,7 +152,9 @@ export function EditorBlock({
         className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed px-3 py-2"
       >
         {/* Con min-w-32 la fila se parte en el celular en vez de achicar el título a nada. */}
-        <span className="min-w-32 flex-1 truncate text-[15px] text-muted-foreground">{visible}</span>
+        <span className="min-w-32 flex-1 truncate text-[15px] text-muted-foreground">
+          {visible}
+        </span>
         <Pill>Oculto en esta cotización</Pill>
         <Button
           ref={onShowMount}
@@ -187,7 +200,11 @@ export function EditorBlock({
           disabled={index === 0}
           onClick={() => {
             focusTarget.current = 'subir'
-            dispatch({ tipo: 'moverBloque', clave: block.clave, direccion: -1 })
+            dispatch({
+              tipo: 'moverBloque',
+              clave: block.clave,
+              direccion: -1,
+            })
           }}
         >
           <ArrowUp aria-hidden />
@@ -248,7 +265,11 @@ export function EditorBlock({
           detail="Se pierden los cambios hechos en su texto."
           textConfirm="Restaurar"
           onConfirm={() => {
-            change({ titulo: original.titulo, contenido: original.contenido, hidden: false })
+            change({
+              titulo: original.titulo,
+              contenido: original.contenido,
+              hidden: false,
+            })
             closeConfirmation()
           }}
           onCancelar={closeConfirmation}
@@ -265,7 +286,11 @@ export function EditorBlock({
         placeholder="Texto del bloque"
         onChange={(event) => change({ contenido: event.target.value })}
         onKeyDown={(event) => {
-          if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'b') {
+          if (
+            (event.ctrlKey || event.metaKey) &&
+            !event.altKey &&
+            event.key.toLowerCase() === 'b'
+          ) {
             event.preventDefault()
             edit(toggleBold)
           }
@@ -288,7 +313,10 @@ export function EditorBlock({
         className="min-h-20 resize-none rounded-none border-0 px-3 py-2.5 text-[15px] shadow-none focus-visible:ring-0 md:text-[15px] dark:bg-transparent"
       />
       {describe ? (
-        <p id={describe} className="border-t px-3 py-2 text-sm text-destructive">
+        <p
+          id={describe}
+          className="border-t px-3 py-2 text-sm text-destructive"
+        >
           {[errorTitle, errorContent].filter(Boolean).join(' · ')}
         </p>
       ) : null}

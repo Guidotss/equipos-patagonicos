@@ -35,14 +35,23 @@ export function HeaderEditor({
     <HeaderPage
       compact
       titulo={summary.title}
-      extra={<StatusQuote estado={state.estado} vencida={summary.expiration?.expired ?? false} />}
+      extra={
+        <StatusQuote
+          estado={state.estado}
+          vencida={summary.expiration?.expired ?? false}
+        />
+      }
       descripcion={
         <>
           {summary.detail}
           {summary.expiration ? (
             <>
               {' · '}
-              <span className={cn(summary.expiration.expired && 'text-amber-700')}>{summary.expiration.text}</span>
+              <span
+                className={cn(summary.expiration.expired && 'text-amber-700')}
+              >
+                {summary.expiration.text}
+              </span>
             </>
           ) : null}
         </>

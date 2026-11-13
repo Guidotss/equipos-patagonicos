@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -10,14 +10,16 @@ const nextConfig: NextConfig = {
   // Fuentes y logo del PDF dentro del build standalone (deploy, plan 6).
   outputFileTracingIncludes: { '/cotizaciones/**': ['./assets/**/*'] },
   turbopack: {
-    ...(process.env.EP_TESTS_RUNNER === '1' ? { root: process.env.EP_TESTS_REPO_ROOT } : {}),
+    ...(process.env.EP_TESTS_RUNNER === '1'
+      ? { root: process.env.EP_TESTS_REPO_ROOT }
+      : {}),
     rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
+      '*.css': {
+        loaders: ['@tailwindcss/turbopack'],
+        as: '*.css',
       },
     },
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig

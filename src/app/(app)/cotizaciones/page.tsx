@@ -60,20 +60,31 @@ export default async function QuotesPage({
       .order('numero', { ascending: false })
       .range(home, home + PER_PAGE - 1),
     // Para el filtro: los clientes que tienen alguna cotización (el embebido vacío con !inner solo filtra).
-    supabase.from('clientes').select('id, razon_social, cotizaciones!inner()').order('razon_social'),
+    supabase
+      .from('clientes')
+      .select('id, razon_social, cotizaciones!inner()')
+      .order('razon_social'),
   ])
   // Una página más allá del total (URL vieja, cotizaciones borradas) responde 416: se vuelve a la primera.
-  if (search.error?.code === 'PGRST103') redirect(hrefWithFilters(filters, { pagina: 1 }))
+  if (search.error?.code === 'PGRST103')
+    redirect(hrefWithFilters(filters, { pagina: 1 }))
   if (search.error) throw search.error
   if (withQuotes.error) throw withQuotes.error
 
   const total = search.count ?? 0
   const pages = totalPages(total)
   // Justo al final (offset = total) PostgREST no da 416 sino una página vacía: se va a la última.
-  if (total > 0 && filters.pagina > pages) redirect(hrefWithFilters(filters, { pagina: pages }))
+  if (total > 0 && filters.pagina > pages)
+    redirect(hrefWithFilters(filters, { pagina: pages }))
 
   const rows = search.data.map(rowQuote)
-  const hasFilters = Boolean(filters.q || filters.estado || filters.cliente || filters.desde || filters.hasta)
+  const hasFilters = Boolean(
+    filters.q ||
+    filters.estado ||
+    filters.cliente ||
+    filters.desde ||
+    filters.hasta,
+  )
 
   return (
     <>
@@ -86,8 +97,12 @@ export default async function QuotesPage({
           extra={<Count>{total}</Count>}
           actions={
             <>
-              <Button asChild variant="outline" className="h-10 px-3"><Link href="/cotizaciones/cargar">Cargar existente</Link></Button>
-              <Button asChild variant="outline" className="h-10 px-3"><Link href="/cotizaciones/directo">Presupuesto directo</Link></Button>
+              <Button asChild variant="outline" className="h-10 px-3">
+                <Link href="/cotizaciones/cargar">Cargar existente</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-10 px-3">
+                <Link href="/cotizaciones/directo">Presupuesto directo</Link>
+              </Button>
               <Button asChild className="h-10 px-3.5">
                 <Link href="/cotizaciones/nueva">
                   <Plus aria-hidden />
@@ -107,8 +122,15 @@ export default async function QuotesPage({
             {total === 0 && !hasFilters ? (
               <Empty>
                 <p className="font-medium">Todavía no hay cotizaciones.</p>
-                <p className="text-sm text-muted-foreground">Creá la primera con “Nueva cotización”.</p>
-                <Button asChild className="mt-2"><Link href="/cotizaciones/nueva"><Plus aria-hidden />Nueva cotización</Link></Button>
+                <p className="text-sm text-muted-foreground">
+                  Creá la primera con “Nueva cotización”.
+                </p>
+                <Button asChild className="mt-2">
+                  <Link href="/cotizaciones/nueva">
+                    <Plus aria-hidden />
+                    Nueva cotización
+                  </Link>
+                </Button>
               </Empty>
             ) : total === 0 ? (
               <Empty>

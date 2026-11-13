@@ -5,16 +5,35 @@ import { ChevronsUpDown, Plus } from 'lucide-react'
 import { unstable_rethrow } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { searchClients, createQuickClient } from '@/app/(app)/cotizaciones/actions'
+import {
+  searchClients,
+  createQuickClient,
+} from '@/app/(app)/cotizaciones/actions'
 import { Button } from '@/components/ui/button'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import { Pill } from '@/components/ui/pill'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { sameName } from '@/lib/quotes/editor-screen'
 import { formatCuit } from '@/lib/cuit'
 import { cn } from '@/lib/utils'
 
-export type ClientSearchResult = { id: string; razon_social: string; cuit: string | null; activo: boolean }
+export type ClientSearchResult = {
+  id: string
+  razon_social: string
+  cuit: string | null
+  activo: boolean
+}
 
 const DEMORA_SEARCH = 250
 
@@ -55,7 +74,8 @@ export function SelectorClient({
       try {
         const result = await searchClients(value)
         if (pedido !== lastPedido.current) return
-        if (result.ok) setSearch({ texto: value, results: result.datos, fallo: false })
+        if (result.ok)
+          setSearch({ texto: value, results: result.datos, fallo: false })
         else {
           // Una falla no es "no hay coincidencias": sin la marca se ofrecería crear un cliente que quizás ya existe.
           setSearch({ texto: value, results: [], fallo: true })
@@ -102,7 +122,9 @@ export function SelectorClient({
         toast.error(result.message)
         return
       }
-      toast.success('Cliente creado. El CUIT y los demás datos se completan en Clientes.')
+      toast.success(
+        'Cliente creado. El CUIT y los demás datos se completan en Clientes.',
+      )
       choose({ ...result.datos, activo: true })
     } catch (error) {
       unstable_rethrow(error)
@@ -148,17 +170,32 @@ export function SelectorClient({
           <ChevronsUpDown className="text-muted-foreground" aria-hidden />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-72 p-0">
+      <PopoverContent
+        align="start"
+        className="w-(--radix-popover-trigger-width) min-w-72 p-0"
+      >
         <Command shouldFilter={false} label="Buscar cliente">
-          <CommandInput value={texto} onValueChange={onEscribir} placeholder="Razón social, CUIT o contacto" />
+          <CommandInput
+            value={texto}
+            onValueChange={onEscribir}
+            placeholder="Razón social, CUIT o contacto"
+          />
           <CommandList>
             {buscando && results.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Buscando…</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Buscando…
+              </p>
             ) : null}
             {buscando ? null : fallo ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">{MESSAGE_FALLO_SEARCH}</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {MESSAGE_FALLO_SEARCH}
+              </p>
             ) : (
-              <CommandEmpty>{texto ? 'No hay clientes que coincidan.' : 'Todavía no hay clientes cargados.'}</CommandEmpty>
+              <CommandEmpty>
+                {texto
+                  ? 'No hay clientes que coincidan.'
+                  : 'Todavía no hay clientes cargados.'}
+              </CommandEmpty>
             )}
             {results.length > 0 ? (
               <CommandGroup>
@@ -170,9 +207,13 @@ export function SelectorClient({
                     className={cn(!option.activo && 'text-muted-foreground')}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate">{option.razon_social}</span>
+                      <span className="block truncate">
+                        {option.razon_social}
+                      </span>
                       {option.cuit ? (
-                        <span className="block text-xs text-muted-foreground tabular-nums">{formatCuit(option.cuit)}</span>
+                        <span className="block text-xs text-muted-foreground tabular-nums">
+                          {formatCuit(option.cuit)}
+                        </span>
                       ) : null}
                     </span>
                     {option.activo ? null : <Pill>Inactivo</Pill>}
@@ -182,7 +223,12 @@ export function SelectorClient({
             ) : null}
             {ofrecerCrear ? (
               <CommandGroup>
-                <CommandItem value="__crear__" onSelect={() => void crear()} disabled={creando} className="text-primary">
+                <CommandItem
+                  value="__crear__"
+                  onSelect={() => void crear()}
+                  disabled={creando}
+                  className="text-primary"
+                >
                   <Plus aria-hidden />
                   {creando ? 'Creando…' : `Crear cliente «${razonSocial}»`}
                 </CommandItem>

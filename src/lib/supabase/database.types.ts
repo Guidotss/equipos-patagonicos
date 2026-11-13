@@ -1,1364 +1,2369 @@
-
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
-
-  "graphql_public": {
-          Tables: {
-            [_ in never]: never
-          }
-          Views: {
-            [_ in never]: never
-          }
-          Functions: {
-            "graphql":
-{ Args: { "extensions"?: Json,"operationName"?: string,"query"?: string,"variables"?: Json }; Returns: Json
-                           }
-          }
-          Enums: {
-            [_ in never]: never
-          }
-          CompositeTypes: {
-            [_ in never]: never
-          }
-        },"public": {
-          Tables: {
-            "clientes": {
-                  Row: {
-                    "activo": boolean,"condicion_iva": string | null,"condicion_pago": string,"created_at": string,"created_by": string | null,"cuit": string | null,"direccion": string,"email": string,"id": string,"localidad": string,"notas": string,"provincia": string,"razon_social": string,"telefono": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "activo"?: boolean,"condicion_iva"?: string | null,"condicion_pago"?: string,"created_at"?: string,"created_by"?: string | null,"cuit"?: string | null,"direccion"?: string,"email"?: string,"id"?: string,"localidad"?: string,"notas"?: string,"provincia"?: string,"razon_social": string,"telefono"?: string,"updated_at"?: string
-                  }
-                  Update: {
-                    "activo"?: boolean,"condicion_iva"?: string | null,"condicion_pago"?: string,"created_at"?: string,"created_by"?: string | null,"cuit"?: string | null,"direccion"?: string,"email"?: string,"id"?: string,"localidad"?: string,"notas"?: string,"provincia"?: string,"razon_social"?: string,"telefono"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "clientes_created_by_fkey"
-      columns: ["created_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
     }
-                  ]
-                },"contactos": {
-                  Row: {
-                    "cargo": string,"cliente_id": string,"created_at": string,"email": string,"id": string,"nombre": string,"telefono": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "cargo"?: string,"cliente_id": string,"created_at"?: string,"email"?: string,"id"?: string,"nombre": string,"telefono"?: string,"updated_at"?: string
-                  }
-                  Update: {
-                    "cargo"?: string,"cliente_id"?: string,"created_at"?: string,"email"?: string,"id"?: string,"nombre"?: string,"telefono"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "contactos_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
+    Views: {
+      [_ in never]: never
     }
-                  ]
-                },"cotizacion_envios": {
-                  Row: {
-                    "cotizacion_id": string,"created_by": string | null,"enviada_at": string,"id": string,"pdf_path": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "cotizacion_id": string,"created_by"?: string | null,"enviada_at"?: string,"id"?: string,"pdf_path": string
-                  }
-                  Update: {
-                    "cotizacion_id"?: string,"created_by"?: string | null,"enviada_at"?: string,"id"?: string,"pdf_path"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "cotizacion_envios_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizacion_envios_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizacion_envios_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "v_presupuestos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizacion_envios_created_by_fkey"
-      columns: ["created_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"cotizacion_items": {
-                  Row: {
-                    "cantidad": number,"cotizacion_id": string,"descripcion": string,"id": string,"is_complimentary": boolean,"orden": number,"precio_unitario": number | null,"seccion": string,"total": number | null,"unidad": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "cantidad"?: number,"cotizacion_id": string,"descripcion": string,"id"?: string,"is_complimentary"?: boolean,"orden": number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad": string
-                  }
-                  Update: {
-                    "cantidad"?: number,"cotizacion_id"?: string,"descripcion"?: string,"id"?: string,"is_complimentary"?: boolean,"orden"?: number,"precio_unitario"?: number | null,"seccion"?: string,"total"?: never,"unidad"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "cotizacion_items_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizacion_items_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizacion_items_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "v_presupuestos"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"cotizaciones": {
-                  Row: {
-                    "archivo_original_path": string | null,"asunto": string,"bloques": NonNullable<Json>,"cliente_id": string,"contacto_id": string | null,"created_at": string,"created_by": string | null,"datos": NonNullable<Json>,"equipo_id": string | null,"estado": string,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"firmante_id": string | null,"formato": string,"id": string,"intro": string,"mostrar_total": boolean,"notas": string,"numero": number,"origen": string,"pdf_aprobado_path": string | null,"plantilla_id": string | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"reemplaza_a": string | null,"updated_at": string,"validez_dias": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "archivo_original_path"?: string | null,"asunto"?: string,"bloques"?: NonNullable<Json>,"cliente_id": string,"contacto_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"datos"?: NonNullable<Json>,"equipo_id"?: string | null,"estado"?: string,"fecha"?: string,"fecha_aprobacion"?: string | null,"fecha_proxima_actualizacion"?: string | null,"firmante_id"?: string | null,"formato": string,"id"?: string,"intro"?: string,"mostrar_total"?: boolean,"notas"?: string,"numero"?: number,"origen"?: string,"pdf_aprobado_path"?: string | null,"plantilla_id"?: string | null,"presupuesto_estado"?: string | null,"presupuesto_motivo"?: string,"reemplaza_a"?: string | null,"updated_at"?: string,"validez_dias"?: number
-                  }
-                  Update: {
-                    "archivo_original_path"?: string | null,"asunto"?: string,"bloques"?: NonNullable<Json>,"cliente_id"?: string,"contacto_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"datos"?: NonNullable<Json>,"equipo_id"?: string | null,"estado"?: string,"fecha"?: string,"fecha_aprobacion"?: string | null,"fecha_proxima_actualizacion"?: string | null,"firmante_id"?: string | null,"formato"?: string,"id"?: string,"intro"?: string,"mostrar_total"?: boolean,"notas"?: string,"numero"?: number,"origen"?: string,"pdf_aprobado_path"?: string | null,"plantilla_id"?: string | null,"presupuesto_estado"?: string | null,"presupuesto_motivo"?: string,"reemplaza_a"?: string | null,"updated_at"?: string,"validez_dias"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "cotizaciones_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_contacto_id_fkey"
-      columns: ["contacto_id"]
-isOneToOne: false
-      referencedRelation: "contactos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_created_by_fkey"
-      columns: ["created_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_equipo_id_fkey"
-      columns: ["equipo_id"]
-isOneToOne: false
-      referencedRelation: "equipos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_firmante_id_fkey"
-      columns: ["firmante_id"]
-isOneToOne: false
-      referencedRelation: "firmantes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_plantilla_id_fkey"
-      columns: ["plantilla_id"]
-isOneToOne: false
-      referencedRelation: "plantillas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
-      columns: ["reemplaza_a"]
-isOneToOne: false
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
-      columns: ["reemplaza_a"]
-isOneToOne: false
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
-      columns: ["reemplaza_a"]
-isOneToOne: false
-      referencedRelation: "v_presupuestos"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"crane_delivery_note_files": {
-                  Row: {
-                    "id": string,"mime": string,"note_id": string,"original_name": string,"path": string,"position": number,"size": number,"upload_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "id"?: string,"mime": string,"note_id": string,"original_name": string,"path": string,"position": number,"size": number,"upload_id": string
-                  }
-                  Update: {
-                    "id"?: string,"mime"?: string,"note_id"?: string,"original_name"?: string,"path"?: string,"position"?: number,"size"?: number,"upload_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "crane_delivery_note_files_note_id_fkey"
-      columns: ["note_id"]
-isOneToOne: false
-      referencedRelation: "crane_delivery_notes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_note_files_upload_id_fkey"
-      columns: ["upload_id"]
-isOneToOne: true
-      referencedRelation: "crane_delivery_note_uploads"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"crane_delivery_note_uploads": {
-                  Row: {
-                    "consumed_note_id": string | null,"created_at": string,"equipment_id": string,"expected_size": number,"expires_at": string,"id": string,"mime": string,"operator_id": string,"path": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "consumed_note_id"?: string | null,"created_at"?: string,"equipment_id": string,"expected_size": number,"expires_at"?: string,"id"?: string,"mime": string,"operator_id": string,"path": string
-                  }
-                  Update: {
-                    "consumed_note_id"?: string | null,"created_at"?: string,"equipment_id"?: string,"expected_size"?: number,"expires_at"?: string,"id"?: string,"mime"?: string,"operator_id"?: string,"path"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "crane_delivery_note_uploads_consumed_note_id_fkey"
-      columns: ["consumed_note_id"]
-isOneToOne: false
-      referencedRelation: "crane_delivery_notes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_note_uploads_equipment_id_fkey"
-      columns: ["equipment_id"]
-isOneToOne: false
-      referencedRelation: "equipos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_note_uploads_operator_id_fkey"
-      columns: ["operator_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"crane_delivery_notes": {
-                  Row: {
-                    "created_at": string,"customer_name": string,"document_id": string | null,"equipment_id": string,"equipment_name": string,"id": string,"linked_at": string | null,"linked_budget_id": string | null,"linked_by": string | null,"notes": string,"number": string,"operator_id": string,"requested_budget_id": string | null,"service_date": string,"status": string,"submission_data": NonNullable<Json>,"submission_files": NonNullable<Json>,"work_description": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"customer_name": string,"document_id"?: string | null,"equipment_id": string,"equipment_name": string,"id": string,"linked_at"?: string | null,"linked_budget_id"?: string | null,"linked_by"?: string | null,"notes"?: string,"number"?: string,"operator_id": string,"requested_budget_id"?: string | null,"service_date": string,"status"?: string,"submission_data": NonNullable<Json>,"submission_files": NonNullable<Json>,"work_description": string
-                  }
-                  Update: {
-                    "created_at"?: string,"customer_name"?: string,"document_id"?: string | null,"equipment_id"?: string,"equipment_name"?: string,"id"?: string,"linked_at"?: string | null,"linked_budget_id"?: string | null,"linked_by"?: string | null,"notes"?: string,"number"?: string,"operator_id"?: string,"requested_budget_id"?: string | null,"service_date"?: string,"status"?: string,"submission_data"?: NonNullable<Json>,"submission_files"?: NonNullable<Json>,"work_description"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "crane_delivery_notes_document_id_fkey"
-      columns: ["document_id"]
-isOneToOne: true
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_document_id_fkey"
-      columns: ["document_id"]
-isOneToOne: true
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_document_id_fkey"
-      columns: ["document_id"]
-isOneToOne: true
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_equipment_id_fkey"
-      columns: ["equipment_id"]
-isOneToOne: false
-      referencedRelation: "equipos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_linked_by_fkey"
-      columns: ["linked_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_delivery_notes_operator_id_fkey"
-      columns: ["operator_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"crane_operator_assignments": {
-                  Row: {
-                    "assigned_at": string,"assigned_by": string | null,"equipment_id": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "assigned_at"?: string,"assigned_by"?: string | null,"equipment_id": string,"user_id": string
-                  }
-                  Update: {
-                    "assigned_at"?: string,"assigned_by"?: string | null,"equipment_id"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "crane_operator_assignments_assigned_by_fkey"
-      columns: ["assigned_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_operator_assignments_equipment_id_fkey"
-      columns: ["equipment_id"]
-isOneToOne: false
-      referencedRelation: "equipos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "crane_operator_assignments_user_id_fkey"
-      columns: ["user_id"]
-isOneToOne: true
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"documento_archivos": {
-                  Row: {
-                    "created_at": string,"documento_id": string,"id": string,"mime": string,"nombre_original": string,"orden": number,"path": string,"tamano": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"documento_id": string,"id"?: string,"mime": string,"nombre_original": string,"orden": number,"path": string,"tamano": number
-                  }
-                  Update: {
-                    "created_at"?: string,"documento_id"?: string,"id"?: string,"mime"?: string,"nombre_original"?: string,"orden"?: number,"path"?: string,"tamano"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "documento_archivos_documento_id_fkey"
-      columns: ["documento_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documento_archivos_documento_id_fkey"
-      columns: ["documento_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documento_archivos_documento_id_fkey"
-      columns: ["documento_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"documento_presupuestos": {
-                  Row: {
-                    "cotizacion_id": string,"documento_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "cotizacion_id": string,"documento_id": string
-                  }
-                  Update: {
-                    "cotizacion_id"?: string,"documento_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "documento_presupuestos_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documento_presupuestos_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documento_presupuestos_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: false
-      referencedRelation: "v_presupuestos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documento_presupuestos_documento_id_fkey"
-      columns: ["documento_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documento_presupuestos_documento_id_fkey"
-      columns: ["documento_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documento_presupuestos_documento_id_fkey"
-      columns: ["documento_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"documentos": {
-                  Row: {
-                    "cliente_id": string,"created_at": string,"created_by": string | null,"deleted_at": string | null,"deleted_by": string | null,"equipo_id": string | null,"factura_id": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"financial_version": number,"id": string,"monto": number | null,"notas": string,"numero": string,"numero_normalizado": string | null,"numero_oc_ref": string,"payment_condition": string,"periodo_desde": string | null,"periodo_hasta": string | null,"tipo": string,"tipo_comprobante": string | null,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "cliente_id": string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"financial_version"?: number,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"payment_condition"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo": string,"tipo_comprobante"?: string | null,"updated_at"?: string
-                  }
-                  Update: {
-                    "cliente_id"?: string,"created_at"?: string,"created_by"?: string | null,"deleted_at"?: string | null,"deleted_by"?: string | null,"equipo_id"?: string | null,"factura_id"?: string | null,"fecha"?: string | null,"fecha_vencimiento"?: string | null,"financial_version"?: number,"id"?: string,"monto"?: number | null,"notas"?: string,"numero"?: string,"numero_normalizado"?: never,"numero_oc_ref"?: string,"payment_condition"?: string,"periodo_desde"?: string | null,"periodo_hasta"?: string | null,"tipo"?: string,"tipo_comprobante"?: string | null,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "documentos_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documentos_created_by_fkey"
-      columns: ["created_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documentos_deleted_by_fkey"
-      columns: ["deleted_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documentos_equipo_id_fkey"
-      columns: ["equipo_id"]
-isOneToOne: false
-      referencedRelation: "equipos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documentos_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documentos_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "documentos_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"empresa_config": {
-                  Row: {
-                    "ciudad": string,"cuit": string | null,"direccion": string,"email": string,"id": boolean,"indice_base": string,"provincia": string,"proxima_actualizacion": string,"razon_social": string,"telefono": string,"updated_at": string,"web": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "ciudad"?: string,"cuit"?: string | null,"direccion"?: string,"email"?: string,"id"?: boolean,"indice_base"?: string,"provincia"?: string,"proxima_actualizacion"?: string,"razon_social": string,"telefono"?: string,"updated_at"?: string,"web"?: string
-                  }
-                  Update: {
-                    "ciudad"?: string,"cuit"?: string | null,"direccion"?: string,"email"?: string,"id"?: boolean,"indice_base"?: string,"provincia"?: string,"proxima_actualizacion"?: string,"razon_social"?: string,"telefono"?: string,"updated_at"?: string,"web"?: string
-                  }
-                  Relationships: [
-
-                  ]
-                },"equipos": {
-                  Row: {
-                    "activo": boolean,"capacidad_tn": number | null,"created_at": string,"descripcion": string,"id": string,"identificacion": string,"marca": string,"modelo": string,"nombre": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "activo"?: boolean,"capacidad_tn"?: number | null,"created_at"?: string,"descripcion"?: string,"id"?: string,"identificacion"?: string,"marca"?: string,"modelo"?: string,"nombre": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "activo"?: boolean,"capacidad_tn"?: number | null,"created_at"?: string,"descripcion"?: string,"id"?: string,"identificacion"?: string,"marca"?: string,"modelo"?: string,"nombre"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-
-                  ]
-                },"facturas_historicas": {
-                  Row: {
-                    "clave_origen": string,"cobrado": number,"confirmacion_cobro": string,"cotizacion_id": string,"entrada": NonNullable<Json>,"factura_id": string,"lote": string,"registrado_at": string,"sha256": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "clave_origen"?: never,"cobrado": number,"confirmacion_cobro": string,"cotizacion_id": string,"entrada": NonNullable<Json>,"factura_id": string,"lote": string,"registrado_at"?: string,"sha256": string
-                  }
-                  Update: {
-                    "clave_origen"?: never,"cobrado"?: number,"confirmacion_cobro"?: string,"cotizacion_id"?: string,"entrada"?: NonNullable<Json>,"factura_id"?: string,"lote"?: string,"registrado_at"?: string,"sha256"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: true
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: true
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "facturas_historicas_cotizacion_id_fkey"
-      columns: ["cotizacion_id"]
-isOneToOne: true
-      referencedRelation: "v_presupuestos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "facturas_historicas_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: true
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "facturas_historicas_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: true
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "facturas_historicas_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: true
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"financial_events": {
-                  Row: {
-                    "action": string,"actor": string | null,"after_financial": NonNullable<Json>,"after_version": number,"before_financial": NonNullable<Json>,"before_version": number,"document_id": string,"id": string,"occurred_at": string,"reason": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "action": string,"actor"?: string | null,"after_financial": NonNullable<Json>,"after_version": number,"before_financial": NonNullable<Json>,"before_version": number,"document_id": string,"id"?: string,"occurred_at"?: string,"reason"?: string
-                  }
-                  Update: {
-                    "action"?: string,"actor"?: string | null,"after_financial"?: NonNullable<Json>,"after_version"?: number,"before_financial"?: NonNullable<Json>,"before_version"?: number,"document_id"?: string,"id"?: string,"occurred_at"?: string,"reason"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "financial_events_document_id_fkey"
-      columns: ["document_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "financial_events_document_id_fkey"
-      columns: ["document_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "financial_events_document_id_fkey"
-      columns: ["document_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"firmantes": {
-                  Row: {
-                    "activo": boolean,"cargo": string,"created_at": string,"email": string,"id": string,"nombre": string,"telefono": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "activo"?: boolean,"cargo"?: string,"created_at"?: string,"email"?: string,"id"?: string,"nombre": string,"telefono"?: string,"updated_at"?: string
-                  }
-                  Update: {
-                    "activo"?: boolean,"cargo"?: string,"created_at"?: string,"email"?: string,"id"?: string,"nombre"?: string,"telefono"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-
-                  ]
-                },"invoice_allocations": {
-                  Row: {
-                    "amount": number,"budget_id": string | null,"budget_number": number | null,"budget_subject": string | null,"created_at": string,"equipment_id": string | null,"equipment_name": string | null,"equipment_status": string,"historical_settled_amount": number,"id": string,"invoice_id": string,"source": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "amount": number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"equipment_id"?: string | null,"equipment_name"?: string | null,"equipment_status": string,"historical_settled_amount"?: number,"id"?: string,"invoice_id": string,"source": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "amount"?: number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"equipment_id"?: string | null,"equipment_name"?: string | null,"equipment_status"?: string,"historical_settled_amount"?: number,"id"?: string,"invoice_id"?: string,"source"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "invoice_allocations_equipment_id_fkey"
-      columns: ["equipment_id"]
-isOneToOne: false
-      referencedRelation: "equipos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "invoice_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "invoice_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "invoice_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"op_facturas": {
-                  Row: {
-                    "factura_id": string,"monto_aplicado": number,"op_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "factura_id": string,"monto_aplicado": number,"op_id": string
-                  }
-                  Update: {
-                    "factura_id"?: string,"monto_aplicado"?: number,"op_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "op_facturas_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "op_facturas_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "op_facturas_factura_id_fkey"
-      columns: ["factura_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    },{
-      foreignKeyName: "op_facturas_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "op_facturas_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "op_facturas_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"payment_allocations": {
-                  Row: {
-                    "amount": number,"budget_id": string | null,"budget_number": number | null,"budget_subject": string | null,"created_at": string,"id": string,"instrument_id": string,"invoice_id": string | null,"source": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "amount": number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"id"?: string,"instrument_id": string,"invoice_id"?: string | null,"source": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "amount"?: number,"budget_id"?: string | null,"budget_number"?: number | null,"budget_subject"?: string | null,"created_at"?: string,"id"?: string,"instrument_id"?: string,"invoice_id"?: string | null,"source"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "payment_allocations_instrument_id_fkey"
-      columns: ["instrument_id"]
-isOneToOne: false
-      referencedRelation: "payment_instruments"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_allocations_instrument_id_fkey"
-      columns: ["instrument_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["instrument_id"]
-    },{
-      foreignKeyName: "payment_allocations_instrument_id_fkey"
-      columns: ["instrument_id"]
-isOneToOne: false
-      referencedRelation: "v_payment_instrument_balances"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"payment_instruments": {
-                  Row: {
-                    "amount": number,"bank": string,"created_at": string,"due_on": string | null,"id": string,"kind": string,"op_id": string,"received_on": string | null,"reference": string,"settled_on": string | null,"status": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "amount": number,"bank"?: string,"created_at"?: string,"due_on"?: string | null,"id"?: string,"kind": string,"op_id": string,"received_on"?: string | null,"reference"?: string,"settled_on"?: string | null,"status": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "amount"?: number,"bank"?: string,"created_at"?: string,"due_on"?: string | null,"id"?: string,"kind"?: string,"op_id"?: string,"received_on"?: string | null,"reference"?: string,"settled_on"?: string | null,"status"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "payment_instruments_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_instruments_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_instruments_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"plantillas": {
-                  Row: {
-                    "activa": boolean,"asunto": string,"bloques": NonNullable<Json>,"created_at": string,"formato": string,"id": string,"intro": string,"items": NonNullable<Json>,"nombre": string,"updated_at": string,"validez_dias": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "activa"?: boolean,"asunto"?: string,"bloques"?: NonNullable<Json>,"created_at"?: string,"formato": string,"id"?: string,"intro"?: string,"items"?: NonNullable<Json>,"nombre": string,"updated_at"?: string,"validez_dias"?: number
-                  }
-                  Update: {
-                    "activa"?: boolean,"asunto"?: string,"bloques"?: NonNullable<Json>,"created_at"?: string,"formato"?: string,"id"?: string,"intro"?: string,"items"?: NonNullable<Json>,"nombre"?: string,"updated_at"?: string,"validez_dias"?: number
-                  }
-                  Relationships: [
-
-                  ]
-                },"profiles": {
-                  Row: {
-                    "activo": boolean,"created_at": string,"id": string,"nombre": string,"rol": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "activo"?: boolean,"created_at"?: string,"id": string,"nombre": string,"rol"?: string,"updated_at"?: string
-                  }
-                  Update: {
-                    "activo"?: boolean,"created_at"?: string,"id"?: string,"nombre"?: string,"rol"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-
-                  ]
-                }
-          }
-          Views: {
-            "v_cotizaciones": {
-                  Row: {
-                    "archivo_original_path": string | null,"asunto": string,"bloques": NonNullable<Json>,"cliente_id": string,"cliente_razon_social": string,"contacto_id": string | null,"created_at": string,"created_by": string | null,"datos": NonNullable<Json>,"equipo_id": string | null,"estado": string,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"firmante_id": string | null,"formato": string,"id": string,"intro": string,"mostrar_total": boolean,"notas": string,"numero": number,"origen": string,"pdf_aprobado_path": string | null,"plantilla_id": string | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"reemplaza_a": string | null,"updated_at": string,"validez_dias": number,"vence_el": string | null,"vencida": boolean | null
-                  }
-                  ComputedFields: never
-                  Relationships: [
-                    {
-      foreignKeyName: "cotizaciones_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_contacto_id_fkey"
-      columns: ["contacto_id"]
-isOneToOne: false
-      referencedRelation: "contactos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_created_by_fkey"
-      columns: ["created_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_equipo_id_fkey"
-      columns: ["equipo_id"]
-isOneToOne: false
-      referencedRelation: "equipos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_firmante_id_fkey"
-      columns: ["firmante_id"]
-isOneToOne: false
-      referencedRelation: "firmantes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_plantilla_id_fkey"
-      columns: ["plantilla_id"]
-isOneToOne: false
-      referencedRelation: "plantillas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
-      columns: ["reemplaza_a"]
-isOneToOne: false
-      referencedRelation: "cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
-      columns: ["reemplaza_a"]
-isOneToOne: false
-      referencedRelation: "v_cotizaciones"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "cotizaciones_reemplaza_a_fkey"
-      columns: ["reemplaza_a"]
-isOneToOne: false
-      referencedRelation: "v_presupuestos"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"v_facturas": {
-                  Row: {
-                    "available_amount": number | null,"cliente_id": string,"cobrado": number | null,"credited_money": number | null,"estado_cobro": string | null,"fecha": string | null,"fecha_vencimiento": string | null,"id": string,"legacy_settled_amount": number | null,"monto": number | null,"numero": string,"pending_check_amount": number | null,"reserved_amount": number | null,"saldo": number | null,"tipo_comprobante": string | null,"withheld_amount": number | null
-                  }
-                  ComputedFields: never
-                  Relationships: [
-                    {
-      foreignKeyName: "documentos_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"v_financial_ledger": {
-                  Row: {
-                    "allocation_id": string,"amount": number,"budget_id": string | null,"cliente_id": string,"credited_money": number | null,"instrument_id": string,"invoice_id": string | null,"legacy_settled_amount": number | null,"op_id": string,"pending_check_amount": number | null,"withheld_amount": number | null
-                  }
-                  ComputedFields: never
-                  Relationships: [
-                    {
-      foreignKeyName: "documentos_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_allocations_invoice_id_fkey"
-      columns: ["invoice_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"v_inicio_colas": {
-                  Row: {
-                    "asunto": string | null,"cliente_id": string | null,"cliente_razon_social": string | null,"cola": string | null,"contacto_nombre": string | null,"dias": number | null,"email": string | null,"fecha": string | null,"fecha_referencia": string | null,"id": string | null,"importe": number | null,"numero": string | null,"presupuesto_id": string | null,"telefono": string | null,"vence_el": string | null
-                  }
-                  ComputedFields: never
-                  Relationships: [
-
-                  ]
-                },"v_payment_instrument_balances": {
-                  Row: {
-                    "allocated_amount": number | null,"amount": number,"cliente_id": string,"id": string,"kind": string,"op_id": string,"recognized": boolean | null,"status": string,"unallocated_amount": number | null,"unresolved_relevant": boolean | null
-                  }
-                  ComputedFields: never
-                  Relationships: [
-                    {
-      foreignKeyName: "documentos_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_instruments_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "documentos"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_instruments_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "v_facturas"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "payment_instruments_op_id_fkey"
-      columns: ["op_id"]
-isOneToOne: false
-      referencedRelation: "v_financial_ledger"
-      referencedColumns: ["op_id"]
-    }
-                  ]
-                },"v_presupuestos": {
-                  Row: {
-                    "assigned_balance": number | null,"asunto": string,"balance_determinate": boolean | null,"cliente_id": string,"cliente_razon_social": string,"credited_money": number | null,"display_status": string | null,"facturado": number | null,"facturas": number | null,"fecha": string,"fecha_aprobacion": string | null,"fecha_proxima_actualizacion": string | null,"formato": string,"id": string,"legacy_settled_amount": number | null,"linked_unallocated_instrument_amount": number | null,"linked_unallocated_instrument_count": number | null,"linked_unallocated_invoice_amount": number | null,"linked_unallocated_invoice_count": number | null,"linked_unallocated_payment_amount": number | null,"linked_unallocated_payment_count": number | null,"linked_unallocated_recognized_amount": number | null,"linked_unclassified_instrument_amount": number | null,"numero": number,"ordenes_compra": number | null,"ordenes_pago": number | null,"origen": string,"paid_in_full": boolean | null,"pending_check_amount": number | null,"presupuesto_estado": string | null,"presupuesto_motivo": string,"remitos": number | null,"remitos_sin_factura": number | null,"saldo": number | null,"unapplied_advances": number | null,"withheld_amount": number | null
-                  }
-                  ComputedFields: never
-                  Relationships: [
-                    {
-      foreignKeyName: "cotizaciones_cliente_id_fkey"
-      columns: ["cliente_id"]
-isOneToOne: false
-      referencedRelation: "clientes"
-      referencedColumns: ["id"]
-    }
-                  ]
-                }
-          }
-          Functions: {
-            "actualizar_documento":
-{ Args: { "p_aplicaciones"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
-                           },
-"actualizar_documento_con_archivos":
-{ Args: { "p_aplicaciones"?: Json,"p_archivos"?: Json,"p_datos": Json,"p_id": string,"p_presupuestos"?: (string)[],"p_quitar"?: (string)[],"p_remitos"?: (string)[] }; Returns: undefined
-                           },
-"actualizar_seguimiento_cotizacion":
-{ Args: { "p_fecha"?: string,"p_id": string,"p_notas": string,"p_updated_at": string }; Returns: undefined
-                           },
-"agregar_archivos":
-{ Args: { "p_archivos": Json,"p_documento_id": string }; Returns: undefined
-                           },
-"anular_documento":
-{ Args: { "p_expected_version"?: number,"p_id": string,"p_reason"?: string }; Returns: undefined
-                           },
-"aprobar_con_orden_compra":
-{ Args: { "p_archivos": Json,"p_documento": Json,"p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: string
-                           },
-"aprobar_cotizacion":
-{ Args: { "p_fecha"?: string,"p_id": string,"p_pdf_path"?: string,"p_updated_at": string }; Returns: undefined
-                           },
-"borrar_cotizacion":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"buscar_clientes":
-{ Args: { "limite"?: number,"texto"?: string }; Returns: {
-              "activo": boolean,
-"condicion_iva": string | null,
-"condicion_pago": string,
-"created_at": string,
-"created_by": string | null,
-"cuit": string | null,
-"direccion": string,
-"email": string,
-"id": string,
-"localidad": string,
-"notas": string,
-"provincia": string,
-"razon_social": string,
-"telefono": string,
-"updated_at": string
-            }[]
-                          SetofOptions: {
-        from: "*"
-        to: "clientes"
-        isOneToOne: false
-        isSetofReturn: true
-      } },
-"buscar_cotizaciones":
-{ Args: { "cliente"?: string,"desde"?: string,"estado"?: string,"hasta"?: string,"texto"?: string }; Returns: {
-              "archivo_original_path": string | null,
-"asunto": string,
-"bloques": NonNullable<Json>,
-"cliente_id": string,
-"cliente_razon_social": string,
-"contacto_id": string | null,
-"created_at": string,
-"created_by": string | null,
-"datos": NonNullable<Json>,
-"equipo_id": string | null,
-"estado": string,
-"fecha": string,
-"fecha_aprobacion": string | null,
-"fecha_proxima_actualizacion": string | null,
-"firmante_id": string | null,
-"formato": string,
-"id": string,
-"intro": string,
-"mostrar_total": boolean,
-"notas": string,
-"numero": number,
-"origen": string,
-"pdf_aprobado_path": string | null,
-"plantilla_id": string | null,
-"presupuesto_estado": string | null,
-"presupuesto_motivo": string,
-"reemplaza_a": string | null,
-"updated_at": string,
-"validez_dias": number,
-"vence_el": string | null,
-"vencida": boolean | null
-            }[]
-                          SetofOptions: {
-        from: "*"
-        to: "v_cotizaciones"
-        isOneToOne: false
-        isSetofReturn: true
-      } },
-"buscar_global":
-{ Args: { "p_desde"?: number,"p_grupo"?: string,"p_limite"?: number,"texto": string }; Returns: {
-              "cantidad": number,"cliente_razon_social": string,"descripcion": string,"grupo": string,"href": string,"id": string,"numero": string
-            }[]
-                           },
-"buscar_presupuestos":
-{ Args: { "cliente"?: string,"estado"?: string,"texto"?: string }; Returns: {
-              "assigned_balance": number | null,
-"asunto": string,
-"balance_determinate": boolean | null,
-"cliente_id": string,
-"cliente_razon_social": string,
-"credited_money": number | null,
-"display_status": string | null,
-"facturado": number | null,
-"facturas": number | null,
-"fecha": string,
-"fecha_aprobacion": string | null,
-"fecha_proxima_actualizacion": string | null,
-"formato": string,
-"id": string,
-"legacy_settled_amount": number | null,
-"linked_unallocated_instrument_amount": number | null,
-"linked_unallocated_instrument_count": number | null,
-"linked_unallocated_invoice_amount": number | null,
-"linked_unallocated_invoice_count": number | null,
-"linked_unallocated_payment_amount": number | null,
-"linked_unallocated_payment_count": number | null,
-"linked_unallocated_recognized_amount": number | null,
-"linked_unclassified_instrument_amount": number | null,
-"numero": number,
-"ordenes_compra": number | null,
-"ordenes_pago": number | null,
-"origen": string,
-"paid_in_full": boolean | null,
-"pending_check_amount": number | null,
-"presupuesto_estado": string | null,
-"presupuesto_motivo": string,
-"remitos": number | null,
-"remitos_sin_factura": number | null,
-"saldo": number | null,
-"unapplied_advances": number | null,
-"withheld_amount": number | null
-            }[]
-                          SetofOptions: {
-        from: "*"
-        to: "v_presupuestos"
-        isOneToOne: false
-        isSetofReturn: true
-      } },
-"cambiar_estado_presupuesto":
-{ Args: { "p_estado": string,"p_id": string,"p_motivo"?: string }; Returns: undefined
-                           },
-"cargar_cotizacion_existente":
-{ Args: { "p_datos": Json }; Returns: string
-                           },
-"change_payment_instrument_status":
-{ Args: { "p_expected_version": number,"p_instrument_id": string,"p_op_id": string,"p_reason"?: string,"p_settled_on"?: string,"p_status": string }; Returns: Json
-                           },
-"complete_crane_operator_signup":
-{ Args: { "p_actor_id"?: string,"p_equipment_id"?: string,"p_name": string,"p_user_id": string }; Returns: undefined
-                           },
-"create_crane_delivery_note_upload":
-{ Args: { "p_equipment_id"?: string,"p_mime": string,"p_size": number }; Returns: {
-              "path": string,"upload_id": string
-            }[]
-                           },
-"duplicar_cotizacion":
-{ Args: { "p_cliente_id"?: string,"p_id": string }; Returns: string
-                           },
-"eliminar_plantilla":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"get_crane_operator_context":
-{ Args: Record<PropertyKey, never>; Returns: Json
-                           },
-"guardar_cotizacion":
-{ Args: { "p_datos": Json,"p_id"?: string,"p_items": Json,"p_updated_at"?: string }; Returns: string
-                           },
-"guardar_cotizacion_versionada":
-{ Args: { "p_datos": Json,"p_id"?: string,"p_items": Json,"p_updated_at"?: string }; Returns: {
-              "id": string,"numero": number,"version": string
-            }[]
-                           },
-"guardar_plantilla_editor":
-{ Args: { "p_contenido": Json,"p_id"?: string,"p_nombre": string }; Returns: string
-                           },
-"importar_cotizacion":
-{ Args: { "p_datos": Json }; Returns: string
-                           },
-"importar_factura_historica":
-{ Args: { "p_datos": Json }; Returns: Json
-                           },
-"inicio_pendientes":
-{ Args: { "p_cola"?: string,"p_desde"?: number,"p_limite"?: number }; Returns: {
-              "asunto": string | null,
-"cliente_id": string | null,
-"cliente_razon_social": string | null,
-"cola": string | null,
-"contacto_nombre": string | null,
-"dias": number | null,
-"email": string | null,
-"fecha": string | null,
-"fecha_referencia": string | null,
-"id": string | null,
-"importe": number | null,
-"numero": string | null,
-"presupuesto_id": string | null,
-"telefono": string | null,
-"vence_el": string | null
-            }[]
-                          SetofOptions: {
-        from: "*"
-        to: "v_inicio_colas"
-        isOneToOne: false
-        isSetofReturn: true
-      } },
-"inicio_resumen":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "cantidad": number,"cola": string,"importe": number
-            }[]
-                           },
-"link_crane_delivery_note":
-{ Args: { "p_budget_id": string,"p_note_id": string }; Returns: string
-                           },
-"list_crane_operators":
-{ Args: { "p_active"?: boolean,"p_search"?: string }; Returns: {
-              "active": boolean,"email": string,"equipment_active": boolean,"equipment_id": string,"equipment_name": string,"last_submission_at": string,"name": string,"note_count": number,"pending_note_count": number,"user_id": string
-            }[]
-                           },
-"list_operator_cranes":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "equipment_id": string,"name": string
-            }[]
-                           },
-"list_user_access":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "active": boolean,"email": string,"equipment_id": string,"equipment_name": string,"name": string,"role": string,"user_id": string
-            }[]
-                           },
-"marcar_enviada":
-{ Args: { "p_id": string,"p_pdf_path": string,"p_updated_at": string }; Returns: undefined
-                           },
-"presupuesto_directo":
-{ Args: { "p_datos": Json,"p_items"?: Json }; Returns: string
-                           },
-"quitar_archivo":
-{ Args: { "p_archivo_id": string }; Returns: undefined
-                           },
-"reabrir_cotizacion":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"read_equipment_revenue":
-{ Args: { "p_from"?: string,"p_page"?: number,"p_review"?: string,"p_to"?: string }; Returns: Json
-                           },
-"rechazar_cotizacion":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"registrar_documento":
-{ Args: { "p_aplicaciones"?: Json,"p_archivos": Json,"p_datos": Json,"p_presupuestos": (string)[],"p_remitos"?: (string)[] }; Returns: string
-                           },
-"restaurar_documento":
-{ Args: { "p_expected_version"?: number,"p_id": string,"p_reason"?: string }; Returns: undefined
-                           },
-"revertir_aprobacion":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"save_delivery_note_with_invoice":
-{ Args: { "p_archivos": Json,"p_datos": Json,"p_factura_id"?: string,"p_id"?: string,"p_presupuestos": (string)[],"p_quitar"?: (string)[] }; Returns: string
-                           },
-"set_crane_operator_access":
-{ Args: { "p_active": boolean,"p_equipment_id"?: string,"p_user_id": string }; Returns: undefined
-                           },
-"set_user_access":
-{ Args: { "p_active": boolean,"p_equipment_id"?: string,"p_role": string,"p_user_id": string }; Returns: undefined
-                           },
-"submit_crane_delivery_note":
-{ Args: { "p_data": Json,"p_files": Json,"p_id": string }; Returns: string
-                           }
-          }
-          Enums: {
-            [_ in never]: never
-          }
-          CompositeTypes: {
-            [_ in never]: never
-          }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
         }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  public: {
+    Tables: {
+      clientes: {
+        Row: {
+          activo: boolean
+          condicion_iva: string | null
+          condicion_pago: string
+          created_at: string
+          created_by: string | null
+          cuit: string | null
+          direccion: string
+          email: string
+          id: string
+          localidad: string
+          notas: string
+          provincia: string
+          razon_social: string
+          telefono: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          activo?: boolean
+          condicion_iva?: string | null
+          condicion_pago?: string
+          created_at?: string
+          created_by?: string | null
+          cuit?: string | null
+          direccion?: string
+          email?: string
+          id?: string
+          localidad?: string
+          notas?: string
+          provincia?: string
+          razon_social: string
+          telefono?: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          condicion_iva?: string | null
+          condicion_pago?: string
+          created_at?: string
+          created_by?: string | null
+          cuit?: string | null
+          direccion?: string
+          email?: string
+          id?: string
+          localidad?: string
+          notas?: string
+          provincia?: string
+          razon_social?: string
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'clientes_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      contactos: {
+        Row: {
+          cargo: string
+          cliente_id: string
+          created_at: string
+          email: string
+          id: string
+          nombre: string
+          telefono: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          cargo?: string
+          cliente_id: string
+          created_at?: string
+          email?: string
+          id?: string
+          nombre: string
+          telefono?: string
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string
+          cliente_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          nombre?: string
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'contactos_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      cotizacion_envios: {
+        Row: {
+          cotizacion_id: string
+          created_by: string | null
+          enviada_at: string
+          id: string
+          pdf_path: string
+        }
+        ComputedFields: never
+        Insert: {
+          cotizacion_id: string
+          created_by?: string | null
+          enviada_at?: string
+          id?: string
+          pdf_path: string
+        }
+        Update: {
+          cotizacion_id?: string
+          created_by?: string | null
+          enviada_at?: string
+          id?: string
+          pdf_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'cotizacion_envios_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizacion_envios_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'v_cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizacion_envios_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'v_presupuestos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizacion_envios_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      cotizacion_items: {
+        Row: {
+          cantidad: number
+          cotizacion_id: string
+          descripcion: string
+          id: string
+          is_complimentary: boolean
+          orden: number
+          precio_unitario: number | null
+          seccion: string
+          total: number | null
+          unidad: string
+        }
+        ComputedFields: never
+        Insert: {
+          cantidad?: number
+          cotizacion_id: string
+          descripcion: string
+          id?: string
+          is_complimentary?: boolean
+          orden: number
+          precio_unitario?: number | null
+          seccion?: string
+          total?: never
+          unidad: string
+        }
+        Update: {
+          cantidad?: number
+          cotizacion_id?: string
+          descripcion?: string
+          id?: string
+          is_complimentary?: boolean
+          orden?: number
+          precio_unitario?: number | null
+          seccion?: string
+          total?: never
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'cotizacion_items_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizacion_items_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'v_cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizacion_items_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'v_presupuestos'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      cotizaciones: {
+        Row: {
+          archivo_original_path: string | null
+          asunto: string
+          bloques: NonNullable<Json>
+          cliente_id: string
+          contacto_id: string | null
+          created_at: string
+          created_by: string | null
+          datos: NonNullable<Json>
+          equipo_id: string | null
+          estado: string
+          fecha: string
+          fecha_aprobacion: string | null
+          fecha_proxima_actualizacion: string | null
+          firmante_id: string | null
+          formato: string
+          id: string
+          intro: string
+          mostrar_total: boolean
+          notas: string
+          numero: number
+          origen: string
+          pdf_aprobado_path: string | null
+          plantilla_id: string | null
+          presupuesto_estado: string | null
+          presupuesto_motivo: string
+          reemplaza_a: string | null
+          updated_at: string
+          validez_dias: number
+        }
+        ComputedFields: never
+        Insert: {
+          archivo_original_path?: string | null
+          asunto?: string
+          bloques?: NonNullable<Json>
+          cliente_id: string
+          contacto_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          datos?: NonNullable<Json>
+          equipo_id?: string | null
+          estado?: string
+          fecha?: string
+          fecha_aprobacion?: string | null
+          fecha_proxima_actualizacion?: string | null
+          firmante_id?: string | null
+          formato: string
+          id?: string
+          intro?: string
+          mostrar_total?: boolean
+          notas?: string
+          numero?: number
+          origen?: string
+          pdf_aprobado_path?: string | null
+          plantilla_id?: string | null
+          presupuesto_estado?: string | null
+          presupuesto_motivo?: string
+          reemplaza_a?: string | null
+          updated_at?: string
+          validez_dias?: number
+        }
+        Update: {
+          archivo_original_path?: string | null
+          asunto?: string
+          bloques?: NonNullable<Json>
+          cliente_id?: string
+          contacto_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          datos?: NonNullable<Json>
+          equipo_id?: string | null
+          estado?: string
+          fecha?: string
+          fecha_aprobacion?: string | null
+          fecha_proxima_actualizacion?: string | null
+          firmante_id?: string | null
+          formato?: string
+          id?: string
+          intro?: string
+          mostrar_total?: boolean
+          notas?: string
+          numero?: number
+          origen?: string
+          pdf_aprobado_path?: string | null
+          plantilla_id?: string | null
+          presupuesto_estado?: string | null
+          presupuesto_motivo?: string
+          reemplaza_a?: string | null
+          updated_at?: string
+          validez_dias?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'cotizaciones_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_contacto_id_fkey'
+            columns: ['contacto_id']
+            isOneToOne: false
+            referencedRelation: 'contactos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_equipo_id_fkey'
+            columns: ['equipo_id']
+            isOneToOne: false
+            referencedRelation: 'equipos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_firmante_id_fkey'
+            columns: ['firmante_id']
+            isOneToOne: false
+            referencedRelation: 'firmantes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_plantilla_id_fkey'
+            columns: ['plantilla_id']
+            isOneToOne: false
+            referencedRelation: 'plantillas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_reemplaza_a_fkey'
+            columns: ['reemplaza_a']
+            isOneToOne: false
+            referencedRelation: 'cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_reemplaza_a_fkey'
+            columns: ['reemplaza_a']
+            isOneToOne: false
+            referencedRelation: 'v_cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_reemplaza_a_fkey'
+            columns: ['reemplaza_a']
+            isOneToOne: false
+            referencedRelation: 'v_presupuestos'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      crane_delivery_note_files: {
+        Row: {
+          id: string
+          mime: string
+          note_id: string
+          original_name: string
+          path: string
+          position: number
+          size: number
+          upload_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          id?: string
+          mime: string
+          note_id: string
+          original_name: string
+          path: string
+          position: number
+          size: number
+          upload_id: string
+        }
+        Update: {
+          id?: string
+          mime?: string
+          note_id?: string
+          original_name?: string
+          path?: string
+          position?: number
+          size?: number
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'crane_delivery_note_files_note_id_fkey'
+            columns: ['note_id']
+            isOneToOne: false
+            referencedRelation: 'crane_delivery_notes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_note_files_upload_id_fkey'
+            columns: ['upload_id']
+            isOneToOne: true
+            referencedRelation: 'crane_delivery_note_uploads'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      crane_delivery_note_uploads: {
+        Row: {
+          consumed_note_id: string | null
+          created_at: string
+          equipment_id: string
+          expected_size: number
+          expires_at: string
+          id: string
+          mime: string
+          operator_id: string
+          path: string
+        }
+        ComputedFields: never
+        Insert: {
+          consumed_note_id?: string | null
+          created_at?: string
+          equipment_id: string
+          expected_size: number
+          expires_at?: string
+          id?: string
+          mime: string
+          operator_id: string
+          path: string
+        }
+        Update: {
+          consumed_note_id?: string | null
+          created_at?: string
+          equipment_id?: string
+          expected_size?: number
+          expires_at?: string
+          id?: string
+          mime?: string
+          operator_id?: string
+          path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'crane_delivery_note_uploads_consumed_note_id_fkey'
+            columns: ['consumed_note_id']
+            isOneToOne: false
+            referencedRelation: 'crane_delivery_notes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_note_uploads_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_note_uploads_operator_id_fkey'
+            columns: ['operator_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      crane_delivery_notes: {
+        Row: {
+          created_at: string
+          customer_name: string
+          document_id: string | null
+          equipment_id: string
+          equipment_name: string
+          id: string
+          linked_at: string | null
+          linked_budget_id: string | null
+          linked_by: string | null
+          notes: string
+          number: string
+          operator_id: string
+          requested_budget_id: string | null
+          service_date: string
+          status: string
+          submission_data: NonNullable<Json>
+          submission_files: NonNullable<Json>
+          work_description: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          customer_name: string
+          document_id?: string | null
+          equipment_id: string
+          equipment_name: string
+          id: string
+          linked_at?: string | null
+          linked_budget_id?: string | null
+          linked_by?: string | null
+          notes?: string
+          number?: string
+          operator_id: string
+          requested_budget_id?: string | null
+          service_date: string
+          status?: string
+          submission_data: NonNullable<Json>
+          submission_files: NonNullable<Json>
+          work_description: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          document_id?: string | null
+          equipment_id?: string
+          equipment_name?: string
+          id?: string
+          linked_at?: string | null
+          linked_budget_id?: string | null
+          linked_by?: string | null
+          notes?: string
+          number?: string
+          operator_id?: string
+          requested_budget_id?: string | null
+          service_date?: string
+          status?: string
+          submission_data?: NonNullable<Json>
+          submission_files?: NonNullable<Json>
+          work_description?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'crane_delivery_notes_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: true
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_notes_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: true
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_notes_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: true
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_notes_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_notes_linked_by_fkey'
+            columns: ['linked_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_delivery_notes_operator_id_fkey'
+            columns: ['operator_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      crane_operator_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          equipment_id: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          equipment_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          equipment_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'crane_operator_assignments_assigned_by_fkey'
+            columns: ['assigned_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_operator_assignments_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'crane_operator_assignments_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      documento_archivos: {
+        Row: {
+          created_at: string
+          documento_id: string
+          id: string
+          mime: string
+          nombre_original: string
+          orden: number
+          path: string
+          tamano: number
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          documento_id: string
+          id?: string
+          mime: string
+          nombre_original: string
+          orden: number
+          path: string
+          tamano: number
+        }
+        Update: {
+          created_at?: string
+          documento_id?: string
+          id?: string
+          mime?: string
+          nombre_original?: string
+          orden?: number
+          path?: string
+          tamano?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'documento_archivos_documento_id_fkey'
+            columns: ['documento_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documento_archivos_documento_id_fkey'
+            columns: ['documento_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documento_archivos_documento_id_fkey'
+            columns: ['documento_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      documento_presupuestos: {
+        Row: {
+          cotizacion_id: string
+          documento_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          cotizacion_id: string
+          documento_id: string
+        }
+        Update: {
+          cotizacion_id?: string
+          documento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'documento_presupuestos_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documento_presupuestos_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'v_cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documento_presupuestos_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: false
+            referencedRelation: 'v_presupuestos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documento_presupuestos_documento_id_fkey'
+            columns: ['documento_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documento_presupuestos_documento_id_fkey'
+            columns: ['documento_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documento_presupuestos_documento_id_fkey'
+            columns: ['documento_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      documentos: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          equipo_id: string | null
+          factura_id: string | null
+          fecha: string | null
+          fecha_vencimiento: string | null
+          financial_version: number
+          id: string
+          monto: number | null
+          notas: string
+          numero: string
+          numero_normalizado: string | null
+          numero_oc_ref: string
+          payment_condition: string
+          periodo_desde: string | null
+          periodo_hasta: string | null
+          tipo: string
+          tipo_comprobante: string | null
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          equipo_id?: string | null
+          factura_id?: string | null
+          fecha?: string | null
+          fecha_vencimiento?: string | null
+          financial_version?: number
+          id?: string
+          monto?: number | null
+          notas?: string
+          numero?: string
+          numero_normalizado?: never
+          numero_oc_ref?: string
+          payment_condition?: string
+          periodo_desde?: string | null
+          periodo_hasta?: string | null
+          tipo: string
+          tipo_comprobante?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          equipo_id?: string | null
+          factura_id?: string | null
+          fecha?: string | null
+          fecha_vencimiento?: string | null
+          financial_version?: number
+          id?: string
+          monto?: number | null
+          notas?: string
+          numero?: string
+          numero_normalizado?: never
+          numero_oc_ref?: string
+          payment_condition?: string
+          periodo_desde?: string | null
+          periodo_hasta?: string | null
+          tipo?: string
+          tipo_comprobante?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'documentos_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documentos_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documentos_deleted_by_fkey'
+            columns: ['deleted_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documentos_equipo_id_fkey'
+            columns: ['equipo_id']
+            isOneToOne: false
+            referencedRelation: 'equipos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documentos_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documentos_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'documentos_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      empresa_config: {
+        Row: {
+          ciudad: string
+          cuit: string | null
+          direccion: string
+          email: string
+          id: boolean
+          indice_base: string
+          provincia: string
+          proxima_actualizacion: string
+          razon_social: string
+          telefono: string
+          updated_at: string
+          web: string
+        }
+        ComputedFields: never
+        Insert: {
+          ciudad?: string
+          cuit?: string | null
+          direccion?: string
+          email?: string
+          id?: boolean
+          indice_base?: string
+          provincia?: string
+          proxima_actualizacion?: string
+          razon_social: string
+          telefono?: string
+          updated_at?: string
+          web?: string
+        }
+        Update: {
+          ciudad?: string
+          cuit?: string | null
+          direccion?: string
+          email?: string
+          id?: boolean
+          indice_base?: string
+          provincia?: string
+          proxima_actualizacion?: string
+          razon_social?: string
+          telefono?: string
+          updated_at?: string
+          web?: string
+        }
+        Relationships: []
+      }
+      equipos: {
+        Row: {
+          activo: boolean
+          capacidad_tn: number | null
+          created_at: string
+          descripcion: string
+          id: string
+          identificacion: string
+          marca: string
+          modelo: string
+          nombre: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          activo?: boolean
+          capacidad_tn?: number | null
+          created_at?: string
+          descripcion?: string
+          id?: string
+          identificacion?: string
+          marca?: string
+          modelo?: string
+          nombre: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          capacidad_tn?: number | null
+          created_at?: string
+          descripcion?: string
+          id?: string
+          identificacion?: string
+          marca?: string
+          modelo?: string
+          nombre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      facturas_historicas: {
+        Row: {
+          clave_origen: string
+          cobrado: number
+          confirmacion_cobro: string
+          cotizacion_id: string
+          entrada: NonNullable<Json>
+          factura_id: string
+          lote: string
+          registrado_at: string
+          sha256: string
+        }
+        ComputedFields: never
+        Insert: {
+          clave_origen?: never
+          cobrado: number
+          confirmacion_cobro: string
+          cotizacion_id: string
+          entrada: NonNullable<Json>
+          factura_id: string
+          lote: string
+          registrado_at?: string
+          sha256: string
+        }
+        Update: {
+          clave_origen?: never
+          cobrado?: number
+          confirmacion_cobro?: string
+          cotizacion_id?: string
+          entrada?: NonNullable<Json>
+          factura_id?: string
+          lote?: string
+          registrado_at?: string
+          sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'facturas_historicas_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: true
+            referencedRelation: 'cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'facturas_historicas_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: true
+            referencedRelation: 'v_cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'facturas_historicas_cotizacion_id_fkey'
+            columns: ['cotizacion_id']
+            isOneToOne: true
+            referencedRelation: 'v_presupuestos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'facturas_historicas_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: true
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'facturas_historicas_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: true
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'facturas_historicas_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: true
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      financial_events: {
+        Row: {
+          action: string
+          actor: string | null
+          after_financial: NonNullable<Json>
+          after_version: number
+          before_financial: NonNullable<Json>
+          before_version: number
+          document_id: string
+          id: string
+          occurred_at: string
+          reason: string
+        }
+        ComputedFields: never
+        Insert: {
+          action: string
+          actor?: string | null
+          after_financial: NonNullable<Json>
+          after_version: number
+          before_financial: NonNullable<Json>
+          before_version: number
+          document_id: string
+          id?: string
+          occurred_at?: string
+          reason?: string
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          after_financial?: NonNullable<Json>
+          after_version?: number
+          before_financial?: NonNullable<Json>
+          before_version?: number
+          document_id?: string
+          id?: string
+          occurred_at?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'financial_events_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'financial_events_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'financial_events_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      firmantes: {
+        Row: {
+          activo: boolean
+          cargo: string
+          created_at: string
+          email: string
+          id: string
+          nombre: string
+          telefono: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          activo?: boolean
+          cargo?: string
+          created_at?: string
+          email?: string
+          id?: string
+          nombre: string
+          telefono?: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          cargo?: string
+          created_at?: string
+          email?: string
+          id?: string
+          nombre?: string
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_allocations: {
+        Row: {
+          amount: number
+          budget_id: string | null
+          budget_number: number | null
+          budget_subject: string | null
+          created_at: string
+          equipment_id: string | null
+          equipment_name: string | null
+          equipment_status: string
+          historical_settled_amount: number
+          id: string
+          invoice_id: string
+          source: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          amount: number
+          budget_id?: string | null
+          budget_number?: number | null
+          budget_subject?: string | null
+          created_at?: string
+          equipment_id?: string | null
+          equipment_name?: string | null
+          equipment_status: string
+          historical_settled_amount?: number
+          id?: string
+          invoice_id: string
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          budget_id?: string | null
+          budget_number?: number | null
+          budget_subject?: string | null
+          created_at?: string
+          equipment_id?: string | null
+          equipment_name?: string | null
+          equipment_status?: string
+          historical_settled_amount?: number
+          id?: string
+          invoice_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'invoice_allocations_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'invoice_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'invoice_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'invoice_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      op_facturas: {
+        Row: {
+          factura_id: string
+          monto_aplicado: number
+          op_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          factura_id: string
+          monto_aplicado: number
+          op_id: string
+        }
+        Update: {
+          factura_id?: string
+          monto_aplicado?: number
+          op_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'op_facturas_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'op_facturas_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'op_facturas_factura_id_fkey'
+            columns: ['factura_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+          {
+            foreignKeyName: 'op_facturas_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'op_facturas_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'op_facturas_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      payment_allocations: {
+        Row: {
+          amount: number
+          budget_id: string | null
+          budget_number: number | null
+          budget_subject: string | null
+          created_at: string
+          id: string
+          instrument_id: string
+          invoice_id: string | null
+          source: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          amount: number
+          budget_id?: string | null
+          budget_number?: number | null
+          budget_subject?: string | null
+          created_at?: string
+          id?: string
+          instrument_id: string
+          invoice_id?: string | null
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          budget_id?: string | null
+          budget_number?: number | null
+          budget_subject?: string | null
+          created_at?: string
+          id?: string
+          instrument_id?: string
+          invoice_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'payment_allocations_instrument_id_fkey'
+            columns: ['instrument_id']
+            isOneToOne: false
+            referencedRelation: 'payment_instruments'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_instrument_id_fkey'
+            columns: ['instrument_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['instrument_id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_instrument_id_fkey'
+            columns: ['instrument_id']
+            isOneToOne: false
+            referencedRelation: 'v_payment_instrument_balances'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      payment_instruments: {
+        Row: {
+          amount: number
+          bank: string
+          created_at: string
+          due_on: string | null
+          id: string
+          kind: string
+          op_id: string
+          received_on: string | null
+          reference: string
+          settled_on: string | null
+          status: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          amount: number
+          bank?: string
+          created_at?: string
+          due_on?: string | null
+          id?: string
+          kind: string
+          op_id: string
+          received_on?: string | null
+          reference?: string
+          settled_on?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank?: string
+          created_at?: string
+          due_on?: string | null
+          id?: string
+          kind?: string
+          op_id?: string
+          received_on?: string | null
+          reference?: string
+          settled_on?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'payment_instruments_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_instruments_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_instruments_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      plantillas: {
+        Row: {
+          activa: boolean
+          asunto: string
+          bloques: NonNullable<Json>
+          created_at: string
+          formato: string
+          id: string
+          intro: string
+          items: NonNullable<Json>
+          nombre: string
+          updated_at: string
+          validez_dias: number
+        }
+        ComputedFields: never
+        Insert: {
+          activa?: boolean
+          asunto?: string
+          bloques?: NonNullable<Json>
+          created_at?: string
+          formato: string
+          id?: string
+          intro?: string
+          items?: NonNullable<Json>
+          nombre: string
+          updated_at?: string
+          validez_dias?: number
+        }
+        Update: {
+          activa?: boolean
+          asunto?: string
+          bloques?: NonNullable<Json>
+          created_at?: string
+          formato?: string
+          id?: string
+          intro?: string
+          items?: NonNullable<Json>
+          nombre?: string
+          updated_at?: string
+          validez_dias?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          activo: boolean
+          created_at: string
+          id: string
+          nombre: string
+          rol: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          id: string
+          nombre: string
+          rol?: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nombre?: string
+          rol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      v_cotizaciones: {
+        Row: {
+          archivo_original_path: string | null
+          asunto: string
+          bloques: NonNullable<Json>
+          cliente_id: string
+          cliente_razon_social: string
+          contacto_id: string | null
+          created_at: string
+          created_by: string | null
+          datos: NonNullable<Json>
+          equipo_id: string | null
+          estado: string
+          fecha: string
+          fecha_aprobacion: string | null
+          fecha_proxima_actualizacion: string | null
+          firmante_id: string | null
+          formato: string
+          id: string
+          intro: string
+          mostrar_total: boolean
+          notas: string
+          numero: number
+          origen: string
+          pdf_aprobado_path: string | null
+          plantilla_id: string | null
+          presupuesto_estado: string | null
+          presupuesto_motivo: string
+          reemplaza_a: string | null
+          updated_at: string
+          validez_dias: number
+          vence_el: string | null
+          vencida: boolean | null
+        }
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: 'cotizaciones_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_contacto_id_fkey'
+            columns: ['contacto_id']
+            isOneToOne: false
+            referencedRelation: 'contactos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_equipo_id_fkey'
+            columns: ['equipo_id']
+            isOneToOne: false
+            referencedRelation: 'equipos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_firmante_id_fkey'
+            columns: ['firmante_id']
+            isOneToOne: false
+            referencedRelation: 'firmantes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_plantilla_id_fkey'
+            columns: ['plantilla_id']
+            isOneToOne: false
+            referencedRelation: 'plantillas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_reemplaza_a_fkey'
+            columns: ['reemplaza_a']
+            isOneToOne: false
+            referencedRelation: 'cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_reemplaza_a_fkey'
+            columns: ['reemplaza_a']
+            isOneToOne: false
+            referencedRelation: 'v_cotizaciones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cotizaciones_reemplaza_a_fkey'
+            columns: ['reemplaza_a']
+            isOneToOne: false
+            referencedRelation: 'v_presupuestos'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      v_facturas: {
+        Row: {
+          available_amount: number | null
+          cliente_id: string
+          cobrado: number | null
+          credited_money: number | null
+          estado_cobro: string | null
+          fecha: string | null
+          fecha_vencimiento: string | null
+          id: string
+          legacy_settled_amount: number | null
+          monto: number | null
+          numero: string
+          pending_check_amount: number | null
+          reserved_amount: number | null
+          saldo: number | null
+          tipo_comprobante: string | null
+          withheld_amount: number | null
+        }
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: 'documentos_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      v_financial_ledger: {
+        Row: {
+          allocation_id: string
+          amount: number
+          budget_id: string | null
+          cliente_id: string
+          credited_money: number | null
+          instrument_id: string
+          invoice_id: string | null
+          legacy_settled_amount: number | null
+          op_id: string
+          pending_check_amount: number | null
+          withheld_amount: number | null
+        }
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: 'documentos_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_allocations_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      v_inicio_colas: {
+        Row: {
+          asunto: string | null
+          cliente_id: string | null
+          cliente_razon_social: string | null
+          cola: string | null
+          contacto_nombre: string | null
+          dias: number | null
+          email: string | null
+          fecha: string | null
+          fecha_referencia: string | null
+          id: string | null
+          importe: number | null
+          numero: string | null
+          presupuesto_id: string | null
+          telefono: string | null
+          vence_el: string | null
+        }
+        ComputedFields: never
+        Relationships: []
+      }
+      v_payment_instrument_balances: {
+        Row: {
+          allocated_amount: number | null
+          amount: number
+          cliente_id: string
+          id: string
+          kind: string
+          op_id: string
+          recognized: boolean | null
+          status: string
+          unallocated_amount: number | null
+          unresolved_relevant: boolean | null
+        }
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: 'documentos_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_instruments_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'documentos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_instruments_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'v_facturas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_instruments_op_id_fkey'
+            columns: ['op_id']
+            isOneToOne: false
+            referencedRelation: 'v_financial_ledger'
+            referencedColumns: ['op_id']
+          },
+        ]
+      }
+      v_presupuestos: {
+        Row: {
+          assigned_balance: number | null
+          asunto: string
+          balance_determinate: boolean | null
+          cliente_id: string
+          cliente_razon_social: string
+          credited_money: number | null
+          display_status: string | null
+          facturado: number | null
+          facturas: number | null
+          fecha: string
+          fecha_aprobacion: string | null
+          fecha_proxima_actualizacion: string | null
+          formato: string
+          id: string
+          legacy_settled_amount: number | null
+          linked_unallocated_instrument_amount: number | null
+          linked_unallocated_instrument_count: number | null
+          linked_unallocated_invoice_amount: number | null
+          linked_unallocated_invoice_count: number | null
+          linked_unallocated_payment_amount: number | null
+          linked_unallocated_payment_count: number | null
+          linked_unallocated_recognized_amount: number | null
+          linked_unclassified_instrument_amount: number | null
+          numero: number
+          ordenes_compra: number | null
+          ordenes_pago: number | null
+          origen: string
+          paid_in_full: boolean | null
+          pending_check_amount: number | null
+          presupuesto_estado: string | null
+          presupuesto_motivo: string
+          remitos: number | null
+          remitos_sin_factura: number | null
+          saldo: number | null
+          unapplied_advances: number | null
+          withheld_amount: number | null
+        }
+        ComputedFields: never
+        Relationships: [
+          {
+            foreignKeyName: 'cotizaciones_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+    }
+    Functions: {
+      actualizar_documento: {
+        Args: {
+          p_aplicaciones?: Json
+          p_datos: Json
+          p_id: string
+          p_presupuestos?: string[]
+          p_remitos?: string[]
+        }
+        Returns: undefined
+      }
+      actualizar_documento_con_archivos: {
+        Args: {
+          p_aplicaciones?: Json
+          p_archivos?: Json
+          p_datos: Json
+          p_id: string
+          p_presupuestos?: string[]
+          p_quitar?: string[]
+          p_remitos?: string[]
+        }
+        Returns: undefined
+      }
+      actualizar_seguimiento_cotizacion: {
+        Args: {
+          p_fecha?: string
+          p_id: string
+          p_notas: string
+          p_updated_at: string
+        }
+        Returns: undefined
+      }
+      agregar_archivos: {
+        Args: { p_archivos: Json; p_documento_id: string }
+        Returns: undefined
+      }
+      anular_documento: {
+        Args: { p_expected_version?: number; p_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      aprobar_con_orden_compra: {
+        Args: {
+          p_archivos: Json
+          p_documento: Json
+          p_id: string
+          p_pdf_path: string
+          p_updated_at: string
+        }
+        Returns: string
+      }
+      aprobar_cotizacion: {
+        Args: {
+          p_fecha?: string
+          p_id: string
+          p_pdf_path?: string
+          p_updated_at: string
+        }
+        Returns: undefined
+      }
+      borrar_cotizacion: { Args: { p_id: string }; Returns: undefined }
+      buscar_clientes: {
+        Args: { limite?: number; texto?: string }
+        Returns: {
+          activo: boolean
+          condicion_iva: string | null
+          condicion_pago: string
+          created_at: string
+          created_by: string | null
+          cuit: string | null
+          direccion: string
+          email: string
+          id: string
+          localidad: string
+          notas: string
+          provincia: string
+          razon_social: string
+          telefono: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'clientes'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      buscar_cotizaciones: {
+        Args: {
+          cliente?: string
+          desde?: string
+          estado?: string
+          hasta?: string
+          texto?: string
+        }
+        Returns: {
+          archivo_original_path: string | null
+          asunto: string
+          bloques: NonNullable<Json>
+          cliente_id: string
+          cliente_razon_social: string
+          contacto_id: string | null
+          created_at: string
+          created_by: string | null
+          datos: NonNullable<Json>
+          equipo_id: string | null
+          estado: string
+          fecha: string
+          fecha_aprobacion: string | null
+          fecha_proxima_actualizacion: string | null
+          firmante_id: string | null
+          formato: string
+          id: string
+          intro: string
+          mostrar_total: boolean
+          notas: string
+          numero: number
+          origen: string
+          pdf_aprobado_path: string | null
+          plantilla_id: string | null
+          presupuesto_estado: string | null
+          presupuesto_motivo: string
+          reemplaza_a: string | null
+          updated_at: string
+          validez_dias: number
+          vence_el: string | null
+          vencida: boolean | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'v_cotizaciones'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      buscar_global: {
+        Args: {
+          p_desde?: number
+          p_grupo?: string
+          p_limite?: number
+          texto: string
+        }
+        Returns: {
+          cantidad: number
+          cliente_razon_social: string
+          descripcion: string
+          grupo: string
+          href: string
+          id: string
+          numero: string
+        }[]
+      }
+      buscar_presupuestos: {
+        Args: { cliente?: string; estado?: string; texto?: string }
+        Returns: {
+          assigned_balance: number | null
+          asunto: string
+          balance_determinate: boolean | null
+          cliente_id: string
+          cliente_razon_social: string
+          credited_money: number | null
+          display_status: string | null
+          facturado: number | null
+          facturas: number | null
+          fecha: string
+          fecha_aprobacion: string | null
+          fecha_proxima_actualizacion: string | null
+          formato: string
+          id: string
+          legacy_settled_amount: number | null
+          linked_unallocated_instrument_amount: number | null
+          linked_unallocated_instrument_count: number | null
+          linked_unallocated_invoice_amount: number | null
+          linked_unallocated_invoice_count: number | null
+          linked_unallocated_payment_amount: number | null
+          linked_unallocated_payment_count: number | null
+          linked_unallocated_recognized_amount: number | null
+          linked_unclassified_instrument_amount: number | null
+          numero: number
+          ordenes_compra: number | null
+          ordenes_pago: number | null
+          origen: string
+          paid_in_full: boolean | null
+          pending_check_amount: number | null
+          presupuesto_estado: string | null
+          presupuesto_motivo: string
+          remitos: number | null
+          remitos_sin_factura: number | null
+          saldo: number | null
+          unapplied_advances: number | null
+          withheld_amount: number | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'v_presupuestos'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cambiar_estado_presupuesto: {
+        Args: { p_estado: string; p_id: string; p_motivo?: string }
+        Returns: undefined
+      }
+      cargar_cotizacion_existente: { Args: { p_datos: Json }; Returns: string }
+      change_payment_instrument_status: {
+        Args: {
+          p_expected_version: number
+          p_instrument_id: string
+          p_op_id: string
+          p_reason?: string
+          p_settled_on?: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      complete_crane_operator_signup: {
+        Args: {
+          p_actor_id?: string
+          p_equipment_id?: string
+          p_name: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      create_crane_delivery_note_upload: {
+        Args: { p_equipment_id?: string; p_mime: string; p_size: number }
+        Returns: {
+          path: string
+          upload_id: string
+        }[]
+      }
+      duplicar_cotizacion: {
+        Args: { p_cliente_id?: string; p_id: string }
+        Returns: string
+      }
+      eliminar_plantilla: { Args: { p_id: string }; Returns: undefined }
+      get_crane_operator_context: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      guardar_cotizacion: {
+        Args: {
+          p_datos: Json
+          p_id?: string
+          p_items: Json
+          p_updated_at?: string
+        }
+        Returns: string
+      }
+      guardar_cotizacion_versionada: {
+        Args: {
+          p_datos: Json
+          p_id?: string
+          p_items: Json
+          p_updated_at?: string
+        }
+        Returns: {
+          id: string
+          numero: number
+          version: string
+        }[]
+      }
+      guardar_plantilla_editor: {
+        Args: { p_contenido: Json; p_id?: string; p_nombre: string }
+        Returns: string
+      }
+      importar_cotizacion: { Args: { p_datos: Json }; Returns: string }
+      importar_factura_historica: { Args: { p_datos: Json }; Returns: Json }
+      inicio_pendientes: {
+        Args: { p_cola?: string; p_desde?: number; p_limite?: number }
+        Returns: {
+          asunto: string | null
+          cliente_id: string | null
+          cliente_razon_social: string | null
+          cola: string | null
+          contacto_nombre: string | null
+          dias: number | null
+          email: string | null
+          fecha: string | null
+          fecha_referencia: string | null
+          id: string | null
+          importe: number | null
+          numero: string | null
+          presupuesto_id: string | null
+          telefono: string | null
+          vence_el: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'v_inicio_colas'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      inicio_resumen: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          cantidad: number
+          cola: string
+          importe: number
+        }[]
+      }
+      link_crane_delivery_note: {
+        Args: { p_budget_id: string; p_note_id: string }
+        Returns: string
+      }
+      list_crane_operators: {
+        Args: { p_active?: boolean; p_search?: string }
+        Returns: {
+          active: boolean
+          email: string
+          equipment_active: boolean
+          equipment_id: string
+          equipment_name: string
+          last_submission_at: string
+          name: string
+          note_count: number
+          pending_note_count: number
+          user_id: string
+        }[]
+      }
+      list_operator_cranes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          equipment_id: string
+          name: string
+        }[]
+      }
+      list_user_access: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          email: string
+          equipment_id: string
+          equipment_name: string
+          name: string
+          role: string
+          user_id: string
+        }[]
+      }
+      marcar_enviada: {
+        Args: { p_id: string; p_pdf_path: string; p_updated_at: string }
+        Returns: undefined
+      }
+      presupuesto_directo: {
+        Args: { p_datos: Json; p_items?: Json }
+        Returns: string
+      }
+      quitar_archivo: { Args: { p_archivo_id: string }; Returns: undefined }
+      reabrir_cotizacion: { Args: { p_id: string }; Returns: undefined }
+      read_equipment_revenue: {
+        Args: {
+          p_from?: string
+          p_page?: number
+          p_review?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      rechazar_cotizacion: { Args: { p_id: string }; Returns: undefined }
+      registrar_documento: {
+        Args: {
+          p_aplicaciones?: Json
+          p_archivos: Json
+          p_datos: Json
+          p_presupuestos: string[]
+          p_remitos?: string[]
+        }
+        Returns: string
+      }
+      restaurar_documento: {
+        Args: { p_expected_version?: number; p_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      revertir_aprobacion: { Args: { p_id: string }; Returns: undefined }
+      save_delivery_note_with_invoice: {
+        Args: {
+          p_archivos: Json
+          p_datos: Json
+          p_factura_id?: string
+          p_id?: string
+          p_presupuestos: string[]
+          p_quitar?: string[]
+        }
+        Returns: string
+      }
+      set_crane_operator_access: {
+        Args: { p_active: boolean; p_equipment_id?: string; p_user_id: string }
+        Returns: undefined
+      }
+      set_user_access: {
+        Args: {
+          p_active: boolean
+          p_equipment_id?: string
+          p_role: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      submit_crane_delivery_note: {
+        Args: { p_data: Json; p_files: Json; p_id: string }
+        Returns: string
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
 type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-    ? R
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
-  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-    ? I
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
     : never
-  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
     : never
-  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    keyof DefaultSchema['Enums'] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
+    | keyof DefaultSchema['CompositeTypes']
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
-  "graphql_public": {
-          Enums: {
-
-          }
-        },"public": {
-          Enums: {
-
-          }
-        }
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {},
+  },
 } as const

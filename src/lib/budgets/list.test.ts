@@ -13,7 +13,13 @@ describe('filtros de presupuestos', () => {
     ).toEqual({ q: 'Grúas  sur', cliente: '', estado: '', pagina: 1 })
   })
   it('mantiene filtros al paginar y codifica la búsqueda', () => {
-    const filters = readFiltersBudgets({ q: 'OC & remitos', estado: 'en_curso', pagina: '2' })
-    expect(hrefBudgets(filters, 3)).toBe('/presupuestos?q=OC+%26+remitos&estado=en_curso&pagina=3')
+    const filters = readFiltersBudgets({
+      q: 'OC & remitos',
+      estado: 'en_curso',
+      pagina: '2',
+    })
+    expect(hrefBudgets(filters, 3)).toBe(
+      '/presupuestos?q=OC+%26+remitos&estado=en_curso&pagina=3',
+    )
   })
 })

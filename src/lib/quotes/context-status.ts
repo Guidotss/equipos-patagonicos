@@ -19,12 +19,25 @@ export type StatusContext = {
 }
 
 /** El de una cotización que todavía no se guardó. */
-export const NEW_CONTEXT: StatusContext = { envios: [], vencida: false, venceEl: null, dateApproval: null, anterior: null }
+export const NEW_CONTEXT: StatusContext = {
+  envios: [],
+  vencida: false,
+  venceEl: null,
+  dateApproval: null,
+  anterior: null,
+}
 
 /** null si la cotización no existe (o la RLS no la deja ver). */
-export async function readStatusContext(supabase: SupabaseClient<Database>, id: string): Promise<StatusContext | null> {
+export async function readStatusContext(
+  supabase: SupabaseClient<Database>,
+  id: string,
+): Promise<StatusContext | null> {
   const [row, sends] = await Promise.all([
-    supabase.from('v_cotizaciones').select('vencida, vence_el, fecha_aprobacion, reemplaza_a').eq('id', id).maybeSingle(),
+    supabase
+      .from('v_cotizaciones')
+      .select('vencida, vence_el, fecha_aprobacion, reemplaza_a')
+      .eq('id', id)
+      .maybeSingle(),
     supabase
       .from('cotizacion_envios')
       .select('id, enviada_at')
@@ -37,7 +50,11 @@ export async function readStatusContext(supabase: SupabaseClient<Database>, id: 
 
   let previous: StatusContext['anterior'] = null
   if (row.data.reemplaza_a) {
-    const { data, error } = await supabase.from('cotizaciones').select('id, numero').eq('id', row.data.reemplaza_a).maybeSingle()
+    const { data, error } = await supabase
+      .from('cotizaciones')
+      .select('id, numero')
+      .eq('id', row.data.reemplaza_a)
+      .maybeSingle()
     if (error) throw error
     previous = data
   }

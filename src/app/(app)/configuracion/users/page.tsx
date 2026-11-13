@@ -11,11 +11,30 @@ export const metadata: Metadata = { title: 'Usuarios' }
 export default async function UserAccessPage() {
   const currentUser = await requireAdmin()
   const users = await listUserAccess(await createClient())
-  return <>
-    <BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Usuarios' }]} />
-    <Content>
-      <HeaderPage compact titulo="Usuarios" descripcion="Administrá el rol y el acceso de cada persona." />
-      <SheetForm>{users.map((user) => <UserAccessForm key={`${user.userId}-${user.role}-${user.active}`} user={user} currentUserId={currentUser.id} />)}</SheetForm>
-    </Content>
-  </>
+  return (
+    <>
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Configuración', href: '/configuracion' },
+          { texto: 'Usuarios' },
+        ]}
+      />
+      <Content>
+        <HeaderPage
+          compact
+          titulo="Usuarios"
+          descripcion="Administrá el rol y el acceso de cada persona."
+        />
+        <SheetForm>
+          {users.map((user) => (
+            <UserAccessForm
+              key={`${user.userId}-${user.role}-${user.active}`}
+              user={user}
+              currentUserId={currentUser.id}
+            />
+          ))}
+        </SheetForm>
+      </Content>
+    </>
+  )
 }

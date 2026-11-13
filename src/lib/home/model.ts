@@ -3,14 +3,16 @@ import { daysBetween } from '@/lib/format/dates'
 export const QUEUES_HOME = {
   seguimiento: {
     titulo: 'Seguimiento',
-    descripcion: 'Cotizaciones sin respuesta hace más de 5 días o que vencen en los próximos 7.',
+    descripcion:
+      'Cotizaciones sin respuesta hace más de 5 días o que vencen en los próximos 7.',
     empty: 'No hay cotizaciones pendientes de seguimiento.',
     enlaceEmpty: '/cotizaciones',
     actionEmpty: 'Ver cotizaciones',
   },
   falta_oc: {
     titulo: 'Falta OC',
-    descripcion: 'Presupuestos en curso que todavía no tienen una orden de compra activa.',
+    descripcion:
+      'Presupuestos en curso que todavía no tienen una orden de compra activa.',
     empty: 'Todos los presupuestos en curso tienen su orden de compra.',
     enlaceEmpty: '/presupuestos',
     actionEmpty: 'Ver presupuestos',
@@ -31,7 +33,8 @@ export const QUEUES_HOME = {
   },
   actualizacion: {
     titulo: 'Actualización de tarifa',
-    descripcion: 'Presupuestos en curso con actualización vencida o en los próximos 30 días.',
+    descripcion:
+      'Presupuestos en curso con actualización vencida o en los próximos 30 días.',
     empty: 'No hay actualizaciones previstas para los próximos 30 días.',
     enlaceEmpty: '/presupuestos',
     actionEmpty: 'Ver presupuestos',
@@ -51,10 +54,14 @@ export function pageValid(value: unknown): number {
 
 export function vencimientoPending(fecha: string, today: string) {
   const dias = daysBetween(today, fecha)
-  if (dias < 0) return { texto: `Venció hace ${-dias} d`, tone: 'peligro' as const }
+  if (dias < 0)
+    return { texto: `Venció hace ${-dias} d`, tone: 'peligro' as const }
   if (dias === 0) return { texto: 'Vence hoy', tone: 'peligro' as const }
   if (dias === 1) return { texto: 'Vence mañana', tone: 'aviso' as const }
-  return { texto: `Vence en ${dias} d`, tone: dias <= 7 ? 'aviso' as const : 'neutro' as const }
+  return {
+    texto: `Vence en ${dias} d`,
+    tone: dias <= 7 ? ('aviso' as const) : ('neutro' as const),
+  }
 }
 
 export function antiguedadCobranza(dias: number) {

@@ -6,13 +6,16 @@ import { publicEnv } from '@/lib/env'
 const PATHS_PUBLICAS = ['/login']
 
 function isPublic(pathname: string) {
-  return PATHS_PUBLICAS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  return PATHS_PUBLICAS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  )
 }
 
 /** Redirige conservando las cookies de sesión que haya escrito Supabase. */
 function redirigir(destination: URL, withCookiesOf: NextResponse) {
   const response = NextResponse.redirect(destination)
-  for (const cookie of withCookiesOf.cookies.getAll()) response.cookies.set(cookie)
+  for (const cookie of withCookiesOf.cookies.getAll())
+    response.cookies.set(cookie)
   return response
 }
 
@@ -26,10 +29,13 @@ export async function updateSession(request: NextRequest) {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet, headers?: Record<string, string>) => {
-          for (const { name, value } of cookiesToSet) request.cookies.set(name, value)
+          for (const { name, value } of cookiesToSet)
+            request.cookies.set(name, value)
           response = NextResponse.next({ request })
-          for (const { name, value, options } of cookiesToSet) response.cookies.set(name, value, options)
-          for (const [clave, value] of Object.entries(headers ?? {})) response.headers.set(clave, value)
+          for (const { name, value, options } of cookiesToSet)
+            response.cookies.set(name, value, options)
+          for (const [clave, value] of Object.entries(headers ?? {}))
+            response.headers.set(clave, value)
         },
       },
     },
@@ -48,7 +54,8 @@ export async function updateSession(request: NextRequest) {
     const destination = request.nextUrl.clone()
     destination.pathname = '/login'
     destination.search = ''
-    if (pathname !== '/') destination.searchParams.set('next', `${pathname}${search}`)
+    if (pathname !== '/')
+      destination.searchParams.set('next', `${pathname}${search}`)
     return redirigir(destination, response)
   }
 

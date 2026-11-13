@@ -4,7 +4,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/database.types'
 import { isUuid } from '@/lib/validation'
-import { withNameOfDownload, pathFile, validateFile, type MimePermitido } from './files'
+import {
+  withNameOfDownload,
+  pathFile,
+  validateFile,
+  type MimePermitido,
+} from './files'
 import type { DataDocument } from './schemas'
 import type { FinanceInput } from '@/lib/finance/contracts'
 import { financialDocumentData } from '@/lib/finance/service'
@@ -29,7 +34,9 @@ export async function prepareUpload(
   const problema = validateFile(archivo)
   if (problema) throw new ErrorDocument(problema)
   const path = pathFile(archivo.clientId, archivo.mime as MimePermitido)
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path)
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUploadUrl(path)
   if (error) throw error
   return { path: data.path, token: data.token, signedUrl: data.signedUrl }
 }
@@ -48,14 +55,17 @@ export async function saveDeliveryNoteWithInvoice(
     linkedInvoiceId?: string
   },
 ): Promise<string> {
-  const { data, error } = await supabase.rpc('save_delivery_note_with_invoice', {
-    p_datos: { ...input.datos, cliente_id: input.clientId },
-    p_presupuestos: input.budgets,
-    p_archivos: input.archivos,
-    p_factura_id: input.linkedInvoiceId,
-    p_id: input.id,
-    p_quitar: input.quitar,
-  })
+  const { data, error } = await supabase.rpc(
+    'save_delivery_note_with_invoice',
+    {
+      p_datos: { ...input.datos, cliente_id: input.clientId },
+      p_presupuestos: input.budgets,
+      p_archivos: input.archivos,
+      p_factura_id: input.linkedInvoiceId,
+      p_id: input.id,
+      p_quitar: input.quitar,
+    },
+  )
   if (error) throw errorOfRpc(error)
   return data
 }
@@ -73,9 +83,16 @@ export async function registerDocument(
     aplicaciones?: { factura_id: string; monto_aplicado: number | string }[]
   },
 ): Promise<string> {
-  if (entrada.finance !== undefined && entrada.aplicaciones !== undefined) throw new ErrorDocument('Usá la distribución financiera sin aplicaciones anteriores simultáneas')
+  if (entrada.finance !== undefined && entrada.aplicaciones !== undefined)
+    throw new ErrorDocument(
+      'Usá la distribución financiera sin aplicaciones anteriores simultáneas',
+    )
   const { data, error } = await supabase.rpc('registrar_documento', {
-    p_datos: financialDocumentData({ ...entrada.datos, cliente_id: entrada.clientId }, entrada.finance, entrada.paymentCondition),
+    p_datos: financialDocumentData(
+      { ...entrada.datos, cliente_id: entrada.clientId },
+      entrada.finance,
+      entrada.paymentCondition,
+    ),
     p_presupuestos: entrada.budgets,
     p_archivos: entrada.archivos,
     p_remitos: entrada.remitos ?? [],
@@ -86,8 +103,14 @@ export async function registerDocument(
 }
 
 /** URL firmada por 60 segundos que descarga el archivo con su nombre original. */
-export async function urlDownload(supabase: Client, path: string, nameOriginal: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60)
+export async function urlDownload(
+  supabase: Client,
+  path: string,
+  nameOriginal: string,
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, 60)
   if (error) throw error
   return withNameOfDownload(data.signedUrl, nameOriginal)
 }

@@ -53,16 +53,27 @@ export const ACTION_PROGRESS_LABEL: Record<ActionStatus, string> = {
 }
 
 /** Las que piden confirmación en el lugar (decisión 15). Duplicar y enviar no. */
-export const CONFIRMABLES = ['aprobar', 'rechazar', 'reabrir', 'revertir', 'borrar'] as const
+export const CONFIRMABLES = [
+  'aprobar',
+  'rechazar',
+  'reabrir',
+  'revertir',
+  'borrar',
+] as const
 export type ActionConfirmable = (typeof CONFIRMABLES)[number]
 
-export function isConfirmable(action: ActionStatus): action is ActionConfirmable {
+export function isConfirmable(
+  action: ActionStatus,
+): action is ActionConfirmable {
   return (CONFIRMABLES as readonly string[]).includes(action)
 }
 
 /** `?accion=aprobar` (desde el menú de una fila de la lista): abre esa confirmación al entrar. */
-export function actionFromParam(value: string | string[] | undefined): ActionConfirmable | null {
-  return typeof value === 'string' && (CONFIRMABLES as readonly string[]).includes(value)
+export function actionFromParam(
+  value: string | string[] | undefined,
+): ActionConfirmable | null {
+  return typeof value === 'string' &&
+    (CONFIRMABLES as readonly string[]).includes(value)
     ? (value as ActionConfirmable)
     : null
 }
@@ -75,7 +86,10 @@ export type ListTransition = { action: ActionConfirmable; label: string }
  * de FilaCotizacion: null en las de la app). Llevan al editor con la confirmación abierta; si al entrar ya no se
  * puede (por ejemplo, un borrador que ya se envió no se elimina), el editor no la abre.
  */
-export function listTransitions(row: { estado: string; origen: string | null }): ListTransition[] {
+export function listTransitions(row: {
+  estado: string
+  origen: string | null
+}): ListTransition[] {
   if (row.origen !== null) return []
   switch (row.estado) {
     case 'borrador':
@@ -93,8 +107,13 @@ export function listTransitions(row: { estado: string; origen: string | null }):
 }
 
 /** Solo se editan los borradores y las enviadas armadas en la app (guardar_cotizacion rechaza el resto). */
-export function isEditable(state: Pick<StatusEditor, 'origen' | 'estado'>): boolean {
-  return state.origen === 'app' && (state.estado === 'borrador' || state.estado === 'enviada')
+export function isEditable(
+  state: Pick<StatusEditor, 'origen' | 'estado'>,
+): boolean {
+  return (
+    state.origen === 'app' &&
+    (state.estado === 'borrador' || state.estado === 'enviada')
+  )
 }
 
 export type ButtonAction = { action: ActionStatus; primary: boolean }
@@ -116,7 +135,13 @@ export function layoutActions(
 ): LayoutActions {
   if (state.origen !== 'app') return { buttons: [], menu: [] }
   if (!state.id) {
-    return { buttons: [{ action: 'enviar', primary: true }, { action: 'aprobar', primary: false }], menu: [] }
+    return {
+      buttons: [
+        { action: 'enviar', primary: true },
+        { action: 'aprobar', primary: false },
+      ],
+      menu: [],
+    }
   }
   switch (state.estado) {
     case 'borrador':
@@ -125,7 +150,9 @@ export function layoutActions(
           { action: 'enviar', primary: true },
           { action: 'aprobar', primary: false },
         ],
-        menu: context.envios.length ? ['duplicar', 'rechazar'] : ['duplicar', 'rechazar', 'borrar'],
+        menu: context.envios.length
+          ? ['duplicar', 'rechazar']
+          : ['duplicar', 'rechazar', 'borrar'],
       }
     case 'enviada':
       return {
@@ -158,14 +185,22 @@ export function layoutActions(
  * Por qué un botón está deshabilitado (null: se puede). El detalle de lo que falta va en la franja amarilla. Una
  * nueva no se bloquea por no estar guardada: enviar y aprobar la guardan primero (decisión 12).
  */
-export function reasonBlock(action: ActionStatus, pendingList: PendingList): string | null {
-  if (action !== 'enviar' && action !== 'reenviar' && action !== 'aprobar') return null
-  if (!canSend(pendingList)) return 'Completá lo que falta para enviarla o aprobarla'
+export function reasonBlock(
+  action: ActionStatus,
+  pendingList: PendingList,
+): string | null {
+  if (action !== 'enviar' && action !== 'reenviar' && action !== 'aprobar')
+    return null
+  if (!canSend(pendingList))
+    return 'Completá lo que falta para enviarla o aprobarla'
   return null
 }
 
 /** true si la cotización se editó después del último envío (marcar_enviada deja updated_at = enviada_at). */
-export function editedAfterSend(version: string | null, lastSend: string | null): boolean {
+export function editedAfterSend(
+  version: string | null,
+  lastSend: string | null,
+): boolean {
   if (!version || !lastSend) return false
   return new Date(version).getTime() > new Date(lastSend).getTime()
 }
@@ -182,11 +217,17 @@ export function approvesVersionNoSent(
   hasChangesWithoutSave: boolean,
 ): boolean {
   if (state.estado !== 'enviada') return false
-  return hasChangesWithoutSave || editedAfterSend(state.version, context.envios[0]?.enviada_at ?? null)
+  return (
+    hasChangesWithoutSave ||
+    editedAfterSend(state.version, context.envios[0]?.enviada_at ?? null)
+  )
 }
 
 /** El mensaje de la fecha de aprobación (null si sirve). La base vuelve a controlarlo. */
-export function errorDateApproval(date: string, dateQuote: string): string | null {
+export function errorDateApproval(
+  date: string,
+  dateQuote: string,
+): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Ingresá la fecha de aprobación'
   if (date < dateQuote) {
     return `No puede ser anterior a la fecha de la cotización (${formatShortDate(dateQuote)})`
@@ -195,7 +236,9 @@ export function errorDateApproval(date: string, dateQuote: string): string | nul
 }
 
 /** Qué pasa al revertir: vuelve a enviada si se envió alguna vez (revertir_aprobacion). */
-export function statusOnRevert(context: Pick<StatusContext, 'envios'>): 'enviada' | 'borrador' {
+export function statusOnRevert(
+  context: Pick<StatusContext, 'envios'>,
+): 'enviada' | 'borrador' {
   return context.envios.length ? 'enviada' : 'borrador'
 }
 
@@ -219,7 +262,10 @@ export type Band =
   | { type: 'duplicada'; anterior: { id: string; numero: number } }
 
 /** Las franjas de estado bajo el encabezado (relev-visual §3.9), en orden. */
-export function bandsStatus(state: Pick<StatusEditor, 'estado'>, context: StatusContext): Band[] {
+export function bandsStatus(
+  state: Pick<StatusEditor, 'estado'>,
+  context: StatusContext,
+): Band[] {
   const bands: Band[] = []
   if (state.estado === 'enviada') {
     if (context.vencida && context.venceEl) {
@@ -237,13 +283,22 @@ export function bandsStatus(state: Pick<StatusEditor, 'estado'>, context: Status
     }
   }
   if (state.estado === 'aprobada') {
-    const date = context.dateApproval ? ` el ${formatShortDate(context.dateApproval)}` : ''
-    bands.push({ type: 'aprobada', text: `Aprobada${date}: es un presupuesto y no se modifica.` })
+    const date = context.dateApproval
+      ? ` el ${formatShortDate(context.dateApproval)}`
+      : ''
+    bands.push({
+      type: 'aprobada',
+      text: `Aprobada${date}: es un presupuesto y no se modifica.`,
+    })
   }
   if (state.estado === 'rechazada') {
-    bands.push({ type: 'rechazada', text: 'Rechazada. Para volver a editarla, reabrila.' })
+    bands.push({
+      type: 'rechazada',
+      text: 'Rechazada. Para volver a editarla, reabrila.',
+    })
   }
-  if (context.anterior) bands.push({ type: 'duplicada', anterior: context.anterior })
+  if (context.anterior)
+    bands.push({ type: 'duplicada', anterior: context.anterior })
   return bands
 }
 
@@ -291,15 +346,26 @@ export function pendingListVisible(
     seen.add(text)
     missing.push({ key: `variable-${variable}`, text, destination })
   }
-  if (pendingList.withoutItems) missing.push({ key: 'sin-items', text: 'al menos un ítem', destination: null })
+  if (pendingList.withoutItems)
+    missing.push({
+      key: 'sin-items',
+      text: 'al menos un ítem',
+      destination: null,
+    })
   if (pendingList.itemsWithoutPrice > 0) {
     // El mismo criterio que pendientesEditor: un precio vacío o que no se puede leer cuenta como sin precio.
     const first = state.items.find((item) => parsePrice(item.precio) === null)
     missing.push({
       key: 'items-sin-precio',
-      text: pendingList.itemsWithoutPrice === 1 ? '1 ítem sin precio' : `${pendingList.itemsWithoutPrice} ítems sin precio`,
+      text:
+        pendingList.itemsWithoutPrice === 1
+          ? '1 ítem sin precio'
+          : `${pendingList.itemsWithoutPrice} ítems sin precio`,
       destination: first ? idPriceItem(first.clave) : null,
     })
   }
-  return { missing, unknownVariables: pendingList.desconocidas.map((name) => `{{${name}}}`) }
+  return {
+    missing,
+    unknownVariables: pendingList.desconocidas.map((name) => `{{${name}}}`),
+  }
 }

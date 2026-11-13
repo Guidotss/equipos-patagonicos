@@ -43,7 +43,9 @@ describe('PDF mensual', () => {
 
 describe('PDF por jornada', () => {
   it('replica los datos de la cotización 112711', async () => {
-    const texto = await textOfPdf(await renderQuote(buildDocument(EXAMPLE_DAILY)))
+    const texto = await textOfPdf(
+      await renderQuote(buildDocument(EXAMPLE_DAILY)),
+    )
     for (const expected of [
       'Neuquén, 22 de octubre de 2026.',
       'Señores',
@@ -61,8 +63,12 @@ describe('PDF por jornada', () => {
     ]) {
       expect(texto).toContain(expected)
     }
-    expect(texto.indexOf('Alcance:')).toBeLessThan(texto.indexOf('Precios Jornada:'))
-    expect(texto.indexOf('Precios Jornada Adicional:')).toBeLessThan(texto.indexOf('Forma de pago'))
+    expect(texto.indexOf('Alcance:')).toBeLessThan(
+      texto.indexOf('Precios Jornada:'),
+    )
+    expect(texto.indexOf('Precios Jornada Adicional:')).toBeLessThan(
+      texto.indexOf('Forma de pago'),
+    )
   }, 20_000)
 })
 
@@ -88,12 +94,18 @@ describe('bloques ocultos', () => {
       cotizacion: {
         ...EXAMPLE_MONTHLY.cotizacion,
         bloques: EXAMPLE_MONTHLY.cotizacion.bloques.map((block) =>
-          block.titulo === 'RENEGOCIACIÓN DE TARIFAS' ? { ...block, hidden: true } : block,
+          block.titulo === 'RENEGOCIACIÓN DE TARIFAS'
+            ? { ...block, hidden: true }
+            : block,
         ),
       },
     }
-    const textMonthly = await textOfPdf(await renderQuote(buildDocument(monthly)))
-    expect(textMonthly).toContain('CONDICIONES PARA LA CONTRATACIÓN DE SERVICIOS')
+    const textMonthly = await textOfPdf(
+      await renderQuote(buildDocument(monthly)),
+    )
+    expect(textMonthly).toContain(
+      'CONDICIONES PARA LA CONTRATACIÓN DE SERVICIOS',
+    )
     expect(textMonthly).not.toContain('RENEGOCIACIÓN DE TARIFAS')
     expect(textMonthly).not.toContain('con base en junio 2026')
   }, 20_000)
@@ -101,22 +113,47 @@ describe('bloques ocultos', () => {
 
 describe('cotización sin guardar', () => {
   it('sin número, el PDF muestra {{numero}} en su lugar', async () => {
-    const monthly = { ...EXAMPLE_MONTHLY, cotizacion: { ...EXAMPLE_MONTHLY.cotizacion, numero: null } }
-    expect(await textOfPdf(await renderQuote(buildDocument(monthly)))).toContain('Cotización N° {{numero}}')
+    const monthly = {
+      ...EXAMPLE_MONTHLY,
+      cotizacion: { ...EXAMPLE_MONTHLY.cotizacion, numero: null },
+    }
+    expect(
+      await textOfPdf(await renderQuote(buildDocument(monthly))),
+    ).toContain('Cotización N° {{numero}}')
 
-    const daily = { ...EXAMPLE_DAILY, cotizacion: { ...EXAMPLE_DAILY.cotizacion, numero: null } }
-    expect(await textOfPdf(await renderQuote(buildDocument(daily)))).toContain('Cotización N° {{numero}}')
+    const daily = {
+      ...EXAMPLE_DAILY,
+      cotizacion: { ...EXAMPLE_DAILY.cotizacion, numero: null },
+    }
+    expect(await textOfPdf(await renderQuote(buildDocument(daily)))).toContain(
+      'Cotización N° {{numero}}',
+    )
   }, 20_000)
 })
 
 describe('bonificación explícita', () => {
-  it.each([EXAMPLE_MONTHLY, EXAMPLE_DAILY])('imprime BONIFICADA en $cotizacion.formato y conserva total cero', async (source) => {
-    const original = source.items[0]
-    const document = buildDocument({ ...source, cotizacion: { ...source.cotizacion, mostrar_total: true }, items: [{ ...original, is_complimentary: true, precio_unitario: 999 }, { ...original, orden: 2, is_complimentary: false, precio_unitario: 100 }] })
-    expect(document.total).toBe(original.cantidad * 100)
-    const text = await textOfPdf(await renderQuote(document))
-    expect(text).toContain('BONIFICADA')
-    expect(text).not.toContain('BONIFICADA más IVA')
-    expect(text).not.toContain('999')
-  })
+  it.each([EXAMPLE_MONTHLY, EXAMPLE_DAILY])(
+    'imprime BONIFICADA en $cotizacion.formato y conserva total cero',
+    async (source) => {
+      const original = source.items[0]
+      const document = buildDocument({
+        ...source,
+        cotizacion: { ...source.cotizacion, mostrar_total: true },
+        items: [
+          { ...original, is_complimentary: true, precio_unitario: 999 },
+          {
+            ...original,
+            orden: 2,
+            is_complimentary: false,
+            precio_unitario: 100,
+          },
+        ],
+      })
+      expect(document.total).toBe(original.cantidad * 100)
+      const text = await textOfPdf(await renderQuote(document))
+      expect(text).toContain('BONIFICADA')
+      expect(text).not.toContain('BONIFICADA más IVA')
+      expect(text).not.toContain('999')
+    },
+  )
 })

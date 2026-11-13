@@ -20,27 +20,40 @@ export function requireVersion(row: Row, version: string | undefined) {
   if (version === undefined) return
   const view = Date.parse(version)
   // El mismo texto que da la base (private.exigir_version): así el editor lo reconoce y ofrece "Recargar".
-  if (Number.isNaN(view) || view !== Date.parse(row.updated_at)) throw new ErrorQuote(MESSAGE_CONFLICT)
+  if (Number.isNaN(view) || view !== Date.parse(row.updated_at))
+    throw new ErrorQuote(MESSAGE_CONFLICT)
 }
 
 export function requirePrices(row: Row) {
   if (!row.items.length) throw new ErrorQuote('La cotización no tiene ítems')
-  if (row.items.some((item) => item.precio_unitario === null)) throw new ErrorQuote('Hay ítems sin precio')
+  if (row.items.some((item) => item.precio_unitario === null))
+    throw new ErrorQuote('Hay ítems sin precio')
 }
 
 export function requireSendable(row: Row) {
   if (!OPEN_STATUSES.includes(row.estado)) {
-    throw new ErrorQuote('Solo se puede enviar una cotización en borrador o ya enviada')
+    throw new ErrorQuote(
+      'Solo se puede enviar una cotización en borrador o ya enviada',
+    )
   }
   if (row.origen !== 'app') {
-    throw new ErrorQuote('Una cotización cargada no se envía desde la app: su documento es el PDF original')
+    throw new ErrorQuote(
+      'Una cotización cargada no se envía desde la app: su documento es el PDF original',
+    )
   }
   requirePrices(row)
 }
 
 export function requireApprovable(row: Row, date: string) {
-  if (!OPEN_STATUSES.includes(row.estado)) throw new ErrorQuote('Solo se puede aprobar una cotización en borrador o enviada')
-  if (!z.iso.date().safeParse(date).success) throw new ErrorQuote('La fecha de aprobación no es válida')
-  if (date < row.fecha) throw new ErrorQuote('La fecha de aprobación no puede ser anterior a la cotización')
+  if (!OPEN_STATUSES.includes(row.estado))
+    throw new ErrorQuote(
+      'Solo se puede aprobar una cotización en borrador o enviada',
+    )
+  if (!z.iso.date().safeParse(date).success)
+    throw new ErrorQuote('La fecha de aprobación no es válida')
+  if (date < row.fecha)
+    throw new ErrorQuote(
+      'La fecha de aprobación no puede ser anterior a la cotización',
+    )
   if (row.origen !== 'importada') requirePrices(row)
 }

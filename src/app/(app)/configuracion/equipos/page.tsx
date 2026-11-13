@@ -14,7 +14,9 @@ export default async function EquipmentPage() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('equipos')
-    .select('id, nombre, capacidad_tn, marca, modelo, identificacion, descripcion, activo')
+    .select(
+      'id, nombre, capacidad_tn, marca, modelo, identificacion, descripcion, activo',
+    )
     .order('activo', { ascending: false })
     .order('capacidad_tn', { ascending: false, nullsFirst: false })
   if (error) throw error
@@ -33,7 +35,12 @@ export default async function EquipmentPage() {
 
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Equipos' }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Configuración', href: '/configuracion' },
+          { texto: 'Equipos' },
+        ]}
+      />
       <Content>
         <HeaderPage
           titulo="Equipos"

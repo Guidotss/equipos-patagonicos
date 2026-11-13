@@ -46,11 +46,18 @@ describe('base de seguridad', () => {
     if (error) throw error
     creados.push(data.user.id)
 
-    const [perfil] = await sql<{ nombre: string; activo: boolean; rol: string }>(
-      'select nombre, activo, rol from public.profiles where id = $1',
-      [data.user.id],
-    )
-    expect(perfil).toEqual({ nombre: 'Thomas Cravero', activo: false, rol: 'operador' })
+    const [perfil] = await sql<{
+      nombre: string
+      activo: boolean
+      rol: string
+    }>('select nombre, activo, rol from public.profiles where id = $1', [
+      data.user.id,
+    ])
+    expect(perfil).toEqual({
+      nombre: 'Thomas Cravero',
+      activo: false,
+      rol: 'operador',
+    })
   })
 
   it('anon no puede leer perfiles', async () => {
@@ -80,10 +87,17 @@ describe('base de seguridad', () => {
     const user = await crearUser({ activo: true, rol: 'operador' })
     creados.push(user.id)
 
-    const { data } = await user.client.from('profiles').update({ rol: 'admin' }).eq('id', user.id).select()
+    const { data } = await user.client
+      .from('profiles')
+      .update({ rol: 'admin' })
+      .eq('id', user.id)
+      .select()
     expect(data ?? []).toEqual([])
 
-    const [perfil] = await sql<{ rol: string }>('select rol from public.profiles where id = $1', [user.id])
+    const [perfil] = await sql<{ rol: string }>(
+      'select rol from public.profiles where id = $1',
+      [user.id],
+    )
     expect(perfil.rol).toBe('operador')
   })
 
@@ -92,10 +106,16 @@ describe('base de seguridad', () => {
     const otro = await crearUser({ activo: false })
     creados.push(admin.id, otro.id)
 
-    const { error } = await admin.client.from('profiles').update({ activo: true }).eq('id', otro.id)
+    const { error } = await admin.client
+      .from('profiles')
+      .update({ activo: true })
+      .eq('id', otro.id)
     expect(error).toBeNull()
 
-    const [perfil] = await sql<{ activo: boolean }>('select activo from public.profiles where id = $1', [otro.id])
+    const [perfil] = await sql<{ activo: boolean }>(
+      'select activo from public.profiles where id = $1',
+      [otro.id],
+    )
     expect(perfil.activo).toBe(true)
   })
 })

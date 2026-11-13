@@ -4,7 +4,8 @@ import { validateEnvTests } from './scripts/test-env.mjs'
 
 const { baseURL } = validateEnvTests()
 const appDir = process.env.EP_TESTS_APP_DIR
-if (!appDir || !path.isAbsolute(appDir)) throw new Error('El runner debe preparar la copia temporal de Next')
+if (!appDir || !path.isAbsolute(appDir))
+  throw new Error('El runner debe preparar la copia temporal de Next')
 const commandNext = [process.execPath, path.resolve('scripts/test-app.mjs')]
 
 export default defineConfig({

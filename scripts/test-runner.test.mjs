@@ -1,152 +1,141 @@
-import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
-import { once } from "node:events";
-import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import test from "node:test";
+import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
+import { once } from 'node:events'
+import { spawn } from 'node:child_process'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import test from 'node:test'
 import {
   validateEnvTests,
   crearEnvTests,
   configurarSupabase,
   projectTests,
-} from './test-env.mjs';
-import { runTests } from './test-runner.mjs';
-import { stopAplicacion, runProcess } from './test-processes.mjs';
+} from './test-env.mjs'
+import { runTests } from './test-runner.mjs'
+import { stopAplicacion, runProcess } from './test-processes.mjs'
 
-const id = "a1c25470-8da3-4eef-8833-e2d6ac27200d";
+const id = 'a1c25470-8da3-4eef-8833-e2d6ac27200d'
 const status = {
-  API_URL: "http://127.0.0.1:55321",
-  DB_URL: "postgresql://postgres:postgres@127.0.0.1:55322/postgres",
-  PUBLISHABLE_KEY: "publica-de-prueba",
-  SECRET_KEY: "secreta-de-prueba",
-};
+  API_URL: 'http://127.0.0.1:55321',
+  DB_URL: 'postgresql://postgres:postgres@127.0.0.1:55322/postgres',
+  PUBLISHABLE_KEY: 'publica-de-prueba',
+  SECRET_KEY: 'secreta-de-prueba',
+}
 const testEnv = () =>
   crearEnvTests(status, id, {
-    PATH: "/bin",
-    SUPABASE_SECRET_KEY: "ajena",
-    DATABASE_URL: "ajena",
-  });
+    PATH: '/bin',
+    SUPABASE_SECRET_KEY: 'ajena',
+    DATABASE_URL: 'ajena',
+  })
 
-test("an invalid suite reports usage with default process dependencies", async (t) => {
-  const log = t.mock.method(console, "error", () => {});
+test('an invalid suite reports usage with default process dependencies', async (t) => {
+  const log = t.mock.method(console, 'error', () => {})
 
-  assert.equal(await runTests("invalid"), 1);
-  assert.equal(log.mock.callCount(), 1);
-  assert.match(log.mock.calls[0].arguments[0], /^Uso: .*<int\|e2e>/);
-});
+  assert.equal(await runTests('invalid'), 1)
+  assert.equal(log.mock.callCount(), 1)
+  assert.match(log.mock.calls[0].arguments[0], /^Uso: .*<int\|e2e>/)
+})
 
-test("el guard rechaza ejecución directa, desarrollo y destinos remotos antes de conectar", () => {
-  assert.throws(() => validateEnvTests({}), /runner/);
+test('el guard rechaza ejecución directa, desarrollo y destinos remotos antes de conectar', () => {
+  assert.throws(() => validateEnvTests({}), /runner/)
   for (const [variable, value] of [
-    ["NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:54321"],
-    ["NEXT_PUBLIC_SUPABASE_URL", "https://proyecto.supabase.co"],
-    ["NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:55321/ruta"],
-    ["SUPABASE_DB_URL", "postgresql://postgres:clave@localhost:54322/postgres"],
-    ["SUPABASE_DB_URL", "postgresql://postgres:clave@remoto:55322/postgres"],
-    ["EP_PRUEBAS_DB_PORT", "54322"],
-    ["EP_PRUEBAS_PROJECT_ID", "equipos-patagonicos"],
+    ['NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321'],
+    ['NEXT_PUBLIC_SUPABASE_URL', 'https://proyecto.supabase.co'],
+    ['NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:55321/ruta'],
+    ['SUPABASE_DB_URL', 'postgresql://postgres:clave@localhost:54322/postgres'],
+    ['SUPABASE_DB_URL', 'postgresql://postgres:clave@remoto:55322/postgres'],
+    ['EP_PRUEBAS_DB_PORT', '54322'],
+    ['EP_PRUEBAS_PROJECT_ID', 'equipos-patagonicos'],
   ])
     assert.throws(
       () => validateEnvTests({ ...testEnv(), [variable]: value }),
       /aislad|runner/,
-    );
-  assert.equal(
-    validateEnvTests(testEnv()).baseURL,
-    "http://127.0.0.1:3001",
-  );
-});
+    )
+  assert.equal(validateEnvTests(testEnv()).baseURL, 'http://127.0.0.1:3001')
+})
 
-test("el entorno toma las claves del status temporal y descarta conexiones heredadas", () => {
-  const env = testEnv();
-  assert.equal(env.SUPABASE_SECRET_KEY, status.SECRET_KEY);
-  assert.equal(
-    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    status.PUBLISHABLE_KEY,
-  );
-  assert.equal(env.DATABASE_URL, undefined);
-  assert.equal(env.PATH, "/bin");
+test('el entorno toma las claves del status temporal y descarta conexiones heredadas', () => {
+  const env = testEnv()
+  assert.equal(env.SUPABASE_SECRET_KEY, status.SECRET_KEY)
+  assert.equal(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, status.PUBLISHABLE_KEY)
+  assert.equal(env.DATABASE_URL, undefined)
+  assert.equal(env.PATH, '/bin')
   assert.throws(
     () =>
-      crearEnvTests(
-        { ...status, API_URL: "http://127.0.0.1:54321" },
-        id,
-        {},
-      ),
+      crearEnvTests({ ...status, API_URL: 'http://127.0.0.1:54321' }, id, {}),
     /aislad/,
-  );
+  )
   assert.throws(
     () => crearEnvTests({ ...status, SECRET_KEY: undefined }, id, {}),
     /claves/,
-  );
-});
+  )
+})
 
-test("la copia del config conserva migraciones/seed y cambia puertos, redirects y servicios opcionales", async () => {
+test('la copia del config conserva migraciones/seed y cambia puertos, redirects y servicios opcionales', async () => {
   const original = await readFile(
-    new URL("../supabase/config.toml", import.meta.url),
-    "utf8",
-  );
-  const config = configurarSupabase(original, id);
+    new URL('../supabase/config.toml', import.meta.url),
+    'utf8',
+  )
+  const config = configurarSupabase(original, id)
   assert.ok(
     projectTests(id).length <= 40,
-    "Supabase trunca nombres y labels a 40 caracteres",
-  );
-  assert.match(config, new RegExp(`project_id = "${projectTests(id)}"`));
-  assert.match(config, /\[api\][\s\S]*?port = 55321/);
-  assert.match(config, /\[db\][\s\S]*?port = 55322/);
-  assert.match(config, /\[db.seed\]\n(?:#[^\n]*\n)*enabled = true/);
-  assert.match(config, /sql_paths = \["\.\/seed.sql"\]/);
-  assert.match(config, /\[studio\]\nenabled = false/);
-  assert.match(config, /site_url = "http:\/\/127.0.0.1:3001"/);
+    'Supabase trunca nombres y labels a 40 caracteres',
+  )
+  assert.match(config, new RegExp(`project_id = "${projectTests(id)}"`))
+  assert.match(config, /\[api\][\s\S]*?port = 55321/)
+  assert.match(config, /\[db\][\s\S]*?port = 55322/)
+  assert.match(config, /\[db.seed\]\n(?:#[^\n]*\n)*enabled = true/)
+  assert.match(config, /sql_paths = \["\.\/seed.sql"\]/)
+  assert.match(config, /\[studio\]\nenabled = false/)
+  assert.match(config, /site_url = "http:\/\/127.0.0.1:3001"/)
   assert.doesNotMatch(
     config,
     /^(?:port|shadow_port|inspector_port) = (?:543\d\d|8083)$/m,
-  );
-});
+  )
+})
 
 async function escenario(fn, options = {}) {
-  const root = await mkdtemp(path.join(os.tmpdir(), "pruebas-runner-test-"));
-  await mkdir(path.join(root, "supabase/migrations"), { recursive: true });
+  const root = await mkdtemp(path.join(os.tmpdir(), 'pruebas-runner-test-'))
+  await mkdir(path.join(root, 'supabase/migrations'), { recursive: true })
   await writeFile(
-    path.join(root, "supabase/config.toml"),
-    await readFile(new URL("../supabase/config.toml", import.meta.url)),
-  );
-  await writeFile(path.join(root, "supabase/seed.sql"), "-- semilla");
-  const llamadas = [];
-  const signals = new EventEmitter();
-  const messages = [];
-  let home = false;
+    path.join(root, 'supabase/config.toml'),
+    await readFile(new URL('../supabase/config.toml', import.meta.url)),
+  )
+  await writeFile(path.join(root, 'supabase/seed.sql'), '-- semilla')
+  const llamadas = []
+  const signals = new EventEmitter()
+  const messages = []
+  let home = false
   const resources = {
     contenedor: options.residuo,
     volumen: options.residuo,
     red: options.residuo,
-  };
+  }
   const run = async (command, args, opts) => {
-    llamadas.push({ command, args, opts });
-    if (args[0] === "status")
-      return { code: 0, stdout: JSON.stringify(status) };
-    if (args[0] === "start") home = true;
-    if (options.fallarHome && args[0] === "start")
-      throw new Error("inicio parcial");
-    if (options.fallarLimpieza && args[0] === "stop")
-      throw new Error("stop falló");
-    if (command === "docker" && home) {
+    llamadas.push({ command, args, opts })
+    if (args[0] === 'status') return { code: 0, stdout: JSON.stringify(status) }
+    if (args[0] === 'start') home = true
+    if (options.fallarHome && args[0] === 'start')
+      throw new Error('inicio parcial')
+    if (options.fallarLimpieza && args[0] === 'stop')
+      throw new Error('stop falló')
+    if (command === 'docker' && home) {
       const tipo =
-        args[0] === "ps" || args[0] === "rm"
-          ? "contenedor"
-          : args[0] === "volume"
-            ? "volumen"
-            : "red";
-      if (args.includes("rm")) resources[tipo] = false;
-      else if (resources[tipo]) return { code: 0, stdout: `propio-${tipo}\n` };
+        args[0] === 'ps' || args[0] === 'rm'
+          ? 'contenedor'
+          : args[0] === 'volume'
+            ? 'volumen'
+            : 'red'
+      if (args.includes('rm')) resources[tipo] = false
+      else if (resources[tipo]) return { code: 0, stdout: `propio-${tipo}\n` }
     }
-    if (args.includes("--project")) {
-      if (options.interrumpir) signals.emit("SIGTERM");
-      return { code: options.code ?? 0, stdout: "" };
+    if (args.includes('--project')) {
+      if (options.interrumpir) signals.emit('SIGTERM')
+      return { code: options.code ?? 0, stdout: '' }
     }
-    return { code: 0, stdout: "" };
-  };
+    return { code: 0, stdout: '' }
+  }
   try {
     await fn({
       root,
@@ -155,177 +144,162 @@ async function escenario(fn, options = {}) {
       run,
       signals,
       checkPorts: async () => {},
-      lockPath: path.join(root, "lock"),
-    });
+      lockPath: path.join(root, 'lock'),
+    })
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true })
   }
 }
 
-test("propaga argumentos y fallo de la suite y destruye únicamente el proyecto creado", async () => {
+test('propaga argumentos y fallo de la suite y destruye únicamente el proyecto creado', async () => {
   await escenario(
     async (deps) => {
-      const code = await runTests(
-        "int",
-        ["clientes", "--reporter=dot"],
-        { ...deps, log: (m) => deps.messages.push(m) },
-      );
-      assert.equal(code, 7);
-      const suite = deps.llamadas.find((c) => c.args.includes("--project"));
-      assert.deepEqual(suite.args.slice(-2), ["clientes", "--reporter=dot"]);
-      validateEnvTests(suite.opts.env);
-      const stop = deps.llamadas.find((c) => c.args[0] === "stop");
-      assert.match(stop.args[2], /^equipos-patagonicos-test-/);
-      assert.ok(stop.args.includes("--no-backup"));
+      const code = await runTests('int', ['clientes', '--reporter=dot'], {
+        ...deps,
+        log: (m) => deps.messages.push(m),
+      })
+      assert.equal(code, 7)
+      const suite = deps.llamadas.find((c) => c.args.includes('--project'))
+      assert.deepEqual(suite.args.slice(-2), ['clientes', '--reporter=dot'])
+      validateEnvTests(suite.opts.env)
+      const stop = deps.llamadas.find((c) => c.args[0] === 'stop')
+      assert.match(stop.args[2], /^equipos-patagonicos-test-/)
+      assert.ok(stop.args.includes('--no-backup'))
       assert.ok(
         deps.llamadas.every(
-          (c) => !c.args.includes("--all") && !c.args.includes("reset"),
+          (c) => !c.args.includes('--all') && !c.args.includes('reset'),
         ),
-      );
+      )
       assert.equal(
-        deps.llamadas.find((c) => c.args[0] === "status").opts.logPath,
+        deps.llamadas.find((c) => c.args[0] === 'status').opts.logPath,
         undefined,
-      );
-      assert.ok(deps.messages.every((m) => !m.includes(status.SECRET_KEY)));
-      await assert.rejects(readFile(deps.lockPath), { code: "ENOENT" });
+      )
+      assert.ok(deps.messages.every((m) => !m.includes(status.SECRET_KEY)))
+      await assert.rejects(readFile(deps.lockPath), { code: 'ENOENT' })
     },
     { code: 7 },
-  );
-});
+  )
+})
 
-test("limpia aun cuando start falla parcialmente, y no intenta ejecutar tests", async () => {
+test('limpia aun cuando start falla parcialmente, y no intenta ejecutar tests', async () => {
   await escenario(
     async (deps) => {
-      assert.equal(
-        await runTests("int", [], { ...deps, log: () => {} }),
-        1,
-      );
-      assert.ok(deps.llamadas.some((c) => c.args[0] === "stop"));
-      assert.ok(!deps.llamadas.some((c) => c.args.includes("--project")));
+      assert.equal(await runTests('int', [], { ...deps, log: () => {} }), 1)
+      assert.ok(deps.llamadas.some((c) => c.args[0] === 'stop'))
+      assert.ok(!deps.llamadas.some((c) => c.args.includes('--project')))
     },
     { fallarHome: true },
-  );
-});
+  )
+})
 
-test("un fallo de limpieza se hace visible y devuelve error aun si pasaron los tests", async () => {
+test('un fallo de limpieza se hace visible y devuelve error aun si pasaron los tests', async () => {
   await escenario(
     async (deps) => {
       assert.equal(
-        await runTests("int", [], {
+        await runTests('int', [], {
           ...deps,
           log: (m) => deps.messages.push(m),
         }),
         1,
-      );
-      assert.ok(deps.messages.some((m) => m.includes("limpieza")));
+      )
+      assert.ok(deps.messages.some((m) => m.includes('limpieza')))
     },
     { fallarLimpieza: true },
-  );
-});
+  )
+})
 
-test("un inicio parcial remueve residuos solo del label propio cuando stop falla", async () => {
+test('un inicio parcial remueve residuos solo del label propio cuando stop falla', async () => {
   await escenario(
     async (deps) => {
-      assert.equal(
-        await runTests("int", [], { ...deps, log: () => {} }),
-        1,
-      );
-      const commandsDocker = deps.llamadas.filter(
-        (c) => c.command === "docker",
-      );
+      assert.equal(await runTests('int', [], { ...deps, log: () => {} }), 1)
+      const commandsDocker = deps.llamadas.filter((c) => c.command === 'docker')
       const consultas = commandsDocker.filter((c) =>
-        c.args.includes("--filter"),
-      );
+        c.args.includes('--filter'),
+      )
       assert.ok(
         consultas.every((c) =>
-          c.args.at(-1).includes("equipos-patagonicos-test-"),
+          c.args.at(-1).includes('equipos-patagonicos-test-'),
         ),
-      );
+      )
       assert.deepEqual(
-        commandsDocker.filter((c) => c.args.includes("rm")).map((c) => c.args),
+        commandsDocker.filter((c) => c.args.includes('rm')).map((c) => c.args),
         [
-          ["rm", "-f", "propio-contenedor"],
-          ["volume", "rm", "propio-volumen"],
-          ["network", "rm", "propio-red"],
+          ['rm', '-f', 'propio-contenedor'],
+          ['volume', 'rm', 'propio-volumen'],
+          ['network', 'rm', 'propio-red'],
         ],
-      );
+      )
     },
     { residuo: true, fallarHome: true, fallarLimpieza: true },
-  );
-});
+  )
+})
 
-test("una interrupción conserva código 143 y pasa por la destrucción del proyecto", async () => {
+test('una interrupción conserva código 143 y pasa por la destrucción del proyecto', async () => {
   await escenario(
     async (deps) => {
-      assert.equal(
-        await runTests("int", [], { ...deps, log: () => {} }),
-        143,
-      );
-      assert.ok(deps.llamadas.some((c) => c.args[0] === "stop"));
+      assert.equal(await runTests('int', [], { ...deps, log: () => {} }), 143)
+      assert.ok(deps.llamadas.some((c) => c.args[0] === 'stop'))
     },
     { interrumpir: true },
-  );
-});
+  )
+})
 
-test("rechaza puertos ocupados y doble ejecución antes de arrancar Supabase", async () => {
+test('rechaza puertos ocupados y doble ejecución antes de arrancar Supabase', async () => {
   await escenario(async (deps) => {
     const checkPorts = async () => {
-      throw new Error("puerto ocupado");
-    };
+      throw new Error('puerto ocupado')
+    }
     assert.equal(
-      await runTests("int", [], { ...deps, checkPorts, log: () => {} }),
+      await runTests('int', [], { ...deps, checkPorts, log: () => {} }),
       1,
-    );
-    assert.equal(deps.llamadas.length, 0);
-    await writeFile(deps.lockPath, "otro proceso");
-    assert.equal(
-      await runTests("int", [], { ...deps, log: () => {} }),
-      1,
-    );
-    assert.equal(await readFile(deps.lockPath, "utf8"), "otro proceso");
-    assert.equal(deps.llamadas.length, 0);
-  });
-});
+    )
+    assert.equal(deps.llamadas.length, 0)
+    await writeFile(deps.lockPath, 'otro proceso')
+    assert.equal(await runTests('int', [], { ...deps, log: () => {} }), 1)
+    assert.equal(await readFile(deps.lockPath, 'utf8'), 'otro proceso')
+    assert.equal(deps.llamadas.length, 0)
+  })
+})
 
-test("detiene el grupo de Next registrado, aunque esté fuera del grupo de Playwright", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "pruebas-proceso-test-"));
-  const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+test('detiene el grupo de Next registrado, aunque esté fuera del grupo de Playwright', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'pruebas-proceso-test-'))
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
     detached: true,
-    stdio: "ignore",
-  });
-  const closed = once(child, "exit");
+    stdio: 'ignore',
+  })
+  const closed = once(child, 'exit')
   try {
-    await once(child, "spawn");
-    const archivo = path.join(root, "app-proceso.json");
+    await once(child, 'spawn')
+    const archivo = path.join(root, 'app-proceso.json')
     await writeFile(
       archivo,
       JSON.stringify({ pid: child.pid, runId: id, appDir: root }),
-    );
+    )
     await assert.rejects(
-      stopAplicacion(archivo, "otra-corrida", root),
+      stopAplicacion(archivo, 'otra-corrida', root),
       /no pertenece/,
-    );
-    process.kill(child.pid, 0);
-    await stopAplicacion(archivo, id, root);
-    await closed;
-    assert.throws(() => process.kill(-child.pid, 0), { code: "ESRCH" });
+    )
+    process.kill(child.pid, 0)
+    await stopAplicacion(archivo, id, root)
+    await closed
+    assert.throws(() => process.kill(-child.pid, 0), { code: 'ESRCH' })
   } finally {
     try {
-      process.kill(-child.pid, "SIGKILL");
+      process.kill(-child.pid, 'SIGKILL')
     } catch {
       /* Ya terminó. */
     }
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true })
   }
-});
+})
 
-test("el ejecutor propaga la interrupción de un proceso real", async () => {
-  const controller = new AbortController();
+test('el ejecutor propaga la interrupción de un proceso real', async () => {
+  const controller = new AbortController()
   const result = runProcess(
     process.execPath,
-    ["-e", "setInterval(() => {}, 1000)"],
+    ['-e', 'setInterval(() => {}, 1000)'],
     { signal: controller.signal, visible: true },
-  );
-  setTimeout(() => controller.abort(), 100);
-  assert.equal((await result).code, 143);
-});
+  )
+  setTimeout(() => controller.abort(), 100)
+  assert.equal((await result).code, 143)
+})

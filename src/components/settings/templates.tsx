@@ -12,7 +12,11 @@ export type TemplateWithActions = {
   button: React.ReactNode
 }
 
-export function Templates({ plantillas }: { plantillas: TemplateWithActions[] }) {
+export function Templates({
+  plantillas,
+}: {
+  plantillas: TemplateWithActions[]
+}) {
   return (
     <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-tarjeta">
       {plantillas.map((template) => (
@@ -20,7 +24,9 @@ export function Templates({ plantillas }: { plantillas: TemplateWithActions[] })
           <span
             className={cn(
               'grid size-10 shrink-0 place-items-center self-start rounded-xl sm:size-12 sm:self-center',
-              template.activa ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground',
+              template.activa
+                ? 'bg-accent text-primary'
+                : 'bg-muted text-muted-foreground',
             )}
           >
             <FileText className="size-5 sm:size-6" aria-hidden />
@@ -46,10 +52,19 @@ export function Templates({ plantillas }: { plantillas: TemplateWithActions[] })
               </span>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              {template.activa ? <Pill tone="exito">Activa</Pill> : <Pill>Inactiva</Pill>}
+              {template.activa ? (
+                <Pill tone="exito">Activa</Pill>
+              ) : (
+                <Pill>Inactiva</Pill>
+              )}
               {/* Va al mismo lugar que el nombre, que ya es el link accesible: el lápiz es solo un atajo visual
                   (con aria-label sería otro link con el nombre adentro y una parada de tab repetida). */}
-              <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground"
+              >
                 <Link
                   href={`/configuracion/plantillas/${template.id}`}
                   aria-hidden

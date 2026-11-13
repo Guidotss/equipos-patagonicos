@@ -9,8 +9,13 @@ export type OptionsRender = {
   highlightVariables?: boolean
 }
 
-export async function renderQuote(doc: DocumentQuote, options: OptionsRender = {}): Promise<Buffer> {
+export async function renderQuote(
+  doc: DocumentQuote,
+  options: OptionsRender = {},
+): Promise<Buffer> {
   await prepareFonts()
   const Componente = doc.formato === 'mensual' ? QuoteMonthly : QuoteDaily
-  return renderToBuffer(<Componente doc={doc} highlight={options.highlightVariables ?? false} />)
+  return renderToBuffer(
+    <Componente doc={doc} highlight={options.highlightVariables ?? false} />,
+  )
 }

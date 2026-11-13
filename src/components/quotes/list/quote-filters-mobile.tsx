@@ -14,8 +14,18 @@ import { type FiltersList } from '@/lib/quotes/list'
 import { SlidersHorizontal } from 'lucide-react'
 import { useId, useState } from 'react'
 
-import { DateRangeFields, OptionsClient, OptionsStatus, DateRangeWarning } from './quote-filter-fields'
-import { readFilterStatus, isInvalidDateRange, type ClientFilter, type MobileQuoteFilters } from './quote-filter-model'
+import {
+  DateRangeFields,
+  OptionsClient,
+  OptionsStatus,
+  DateRangeWarning,
+} from './quote-filter-fields'
+import {
+  readFilterStatus,
+  isInvalidDateRange,
+  type ClientFilter,
+  type MobileQuoteFilters,
+} from './quote-filter-model'
 
 const LABEL_CLASS = 'text-[13px]/none font-normal text-muted-foreground'
 
@@ -44,7 +54,12 @@ export function FiltersMobile({
 
   function onOpenChange(open: boolean) {
     if (open)
-      setSheet({ estado: filters.estado, cliente: filters.cliente, desde: filters.desde, hasta: filters.hasta })
+      setSheet({
+        estado: filters.estado,
+        cliente: filters.cliente,
+        desde: filters.desde,
+        hasta: filters.hasta,
+      })
     setOpen(open)
   }
 
@@ -56,7 +71,11 @@ export function FiltersMobile({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
-        <Button type="button" variant="outline" className="h-11 gap-1.5 px-3 text-sm @min-[44rem]/listado:hidden">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 gap-1.5 px-3 text-sm @min-[44rem]/listado:hidden"
+        >
           <SlidersHorizontal aria-hidden />
           Filtros
           {active > 0 ? (
@@ -66,10 +85,15 @@ export function FiltersMobile({
           ) : null}
         </Button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="max-h-[85svh] overflow-y-auto rounded-t-xl">
+      <SheetContent
+        side="bottom"
+        className="max-h-[85svh] overflow-y-auto rounded-t-xl"
+      >
         <SheetHeader>
           <SheetTitle>Filtros</SheetTitle>
-          <SheetDescription>Estado, cliente y fechas de la cotización.</SheetDescription>
+          <SheetDescription>
+            Estado, cliente y fechas de la cotización.
+          </SheetDescription>
         </SheetHeader>
         <div className="space-y-3 px-4">
           <div className="space-y-1">
@@ -79,7 +103,12 @@ export function FiltersMobile({
             <NativeSelect
               id={idStatus}
               value={sheet.estado}
-              onChange={(event) => setSheet({ ...sheet, estado: readFilterStatus(event.target.value) })}
+              onChange={(event) =>
+                setSheet({
+                  ...sheet,
+                  estado: readFilterStatus(event.target.value),
+                })
+              }
               className="w-full [&>select]:h-10"
             >
               <OptionsStatus />
@@ -92,7 +121,9 @@ export function FiltersMobile({
             <NativeSelect
               id={idClient}
               value={sheet.cliente}
-              onChange={(event) => setSheet({ ...sheet, cliente: event.target.value })}
+              onChange={(event) =>
+                setSheet({ ...sheet, cliente: event.target.value })
+              }
               className="w-full [&>select]:h-10"
             >
               <OptionsClient clients={clients} />
@@ -100,7 +131,9 @@ export function FiltersMobile({
           </div>
           <DateRangeFields
             range={dateRange}
-            onChange={({ from, to }) => setSheet({ ...sheet, desde: from, hasta: to })}
+            onChange={({ from, to }) =>
+              setSheet({ ...sheet, desde: from, hasta: to })
+            }
             tall="h-10"
           />
           {isInvalidDateRange(dateRange) ? <DateRangeWarning /> : null}
@@ -110,7 +143,9 @@ export function FiltersMobile({
             type="button"
             variant="outline"
             className="h-10 flex-1"
-            onClick={() => apply({ estado: '', cliente: '', desde: '', hasta: '' })}
+            onClick={() =>
+              apply({ estado: '', cliente: '', desde: '', hasta: '' })
+            }
           >
             Limpiar
           </Button>

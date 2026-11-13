@@ -16,7 +16,12 @@ export function DocumentAttachmentsSection({
   errors,
 }: { filesExisting: NonNullable<DocumentFormProps['filesExisting']> } & Pick<
   DocumentFormState,
-  'removedFileIds' | 'setRemovedFileIds' | 'clientId' | 'pending' | 'onChangeFiles' | 'errors'
+  | 'removedFileIds'
+  | 'setRemovedFileIds'
+  | 'clientId'
+  | 'pending'
+  | 'onChangeFiles'
+  | 'errors'
 >) {
   return (
     <Card titulo="Adjuntar archivos">
@@ -43,7 +48,11 @@ export function DocumentAttachmentsSection({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setRemovedFileIds((list) => changeList(list, file.id, !list.includes(file.id)))}
+                  onClick={() =>
+                    setRemovedFileIds((list) =>
+                      changeList(list, file.id, !list.includes(file.id)),
+                    )
+                  }
                 >
                   {remove.includes(file.id) ? 'Conservar' : 'Quitar'}
                 </Button>
@@ -51,8 +60,15 @@ export function DocumentAttachmentsSection({
             ))}
           </ul>
         ) : null}
-        <UploadFiles key={clientId} clientId={clientId} disabled={pending} onChange={onChangeFiles} />
-        {errors.archivos ? <p className="text-sm text-destructive">{errors.archivos}</p> : null}
+        <UploadFiles
+          key={clientId}
+          clientId={clientId}
+          disabled={pending}
+          onChange={onChangeFiles}
+        />
+        {errors.archivos ? (
+          <p className="text-sm text-destructive">{errors.archivos}</p>
+        ) : null}
       </div>
     </Card>
   )

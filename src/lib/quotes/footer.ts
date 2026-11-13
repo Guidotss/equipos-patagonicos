@@ -1,4 +1,9 @@
-type DataFooter = { direccion: string; ciudad: string; telefono: string; email: string }
+type DataFooter = {
+  direccion: string
+  ciudad: string
+  telefono: string
+  email: string
+}
 
 /** Tramos del pie con dato: los de la empresa y lo fijo ("Argentina", el "Tel. " del teléfono). */
 export type TramoFooter = { prefix: string; value: string; fijo: boolean }

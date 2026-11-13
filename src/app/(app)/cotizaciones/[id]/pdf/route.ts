@@ -13,24 +13,35 @@ export const dynamic = 'force-dynamic'
  * Con actual=1 (vista previa en el celular), una de la app no aprobada se genera con lo guardado ahora, aunque se
  * haya enviado antes.
  */
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const session = await getStatusSession()
-  if (session.estado !== 'activo') return new Response('No autorizado', { status: 401 })
-  if (!isStaffRole(session.user.rol)) return new Response('No autorizado', { status: 403 })
+  if (session.estado !== 'activo')
+    return new Response('No autorizado', { status: 401 })
+  if (!isStaffRole(session.user.rol))
+    return new Response('No autorizado', { status: 403 })
 
   const { id } = await params
   const query = new URL(request.url).searchParams
   const envio = query.get('envio') ?? undefined
-  if (!isUuid(id) || (envio !== undefined && !isUuid(envio))) return new Response('No encontrada', { status: 404 })
+  if (!isUuid(id) || (envio !== undefined && !isUuid(envio)))
+    return new Response('No encontrada', { status: 404 })
 
   const supabase = await createClient()
-  const result = await pdfForShow(supabase, id, envio, { actual: query.get('actual') === '1' })
+  const result = await pdfForShow(supabase, id, envio, {
+    actual: query.get('actual') === '1',
+  })
   if (!result) return new Response('No encontrada', { status: 404 })
 
   return new Response(new Uint8Array(result.pdf), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': contentDisposition(result.nameFile, query.has('descargar') ? 'attachment' : 'inline'),
+      'Content-Disposition': contentDisposition(
+        result.nameFile,
+        query.has('descargar') ? 'attachment' : 'inline',
+      ),
       'Cache-Control': 'private, no-store',
     },
   })

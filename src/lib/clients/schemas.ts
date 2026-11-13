@@ -1,5 +1,10 @@
 import { z } from 'zod'
-import { cuitOptional, emailOptional, textOptional, textRequired } from '@/lib/validation'
+import {
+  cuitOptional,
+  emailOptional,
+  textOptional,
+  textRequired,
+} from '@/lib/validation'
 
 export const CONDICIONES_IVA = {
   responsable_inscripto: 'Responsable inscripto',
@@ -8,7 +13,12 @@ export const CONDICIONES_IVA = {
   consumidor_final: 'Consumidor final',
 } as const
 
-const VALUES_IVA = ['responsable_inscripto', 'monotributo', 'exento', 'consumidor_final'] as const
+const VALUES_IVA = [
+  'responsable_inscripto',
+  'monotributo',
+  'exento',
+  'consumidor_final',
+] as const
 
 export const FIELDS_CLIENT = [
   'razon_social',

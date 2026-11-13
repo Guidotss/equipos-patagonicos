@@ -30,7 +30,9 @@ export type CraneDeliveryNoteFile = {
   size: number
 }
 
-export type CraneDeliveryNoteDetail = CraneDeliveryNoteSummary & { files: CraneDeliveryNoteFile[] }
+export type CraneDeliveryNoteDetail = CraneDeliveryNoteSummary & {
+  files: CraneDeliveryNoteFile[]
+}
 export type EquipmentOption = { id: string; name: string }
 
 export type LinkableBudget = {

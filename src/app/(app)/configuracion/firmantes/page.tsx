@@ -31,7 +31,12 @@ export default async function SignersPage() {
 
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Firmantes' }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Configuración', href: '/configuracion' },
+          { texto: 'Firmantes' },
+        ]}
+      />
       <Content>
         <HeaderPage
           titulo="Firmantes"

@@ -3,7 +3,13 @@
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { SidebarNav } from './sidebar-nav'
 
 export function MobileNav({ logo }: { logo: React.ReactNode }) {

@@ -15,12 +15,15 @@ export async function saveQuote(
   id?: string,
   version?: string,
 ): Promise<{ id: string; numero: number; version: string }> {
-  const { data: savedQuote, error } = await supabase.rpc('guardar_cotizacion_versionada', {
-    p_datos: payload.p_datos as Json,
-    p_items: payload.p_items as Json,
-    p_id: id,
-    p_updated_at: id ? version : undefined,
-  })
+  const { data: savedQuote, error } = await supabase.rpc(
+    'guardar_cotizacion_versionada',
+    {
+      p_datos: payload.p_datos as Json,
+      p_items: payload.p_items as Json,
+      p_id: id,
+      p_updated_at: id ? version : undefined,
+    },
+  )
   if (error) throw mapRpcError(error)
 
   const row = savedQuote[0]
@@ -59,7 +62,10 @@ export async function reopenQuote(supabase: Client, id: string): Promise<void> {
 }
 
 /** Vuelve a enviada (si tuvo envíos o es cargada) o a borrador. No con documentos activos ni en un directo. */
-export async function revertApproval(supabase: Client, id: string): Promise<void> {
+export async function revertApproval(
+  supabase: Client,
+  id: string,
+): Promise<void> {
   await executeRpc(supabase.rpc('revertir_aprobacion', { p_id: id }))
 }
 
@@ -69,13 +75,28 @@ export async function removeQuote(supabase: Client, id: string): Promise<void> {
 }
 
 /** Copia como borrador nuevo del mismo cliente (queda como renegociación: reemplaza_a). */
-export async function duplicateQuote(supabase: Client, id: string, clientId?: string): Promise<{ id: string }> {
-  const { data, error } = await supabase.rpc('duplicar_cotizacion', { p_id: id, p_cliente_id: clientId })
+export async function duplicateQuote(
+  supabase: Client,
+  id: string,
+  clientId?: string,
+): Promise<{ id: string }> {
+  const { data, error } = await supabase.rpc('duplicar_cotizacion', {
+    p_id: id,
+    p_cliente_id: clientId,
+  })
   if (error) throw mapRpcError(error)
   return { id: data }
 }
 
 /** Finaliza el presupuesto de una cotización aprobada (la anterior de una renegociación). */
-export async function finishBudget(supabase: Client, id: string): Promise<void> {
-  await executeRpc(supabase.rpc('cambiar_estado_presupuesto', { p_id: id, p_estado: 'finalizado' }))
+export async function finishBudget(
+  supabase: Client,
+  id: string,
+): Promise<void> {
+  await executeRpc(
+    supabase.rpc('cambiar_estado_presupuesto', {
+      p_id: id,
+      p_estado: 'finalizado',
+    }),
+  )
 }

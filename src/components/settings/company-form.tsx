@@ -3,7 +3,11 @@
 import { Building2, FileText, Printer } from 'lucide-react'
 import { Fragment } from 'react'
 import { Content } from '@/components/app-shell/header'
-import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import {
+  ActionsForm,
+  HeaderForm,
+  SheetForm,
+} from '@/components/form/structure-form'
 import { FormAction } from '@/components/form/form-action'
 import { MessageForm } from '@/components/form/message-form'
 import {
@@ -40,7 +44,13 @@ const FIELDS_VIEW = ['direccion', 'ciudad', 'telefono', 'email', 'web'] as const
 type FieldView = (typeof FIELDS_VIEW)[number]
 
 /** La fecha y el pie tal como los arma el PDF, con los datos de esta pantalla resaltados. */
-function BandPdf({ today, values }: { today: string; values: Record<FieldView, string> }) {
+function BandPdf({
+  today,
+  values,
+}: {
+  today: string
+  values: Record<FieldView, string>
+}) {
   const fecha = headerDate(values.ciudad, today)
   return (
     <BandView icon={Printer} titulo="Así sale en el PDF">
@@ -79,7 +89,9 @@ export function CompanyForm({
   today: string
 }) {
   const { view, onEscribir, sincronizar } = useViewInLive(FIELDS_VIEW, initial)
-  const dataKey = [initial.direccion, initial.ciudad, initial.email].filter(Boolean).join(' · ')
+  const dataKey = [initial.direccion, initial.ciudad, initial.email]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <FormAction
@@ -92,9 +104,15 @@ export function CompanyForm({
         <Content className="max-w-6xl pb-28">
           <HeaderForm
             titulo={initial.razon_social || 'Empresa'}
-            descripcion={dataKey || 'Datos de la empresa que se usan en las cotizaciones.'}
+            descripcion={
+              dataKey || 'Datos de la empresa que se usan en las cotizaciones.'
+            }
           />
-          {soloQuery ? <p className="text-sm text-muted-foreground">Solo un administrador puede modificar estos datos.</p> : null}
+          {soloQuery ? (
+            <p className="text-sm text-muted-foreground">
+              Solo un administrador puede modificar estos datos.
+            </p>
+          ) : null}
           <MessageForm estado={estado} />
           <SheetForm ref={sincronizar} onInput={onEscribir}>
             <Card
@@ -103,13 +121,30 @@ export function CompanyForm({
               descripcion="Se imprime al pie de cada página; la ciudad también encabeza la fecha."
               band={<BandPdf today={today} values={view} />}
             >
-              <FieldsGrid estado={estado} initial={initial} fields={FIELDS_FOOTER} />
+              <FieldsGrid
+                estado={estado}
+                initial={initial}
+                fields={FIELDS_FOOTER}
+              />
             </Card>
-            <Card icon={Building2} titulo="Datos fiscales" descripcion="No se imprimen en las cotizaciones.">
-              <FieldsGrid estado={estado} initial={initial} fields={FIELDS_FISCALES} />
+            <Card
+              icon={Building2}
+              titulo="Datos fiscales"
+              descripcion="No se imprimen en las cotizaciones."
+            >
+              <FieldsGrid
+                estado={estado}
+                initial={initial}
+                fields={FIELDS_FISCALES}
+              />
             </Card>
           </SheetForm>
-          <ActionsForm back="/configuracion" textButton="Guardar cambios" pendiente={pending} soloQuery={soloQuery} />
+          <ActionsForm
+            back="/configuracion"
+            textButton="Guardar cambios"
+            pendiente={pending}
+            soloQuery={soloQuery}
+          />
         </Content>
       )}
     </FormAction>

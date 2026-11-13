@@ -1,8 +1,18 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { urlPdfCurrent, viewerUrl, type ModeViewPreview } from '@/lib/quotes/preview'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import {
+  urlPdfCurrent,
+  viewerUrl,
+  type ModeViewPreview,
+} from '@/lib/quotes/preview'
 import { cn } from '@/lib/utils'
 import { CircleAlert, ExternalLink, FileText, RefreshCw } from 'lucide-react'
 import { useId, useState, useSyncExternalStore } from 'react'
@@ -17,7 +27,10 @@ export type { ViewPreview } from './use-quote-preview'
 function SheetEmpty({ loading }: { loading: boolean }) {
   return (
     <div className="absolute inset-0 p-[9%]">
-      <div aria-hidden className={cn('space-y-2.5', loading && 'animate-pulse')}>
+      <div
+        aria-hidden
+        className={cn('space-y-2.5', loading && 'animate-pulse')}
+      >
         <div className="ml-auto h-6 w-2/5 rounded-sm bg-slate-100" />
         <div className="h-2 w-1/2 rounded-sm bg-slate-100" />
         <div className="h-2 w-3/5 rounded-sm bg-slate-100" />
@@ -62,18 +75,35 @@ export function PanelViewPreview({
           previa", en los 20rem de la columna, quedaría partida en cuatro renglones. */}
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-3">
-          <h2 id={idTitle} className="min-w-0 text-lg leading-tight font-semibold tracking-tight">
+          <h2
+            id={idTitle}
+            className="min-w-0 text-lg leading-tight font-semibold tracking-tight"
+          >
             Vista previa
           </h2>
           <div className="flex shrink-0 items-center gap-1">
             {mode.type === 'generada' ? (
-              <Button type="button" variant="outline" size="sm" onClick={view.refresh} disabled={view.loading}>
-                <RefreshCw className={cn(view.loading && 'animate-spin')} aria-hidden />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={view.refresh}
+                disabled={view.loading}
+              >
+                <RefreshCw
+                  className={cn(view.loading && 'animate-spin')}
+                  aria-hidden
+                />
                 Actualizar vista previa
               </Button>
             ) : null}
             {view.url ? (
-              <Button asChild variant="ghost" size="icon-sm" className="text-muted-foreground">
+              <Button
+                asChild
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground"
+              >
                 <a
                   href={view.url}
                   target="_blank"
@@ -88,7 +118,14 @@ export function PanelViewPreview({
           </div>
         </div>
         {line ? (
-          <p className={cn('text-[13px] text-muted-foreground', view.outdated && 'text-amber-700')}>{line}</p>
+          <p
+            className={cn(
+              'text-[13px] text-muted-foreground',
+              view.outdated && 'text-amber-700',
+            )}
+          >
+            {line}
+          </p>
         ) : null}
       </div>
       <p role="status" className="sr-only">
@@ -108,7 +145,13 @@ export function PanelViewPreview({
             >
               <CircleAlert className="size-6 text-destructive" aria-hidden />
               <p>{view.error}</p>
-              <Button type="button" variant="outline" size="sm" onClick={view.refresh} disabled={view.loading}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={view.refresh}
+                disabled={view.loading}
+              >
                 Reintentar
               </Button>
             </div>
@@ -151,13 +194,28 @@ export function PanelViewPreview({
  * descargaría sin que nadie lo pida). Por eso el visor se dibuja recién cuando la columna se ve. El ancho se mira
  * acá y no en EditorQuote: el render extra al hidratar (en el servidor no se conoce) queda en esta columna.
  */
-export function ColumnViewPreview({ view, line }: { view: ViewPreview; line: string }) {
-  const visible = useSyncExternalStore(subscribePreviewDesktop, isPreviewDesktop, () => false)
+export function ColumnViewPreview({
+  view,
+  line,
+}: {
+  view: ViewPreview
+  line: string
+}) {
+  const visible = useSyncExternalStore(
+    subscribePreviewDesktop,
+    isPreviewDesktop,
+    () => false,
+  )
   return (
     // 56 px de migas + 16: la columna acompaña el scroll debajo de la barra (relev-visual §3.8).
     // pt-5.5: el título "Vista previa" queda a la altura del de la tarjeta Cliente (borde + p-6).
     <aside className="sticky top-18 hidden self-start min-[90rem]:block">
-      <PanelViewPreview view={view} line={line} showVisor={visible} className="pt-5.5" />
+      <PanelViewPreview
+        view={view}
+        line={line}
+        showVisor={visible}
+        className="pt-5.5"
+      />
     </aside>
   )
 }
@@ -166,16 +224,33 @@ export function ColumnViewPreview({ view, line }: { view: ViewPreview; line: str
  * Entre md y 90rem no hay columna: la barra inferior abre el mismo panel en un Sheet lateral.
  * Si todavía no se generó ninguna, se genera al abrirlo.
  */
-export function PreviewSidebar({ view, line }: { view: ViewPreview; line: string }) {
+export function PreviewSidebar({
+  view,
+  line,
+}: {
+  view: ViewPreview
+  line: string
+}) {
   if (view.mode.type === 'sin-pdf') return null
   return (
     <Sheet
       onOpenChange={(opened) => {
-        if (opened && view.mode.type === 'generada' && !view.url && !view.loading) view.refresh()
+        if (
+          opened &&
+          view.mode.type === 'generada' &&
+          !view.url &&
+          !view.loading
+        )
+          view.refresh()
       }}
     >
       <SheetTrigger asChild>
-        <Button type="button" variant="outline" size="lg" className="hidden h-10 px-3.5 text-[15px] md:inline-flex">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="hidden h-10 px-3.5 text-[15px] md:inline-flex"
+        >
           <FileText aria-hidden />
           Vista previa
         </Button>
@@ -185,7 +260,9 @@ export function PreviewSidebar({ view, line }: { view: ViewPreview; line: string
         className="gap-0 overflow-y-auto px-4 pt-12 pb-6 data-[side=right]:w-full data-[side=right]:sm:max-w-[28rem]"
       >
         <SheetTitle className="sr-only">Vista previa del PDF</SheetTitle>
-        <SheetDescription className="sr-only">Cómo sale el PDF con lo que hay en pantalla.</SheetDescription>
+        <SheetDescription className="sr-only">
+          Cómo sale el PDF con lo que hay en pantalla.
+        </SheetDescription>
         <PanelViewPreview view={view} line={line} />
       </SheetContent>
     </Sheet>
@@ -241,7 +318,9 @@ export function MobilePreviewButton({
         tab.opener = null
         tab.location.href = urlPdfCurrent(id)
       } else {
-        toast.info('El navegador bloqueó la pestaña nueva: permitila para ver la vista previa.')
+        toast.info(
+          'El navegador bloqueó la pestaña nueva: permitila para ver la vista previa.',
+        )
       }
     } catch (error) {
       // Un redirect que relanza guardar (la sesión venció) o algo inesperado: la pestaña en blanco no queda abierta.
@@ -253,7 +332,14 @@ export function MobilePreviewButton({
   }
 
   return (
-    <Button type="button" variant="outline" size="lg" className={classes} onClick={open} disabled={opening || busy}>
+    <Button
+      type="button"
+      variant="outline"
+      size="lg"
+      className={classes}
+      onClick={open}
+      disabled={opening || busy}
+    >
       <FileText aria-hidden />
       {opening ? 'Guardando…' : 'Vista previa'}
     </Button>

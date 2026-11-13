@@ -8,10 +8,19 @@ import { schemaDocument } from './schemas'
 const ids = z
   .array(z.uuid())
   .max(200)
-  .refine((list) => new Set(list).size === list.length, 'Hay vínculos repetidos')
+  .refine(
+    (list) => new Set(list).size === list.length,
+    'Hay vínculos repetidos',
+  )
 export const schemaFileSubido = z.object({
-  path: z.string().regex(/^documentos\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(pdf|jpg|png)$/),
-  nombre_original: z.string().trim().min(1, 'Falta el nombre del archivo').max(255, 'Máximo 255 caracteres'),
+  path: z
+    .string()
+    .regex(/^documentos\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(pdf|jpg|png)$/),
+  nombre_original: z
+    .string()
+    .trim()
+    .min(1, 'Falta el nombre del archivo')
+    .max(255, 'Máximo 255 caracteres'),
 })
 export const schemaSaveDocument = z
   .object({
@@ -32,7 +41,10 @@ export const schemaSaveDocument = z
           monto_aplicado: z.string().transform((value, ctx) => {
             const cents = parseAmountCents(value)
             if (cents === null || cents <= BigInt(0)) {
-              ctx.addIssue({ code: 'custom', message: 'Ingresá un monto aplicado válido' })
+              ctx.addIssue({
+                code: 'custom',
+                message: 'Ingresá un monto aplicado válido',
+              })
               return z.NEVER
             }
             return centsToDecimal(cents)
@@ -41,33 +53,86 @@ export const schemaSaveDocument = z
       )
       .max(200)
       .optional(),
-    cotizacion: z.object({ id: z.uuid(), version: z.iso.datetime({ offset: true }) }).optional(),
+    cotizacion: z
+      .object({ id: z.uuid(), version: z.iso.datetime({ offset: true }) })
+      .optional(),
   })
   .superRefine((entrada, ctx) => {
     if (entrada.linkedInvoiceId && entrada.datos.tipo !== 'remito') {
-      ctx.addIssue({ code: 'custom', path: ['linkedInvoiceId'], message: 'Solo podés vincular la factura desde un remito' })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['linkedInvoiceId'],
+        message: 'Solo podés vincular la factura desde un remito',
+      })
     }
-    if (!entrada.budgets.length && (!entrada.id || entrada.datos.tipo !== 'factura')) {
-      ctx.addIssue({ code: 'custom', path: ['budgets'], message: 'Elegí al menos un presupuesto' })
+    if (
+      !entrada.budgets.length &&
+      (!entrada.id || entrada.datos.tipo !== 'factura')
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['budgets'],
+        message: 'Elegí al menos un presupuesto',
+      })
     }
     if (entrada.finance !== undefined && entrada.aplicaciones !== undefined) {
-      ctx.addIssue({ code: 'custom', path: ['finance'], message: 'Usá la distribución financiera sin aplicaciones anteriores simultáneas' })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['finance'],
+        message:
+          'Usá la distribución financiera sin aplicaciones anteriores simultáneas',
+      })
     }
-    if (entrada.finance && entrada.id && entrada.finance.expectedVersion === undefined) {
-      ctx.addIssue({ code: 'custom', path: ['finance', 'expectedVersion'], message: 'Falta la versión financiera leída. Volvé a abrir el documento' })
+    if (
+      entrada.finance &&
+      entrada.id &&
+      entrada.finance.expectedVersion === undefined
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['finance', 'expectedVersion'],
+        message:
+          'Falta la versión financiera leída. Volvé a abrir el documento',
+      })
     }
-    if (entrada.finance && entrada.datos.tipo !== 'factura' && entrada.datos.tipo !== 'orden_pago') {
-      ctx.addIssue({ code: 'custom', path: ['finance'], message: 'Solo facturas y órdenes de pago admiten datos financieros' })
+    if (
+      entrada.finance &&
+      entrada.datos.tipo !== 'factura' &&
+      entrada.datos.tipo !== 'orden_pago'
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['finance'],
+        message: 'Solo facturas y órdenes de pago admiten datos financieros',
+      })
     }
-    if (entrada.finance && ((entrada.datos.tipo === 'factura' && (entrada.finance.paymentInstruments !== undefined || entrada.finance.paymentAllocations !== undefined))
-      || (entrada.datos.tipo === 'orden_pago' && entrada.finance.invoiceAllocations !== undefined))) {
-      ctx.addIssue({ code: 'custom', path: ['finance'], message: 'La distribución no corresponde al tipo de documento' })
+    if (
+      entrada.finance &&
+      ((entrada.datos.tipo === 'factura' &&
+        (entrada.finance.paymentInstruments !== undefined ||
+          entrada.finance.paymentAllocations !== undefined)) ||
+        (entrada.datos.tipo === 'orden_pago' &&
+          entrada.finance.invoiceAllocations !== undefined))
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['finance'],
+        message: 'La distribución no corresponde al tipo de documento',
+      })
     }
     if (!entrada.id && entrada.archivos.length === 0)
-      ctx.addIssue({ code: 'custom', path: ['archivos'], message: 'Subí al menos un archivo' })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['archivos'],
+        message: 'Subí al menos un archivo',
+      })
     const folder = `documentos/${entrada.clientId}/`
     if (entrada.archivos.some((archivo) => !archivo.path.startsWith(folder)))
-      ctx.addIssue({ code: 'custom', path: ['archivos'], message: 'El archivo no corresponde al cliente' })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['archivos'],
+        message: 'El archivo no corresponde al cliente',
+      })
     if (
       entrada.cotizacion &&
       (entrada.datos.tipo !== 'orden_compra' ||
@@ -78,14 +143,19 @@ export const schemaSaveDocument = z
       ctx.addIssue({
         code: 'custom',
         path: ['cotizacion'],
-        message: 'La aprobación requiere una orden de compra de esta cotización',
+        message:
+          'La aprobación requiere una orden de compra de esta cotización',
       })
     }
   })
 
 export type Document = Database['public']['Tables']['documentos']['Row']
-export type FileDocument = Database['public']['Tables']['documento_archivos']['Row']
-export type Invoice = Database['public']['Views']['v_facturas']['Row'] & { exact_balance: string | null; exact_available?: string | null }
+export type FileDocument =
+  Database['public']['Tables']['documento_archivos']['Row']
+export type Invoice = Database['public']['Views']['v_facturas']['Row'] & {
+  exact_balance: string | null
+  exact_available?: string | null
+}
 export type Budget = Database['public']['Views']['v_presupuestos']['Row']
 export type OptionBudget = {
   id: string
@@ -111,6 +181,10 @@ export const STATUSES_COBRO: Record<string, string> = {
   cobrada: 'Cobrada',
   no_aplica: 'No aplica',
 }
-export function numberDocument(document: Pick<Document, 'numero' | 'tipo_comprobante'>) {
-  return [document.tipo_comprobante, document.numero || 'Sin número'].filter(Boolean).join(' ')
+export function numberDocument(
+  document: Pick<Document, 'numero' | 'tipo_comprobante'>,
+) {
+  return [document.tipo_comprobante, document.numero || 'Sin número']
+    .filter(Boolean)
+    .join(' ')
 }

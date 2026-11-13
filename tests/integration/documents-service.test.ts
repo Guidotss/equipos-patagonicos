@@ -1,7 +1,12 @@
 // tests/integration/documentos-servicio.test.ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { DataDocument } from '@/lib/documents/schemas'
-import { ErrorDocument, prepareUpload, registerDocument, urlDownload } from '@/lib/documents/service'
+import {
+  ErrorDocument,
+  prepareUpload,
+  registerDocument,
+  urlDownload,
+} from '@/lib/documents/service'
 import { idsOfExample } from './quotes-helpers'
 import { limpiarDocuments, newBudget } from './documents-helpers'
 import { adminClient, removeUser, crearUser } from './helpers'
@@ -38,7 +43,10 @@ function clientEspia() {
       },
     },
   }
-  return { cliente: cliente as unknown as Parameters<typeof prepareUpload>[0], buckets }
+  return {
+    cliente: cliente as unknown as Parameters<typeof prepareUpload>[0],
+    buckets,
+  }
 }
 
 beforeAll(async () => {
@@ -51,8 +59,11 @@ afterAll(async () => {
   try {
     await limpiarDocuments(MARCA)
     if (pathSubido) {
-      const { error } = await adminClient().storage.from('documentos').remove([pathSubido])
-      if (error) throw new Error('No se pudo borrar el archivo subido: ' + error.message)
+      const { error } = await adminClient()
+        .storage.from('documentos')
+        .remove([pathSubido])
+      if (error)
+        throw new Error('No se pudo borrar el archivo subido: ' + error.message)
     }
   } finally {
     await removeUser(activo.id)
@@ -61,18 +72,24 @@ afterAll(async () => {
 
 describe('servicio de documentos', () => {
   it('prepara la subida, el navegador sube con la URL firmada y se registra el documento', async () => {
-    const content = new Blob(['%PDF-1.4 remito firmado'], { type: 'application/pdf' })
+    const content = new Blob(['%PDF-1.4 remito firmado'], {
+      type: 'application/pdf',
+    })
     const { path, token } = await prepareUpload(activo.client, {
       clientId: ids.cliente_id,
       mime: 'application/pdf',
       tamano: content.size,
     })
     pathSubido = path
-    expect(path).toMatch(new RegExp(`^documentos/${ids.cliente_id}/[0-9a-f-]{36}\\.pdf$`))
+    expect(path).toMatch(
+      new RegExp(`^documentos/${ids.cliente_id}/[0-9a-f-]{36}\\.pdf$`),
+    )
 
-    const upload = await activo.client.storage.from('documentos').uploadToSignedUrl(path, token, content, {
-      contentType: 'application/pdf',
-    })
+    const upload = await activo.client.storage
+      .from('documentos')
+      .uploadToSignedUrl(path, token, content, {
+        contentType: 'application/pdf',
+      })
     expect(upload.error).toBeNull()
 
     const id = await registerDocument(activo.client, {
@@ -92,22 +109,38 @@ describe('servicio de documentos', () => {
     })
     expect(id).toMatch(/^[0-9a-f-]{36}$/)
 
-    const url = await urlDownload(activo.client, path, 'Parte diario Neuquén N° 456.pdf')
+    const url = await urlDownload(
+      activo.client,
+      path,
+      'Parte diario Neuquén N° 456.pdf',
+    )
     const response = await fetch(url)
     expect(response.status).toBe(200)
     const layout = response.headers.get('content-disposition')
     expect(layout).toContain('attachment')
-    expect(layout).toContain("filename*=UTF-8''Parte%20diario%20Neuqu%C3%A9n%20N%C2%B0%20456.pdf")
-    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array(await content.arrayBuffer()))
+    expect(layout).toContain(
+      "filename*=UTF-8''Parte%20diario%20Neuqu%C3%A9n%20N%C2%B0%20456.pdf",
+    )
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+      new Uint8Array(await content.arrayBuffer()),
+    )
   })
 
   it('rechaza tipos y tamaños no permitidos antes de pedir la URL', async () => {
     const { cliente, buckets } = clientEspia()
-    await expect(prepareUpload(cliente, { clientId: ids.cliente_id, mime: 'image/heic', tamano: 100 })).rejects.toThrow(
-      ErrorDocument,
-    )
     await expect(
-      prepareUpload(cliente, { clientId: ids.cliente_id, mime: 'application/pdf', tamano: 11 * 1024 * 1024 }),
+      prepareUpload(cliente, {
+        clientId: ids.cliente_id,
+        mime: 'image/heic',
+        tamano: 100,
+      }),
+    ).rejects.toThrow(ErrorDocument)
+    await expect(
+      prepareUpload(cliente, {
+        clientId: ids.cliente_id,
+        mime: 'application/pdf',
+        tamano: 11 * 1024 * 1024,
+      }),
     ).rejects.toThrow(/10 MB/)
     expect(buckets).toEqual([])
   })

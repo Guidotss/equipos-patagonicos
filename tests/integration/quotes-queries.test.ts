@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { readCatalogsEditor, readContacts, readLastSigner } from '@/lib/quotes/queries-editor'
+import {
+  readCatalogsEditor,
+  readContacts,
+  readLastSigner,
+} from '@/lib/quotes/queries-editor'
 import { idsOfExample } from './quotes-helpers'
 import { removeUser, crearUser, sql } from './helpers'
 
@@ -44,11 +48,20 @@ afterAll(async () => {
 describe('leerCatalogosEditor', () => {
   it('trae los activos y, además, lo que la cotización ya tiene elegido aunque esté inactivo', async () => {
     const nueva = await readCatalogsEditor(activo.client)
-    expect(nueva.equipos.map((equipo) => equipo.id)).not.toContain(equipmentInactivo)
-    expect(nueva.firmantes.map((firmante) => firmante.id)).not.toContain(signerInactivo)
-    expect(nueva.plantillas.map((template) => template.id)).not.toContain(templateInactiva)
+    expect(nueva.equipos.map((equipo) => equipo.id)).not.toContain(
+      equipmentInactivo,
+    )
+    expect(nueva.firmantes.map((firmante) => firmante.id)).not.toContain(
+      signerInactivo,
+    )
+    expect(nueva.plantillas.map((template) => template.id)).not.toContain(
+      templateInactiva,
+    )
     expect(nueva.plantillas.map((template) => template.nombre)).toEqual(
-      expect.arrayContaining(['Mensual - Grúa con operador', 'Por jornada - Grúa con operador']),
+      expect.arrayContaining([
+        'Mensual - Grúa con operador',
+        'Por jornada - Grúa con operador',
+      ]),
     )
 
     const existing = await readCatalogsEditor(activo.client, {
@@ -56,12 +69,18 @@ describe('leerCatalogosEditor', () => {
       equipoId: equipmentInactivo,
       firmanteId: signerInactivo,
     })
-    expect(existing.equipos.find((equipo) => equipo.id === equipmentInactivo)).toMatchObject({
+    expect(
+      existing.equipos.find((equipo) => equipo.id === equipmentInactivo),
+    ).toMatchObject({
       activo: false,
       capacidad_tn: 25,
     })
-    expect(existing.firmantes.find((firmante) => firmante.id === signerInactivo)).toMatchObject({ activo: false })
-    expect(existing.plantillas.find((template) => template.id === templateInactiva)).toMatchObject({
+    expect(
+      existing.firmantes.find((firmante) => firmante.id === signerInactivo),
+    ).toMatchObject({ activo: false })
+    expect(
+      existing.plantillas.find((template) => template.id === templateInactiva),
+    ).toMatchObject({
       formato: 'mensual',
       bloques: [{ titulo: 'T', contenido: 'C', hidden: false }],
       items: [],
@@ -99,8 +118,15 @@ describe('leerUltimoFirmante', () => {
 
 describe('leerContactos', () => {
   it('devuelve los contactos del cliente', async () => {
-    expect(await readContacts(activo.client, ids.client_with_contact_id)).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: ids.contacto_id, nombre: 'Yanina Colman' })]),
+    expect(
+      await readContacts(activo.client, ids.client_with_contact_id),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: ids.contacto_id,
+          nombre: 'Yanina Colman',
+        }),
+      ]),
     )
   })
 })

@@ -6,8 +6,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import type { FieldData } from '@/lib/quotes/data'
-import { ID_FIELD, fieldsDataVisible, idFieldData, textNextUpdate, type EditorDispatch } from '@/lib/quotes/editor-screen'
-import type { CatalogsEditor, PendingList, StatusEditor } from '@/lib/quotes/editor/types'
+import {
+  ID_FIELD,
+  fieldsDataVisible,
+  idFieldData,
+  textNextUpdate,
+  type EditorDispatch,
+} from '@/lib/quotes/editor-screen'
+import type {
+  CatalogsEditor,
+  PendingList,
+  StatusEditor,
+} from '@/lib/quotes/editor/types'
 import { VARIABLES } from '@/lib/templates/variables'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -17,7 +27,8 @@ import { SelectorTemplate } from './template-selector'
 
 /** Las mismas clases que la etiqueta de Campo, para los campos que no pueden usarlo (marca superpuesta, selects). */
 const LABEL_CLASS = 'text-[13px]/none font-normal text-muted-foreground'
-const MISSING_CLASS = '[&_select]:border-brand-yellow [&_select]:bg-brand-yellow/10'
+const MISSING_CLASS =
+  '[&_select]:border-brand-yellow [&_select]:bg-brand-yellow/10'
 
 /** Un dato que alimenta una variable. Vacío y usado por el texto: la marca {{x}} encima (nunca como valor). */
 function FieldData({
@@ -40,7 +51,11 @@ function FieldData({
   const id = idFieldData(field)
   const mark = missingComplete && value === ''
   const descriptions =
-    [error ? `${id}-error` : null, !error && help ? `${id}-ayuda` : null, mark ? `${id}-falta` : null]
+    [
+      error ? `${id}-error` : null,
+      !error && help ? `${id}-ayuda` : null,
+      mark ? `${id}-falta` : null,
+    ]
       .filter(Boolean)
       .join(' ') || undefined
 
@@ -55,7 +70,9 @@ function FieldData({
           value={value}
           maxLength={500}
           placeholder={mark ? undefined : placeholder}
-          onChange={(event) => dispatch({ tipo: 'dato', campo: field, value: event.target.value })}
+          onChange={(event) =>
+            dispatch({ tipo: 'dato', campo: field, value: event.target.value })
+          }
           aria-invalid={Boolean(error)}
           aria-describedby={descriptions}
         />
@@ -97,18 +114,28 @@ function HelpEquipment({
 }) {
   if (catalogs.equipos.length === 0) {
     return (
-      <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">
+      <p
+        id={`${ID_FIELD.equipo}-ayuda`}
+        className="text-xs text-muted-foreground"
+      >
         No hay equipos activos.{' '}
-        <Link href="/configuracion/equipos/nuevo" className="text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/configuracion/equipos/nuevo"
+          className="text-primary underline-offset-4 hover:underline"
+        >
           Cargar equipos en Configuración
         </Link>
       </p>
     )
   }
-  if (!missing.has('capacidad') && !missing.has('equipo_descripcion')) return null
+  if (!missing.has('capacidad') && !missing.has('equipo_descripcion'))
+    return null
   if (state.equipoId === '') {
     return (
-      <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">
+      <p
+        id={`${ID_FIELD.equipo}-ayuda`}
+        className="text-xs text-muted-foreground"
+      >
         El texto usa la capacidad y la descripción del equipo.
       </p>
     )
@@ -120,7 +147,10 @@ function HelpEquipment({
         ? 'la capacidad'
         : 'la descripción'
   return (
-    <p id={`${ID_FIELD.equipo}-ayuda`} className="text-xs text-muted-foreground">
+    <p
+      id={`${ID_FIELD.equipo}-ayuda`}
+      className="text-xs text-muted-foreground"
+    >
       Completá {data} del equipo en Configuración › Equipos.
     </p>
   )
@@ -140,14 +170,18 @@ export function CardData({
   dispatch: EditorDispatch
 }) {
   const missing = new Set<string>(pendingList.variables)
-  const missingEquipment = state.equipoId === '' && (missing.has('capacidad') || missing.has('equipo_descripcion'))
+  const missingEquipment =
+    state.equipoId === '' &&
+    (missing.has('capacidad') || missing.has('equipo_descripcion'))
   const textNext = textNextUpdate(
     state.proximaActualizacion,
     state.datos.proxima_actualizacion,
     catalogs.empresa.proxima_actualizacion,
   )
-  const missingNext = missing.has('proxima_actualizacion') && state.proximaActualizacion === ''
-  const nextUpdateError = errors.proximaActualizacion ?? errors['datos.proxima_actualizacion']
+  const missingNext =
+    missing.has('proxima_actualizacion') && state.proximaActualizacion === ''
+  const nextUpdateError =
+    errors.proximaActualizacion ?? errors['datos.proxima_actualizacion']
 
   return (
     <Card compacta titulo="Datos de esta cotización">
@@ -167,12 +201,20 @@ export function CardData({
           <NativeSelect
             id={ID_FIELD.equipo}
             value={state.equipoId}
-            onChange={(event) => dispatch({ tipo: 'campo', campo: 'equipoId', value: event.target.value })}
+            onChange={(event) =>
+              dispatch({
+                tipo: 'campo',
+                campo: 'equipoId',
+                value: event.target.value,
+              })
+            }
             aria-invalid={Boolean(errors.equipoId)}
             aria-describedby={
               errors.equipoId
                 ? `${ID_FIELD.equipo}-error`
-                : catalogs.equipos.length === 0 || missing.has('capacidad') || missing.has('equipo_descripcion')
+                : catalogs.equipos.length === 0 ||
+                    missing.has('capacidad') ||
+                    missing.has('equipo_descripcion')
                   ? `${ID_FIELD.equipo}-ayuda`
                   : undefined
             }
@@ -185,16 +227,25 @@ export function CardData({
             <NativeSelectOption value="">Elegí un equipo</NativeSelectOption>
             {catalogs.equipos.map((equipment) => (
               <NativeSelectOption key={equipment.id} value={equipment.id}>
-                {equipment.activo ? equipment.nombre : `${equipment.nombre} (inactivo)`}
+                {equipment.activo
+                  ? equipment.nombre
+                  : `${equipment.nombre} (inactivo)`}
               </NativeSelectOption>
             ))}
           </NativeSelect>
           {errors.equipoId ? (
-            <p id={`${ID_FIELD.equipo}-error`} className="text-sm text-destructive">
+            <p
+              id={`${ID_FIELD.equipo}-error`}
+              className="text-sm text-destructive"
+            >
               {errors.equipoId}
             </p>
           ) : (
-            <HelpEquipment catalogs={catalogs} state={state} missing={missing} />
+            <HelpEquipment
+              catalogs={catalogs}
+              state={state}
+              missing={missing}
+            />
           )}
         </div>
 
@@ -205,9 +256,15 @@ export function CardData({
             value={state.datos[field]}
             missingComplete={missing.has(field)}
             error={errors[`datos.${field}`]}
-            placeholder={field === 'indice_base' ? catalogs.empresa.indice_base || undefined : undefined}
+            placeholder={
+              field === 'indice_base'
+                ? catalogs.empresa.indice_base || undefined
+                : undefined
+            }
             help={
-              field === 'indice_base' && catalogs.empresa.indice_base ? 'Vacío: se usa el de la empresa.' : undefined
+              field === 'indice_base' && catalogs.empresa.indice_base
+                ? 'Vacío: se usa el de la empresa.'
+                : undefined
             }
             dispatch={dispatch}
           />
@@ -224,10 +281,16 @@ export function CardData({
             type="month"
             value={state.proximaActualizacion}
             onChange={(event) =>
-              dispatch({ tipo: 'campo', campo: 'proximaActualizacion', value: event.target.value })
+              dispatch({
+                tipo: 'campo',
+                campo: 'proximaActualizacion',
+                value: event.target.value,
+              })
             }
             aria-invalid={Boolean(nextUpdateError)}
-            className={cn(missingNext && 'border-brand-yellow bg-brand-yellow/10')}
+            className={cn(
+              missingNext && 'border-brand-yellow bg-brand-yellow/10',
+            )}
           />
         </Field>
 
@@ -242,12 +305,22 @@ export function CardData({
               aria-invalid={Boolean(errors.fecha)}
             />
           </Field>
-          <Field id={ID_FIELD.validity} label="Validez (días)" error={errors.validezDias}>
+          <Field
+            id={ID_FIELD.validity}
+            label="Validez (días)"
+            error={errors.validezDias}
+          >
             <Input
               id={ID_FIELD.validity}
               inputMode="numeric"
               value={state.validezDias}
-              onChange={(event) => dispatch({ tipo: 'campo', campo: 'validezDias', value: event.target.value })}
+              onChange={(event) =>
+                dispatch({
+                  tipo: 'campo',
+                  campo: 'validezDias',
+                  value: event.target.value,
+                })
+              }
               aria-invalid={Boolean(errors.validezDias)}
               className="tabular-nums"
             />
@@ -259,20 +332,33 @@ export function CardData({
             <NativeSelect
               id={ID_FIELD.firmante}
               value={state.firmanteId}
-              onChange={(event) => dispatch({ tipo: 'campo', campo: 'firmanteId', value: event.target.value })}
+              onChange={(event) =>
+                dispatch({
+                  tipo: 'campo',
+                  campo: 'firmanteId',
+                  value: event.target.value,
+                })
+              }
               aria-invalid={Boolean(errors.firmanteId)}
-              aria-describedby={errors.firmanteId ? `${ID_FIELD.firmante}-error` : undefined}
+              aria-describedby={
+                errors.firmanteId ? `${ID_FIELD.firmante}-error` : undefined
+              }
               className="w-full"
             >
               <NativeSelectOption value="">Sin firma</NativeSelectOption>
               {catalogs.firmantes.map((signer) => (
                 <NativeSelectOption key={signer.id} value={signer.id}>
-                  {signer.activo ? signer.nombre : `${signer.nombre} (inactivo)`}
+                  {signer.activo
+                    ? signer.nombre
+                    : `${signer.nombre} (inactivo)`}
                 </NativeSelectOption>
               ))}
             </NativeSelect>
             {errors.firmanteId ? (
-              <p id={`${ID_FIELD.firmante}-error`} className="text-sm text-destructive">
+              <p
+                id={`${ID_FIELD.firmante}-error`}
+                className="text-sm text-destructive"
+              >
                 {errors.firmanteId}
               </p>
             ) : null}

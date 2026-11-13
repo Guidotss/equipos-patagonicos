@@ -41,21 +41,31 @@ export function DocumentBudgetTypeSection({
                 onChange={(event) => void chooseBudget(event.target.value)}
                 required
               >
-                <NativeSelectOption value="">Elegí un presupuesto</NativeSelectOption>
+                <NativeSelectOption value="">
+                  Elegí un presupuesto
+                </NativeSelectOption>
                 {visibleOptions.map((item) => (
                   <NativeSelectOption key={item.id} value={item.id}>
                     {item.numero} · {item.cliente_razon_social} · {item.asunto}
-                    {item.presupuesto_estado === 'finalizado' ? ' · Finalizado' : ''}
+                    {item.presupuesto_estado === 'finalizado'
+                      ? ' · Finalizado'
+                      : ''}
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
             </Field>
             {visibleOptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay presupuestos disponibles para cargar documentos.</p>
+              <p className="text-sm text-muted-foreground">
+                No hay presupuestos disponibles para cargar documentos.
+              </p>
             ) : null}
           </div>
         ) : null}
-        <Field id="tipo-documento" label="Tipo de documento" error={errors['datos.tipo']}>
+        <Field
+          id="tipo-documento"
+          label="Tipo de documento"
+          error={errors['datos.tipo']}
+        >
           <ToggleGroup
             id="tipo-documento"
             type="single"
@@ -69,7 +79,11 @@ export function DocumentBudgetTypeSection({
             aria-label="Tipo de documento"
           >
             {Object.entries(DOCUMENT_TYPES).map(([value, label]) => (
-              <ToggleGroupItem key={value} value={value} className="h-17 flex-col gap-1 text-xs">
+              <ToggleGroupItem
+                key={value}
+                value={value}
+                className="h-17 flex-col gap-1 text-xs"
+              >
                 <FileText aria-hidden />
                 {label}
               </ToggleGroupItem>

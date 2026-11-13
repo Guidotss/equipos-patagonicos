@@ -1,19 +1,33 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { errorsByPath, success, databaseFailure, validationFailure, readFields, valueField } from './forms'
+import {
+  errorsByPath,
+  success,
+  databaseFailure,
+  validationFailure,
+  readFields,
+  valueField,
+} from './forms'
 
 describe('leerCampos', () => {
   it('lee los campos pedidos y usa "" para los que faltan o son archivos', () => {
     const fd = new FormData()
     fd.set('nombre', 'Julio')
     fd.set('archivo', new Blob(['x']))
-    expect(readFields(fd, ['nombre', 'cargo', 'archivo'] as const)).toEqual({ nombre: 'Julio', cargo: '', archivo: '' })
+    expect(readFields(fd, ['nombre', 'cargo', 'archivo'] as const)).toEqual({
+      nombre: 'Julio',
+      cargo: '',
+      archivo: '',
+    })
   })
 })
 
 describe('falloValidacion', () => {
   it('devuelve el primer mensaje de cada campo y conserva lo que escribió el usuario', () => {
-    const schema = z.object({ nombre: z.string().min(1, 'Ingresá el nombre'), email: z.email('Email inválido') })
+    const schema = z.object({
+      nombre: z.string().min(1, 'Ingresá el nombre'),
+      email: z.email('Email inválido'),
+    })
     const values = { nombre: '', email: 'x' }
     const result = schema.safeParse(values)
     if (result.success) throw new Error('debería fallar')
@@ -33,7 +47,9 @@ describe('erroresPorRuta', () => {
     items: z.array(
       z.object({
         descripcion: z.string().min(1, 'Falta la descripción'),
-        precio: z.number('Precio inválido').nonnegative('El precio no puede ser negativo'),
+        precio: z
+          .number('Precio inválido')
+          .nonnegative('El precio no puede ser negativo'),
       }),
     ),
     datos: z.object({ ubicacion: z.string().max(3, 'Máximo 3 caracteres') }),
@@ -66,7 +82,12 @@ describe('erroresPorRuta', () => {
   })
 
   it('se queda con el primer mensaje de cada ruta', () => {
-    const doble = z.object({ nombre: z.string().min(3, 'Muy corto').regex(/^[a-z]+$/, 'Solo minúsculas') })
+    const doble = z.object({
+      nombre: z
+        .string()
+        .min(3, 'Muy corto')
+        .regex(/^[a-z]+$/, 'Solo minúsculas'),
+    })
     const result = doble.safeParse({ nombre: 'A' })
     if (result.success) throw new Error('debería fallar')
     expect(errorsByPath(result.error)).toEqual({ nombre: 'Muy corto' })
@@ -85,7 +106,9 @@ describe('erroresPorRuta', () => {
     const raro = z.object({ constructor: z.string('Texto requerido') })
     const result = raro.safeParse({ constructor: 1 })
     if (result.success) throw new Error('debería fallar')
-    expect(errorsByPath(result.error)).toEqual({ constructor: 'Texto requerido' })
+    expect(errorsByPath(result.error)).toEqual({
+      constructor: 'Texto requerido',
+    })
   })
 })
 
@@ -93,15 +116,22 @@ describe('falloBase', () => {
   const values = { cuit: '30719529670' }
 
   it('traduce los códigos de Postgres a mensajes', () => {
-    expect(databaseFailure({ code: '23505', message: 'dup' }, values).message).toBe('Ya existe un registro con esos datos')
-    expect(databaseFailure({ code: '42501', message: 'rls' }, values).message).toBe(
-      'No tenés permiso para hacer esta operación',
-    )
-    expect(databaseFailure({ code: 'P0001', message: 'Mensaje de la regla' }, values).message).toBe('Mensaje de la regla')
-    expect(databaseFailure({ code: 'XX000', message: 'raro' }, values).message).toBe(
-      'No se pudo guardar. Probá de nuevo en un momento.',
-    )
-    expect(databaseFailure({ code: '22003', message: 'overflow' }, values).message).toBe('Algún número es demasiado grande')
+    expect(
+      databaseFailure({ code: '23505', message: 'dup' }, values).message,
+    ).toBe('Ya existe un registro con esos datos')
+    expect(
+      databaseFailure({ code: '42501', message: 'rls' }, values).message,
+    ).toBe('No tenés permiso para hacer esta operación')
+    expect(
+      databaseFailure({ code: 'P0001', message: 'Mensaje de la regla' }, values)
+        .message,
+    ).toBe('Mensaje de la regla')
+    expect(
+      databaseFailure({ code: 'XX000', message: 'raro' }, values).message,
+    ).toBe('No se pudo guardar. Probá de nuevo en un momento.')
+    expect(
+      databaseFailure({ code: '22003', message: 'overflow' }, values).message,
+    ).toBe('Algún número es demasiado grande')
   })
 
   it('marca el campo cuando el duplicado tiene un campo asociado', () => {
@@ -109,22 +139,43 @@ describe('falloBase', () => {
       campo: 'cuit',
       message: 'Ya existe un cliente con ese CUIT',
     })
-    expect(result.errors).toEqual({ cuit: 'Ya existe un cliente con ese CUIT' })
+    expect(result.errors).toEqual({
+      cuit: 'Ya existe un cliente con ese CUIT',
+    })
     expect(result.values).toEqual(values)
   })
 })
 
 describe('exito', () => {
   it('arma un estado ok', () => {
-    expect(success('Guardado')).toEqual({ ok: true, message: 'Guardado', errors: {} })
+    expect(success('Guardado')).toEqual({
+      ok: true,
+      message: 'Guardado',
+      errors: {},
+    })
   })
 })
 
 describe('valorCampo', () => {
   it('prioriza lo que envió el usuario, después el valor inicial y por último ""', () => {
-    const estado = { ok: false, message: null, errors: {}, values: { nombre: 'Escrito' } }
-    expect(valueField(estado, { nombre: 'Inicial', cargo: 'Jefe' }, 'nombre')).toBe('Escrito')
-    expect(valueField({ ok: false, message: null, errors: {} }, { cargo: 'Jefe' }, 'cargo')).toBe('Jefe')
-    expect(valueField({ ok: false, message: null, errors: {} }, undefined, 'cargo')).toBe('')
+    const estado = {
+      ok: false,
+      message: null,
+      errors: {},
+      values: { nombre: 'Escrito' },
+    }
+    expect(
+      valueField(estado, { nombre: 'Inicial', cargo: 'Jefe' }, 'nombre'),
+    ).toBe('Escrito')
+    expect(
+      valueField(
+        { ok: false, message: null, errors: {} },
+        { cargo: 'Jefe' },
+        'cargo',
+      ),
+    ).toBe('Jefe')
+    expect(
+      valueField({ ok: false, message: null, errors: {} }, undefined, 'cargo'),
+    ).toBe('')
   })
 })

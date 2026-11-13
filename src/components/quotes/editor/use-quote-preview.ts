@@ -7,7 +7,14 @@ import {
   isPreviewOutdated,
   type ModeViewPreview,
 } from '@/lib/quotes/preview'
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import { PREVIEW_DESKTOP_QUERY, isPreviewDesktop } from './preview-media'
 
@@ -37,7 +44,10 @@ export type ViewPreview = {
  */
 export function useQuotePreview(state: StatusEditor): ViewPreview {
   const mode = modeViewPreview(state)
-  const [generated, setGenerated] = useState<{ url: string; state: StatusEditor } | null>(null)
+  const [generated, setGenerated] = useState<{
+    url: string
+    state: StatusEditor
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const request = useRef<AbortController | null>(null)
@@ -65,7 +75,9 @@ export function useQuotePreview(state: StatusEditor): ViewPreview {
         if (response.type === 'opaqueredirect') throw new ErrorResponse(401)
         if (!response.ok) throw new ErrorResponse(response.status)
         // Solo un PDF va al visor (y al "Abrir el PDF en otra pestaña"): cualquier otra respuesta es un error.
-        if (!response.headers.get('content-type')?.startsWith('application/pdf')) {
+        if (
+          !response.headers.get('content-type')?.startsWith('application/pdf')
+        ) {
           throw new ErrorResponse(response.status)
         }
         const pdf = await response.blob()
@@ -78,7 +90,9 @@ export function useQuotePreview(state: StatusEditor): ViewPreview {
       } catch (e) {
         if (controller.signal.aborted) return
         if (!(e instanceof ErrorResponse)) console.error(e)
-        setError(messageErrorViewPreview(e instanceof ErrorResponse ? e.status : null))
+        setError(
+          messageErrorViewPreview(e instanceof ErrorResponse ? e.status : null),
+        )
       } finally {
         if (request.current === controller) {
           request.current = null
@@ -91,7 +105,8 @@ export function useQuotePreview(state: StatusEditor): ViewPreview {
   // El ancho se mira acá y no con un estado (useSyncExternalStore): en el servidor no se conoce, y el render extra
   // al hidratar volvería a dibujar todo el editor y los inputs controlados pisarían lo tipeado antes de hidratar.
   useEffect(() => {
-    if (attempted.current || mode.type !== 'generada' || !isPreviewDesktop()) return
+    if (attempted.current || mode.type !== 'generada' || !isPreviewDesktop())
+      return
     attempted.current = true
     refresh()
   })
@@ -123,7 +138,15 @@ export function useQuotePreview(state: StatusEditor): ViewPreview {
     [],
   )
 
-  const outdated = useMemo(() => isPreviewOutdated(generated?.state ?? null, state), [generated, state])
-  const url = mode.type === 'generada' ? (generated?.url ?? null) : mode.type === 'guardada' ? mode.url : null
+  const outdated = useMemo(
+    () => isPreviewOutdated(generated?.state ?? null, state),
+    [generated, state],
+  )
+  const url =
+    mode.type === 'generada'
+      ? (generated?.url ?? null)
+      : mode.type === 'guardada'
+        ? mode.url
+        : null
   return { mode, url, loading, error, outdated, refresh }
 }

@@ -6,7 +6,9 @@ import { validateEnvTests } from '../../scripts/test-env.mjs'
 
 validateEnvTests()
 
-const optionsWithoutSession = { auth: { persistSession: false, autoRefreshToken: false } }
+const optionsWithoutSession = {
+  auth: { persistSession: false, autoRefreshToken: false },
+}
 
 function url(): string {
   validateEnvTests()
@@ -17,18 +19,29 @@ function url(): string {
 
 /** Cliente con la secret key: saltea RLS. Solo para preparar datos en los tests. */
 export function adminClient() {
-  return createClient<Database>(url(), process.env.SUPABASE_SECRET_KEY!, optionsWithoutSession)
+  return createClient<Database>(
+    url(),
+    process.env.SUPABASE_SECRET_KEY!,
+    optionsWithoutSession,
+  )
 }
 
 /** Cliente con la publishable key, sin sesión (rol anon). */
 export function anonClient() {
-  return createClient<Database>(url(), process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, optionsWithoutSession)
+  return createClient<Database>(
+    url(),
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    optionsWithoutSession,
+  )
 }
 
 export const PASSWORD_OF_TEST = 'Prueba-1234-segura'
 
 /** Crea un usuario de Auth, le fija activo/rol y devuelve un cliente con su sesión iniciada. */
-export async function crearUser(options: { activo: boolean; rol?: 'admin' | 'operador' | 'crane_operator' }) {
+export async function crearUser(options: {
+  activo: boolean
+  rol?: 'admin' | 'operador' | 'crane_operator'
+}) {
   const admin = adminClient()
   const email = `test-${crypto.randomUUID()}@equipos.test`
 
@@ -47,7 +60,10 @@ export async function crearUser(options: { activo: boolean; rol?: 'admin' | 'ope
   if (errorPerfil) throw errorPerfil
 
   const client = anonClient()
-  const { error: errorLogin } = await client.auth.signInWithPassword({ email, password: PASSWORD_OF_TEST })
+  const { error: errorLogin } = await client.auth.signInWithPassword({
+    email,
+    password: PASSWORD_OF_TEST,
+  })
   if (errorLogin) throw errorLogin
 
   return { id: data.user.id, email, client }
@@ -59,9 +75,13 @@ export async function removeUser(id: string) {
 }
 
 /** Abre una conexión directa a la base local (como postgres) y la cierra al terminar. */
-export async function withConexion<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
+export async function withConexion<T>(
+  fn: (client: pg.Client) => Promise<T>,
+): Promise<T> {
   validateEnvTests()
-  const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
+  const client = new pg.Client({
+    connectionString: process.env.SUPABASE_DB_URL,
+  })
   await client.connect()
   try {
     return await fn(client)
@@ -75,14 +95,19 @@ export async function sql<T extends pg.QueryResultRow = pg.QueryResultRow>(
   consulta: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  return withConexion(async (client) => (await client.query<T>(consulta, params)).rows)
+  return withConexion(
+    async (client) => (await client.query<T>(consulta, params)).rows,
+  )
 }
 
 /**
  * Espera a que alguna conexión quede bloqueada por la transacción del backend `pid` y devuelve true.
  * Devuelve false sin esperar más en cuanto `seguir()` da false (por ejemplo, porque la llamada ya terminó).
  */
-async function esperarBloqueadaBy(pid: number, seguir: () => boolean = () => true): Promise<boolean> {
+async function esperarBloqueadaBy(
+  pid: number,
+  seguir: () => boolean = () => true,
+): Promise<boolean> {
   for (let intento = 0; intento < 100; intento++) {
     if (!seguir()) return false
     const [row] = await sql<{ esperando: number }>(
@@ -115,7 +140,9 @@ export async function contraTransaccionInCurso<T>(
     ])
     await otra.query('set local role authenticated')
     await otra.query(consulta, params)
-    const [{ pid }] = (await otra.query<{ pid: number }>('select pg_backend_pid() as pid')).rows
+    const [{ pid }] = (
+      await otra.query<{ pid: number }>('select pg_backend_pid() as pid')
+    ).rows
 
     let fin: { ok: true; value: T } | { ok: false; error: unknown } | undefined
     const result = new Promise<T>((resolver) => resolver(llamada()))
@@ -126,9 +153,14 @@ export async function contraTransaccionInCurso<T>(
 
     if (!(await esperarBloqueadaBy(pid, () => fin === undefined))) {
       if (!fin!.ok) throw fin!.error
-      const error = (fin!.value as { error?: { code?: string; message?: string } | null } | null)?.error
+      const error = (
+        fin!.value as {
+          error?: { code?: string; message?: string } | null
+        } | null
+      )?.error
       throw new Error(
-        'La llamada terminó sin esperar a la otra transacción: ' + (error ? `${error.code}: ${error.message}` : '(sin error)'),
+        'La llamada terminó sin esperar a la otra transacción: ' +
+          (error ? `${error.code}: ${error.message}` : '(sin error)'),
       )
     }
     await otra.query('commit')

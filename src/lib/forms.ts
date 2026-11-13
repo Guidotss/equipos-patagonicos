@@ -8,11 +8,21 @@ export type StatusForm = {
   values?: Record<string, string>
 }
 
-export type ActionForm = (state: StatusForm, formData: FormData) => Promise<StatusForm>
+export type ActionForm = (
+  state: StatusForm,
+  formData: FormData,
+) => Promise<StatusForm>
 
-export const STATUS_INITIAL: StatusForm = { ok: false, message: null, errors: {} }
+export const STATUS_INITIAL: StatusForm = {
+  ok: false,
+  message: null,
+  errors: {},
+}
 
-export function readFields<const K extends string>(formData: FormData, fields: readonly K[]): Record<K, string> {
+export function readFields<const K extends string>(
+  formData: FormData,
+  fields: readonly K[],
+): Record<K, string> {
   const data = {} as Record<K, string>
   for (const field of fields) {
     const value = formData.get(field)
@@ -21,7 +31,10 @@ export function readFields<const K extends string>(formData: FormData, fields: r
   return data
 }
 
-export function validationFailure(error: ZodError, values: Record<string, string>): StatusForm {
+export function validationFailure(
+  error: ZodError,
+  values: Record<string, string>,
+): StatusForm {
   const errors: Record<string, string> = {}
   for (const issue of error.issues) {
     const field = String(issue.path[0] ?? '')
@@ -71,9 +84,19 @@ export function databaseFailure(
   duplicate?: { campo: string; message: string },
 ): StatusForm {
   if (error.code === '23505' && duplicate) {
-    return { ok: false, message: duplicate.message, errors: { [duplicate.campo]: duplicate.message }, values }
+    return {
+      ok: false,
+      message: duplicate.message,
+      errors: { [duplicate.campo]: duplicate.message },
+      values,
+    }
   }
-  return { ok: false, message: databaseErrorMessage(error), errors: {}, values }
+  return {
+    ok: false,
+    message: databaseErrorMessage(error),
+    errors: {},
+    values,
+  }
 }
 
 export function success(message: string): StatusForm {

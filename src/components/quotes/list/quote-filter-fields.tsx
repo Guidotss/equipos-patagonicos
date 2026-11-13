@@ -10,7 +10,9 @@ import type { ClientFilter, DateRange } from './quote-filter-model'
 const LABEL_CLASS = 'text-[13px]/none font-normal text-muted-foreground'
 
 export function DateRangeWarning() {
-  return <p className="text-sm text-destructive">“Hasta” es anterior a “Desde”.</p>
+  return (
+    <p className="text-sm text-destructive">“Hasta” es anterior a “Desde”.</p>
+  )
 }
 
 export function OptionsStatus() {

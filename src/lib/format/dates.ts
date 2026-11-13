@@ -1,6 +1,16 @@
 const MONTHS = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
 ] as const
 
 export const ARGENTINA_TIME_ZONE = 'America/Argentina/Buenos_Aires'
@@ -16,7 +26,11 @@ function parts(iso: string) {
   // Date.UTC corre en silencio las fechas imposibles (30/02 -> 02/03) y pasa los
   // años 0-99 a 1900+año; si no vuelve igual, la fecha no existe.
   const d = new Date(Date.UTC(year, month - 1, day))
-  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) {
+  if (
+    d.getUTCFullYear() !== year ||
+    d.getUTCMonth() !== month - 1 ||
+    d.getUTCDate() !== day
+  ) {
     throw new Error(`Fecha inválida: ${iso}`)
   }
   return { year, month, day }

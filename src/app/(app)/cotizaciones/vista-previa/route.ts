@@ -9,7 +9,9 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 /** El cuerpo: { estado } con la forma del estado del editor (las reglas de negocio no importan para mirar). */
-const schemaEntry = z.object({ estado: schemaStatusEditor }) satisfies z.ZodType<EntryViewPreview>
+const schemaEntry = z.object({
+  estado: schemaStatusEditor,
+}) satisfies z.ZodType<EntryViewPreview>
 
 /**
  * POST /cotizaciones/vista-previa con { estado } (el estado del editor, sin guardar): el PDF tal como saldría, con
@@ -17,8 +19,10 @@ const schemaEntry = z.object({ estado: schemaStatusEditor }) satisfies z.ZodType
  */
 export async function POST(request: Request) {
   const session = await getStatusSession()
-  if (session.estado !== 'activo') return new Response('No autorizado', { status: 401 })
-  if (!isStaffRole(session.user.rol)) return new Response('No autorizado', { status: 403 })
+  if (session.estado !== 'activo')
+    return new Response('No autorizado', { status: 401 })
+  if (!isStaffRole(session.user.rol))
+    return new Response('No autorizado', { status: 403 })
 
   if (!request.headers.get('content-type')?.startsWith('application/json')) {
     return new Response('Pedido inválido', { status: 400 })

@@ -3,10 +3,22 @@ import Link from 'next/link'
 import { RowListing } from '@/components/listings/row-listing'
 import { TableListing } from '@/components/listings/table-listing'
 import { Pill } from '@/components/ui/pill'
-import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { formatCuit } from '@/lib/cuit'
 
-type RowClient = { id: string; razon_social: string; cuit: string | null; localidad: string; activo: boolean }
+type RowClient = {
+  id: string
+  razon_social: string
+  cuit: string | null
+  localidad: string
+  activo: boolean
+}
 
 export function TableClients({ clientes }: { clientes: RowClient[] }) {
   return (
@@ -24,22 +36,33 @@ export function TableClients({ clientes }: { clientes: RowClient[] }) {
               <TableHead scope="col">Cliente</TableHead>
               <TableHead scope="col">Localidad</TableHead>
               <TableHead scope="col">Estado</TableHead>
-              <TableHead scope="col"><span className="sr-only">Abrir cliente</span></TableHead>
+              <TableHead scope="col">
+                <span className="sr-only">Abrir cliente</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {clientes.map((cliente) => (
               <RowListing key={cliente.id} href={`/clientes/${cliente.id}`}>
                 <TableCell>
-                  <Link href={`/clientes/${cliente.id}`} className="font-medium leading-5 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
+                  <Link
+                    href={`/clientes/${cliente.id}`}
+                    className="font-medium leading-5 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+                  >
                     {cliente.razon_social}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                    {cliente.cuit ? `CUIT ${formatCuit(cliente.cuit)}` : 'Sin CUIT'}
+                    {cliente.cuit
+                      ? `CUIT ${formatCuit(cliente.cuit)}`
+                      : 'Sin CUIT'}
                   </p>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{cliente.localidad || 'Sin localidad'}</TableCell>
-                <TableCell><StatusClient activo={cliente.activo} /></TableCell>
+                <TableCell className="text-muted-foreground">
+                  {cliente.localidad || 'Sin localidad'}
+                </TableCell>
+                <TableCell>
+                  <StatusClient activo={cliente.activo} />
+                </TableCell>
                 <TableCell>
                   <Link
                     href={`/clientes/${cliente.id}`}
@@ -63,14 +86,28 @@ export function TableClients({ clientes }: { clientes: RowClient[] }) {
               className="block space-y-3 p-4 hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="min-w-0 font-medium leading-6 [overflow-wrap:anywhere]">{cliente.razon_social}</span>
+                <span className="min-w-0 font-medium leading-6 [overflow-wrap:anywhere]">
+                  {cliente.razon_social}
+                </span>
                 <StatusClient activo={cliente.activo} />
               </div>
               <dl className="space-y-1 text-sm text-muted-foreground">
-                <div className="flex gap-2"><dt className="w-16 shrink-0">CUIT</dt><dd className="tabular-nums">{cliente.cuit ? formatCuit(cliente.cuit) : 'Sin CUIT'}</dd></div>
-                <div className="flex gap-2"><dt className="w-16 shrink-0">Localidad</dt><dd className="min-w-0 [overflow-wrap:anywhere]">{cliente.localidad || 'Sin localidad'}</dd></div>
+                <div className="flex gap-2">
+                  <dt className="w-16 shrink-0">CUIT</dt>
+                  <dd className="tabular-nums">
+                    {cliente.cuit ? formatCuit(cliente.cuit) : 'Sin CUIT'}
+                  </dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-16 shrink-0">Localidad</dt>
+                  <dd className="min-w-0 [overflow-wrap:anywhere]">
+                    {cliente.localidad || 'Sin localidad'}
+                  </dd>
+                </div>
               </dl>
-              <span className="inline-flex items-center gap-1 text-xs text-primary">Abrir cliente <ArrowUpRight className="size-3.5" aria-hidden /></span>
+              <span className="inline-flex items-center gap-1 text-xs text-primary">
+                Abrir cliente <ArrowUpRight className="size-3.5" aria-hidden />
+              </span>
             </Link>
           </li>
         ))}

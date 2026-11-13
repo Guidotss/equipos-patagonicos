@@ -24,10 +24,15 @@ function failure(message: string, errors?: Record<string, string>): Failure {
 }
 
 /** Corre la operación con la sesión del usuario y convierte cualquier error en un mensaje para mostrar. */
-async function run<T>(operation: (supabase: Supabase) => Promise<T>, message?: string): Promise<Result<T>> {
+async function run<T>(
+  operation: (supabase: Supabase) => Promise<T>,
+  message?: string,
+): Promise<Result<T>> {
   try {
     const data = await operation(await createClient())
-    return message ? { ok: true, datos: data, message } : { ok: true, datos: data }
+    return message
+      ? { ok: true, datos: data, message }
+      : { ok: true, datos: data }
   } catch (error) {
     unstable_rethrow(error)
     return failure(messageForUser(error))
@@ -48,13 +53,22 @@ export async function saveQuote(
 ): Promise<Result<{ id: string; numero: number; version: string }>> {
   await requireStaff()
   const parsed = schemaStatusEditor.safeParse(state)
-  if (!parsed.success) return failure('Los datos de la cotización no son válidos. Recargá la página y probá de nuevo.')
+  if (!parsed.success)
+    return failure(
+      'Los datos de la cotización no son válidos. Recargá la página y probá de nuevo.',
+    )
   const built = payloadSave(parsed.data)
   if (!built.ok) return failure('Revisá los datos marcados', built.errors)
 
   const { id, version } = parsed.data
   const result = await run(
-    (supabase) => service.saveQuote(supabase, built.payload, id ?? undefined, version ?? undefined),
+    (supabase) =>
+      service.saveQuote(
+        supabase,
+        built.payload,
+        id ?? undefined,
+        version ?? undefined,
+      ),
     'Cotización guardada',
   )
   if (result.ok) revalidate(result.datos.id)
@@ -62,10 +76,14 @@ export async function saveQuote(
 }
 
 /** Genera el PDF, lo registra como enviado y devuelve el envío para descargarlo. */
-export async function sendQuote(id: string, version: string): Promise<Result<{ envioId: string }>> {
+export async function sendQuote(
+  id: string,
+  version: string,
+): Promise<Result<{ envioId: string }>> {
   await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
-  if (typeof version !== 'string' || !version) return failure('Falta la versión de la cotización')
+  if (typeof version !== 'string' || !version)
+    return failure('Falta la versión de la cotización')
   const result = await run(
     (supabase) => service.sendQuote(supabase, id, version),
     'Cotización marcada como enviada',
@@ -82,8 +100,10 @@ export async function approveQuote(
 ): Promise<Result<{ anterior: { id: string; numero: number } | null }>> {
   await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
-  if (typeof version !== 'string' || !version) return failure('Falta la versión de la cotización')
-  if (typeof date !== 'string') return failure('La fecha de aprobación no es válida')
+  if (typeof version !== 'string' || !version)
+    return failure('Falta la versión de la cotización')
+  if (typeof date !== 'string')
+    return failure('La fecha de aprobación no es válida')
   const result = await run(
     (supabase) => service.approveQuote(supabase, id, date, version),
     'Cotización aprobada',
@@ -158,11 +178,18 @@ export async function removeQuote(id: string): Promise<Result> {
 }
 
 /** Copia como borrador nuevo (renegociación del mismo cliente) y devuelve su id para abrirla. */
-export async function duplicateQuote(id: string, clientId?: string): Promise<Result<{ id: string }>> {
+export async function duplicateQuote(
+  id: string,
+  clientId?: string,
+): Promise<Result<{ id: string }>> {
   await requireStaff()
   if (!isUuid(id)) return failure(INVALID_IDENTIFIER)
-  if (clientId !== undefined && !isUuid(clientId)) return failure('Cliente inválido')
-  const result = await run((supabase) => service.duplicateQuote(supabase, id, clientId), 'Cotización duplicada')
+  if (clientId !== undefined && !isUuid(clientId))
+    return failure('Cliente inválido')
+  const result = await run(
+    (supabase) => service.duplicateQuote(supabase, id, clientId),
+    'Cotización duplicada',
+  )
   if (result.ok) revalidate(id, result.datos.id)
   return result
 }
@@ -170,7 +197,11 @@ export async function duplicateQuote(id: string, clientId?: string): Promise<Res
 /** Para el combobox de cliente: sin acentos, por razón social, CUIT o contacto; los inactivos al final. */
 export async function searchClients(
   text: string,
-): Promise<Result<{ id: string; razon_social: string; cuit: string | null; activo: boolean }[]>> {
+): Promise<
+  Result<
+    { id: string; razon_social: string; cuit: string | null; activo: boolean }[]
+  >
+> {
   await requireStaff()
   if (typeof text !== 'string') return failure('Búsqueda inválida')
   return run(async (supabase) => {
@@ -205,14 +236,21 @@ export async function createQuickClient(
 }
 
 /** Contactos del cliente (por nombre) y el último que se usó en sus cotizaciones, para preseleccionarlo. */
-export async function contactsOfClient(
-  clientId: string,
-): Promise<Result<{ contactos: { id: string; nombre: string; email: string }[]; lastContactId: string | null }>> {
+export async function contactsOfClient(clientId: string): Promise<
+  Result<{
+    contactos: { id: string; nombre: string; email: string }[]
+    lastContactId: string | null
+  }>
+> {
   await requireStaff()
   if (!isUuid(clientId)) return failure(INVALID_IDENTIFIER)
   return run(async (supabase) => {
     const [contacts, last] = await Promise.all([
-      supabase.from('contactos').select('id, nombre, email').eq('cliente_id', clientId).order('nombre'),
+      supabase
+        .from('contactos')
+        .select('id, nombre, email')
+        .eq('cliente_id', clientId)
+        .order('nombre'),
       supabase
         .from('cotizaciones')
         .select('contacto_id')
@@ -224,6 +262,9 @@ export async function contactsOfClient(
     ])
     if (contacts.error) throw contacts.error
     if (last.error) throw last.error
-    return { contactos: contacts.data, lastContactId: last.data?.contacto_id ?? null }
+    return {
+      contactos: contacts.data,
+      lastContactId: last.data?.contacto_id ?? null,
+    }
   })
 }

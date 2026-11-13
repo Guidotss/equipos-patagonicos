@@ -14,7 +14,11 @@ export function registerFonts() {
       { src: path.join(DIRECTORIO, 'Carlito-Regular.ttf') },
       { src: path.join(DIRECTORIO, 'Carlito-Bold.ttf'), fontWeight: 'bold' },
       { src: path.join(DIRECTORIO, 'Carlito-Italic.ttf'), fontStyle: 'italic' },
-      { src: path.join(DIRECTORIO, 'Carlito-BoldItalic.ttf'), fontWeight: 'bold', fontStyle: 'italic' },
+      {
+        src: path.join(DIRECTORIO, 'Carlito-BoldItalic.ttf'),
+        fontWeight: 'bold',
+        fontStyle: 'italic',
+      },
     ],
   })
   // Sin guiones de corte: react-pdf divide palabras con reglas del inglés.
@@ -22,7 +26,11 @@ export function registerFonts() {
   registered = true
 }
 
-export const PATH_LOGO = path.join(process.cwd(), 'assets', 'logo-equipos-patagonicos.jpg')
+export const PATH_LOGO = path.join(
+  process.cwd(),
+  'assets',
+  'logo-equipos-patagonicos.jpg',
+)
 
 let preparedFonts: Promise<void> | undefined
 
@@ -43,15 +51,18 @@ function canonicalBaseCodePoints(characterSet: number[]): number[] {
 export function prepareFonts(): Promise<void> {
   registerFonts()
   preparedFonts ??= Promise.all(
-    [400, 700].flatMap((fontWeight) => (['normal', 'italic'] as const).map(async (fontStyle) => {
-      const descriptor = { fontFamily: FAMILIA, fontWeight, fontStyle }
-      await Font.load(descriptor)
-      const font = Font.getFont(descriptor).data
-      if (!font) throw new Error('No se pudo cargar la fuente del PDF')
-      for (const codePoint of canonicalBaseCodePoints(font.characterSet)) {
-        if (font.hasGlyphForCodePoint(codePoint)) font.glyphForCodePoint(codePoint)
-      }
-    })),
+    [400, 700].flatMap((fontWeight) =>
+      (['normal', 'italic'] as const).map(async (fontStyle) => {
+        const descriptor = { fontFamily: FAMILIA, fontWeight, fontStyle }
+        await Font.load(descriptor)
+        const font = Font.getFont(descriptor).data
+        if (!font) throw new Error('No se pudo cargar la fuente del PDF')
+        for (const codePoint of canonicalBaseCodePoints(font.characterSet)) {
+          if (font.hasGlyphForCodePoint(codePoint))
+            font.glyphForCodePoint(codePoint)
+        }
+      }),
+    ),
   ).then(() => undefined)
   return preparedFonts
 }

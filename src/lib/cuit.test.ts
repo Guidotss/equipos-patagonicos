@@ -9,7 +9,9 @@ describe('normalizarCuit', () => {
   })
 
   it('conserva un texto informado sin eliminar letras ni espacios internos', () => {
-    expect(normalizeCuit('  identificación pendiente  ')).toBe('identificación pendiente')
+    expect(normalizeCuit('  identificación pendiente  ')).toBe(
+      'identificación pendiente',
+    )
     expect(normalizeCuit(' CUIT 30-71952967-1 ')).toBe('CUIT 30-71952967-1')
   })
 })

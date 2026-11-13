@@ -12,20 +12,27 @@ import { actualizarEquipment, changeStatusEquipment } from '../../actions'
 
 export const metadata: Metadata = { title: 'Equipo' }
 
-export default async function EquipmentPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EquipmentPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
   await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
-  const [{ data: equipo, error }, { data: plantillas, error: errorTemplates }] = await Promise.all([
-    supabase
-      .from('equipos')
-      .select('id, nombre, capacidad_tn, marca, modelo, identificacion, descripcion, activo')
-      .eq('id', id)
-      .maybeSingle(),
-    supabase.from('plantillas').select('bloques').eq('activa', true),
-  ])
+  const [{ data: equipo, error }, { data: plantillas, error: errorTemplates }] =
+    await Promise.all([
+      supabase
+        .from('equipos')
+        .select(
+          'id, nombre, capacidad_tn, marca, modelo, identificacion, descripcion, activo',
+        )
+        .eq('id', id)
+        .maybeSingle(),
+      supabase.from('plantillas').select('bloques').eq('activa', true),
+    ])
   if (error) throw error
   if (errorTemplates) throw errorTemplates
   if (!equipo) notFound()

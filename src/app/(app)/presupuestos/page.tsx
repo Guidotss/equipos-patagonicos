@@ -64,18 +64,36 @@ export default async function BudgetsPage({
         />
         <FrameListing
           tools={<FiltersBudgets filters={filters} clientes={clientes.data} />}
-          pie={<PaginationListing total={total} pagina={filters.pagina} tamano={PER_PAGE} href={(pagina) => hrefBudgets(filters, pagina)} />}
+          pie={
+            <PaginationListing
+              total={total}
+              pagina={filters.pagina}
+              tamano={PER_PAGE}
+              href={(pagina) => hrefBudgets(filters, pagina)}
+            />
+          }
         >
           {budgets.length ? (
             <TableBudgets budgets={budgets} />
           ) : (
             <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
               <p className="text-muted-foreground">
-                No hay presupuestos {filters.q || filters.estado || filters.cliente ? 'con estos filtros.' : 'todavía.'}
+                No hay presupuestos{' '}
+                {filters.q || filters.estado || filters.cliente
+                  ? 'con estos filtros.'
+                  : 'todavía.'}
               </p>
               <Button variant="link" asChild>
-                <Link href={filters.q || filters.estado || filters.cliente ? '/presupuestos' : '/cotizaciones/directo'}>
-                  {filters.q || filters.estado || filters.cliente ? 'Limpiar filtros' : 'Crear presupuesto directo'}
+                <Link
+                  href={
+                    filters.q || filters.estado || filters.cliente
+                      ? '/presupuestos'
+                      : '/cotizaciones/directo'
+                  }
+                >
+                  {filters.q || filters.estado || filters.cliente
+                    ? 'Limpiar filtros'
+                    : 'Crear presupuesto directo'}
                 </Link>
               </Button>
             </div>

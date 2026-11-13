@@ -8,7 +8,12 @@ import { cn } from '@/lib/utils'
 const ContextoSheet = createContext(false)
 export const useSheetForm = () => useContext(ContextoSheet)
 
-export function HeaderForm({ titulo: title, descripcion, estado, actions }: {
+export function HeaderForm({
+  titulo: title,
+  descripcion,
+  estado,
+  actions,
+}: {
   titulo: string
   descripcion?: React.ReactNode
   estado?: React.ReactNode
@@ -18,17 +23,29 @@ export function HeaderForm({ titulo: title, descripcion, estado, actions }: {
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight [overflow-wrap:anywhere]">{title}</h1>
+          <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight [overflow-wrap:anywhere]">
+            {title}
+          </h1>
           {estado}
         </div>
-        {descripcion ? <div className="max-w-2xl text-sm leading-6 text-muted-foreground">{descripcion}</div> : null}
+        {descripcion ? (
+          <div className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            {descripcion}
+          </div>
+        ) : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      ) : null}
     </header>
   )
 }
 
-export function SheetForm({ children, className, ...props }: React.ComponentProps<'div'>) {
+export function SheetForm({
+  children,
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
   return (
     <ContextoSheet.Provider value>
       <div
@@ -45,7 +62,14 @@ export function SheetForm({ children, className, ...props }: React.ComponentProp
   )
 }
 
-export function SectionForm({ titulo: title, descripcion, actions, band, stacked = false, children }: {
+export function SectionForm({
+  titulo: title,
+  descripcion,
+  actions,
+  band,
+  stacked = false,
+  children,
+}: {
   titulo: string
   descripcion?: React.ReactNode
   actions?: React.ReactNode
@@ -54,21 +78,53 @@ export function SectionForm({ titulo: title, descripcion, actions, band, stacked
   children: React.ReactNode
 }) {
   return (
-    <section className={cn('grid min-w-0 gap-5 p-4 sm:p-6', !stacked && '@3xl/hoja:grid-cols-[11rem_minmax(0,1fr)] @3xl/hoja:gap-7')}>
+    <section
+      className={cn(
+        'grid min-w-0 gap-5 p-4 sm:p-6',
+        !stacked && '@3xl/hoja:grid-cols-[11rem_minmax(0,1fr)] @3xl/hoja:gap-7',
+      )}
+    >
       <div className="min-w-0 space-y-1.5">
-        <h2 className="text-base leading-6 font-semibold tracking-tight">{title}</h2>
-        {descripcion ? <p className="text-[13px] leading-5 text-muted-foreground">{descripcion}</p> : null}
+        <h2 className="text-base leading-6 font-semibold tracking-tight">
+          {title}
+        </h2>
+        {descripcion ? (
+          <p className="text-[13px] leading-5 text-muted-foreground">
+            {descripcion}
+          </p>
+        ) : null}
       </div>
-      <div className={cn('@container min-w-0 space-y-4', !stacked && '@3xl/hoja:border-l @3xl/hoja:pl-7')}>
-        {actions ? <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div> : null}
+      <div
+        className={cn(
+          '@container min-w-0 space-y-4',
+          !stacked && '@3xl/hoja:border-l @3xl/hoja:pl-7',
+        )}
+      >
+        {actions ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {actions}
+          </div>
+        ) : null}
         {children}
-        {band ? <div className="space-y-1 rounded-lg bg-muted/60 p-4 text-sm leading-6">{band}</div> : null}
+        {band ? (
+          <div className="space-y-1 rounded-lg bg-muted/60 p-4 text-sm leading-6">
+            {band}
+          </div>
+        ) : null}
       </div>
     </section>
   )
 }
 
-export function ActionsForm({ back, textButton, pendiente: pending = false, soloQuery = false, detail, disabled = false, children }: {
+export function ActionsForm({
+  back,
+  textButton,
+  pendiente: pending = false,
+  soloQuery = false,
+  detail,
+  disabled = false,
+  children,
+}: {
   back: string
   textButton: string
   pendiente?: boolean
@@ -80,10 +136,26 @@ export function ActionsForm({ back, textButton, pendiente: pending = false, solo
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:left-60 md:px-9">
       <div className="mx-auto flex max-w-6xl items-center justify-end gap-3">
-        <p className="mr-auto hidden text-xs text-muted-foreground md:block">{detail ?? 'Los cambios se aplican al guardar.'}</p>
+        <p className="mr-auto hidden text-xs text-muted-foreground md:block">
+          {detail ?? 'Los cambios se aplican al guardar.'}
+        </p>
         {children}
-        <Button asChild variant="outline" className="h-10 flex-1 px-5 sm:flex-none"><Link href={back}>Cancelar</Link></Button>
-        {!soloQuery ? <Button type="submit" disabled={pending || disabled} className="h-10 flex-1 px-5 sm:flex-none">{pending ? 'Guardando…' : textButton}</Button> : null}
+        <Button
+          asChild
+          variant="outline"
+          className="h-10 flex-1 px-5 sm:flex-none"
+        >
+          <Link href={back}>Cancelar</Link>
+        </Button>
+        {!soloQuery ? (
+          <Button
+            type="submit"
+            disabled={pending || disabled}
+            className="h-10 flex-1 px-5 sm:flex-none"
+          >
+            {pending ? 'Guardando…' : textButton}
+          </Button>
+        ) : null}
       </div>
     </div>
   )

@@ -34,7 +34,9 @@ describe('alternarNegrita', () => {
   })
 
   it('los espacios de los bordes de la selección quedan afuera', () => {
-    expect(toggleBold('hola mundo', { inicio: 0, fin: 5 }).texto).toBe('**hola** mundo')
+    expect(toggleBold('hola mundo', { inicio: 0, fin: 5 }).texto).toBe(
+      '**hola** mundo',
+    )
   })
 
   it('si ya está en negrita, la quita (con o sin los asteriscos seleccionados)', () => {
@@ -50,12 +52,17 @@ describe('alternarNegrita', () => {
 
   it('línea por línea, dejando afuera la marca de viñeta (el formato no cruza saltos)', () => {
     const negrita = toggleBold('- uno\n- dos', { inicio: 0, fin: 11 })
-    expect(negrita).toEqual({ texto: '- **uno**\n- **dos**', seleccion: { inicio: 0, fin: 19 } })
+    expect(negrita).toEqual({
+      texto: '- **uno**\n- **dos**',
+      seleccion: { inicio: 0, fin: 19 },
+    })
     expect(parsearFormat(negrita.texto).map((nodo) => nodo.segmentos)).toEqual([
       [{ texto: 'uno', negrita: true }],
       [{ texto: 'dos', negrita: true }],
     ])
-    expect(toggleBold(negrita.texto, negrita.seleccion).texto).toBe('- uno\n- dos')
+    expect(toggleBold(negrita.texto, negrita.seleccion).texto).toBe(
+      '- uno\n- dos',
+    )
   })
 
   it('una selección con negrita parcial queda toda en negrita, sin asteriscos anidados', () => {
@@ -64,19 +71,32 @@ describe('alternarNegrita', () => {
 
   it('una selección que empieza dentro de una negrita y termina afuera la extiende, sin ** sueltos', () => {
     const editing = toggleBold('**hola** mundo', { inicio: 2, fin: 14 })
-    expect(editing).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
-    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
+    expect(editing).toEqual({
+      texto: '**hola mundo**',
+      seleccion: { inicio: 0, fin: 14 },
+    })
+    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([
+      { texto: 'hola mundo', negrita: true },
+    ])
   })
 
   it('una selección que empieza afuera y termina dentro de una negrita la extiende, sin ** sueltos', () => {
     const editing = toggleBold('hola **mundo**', { inicio: 0, fin: 9 })
-    expect(editing).toEqual({ texto: '**hola mundo**', seleccion: { inicio: 0, fin: 14 } })
-    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([{ texto: 'hola mundo', negrita: true }])
+    expect(editing).toEqual({
+      texto: '**hola mundo**',
+      seleccion: { inicio: 0, fin: 14 },
+    })
+    expect(parsearFormat(editing.texto)[0].segmentos).toEqual([
+      { texto: 'hola mundo', negrita: true },
+    ])
   })
 
   it('extender la negrita de la forma de pago de la plantilla por jornada hasta el final', () => {
     const texto = '**Forma de pago:** {{forma_pago}}.'
-    const editing = toggleBold(texto, { inicio: texto.indexOf('pago:'), fin: texto.length })
+    const editing = toggleBold(texto, {
+      inicio: texto.indexOf('pago:'),
+      fin: texto.length,
+    })
     expect(editing.texto).toBe('**Forma de pago: {{forma_pago}}.**')
     expect(parsearFormat(editing.texto)[0].segmentos).toEqual([
       { texto: 'Forma de pago: {{forma_pago}}.', negrita: true },
@@ -101,17 +121,29 @@ describe('alternarNegrita', () => {
   })
 
   it('sin selección inserta **** con el cursor en el medio, y lo saca si se repite', () => {
-    expect(toggleBold('ab', { inicio: 1, fin: 1 })).toEqual({ texto: 'a****b', seleccion: { inicio: 3, fin: 3 } })
-    expect(toggleBold('a****b', { inicio: 3, fin: 3 })).toEqual({ texto: 'ab', seleccion: { inicio: 1, fin: 1 } })
+    expect(toggleBold('ab', { inicio: 1, fin: 1 })).toEqual({
+      texto: 'a****b',
+      seleccion: { inicio: 3, fin: 3 },
+    })
+    expect(toggleBold('a****b', { inicio: 3, fin: 3 })).toEqual({
+      texto: 'ab',
+      seleccion: { inicio: 1, fin: 1 },
+    })
   })
 
   it('una selección de solo espacios no cambia nada', () => {
-    expect(toggleBold('a  b', { inicio: 1, fin: 3 })).toEqual({ texto: 'a  b', seleccion: { inicio: 1, fin: 3 } })
+    expect(toggleBold('a  b', { inicio: 1, fin: 3 })).toEqual({
+      texto: 'a  b',
+      seleccion: { inicio: 1, fin: 3 },
+    })
   })
 
   it('varias líneas con los dos bordes dentro de negritas: extiende las dos, sin ** sueltos', () => {
     const editing = toggleBold('**uno** x\ny **dos**', { inicio: 3, fin: 16 })
-    expect(editing).toEqual({ texto: '**uno x**\n**y dos**', seleccion: { inicio: 0, fin: 19 } })
+    expect(editing).toEqual({
+      texto: '**uno x**\n**y dos**',
+      seleccion: { inicio: 0, fin: 19 },
+    })
     expect(parsearFormat(editing.texto).map((nodo) => nodo.segmentos)).toEqual([
       [{ texto: 'uno x', negrita: true }],
       [{ texto: 'y dos', negrita: true }],
@@ -126,30 +158,50 @@ describe('alternarNegrita', () => {
   })
 
   it('nunca corta una variable: la selección dentro de {{…}} toma la variable entera', () => {
-    expect(toggleBold('{{equipo_descripcion}}', { inicio: 4, fin: 10 })).toEqual({
+    expect(
+      toggleBold('{{equipo_descripcion}}', { inicio: 4, fin: 10 }),
+    ).toEqual({
       texto: '**{{equipo_descripcion}}**',
       seleccion: { inicio: 0, fin: 26 },
     })
     // Con el cursor adentro, también: insertar **** ahí rompería la variable.
-    expect(toggleBold('Equipo: {{capacidad}} TN', { inicio: 12, fin: 12 }).texto).toBe(
-      'Equipo: **{{capacidad}}** TN',
-    )
+    expect(
+      toggleBold('Equipo: {{capacidad}} TN', { inicio: 12, fin: 12 }).texto,
+    ).toBe('Equipo: **{{capacidad}}** TN')
   })
 })
 
 describe('extenderAVariables', () => {
   it('lleva cada borde que cae dentro de {{…}} al borde de la variable', () => {
-    expect(expandToVariables('{{equipo_descripcion}}', { inicio: 4, fin: 10 })).toEqual({ inicio: 0, fin: 22 })
-    expect(expandToVariables('Grúa de {{capacidad}} TN', { inicio: 0, fin: 12 })).toEqual({ inicio: 0, fin: 21 })
-    expect(expandToVariables('Grúa de {{capacidad}} TN', { inicio: 9, fin: 24 })).toEqual({ inicio: 8, fin: 24 })
+    expect(
+      expandToVariables('{{equipo_descripcion}}', { inicio: 4, fin: 10 }),
+    ).toEqual({ inicio: 0, fin: 22 })
+    expect(
+      expandToVariables('Grúa de {{capacidad}} TN', { inicio: 0, fin: 12 }),
+    ).toEqual({ inicio: 0, fin: 21 })
+    expect(
+      expandToVariables('Grúa de {{capacidad}} TN', { inicio: 9, fin: 24 }),
+    ).toEqual({ inicio: 8, fin: 24 })
     // Entre las dos llaves también es adentro.
-    expect(expandToVariables('a {{x}} b', { inicio: 3, fin: 3 })).toEqual({ inicio: 2, fin: 7 })
+    expect(expandToVariables('a {{x}} b', { inicio: 3, fin: 3 })).toEqual({
+      inicio: 2,
+      fin: 7,
+    })
   })
 
   it('no toca una selección que ya está afuera o que abarca la variable entera', () => {
-    expect(expandToVariables('a {{x}} b', { inicio: 2, fin: 7 })).toEqual({ inicio: 2, fin: 7 })
-    expect(expandToVariables('a {{x}} b', { inicio: 0, fin: 1 })).toEqual({ inicio: 0, fin: 1 })
-    expect(expandToVariables('a {{x}} b', { inicio: 7, fin: 7 })).toEqual({ inicio: 7, fin: 7 })
+    expect(expandToVariables('a {{x}} b', { inicio: 2, fin: 7 })).toEqual({
+      inicio: 2,
+      fin: 7,
+    })
+    expect(expandToVariables('a {{x}} b', { inicio: 0, fin: 1 })).toEqual({
+      inicio: 0,
+      fin: 1,
+    })
+    expect(expandToVariables('a {{x}} b', { inicio: 7, fin: 7 })).toEqual({
+      inicio: 7,
+      fin: 7,
+    })
   })
 })
 
@@ -169,12 +221,18 @@ describe('alternarVineta', () => {
   })
 
   it('cambia de nivel y respeta las líneas vacías', () => {
-    expect(toggleBullet('- uno\n\ndos', { inicio: 0, fin: 10 }, 2).texto).toBe('  - uno\n\n  - dos')
-    expect(toggleBullet('- uno\ndos', { inicio: 0, fin: 9 }, 1).texto).toBe('- uno\n- dos')
+    expect(toggleBullet('- uno\n\ndos', { inicio: 0, fin: 10 }, 2).texto).toBe(
+      '  - uno\n\n  - dos',
+    )
+    expect(toggleBullet('- uno\ndos', { inicio: 0, fin: 9 }, 1).texto).toBe(
+      '- uno\n- dos',
+    )
   })
 
   it('una selección que termina al principio de una línea no la toca', () => {
-    expect(toggleBullet('uno\ndos', { inicio: 0, fin: 4 }, 1).texto).toBe('- uno\ndos')
+    expect(toggleBullet('uno\ndos', { inicio: 0, fin: 4 }, 1).texto).toBe(
+      '- uno\ndos',
+    )
   })
 
   it('con el cursor, el cursor sigue en el mismo lugar del texto', () => {
@@ -182,11 +240,17 @@ describe('alternarVineta', () => {
       texto: '  - uno',
       seleccion: { inicio: 4, fin: 4 },
     })
-    expect(toggleBullet('uno', { inicio: 3, fin: 3 }, 1).seleccion).toEqual({ inicio: 5, fin: 5 })
+    expect(toggleBullet('uno', { inicio: 3, fin: 3 }, 1).seleccion).toEqual({
+      inicio: 5,
+      fin: 5,
+    })
   })
 
   it('en una línea vacía pone la marca para empezar a escribir', () => {
-    expect(toggleBullet('', { inicio: 0, fin: 0 }, 1)).toEqual({ texto: '- ', seleccion: { inicio: 2, fin: 2 } })
+    expect(toggleBullet('', { inicio: 0, fin: 0 }, 1)).toEqual({
+      texto: '- ',
+      seleccion: { inicio: 2, fin: 2 },
+    })
     expect(toggleBullet('uno\n', { inicio: 4, fin: 4 }, 2)).toEqual({
       texto: 'uno\n  - ',
       seleccion: { inicio: 8, fin: 8 },
@@ -196,23 +260,34 @@ describe('alternarVineta', () => {
 
 describe('quitarSangria', () => {
   it('subviñeta → viñeta → párrafo', () => {
-    expect(removeIndent('  - uno\n- dos\ntres', { inicio: 0, fin: 18 })).toEqual({
+    expect(
+      removeIndent('  - uno\n- dos\ntres', { inicio: 0, fin: 18 }),
+    ).toEqual({
       texto: '- uno\ndos\ntres',
       seleccion: { inicio: 0, fin: 14 },
     })
-    expect(removeIndent('- dos', { inicio: 5, fin: 5 })).toEqual({ texto: 'dos', seleccion: { inicio: 3, fin: 3 } })
+    expect(removeIndent('- dos', { inicio: 5, fin: 5 })).toEqual({
+      texto: 'dos',
+      seleccion: { inicio: 3, fin: 3 },
+    })
   })
 })
 
 describe('limpiarPegado', () => {
   it('lleva las viñetas de Word al formato mínimo y limpia saltos, tabs y espacios duros', () => {
-    expect(cleanPastedText('•\tPrimera\r\no\tSegunda\r\nTexto\tcon tab ')).toBe('- Primera\n  - Segunda\nTexto con tab')
-    expect(cleanPastedText('·  Ítem con punto medio')).toBe('- Ítem con punto medio')
+    expect(cleanPastedText('•\tPrimera\r\no\tSegunda\r\nTexto\tcon tab ')).toBe(
+      '- Primera\n  - Segunda\nTexto con tab',
+    )
+    expect(cleanPastedText('·  Ítem con punto medio')).toBe(
+      '- Ítem con punto medio',
+    )
     expect(cleanPastedText('precio final')).toBe('precio final')
   })
 
   it('no toca lo que ya está en el formato ni un número negativo', () => {
-    expect(cleanPastedText('- ya era viñeta\n  - y subviñeta')).toBe('- ya era viñeta\n  - y subviñeta')
+    expect(cleanPastedText('- ya era viñeta\n  - y subviñeta')).toBe(
+      '- ya era viñeta\n  - y subviñeta',
+    )
     expect(cleanPastedText('-30 días de plazo')).toBe('-30 días de plazo')
   })
 
@@ -226,13 +301,17 @@ describe('limpiarPegado', () => {
   it('§ es viñeta solo en un pegado de varias líneas, y debajo de una subviñeta sigue en nivel 2', () => {
     expect(cleanPastedText('§ 5 del contrato')).toBe('§ 5 del contrato')
     expect(cleanPastedText('§\tUno\r\n§\tDos')).toBe('- Uno\n- Dos')
-    expect(cleanPastedText('•\tUno\r\no\tDos\r\n§\tTres\r\n§\tCuatro')).toBe('- Uno\n  - Dos\n  - Tres\n  - Cuatro')
+    expect(cleanPastedText('•\tUno\r\no\tDos\r\n§\tTres\r\n§\tCuatro')).toBe(
+      '- Uno\n  - Dos\n  - Tres\n  - Cuatro',
+    )
   })
 })
 
 describe('pegar', () => {
   it('reemplaza la selección por lo pegado ya limpio y deja el cursor al final', () => {
-    expect(pasteText('Hola mundo', { inicio: 5, fin: 10 }, '•\tgente\r\n')).toEqual({
+    expect(
+      pasteText('Hola mundo', { inicio: 5, fin: 10 }, '•\tgente\r\n'),
+    ).toEqual({
       texto: 'Hola - gente\n',
       seleccion: { inicio: 13, fin: 13 },
     })
@@ -241,28 +320,64 @@ describe('pegar', () => {
 
 describe('tramoCambiado', () => {
   it('lo que cambia entre el texto viejo y el nuevo, sin el principio y el final en común', () => {
-    expect(changedRange('hola mundo', '**hola** mundo')).toEqual({ inicio: 0, fin: 4, reemplazo: '**hola**' })
-    expect(changedRange('**hola** mundo', 'hola mundo')).toEqual({ inicio: 0, fin: 8, reemplazo: 'hola' })
-    expect(changedRange('uno\ndos', '- uno\n- dos')).toEqual({ inicio: 0, fin: 4, reemplazo: '- uno\n- ' })
+    expect(changedRange('hola mundo', '**hola** mundo')).toEqual({
+      inicio: 0,
+      fin: 4,
+      reemplazo: '**hola**',
+    })
+    expect(changedRange('**hola** mundo', 'hola mundo')).toEqual({
+      inicio: 0,
+      fin: 8,
+      reemplazo: 'hola',
+    })
+    expect(changedRange('uno\ndos', '- uno\n- dos')).toEqual({
+      inicio: 0,
+      fin: 4,
+      reemplazo: '- uno\n- ',
+    })
   })
 
   it('el principio y el final en común no se pisan cuando el texto se repite', () => {
     // "aa" → "aaa": se agrega una "a"; el tramo no puede empezar después de donde termina.
-    expect(changedRange('aa', 'aaa')).toEqual({ inicio: 2, fin: 2, reemplazo: 'a' })
-    expect(changedRange('a****b', 'ab')).toEqual({ inicio: 1, fin: 5, reemplazo: '' })
-    expect(changedRange('igual', 'igual')).toEqual({ inicio: 5, fin: 5, reemplazo: '' })
+    expect(changedRange('aa', 'aaa')).toEqual({
+      inicio: 2,
+      fin: 2,
+      reemplazo: 'a',
+    })
+    expect(changedRange('a****b', 'ab')).toEqual({
+      inicio: 1,
+      fin: 5,
+      reemplazo: '',
+    })
+    expect(changedRange('igual', 'igual')).toEqual({
+      inicio: 5,
+      fin: 5,
+      reemplazo: '',
+    })
   })
 })
 
 describe('bloques de la plantilla', () => {
   const template = [
-    { titulo: 'Equipo ofrecido', contenido: '{{equipo_descripcion}}', hidden: false },
+    {
+      titulo: 'Equipo ofrecido',
+      contenido: '{{equipo_descripcion}}',
+      hidden: false,
+    },
     { titulo: 'Alcance', contenido: 'Horario de {{horario}}.', hidden: false },
-    { titulo: '', contenido: '**Forma de pago:** {{forma_pago}}.', hidden: false },
+    {
+      titulo: '',
+      contenido: '**Forma de pago:** {{forma_pago}}.',
+      hidden: false,
+    },
   ]
 
   it('bloqueDePlantilla busca por título (también el bloque sin título)', () => {
-    const bloques = [{ titulo: 'Otro' }, { titulo: ' Alcance ' }, { titulo: '' }]
+    const bloques = [
+      { titulo: 'Otro' },
+      { titulo: ' Alcance ' },
+      { titulo: '' },
+    ]
     expect(blockOfTemplate(template, bloques, 1)).toEqual(template[1])
     expect(blockOfTemplate(template, bloques, 2)).toEqual(template[2])
     expect(blockOfTemplate(template, bloques, 0)).toBeNull()
@@ -274,7 +389,12 @@ describe('bloques de la plantilla', () => {
       { titulo: 'Alcance', contenido: 'Alcance', hidden: false },
       { titulo: '', contenido: 'Segundo sin título', hidden: false },
     ]
-    const bloques = [{ titulo: '' }, { titulo: '' }, { titulo: 'Alcance' }, { titulo: '' }]
+    const bloques = [
+      { titulo: '' },
+      { titulo: '' },
+      { titulo: 'Alcance' },
+      { titulo: '' },
+    ]
     expect(blockOfTemplate(withRepetidos, bloques, 0)).toEqual(withRepetidos[0])
     expect(blockOfTemplate(withRepetidos, bloques, 1)).toEqual(withRepetidos[2])
     expect(blockOfTemplate(withRepetidos, bloques, 2)).toEqual(withRepetidos[1])
@@ -284,8 +404,15 @@ describe('bloques de la plantilla', () => {
 
   it('mismosBloques: no hay nada que restaurar si son los mismos, en orden y visibles', () => {
     expect(sameBlocks(template, template)).toBe(true)
-    expect(sameBlocks([template[1], template[0], template[2]], template)).toBe(false)
-    expect(sameBlocks([{ ...template[0], hidden: true }, template[1], template[2]], template)).toBe(false)
+    expect(sameBlocks([template[1], template[0], template[2]], template)).toBe(
+      false,
+    )
+    expect(
+      sameBlocks(
+        [{ ...template[0], hidden: true }, template[1], template[2]],
+        template,
+      ),
+    ).toBe(false)
     expect(sameBlocks(template.slice(1), template)).toBe(false)
   })
 })

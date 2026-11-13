@@ -1,5 +1,9 @@
 import { parsearFormat, type Segmento } from '@/lib/templates/format'
-import { isVariable, partirVariables, VARIABLES } from '@/lib/templates/variables'
+import {
+  isVariable,
+  partirVariables,
+  VARIABLES,
+} from '@/lib/templates/variables'
 import { cn } from '@/lib/utils'
 
 /** Texto con las variables ({{capacidad}}) marcadas en amarillo: se completan en cada cotización. */
@@ -42,7 +46,10 @@ export function TextBlock({ contenido: content }: { contenido: string }) {
             <Segmentos segmentos={nodo.segmentos} />
           </p>
         ) : (
-          <p key={index} className={cn('flex gap-2', nodo.nivel === 2 && 'pl-5')}>
+          <p
+            key={index}
+            className={cn('flex gap-2', nodo.nivel === 2 && 'pl-5')}
+          >
             <span aria-hidden className="shrink-0 text-muted-foreground">
               {nodo.nivel === 1 ? '-' : '•'}
             </span>

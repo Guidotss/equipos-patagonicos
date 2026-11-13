@@ -11,7 +11,11 @@ const path = `importadas/${crypto.randomUUID()}.pdf`
 beforeAll(async () => {
   activo = await crearUser({ activo: true, rol: 'operador' })
   ids = await idsOfExample()
-  const { error } = await activo.client.storage.from('documentos').upload(path, new Blob(['%PDF-1.4 prueba'], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+  const { error } = await activo.client.storage
+    .from('documentos')
+    .upload(path, new Blob(['%PDF-1.4 prueba'], { type: 'application/pdf' }), {
+      contentType: 'application/pdf',
+    })
   if (error) throw error
 })
 
@@ -27,7 +31,10 @@ async function nextNumber() {
     p_items: [],
   })
   if (error) throw error
-  const [row] = await sql<{ numero: string }>('select numero from public.cotizaciones where id = $1', [data])
+  const [row] = await sql<{ numero: string }>(
+    'select numero from public.cotizaciones where id = $1',
+    [data],
+  )
   return Number(row.numero)
 }
 
@@ -49,13 +56,25 @@ describe('cargar cotizaciones existentes', () => {
     const actual = await nextNumber()
     const importado = actual + 50
 
-    const { data: id, error } = await importar({ numero: importado, estado: 'aprobada', fecha_aprobacion: '2026-10-23' })
+    const { data: id, error } = await importar({
+      numero: importado,
+      estado: 'aprobada',
+      fecha_aprobacion: '2026-10-23',
+    })
     expect(error).toBeNull()
-    const [row] = await sql<{ numero: string; origen: string; presupuesto_estado: string }>(
+    const [row] = await sql<{
+      numero: string
+      origen: string
+      presupuesto_estado: string
+    }>(
       'select numero, origen, presupuesto_estado from public.cotizaciones where id = $1',
       [id],
     )
-    expect(row).toEqual({ numero: String(importado), origen: 'importada', presupuesto_estado: 'en_curso' })
+    expect(row).toEqual({
+      numero: String(importado),
+      origen: 'importada',
+      presupuesto_estado: 'en_curso',
+    })
 
     expect(await nextNumber()).toBe(importado + 1)
   })
@@ -64,7 +83,9 @@ describe('cargar cotizaciones existentes', () => {
     const antes = await nextNumber()
     const viejo = 100000 + Math.floor(Math.random() * 9000)
     await sql('delete from public.cotizaciones where numero = $1', [viejo])
-    expect((await importar({ numero: viejo, estado: 'enviada' })).error).toBeNull()
+    expect(
+      (await importar({ numero: viejo, estado: 'enviada' })).error,
+    ).toBeNull()
     expect(await nextNumber()).toBe(antes + 1)
   })
 
@@ -72,51 +93,98 @@ describe('cargar cotizaciones existentes', () => {
     const numero = (await nextNumber()) + 10
     await importar({ numero, estado: 'enviada' })
     const { error } = await importar({ numero, estado: 'enviada' })
-    expect(error?.message).toMatch(new RegExp(`Ya existe una cotización con el número ${numero}`))
+    expect(error?.message).toMatch(
+      new RegExp(`Ya existe una cotización con el número ${numero}`),
+    )
   })
 
   it('rechaza un número muy por encima del próximo sin correr la secuencia', async () => {
     const antes = await nextNumber()
     const errado = antes * 10
     const { error } = await importar({ numero: errado, estado: 'enviada' })
-    expect(error?.message).toMatch(new RegExp(`El número ${errado} está muy por encima del próximo \\(${antes + 1}\\)`))
+    expect(error?.message).toMatch(
+      new RegExp(
+        `El número ${errado} está muy por encima del próximo \\(${antes + 1}\\)`,
+      ),
+    )
     expect(await nextNumber()).toBe(antes + 1)
   })
 
   it('rechaza una fecha de aprobación anterior a la cotización', async () => {
-    const { error } = await importar({ numero: 3, estado: 'aprobada', fecha_aprobacion: '2026-01-01' })
-    expect(error?.message).toMatch(/La fecha de aprobación no puede ser anterior a la cotización/)
+    const { error } = await importar({
+      numero: 3,
+      estado: 'aprobada',
+      fecha_aprobacion: '2026-01-01',
+    })
+    expect(error?.message).toMatch(
+      /La fecha de aprobación no puede ser anterior a la cotización/,
+    )
   })
 
   it('exige número, archivo y estado enviada o aprobada', async () => {
-    expect((await importar({ estado: 'enviada' })).error?.message).toMatch(/número/)
-    expect((await importar({ numero: 1, estado: 'borrador' })).error?.message).toMatch(/enviada o aprobada/)
-    expect((await importar({ numero: 2, estado: 'enviada', archivo_original_path: null })).error?.message).toMatch(/Falta el PDF/)
+    expect((await importar({ estado: 'enviada' })).error?.message).toMatch(
+      /número/,
+    )
+    expect(
+      (await importar({ numero: 1, estado: 'borrador' })).error?.message,
+    ).toMatch(/enviada o aprobada/)
+    expect(
+      (
+        await importar({
+          numero: 2,
+          estado: 'enviada',
+          archivo_original_path: null,
+        })
+      ).error?.message,
+    ).toMatch(/Falta el PDF/)
   })
 })
 
 describe('presupuesto directo', () => {
   it('crea una cotización ya aprobada con sus ítems, sin PDF', async () => {
     const { data: id, error } = await activo.client.rpc('presupuesto_directo', {
-      p_datos: { cliente_id: ids.cliente_id, asunto: 'Izaje urgente acordado por teléfono', notas: MARCA },
+      p_datos: {
+        cliente_id: ids.cliente_id,
+        asunto: 'Izaje urgente acordado por teléfono',
+        notas: MARCA,
+      },
       p_items: [ITEMS_DAILY[0]],
     })
     expect(error).toBeNull()
-    const [row] = await sql<{ estado: string; origen: string; formato: string; presupuesto_estado: string; items: string }>(
+    const [row] = await sql<{
+      estado: string
+      origen: string
+      formato: string
+      presupuesto_estado: string
+      items: string
+    }>(
       `select estado, origen, formato, presupuesto_estado,
               (select count(*) from public.cotizacion_items where cotizacion_id = $1) as items
        from public.cotizaciones where id = $1`,
       [id],
     )
-    expect(row).toEqual({ estado: 'aprobada', origen: 'directa', formato: 'jornada', presupuesto_estado: 'en_curso', items: '1' })
+    expect(row).toEqual({
+      estado: 'aprobada',
+      origen: 'directa',
+      formato: 'jornada',
+      presupuesto_estado: 'en_curso',
+      items: '1',
+    })
   })
 
   it('rechaza una fecha de aprobación anterior a la cotización', async () => {
     const { error } = await activo.client.rpc('presupuesto_directo', {
-      p_datos: { cliente_id: ids.cliente_id, asunto: 'Izaje acordado', fecha_aprobacion: '2025-01-01', notas: MARCA },
+      p_datos: {
+        cliente_id: ids.cliente_id,
+        asunto: 'Izaje acordado',
+        fecha_aprobacion: '2025-01-01',
+        notas: MARCA,
+      },
       p_items: [],
     })
-    expect(error?.message).toMatch(/La fecha de aprobación no puede ser anterior a la cotización/)
+    expect(error?.message).toMatch(
+      /La fecha de aprobación no puede ser anterior a la cotización/,
+    )
   })
 
   it('exige describir el trabajo', async () => {

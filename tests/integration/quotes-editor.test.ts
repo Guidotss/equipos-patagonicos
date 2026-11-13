@@ -3,7 +3,11 @@
 // La Task 4 suma acá los tests del servicio.
 import { extractText, getDocumentProxy, getResolvedPDFJS } from 'unpdf'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { payloadSave, type StatusEditor, type PayloadSave } from '@/lib/quotes/editor'
+import {
+  payloadSave,
+  type StatusEditor,
+  type PayloadSave,
+} from '@/lib/quotes/editor'
 import {
   ErrorQuote,
   approveQuote,
@@ -21,11 +25,19 @@ import {
 import { todayArgentina, addDays } from '@/lib/format/dates'
 import { AMARILLO_VARIABLE } from '@/lib/pdf/styles'
 import { ITEMS_DAILY, idsOfExample, versionOf } from './quotes-helpers'
-import { adminClient, removeUser, contraTransaccionInCurso, crearUser, sql } from './helpers'
+import {
+  adminClient,
+  removeUser,
+  contraTransaccionInCurso,
+  crearUser,
+  sql,
+} from './helpers'
 
 const MARCA = `t${crypto.randomUUID().slice(0, 8)}`
 /** Letras al azar para buscar por texto: un dígito en la búsqueda también busca por número. */
-const CLAVE = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => String.fromCharCode(97 + (b % 26))).join('')
+const CLAVE = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) =>
+  String.fromCharCode(97 + (b % 26)),
+).join('')
 const CAMBIO = 'La cotización cambió desde que la abriste; volvé a intentarlo'
 
 let activo: Awaited<ReturnType<typeof crearUser>>
@@ -47,7 +59,10 @@ afterAll(async () => {
          select 1 from public.cotizaciones c where c.notas = $1 and o.name like 'cotizaciones/' || c.id || '/%')`,
       [MARCA],
     )
-    if (archivos.length) await adminClient().storage.from('documentos').remove(archivos.map((a) => a.name))
+    if (archivos.length)
+      await adminClient()
+        .storage.from('documentos')
+        .remove(archivos.map((a) => a.name))
     await sql('delete from public.cotizaciones where notas = $1', [MARCA])
     await sql('delete from public.clientes where notas = $1', [MARCA])
   } finally {
@@ -67,13 +82,22 @@ function dataBase(extra: Record<string, unknown> = {}) {
 }
 
 async function nueva(): Promise<string> {
-  const { data, error } = await activo.client.rpc('guardar_cotizacion', { p_datos: dataBase(), p_items: ITEMS_DAILY })
-  if (error) throw new Error('No se pudo guardar la cotización: ' + error.message)
+  const { data, error } = await activo.client.rpc('guardar_cotizacion', {
+    p_datos: dataBase(),
+    p_items: ITEMS_DAILY,
+  })
+  if (error)
+    throw new Error('No se pudo guardar la cotización: ' + error.message)
   return data
 }
 
 /** Actualiza la cotización con otro asunto mandando `version` como la versión leída (undefined: sin versión). */
-function save(id: string, version: string | undefined, asunto: string, extra: Record<string, unknown> = {}) {
+function save(
+  id: string,
+  version: string | undefined,
+  asunto: string,
+  extra: Record<string, unknown> = {},
+) {
   return activo.client.rpc('guardar_cotizacion', {
     p_id: id,
     p_updated_at: version,
@@ -94,7 +118,10 @@ describe('guardar_cotizacion con versión', () => {
   it('crear no pide versión; actualizar exige la que se leyó y la cambia', async () => {
     const id = await nueva()
     const withoutVersion = await save(id, undefined, 'Sin versión')
-    expect(withoutVersion.error).toMatchObject({ code: 'P0001', message: 'Falta la versión de la cotización' })
+    expect(withoutVersion.error).toMatchObject({
+      code: 'P0001',
+      message: 'Falta la versión de la cotización',
+    })
     expect((await row(id)).asunto).toBe('Primera versión')
 
     const leida = await versionOf(activo.client, id)
@@ -112,14 +139,26 @@ describe('guardar_cotizacion con versión', () => {
     expect(error).toMatchObject({ code: 'P0001', message: CAMBIO })
     expect((await row(id)).asunto).toBe('Guardado en otra pestaña')
 
-    expect((await save(id, await versionOf(activo.client, id), 'Después de recargar')).error).toBeNull()
+    expect(
+      (
+        await save(
+          id,
+          await versionOf(activo.client, id),
+          'Después de recargar',
+        )
+      ).error,
+    ).toBeNull()
     expect((await row(id)).asunto).toBe('Después de recargar')
   })
 
   it('compara la versión al milisegundo: pasarla por un Date de JS no la invalida', async () => {
     const id = await nueva()
-    const inMilisegundos = new Date(await versionOf(activo.client, id)).toISOString()
-    expect((await save(id, inMilisegundos, 'Con la versión de un Date')).error).toBeNull()
+    const inMilisegundos = new Date(
+      await versionOf(activo.client, id),
+    ).toISOString()
+    expect(
+      (await save(id, inMilisegundos, 'Con la versión de un Date')).error,
+    ).toBeNull()
   })
 
   it('dos guardados a la vez con la misma versión: el segundo espera y no pisa al primero', async () => {
@@ -128,7 +167,12 @@ describe('guardar_cotizacion con versión', () => {
     const { error } = await contraTransaccionInCurso(
       activo.id,
       'select public.guardar_cotizacion($1::jsonb, $2::jsonb, $3::uuid, $4::timestamptz)',
-      [JSON.stringify(dataBase({ asunto: 'El que guardó primero' })), JSON.stringify(ITEMS_DAILY), id, leida],
+      [
+        JSON.stringify(dataBase({ asunto: 'El que guardó primero' })),
+        JSON.stringify(ITEMS_DAILY),
+        id,
+        leida,
+      ],
       () => save(id, leida, 'El que guardó segundo'),
     )
     expect(error).toMatchObject({ code: 'P0001', message: CAMBIO })
@@ -144,9 +188,18 @@ describe('guardar_cotizacion con versión', () => {
     })
     expect(sent.error).toBeNull()
 
-    const { error } = await save(id, await versionOf(activo.client, id), 'Editada después de enviar', { fecha: null })
+    const { error } = await save(
+      id,
+      await versionOf(activo.client, id),
+      'Editada después de enviar',
+      { fecha: null },
+    )
     expect(error).toBeNull()
-    expect(await row(id)).toEqual({ asunto: 'Editada después de enviar', estado: 'enviada', fecha: '2026-10-22' })
+    expect(await row(id)).toEqual({
+      asunto: 'Editada después de enviar',
+      estado: 'enviada',
+      fecha: '2026-10-22',
+    })
   })
 
   it('una aprobada o una que no existe no se editan, aunque manden una versión', async () => {
@@ -158,10 +211,23 @@ describe('guardar_cotizacion con versión', () => {
     })
     expect(approved.error).toBeNull()
 
-    const { error } = await save(id, await versionOf(activo.client, id), 'No debería guardarse')
-    expect(error).toMatchObject({ code: 'P0001', message: 'La cotización no existe o ya no se puede editar' })
-    const missing = await save(crypto.randomUUID(), new Date().toISOString(), 'No debería guardarse')
-    expect(missing.error?.message).toBe('La cotización no existe o ya no se puede editar')
+    const { error } = await save(
+      id,
+      await versionOf(activo.client, id),
+      'No debería guardarse',
+    )
+    expect(error).toMatchObject({
+      code: 'P0001',
+      message: 'La cotización no existe o ya no se puede editar',
+    })
+    const missing = await save(
+      crypto.randomUUID(),
+      new Date().toISOString(),
+      'No debería guardarse',
+    )
+    expect(missing.error?.message).toBe(
+      'La cotización no existe o ya no se puede editar',
+    )
   })
 
   it('sin la clave notas conserva las notas (el editor no las manda)', async () => {
@@ -169,7 +235,12 @@ describe('guardar_cotizacion con versión', () => {
     const { error } = await activo.client.rpc('guardar_cotizacion', {
       p_id: id,
       p_updated_at: await versionOf(activo.client, id),
-      p_datos: { cliente_id: ids.cliente_id, formato: 'jornada', fecha: '2026-10-22', asunto: 'Sin notas en el payload' },
+      p_datos: {
+        cliente_id: ids.cliente_id,
+        formato: 'jornada',
+        fecha: '2026-10-22',
+        asunto: 'Sin notas en el payload',
+      },
       p_items: ITEMS_DAILY,
     })
     expect(error).toBeNull()
@@ -177,7 +248,10 @@ describe('guardar_cotizacion con versión', () => {
       'select asunto, notas from public.cotizaciones where id = $1',
       [id],
     )
-    expect(guardada).toEqual({ asunto: 'Sin notas en el payload', notas: MARCA })
+    expect(guardada).toEqual({
+      asunto: 'Sin notas en el payload',
+      notas: MARCA,
+    })
   })
 
   it('un usuario inactivo no puede actualizar', async () => {
@@ -197,7 +271,15 @@ describe('buscar_cotizaciones', () => {
   type Insertada = { id: string; numero: number }
   const today = todayArgentina()
   let cliente: string
-  let rows: Record<'borrador' | 'aprobada' | 'rechazada' | 'vencida' | 'enviada' | 'otroCliente', Insertada>
+  let rows: Record<
+    | 'borrador'
+    | 'aprobada'
+    | 'rechazada'
+    | 'vencida'
+    | 'enviada'
+    | 'otroCliente',
+    Insertada
+  >
 
   type Fields = {
     estado: string
@@ -254,23 +336,42 @@ describe('buscar_cotizaciones', () => {
     }
   })
 
-  async function search(args: { texto?: string; estado?: string; cliente?: string; desde?: string; hasta?: string }) {
+  async function search(args: {
+    texto?: string
+    estado?: string
+    cliente?: string
+    desde?: string
+    hasta?: string
+  }) {
     const { data, error } = await activo.client.rpc('buscar_cotizaciones', args)
     if (error) throw error
     return data.map((encontrada) => encontrada.numero)
   }
 
-  const numbers = (...names: (keyof typeof rows)[]) => names.map((nombre) => rows[nombre].numero)
+  const numbers = (...names: (keyof typeof rows)[]) =>
+    names.map((nombre) => rows[nombre].numero)
 
   it('sin texto ni estado devuelve todas, de la más nueva a la más vieja por número', async () => {
-    expect(await search({ cliente })).toEqual(numbers('enviada', 'vencida', 'rechazada', 'aprobada', 'borrador'))
+    expect(await search({ cliente })).toEqual(
+      numbers('enviada', 'vencida', 'rechazada', 'aprobada', 'borrador'),
+    )
   })
 
   it('busca sin acentos ni mayúsculas en la razón social y en el asunto', async () => {
-    const todas = numbers('enviada', 'vencida', 'rechazada', 'aprobada', 'borrador')
-    expect(await search({ texto: `NANDU ${CLAVE.toUpperCase()}` })).toEqual(todas)
+    const todas = numbers(
+      'enviada',
+      'vencida',
+      'rechazada',
+      'aprobada',
+      'borrador',
+    )
+    expect(await search({ texto: `NANDU ${CLAVE.toUpperCase()}` })).toEqual(
+      todas,
+    )
     expect(await search({ texto: `ñandú ${CLAVE}` })).toEqual(todas)
-    expect(await search({ texto: `${CLAVE} en ANELO` })).toEqual(numbers('otroCliente'))
+    expect(await search({ texto: `${CLAVE} en ANELO` })).toEqual(
+      numbers('otroCliente'),
+    )
   })
 
   it('busca sin acentos en la ubicación y en el nombre del equipo (lo que muestra la columna Trabajo)', async () => {
@@ -281,21 +382,38 @@ describe('buscar_cotizaciones', () => {
       equipo: null,
       datos: { ubicacion: `Locación ${CLAVE}, Añelo` },
     })
-    expect(await search({ texto: `${CLAVE.toUpperCase()}, anelo` })).toEqual([inAnelo.numero])
+    expect(await search({ texto: `${CLAVE.toUpperCase()}, anelo` })).toEqual([
+      inAnelo.numero,
+    ])
 
     // Todas las del cliente tienen la grúa de 40 TN, y ni su razón social ni su asunto dicen "grúa telescópica".
-    const todas = numbers('enviada', 'vencida', 'rechazada', 'aprobada', 'borrador')
-    expect(await search({ texto: 'GRUA TELESCOPICA xcmg qy70k', cliente })).toEqual(todas)
+    const todas = numbers(
+      'enviada',
+      'vencida',
+      'rechazada',
+      'aprobada',
+      'borrador',
+    )
+    expect(
+      await search({ texto: 'GRUA TELESCOPICA xcmg qy70k', cliente }),
+    ).toEqual(todas)
     // Una sin equipo no aparece buscando el equipo.
-    const withEquipment = await search({ texto: 'qy70k', cliente: ids.cliente_id })
+    const withEquipment = await search({
+      texto: 'qy70k',
+      cliente: ids.cliente_id,
+    })
     expect(withEquipment).toContain(rows.otroCliente.numero)
     expect(withEquipment).not.toContain(inAnelo.numero)
   })
 
   it('busca por el comienzo del número, no por cualquier parte', async () => {
     const numero = String(rows.borrador.numero)
-    expect(await search({ texto: `N° ${numero}`, cliente })).toEqual(numbers('borrador'))
-    expect(await search({ texto: numero.slice(0, -1), cliente })).toContain(rows.borrador.numero)
+    expect(await search({ texto: `N° ${numero}`, cliente })).toEqual(
+      numbers('borrador'),
+    )
+    expect(await search({ texto: numero.slice(0, -1), cliente })).toContain(
+      rows.borrador.numero,
+    )
     expect(await search({ texto: numero.slice(1), cliente })).toEqual([])
   })
 
@@ -307,31 +425,51 @@ describe('buscar_cotizaciones', () => {
       cliente: ids.cliente_id,
       asunto: `Montaje ${CLAVE} 1`,
     })
-    expect(await search({ texto: `Montaje ${CLAVE} 1` })).toEqual([montaje.numero])
+    expect(await search({ texto: `Montaje ${CLAVE} 1` })).toEqual([
+      montaje.numero,
+    ])
   })
 
   it('filtra por estado como la lista: "enviada" son las que están al día y "vencida" las otras', async () => {
-    expect(await search({ cliente, estado: 'borrador' })).toEqual(numbers('borrador'))
-    expect(await search({ cliente, estado: 'enviada' })).toEqual(numbers('enviada'))
-    expect(await search({ cliente, estado: 'vencida' })).toEqual(numbers('vencida'))
-    expect(await search({ cliente, estado: 'aprobada' })).toEqual(numbers('aprobada'))
-    expect(await search({ cliente, estado: 'rechazada' })).toEqual(numbers('rechazada'))
+    expect(await search({ cliente, estado: 'borrador' })).toEqual(
+      numbers('borrador'),
+    )
+    expect(await search({ cliente, estado: 'enviada' })).toEqual(
+      numbers('enviada'),
+    )
+    expect(await search({ cliente, estado: 'vencida' })).toEqual(
+      numbers('vencida'),
+    )
+    expect(await search({ cliente, estado: 'aprobada' })).toEqual(
+      numbers('aprobada'),
+    )
+    expect(await search({ cliente, estado: 'rechazada' })).toEqual(
+      numbers('rechazada'),
+    )
   })
 
   it('filtra por rango de fechas, con los dos extremos incluidos', async () => {
-    expect(await search({ cliente, desde: '2025-03-05', hasta: '2025-03-10' })).toEqual(numbers('rechazada', 'aprobada'))
-    expect(await search({ cliente, hasta: '2025-03-01' })).toEqual(numbers('borrador'))
+    expect(
+      await search({ cliente, desde: '2025-03-05', hasta: '2025-03-10' }),
+    ).toEqual(numbers('rechazada', 'aprobada'))
+    expect(await search({ cliente, hasta: '2025-03-01' })).toEqual(
+      numbers('borrador'),
+    )
     expect(await search({ cliente, desde: today })).toEqual(numbers('enviada'))
   })
 
   it('pagina y cuenta como la lista (PostgREST) y deja embeber el equipo', async () => {
     const { data, count, error } = await activo.client
       .rpc('buscar_cotizaciones', { cliente }, { count: 'exact' })
-      .select('id, numero, estado, vencida, cliente_razon_social, equipo:equipos(nombre, capacidad_tn, descripcion)')
+      .select(
+        'id, numero, estado, vencida, cliente_razon_social, equipo:equipos(nombre, capacidad_tn, descripcion)',
+      )
       .range(2, 3)
     expect(error).toBeNull()
     expect(count).toBe(5)
-    expect(data!.map((encontrada) => encontrada.numero)).toEqual(numbers('rechazada', 'aprobada'))
+    expect(data!.map((encontrada) => encontrada.numero)).toEqual(
+      numbers('rechazada', 'aprobada'),
+    )
     expect(data![0]).toMatchObject({
       cliente_razon_social: `Grúas Ñandú ${CLAVE} S.A.`,
       equipo: { nombre: 'Grúa telescópica XCMG QY70K-1 40 TN' },
@@ -339,7 +477,9 @@ describe('buscar_cotizaciones', () => {
   })
 
   it('un usuario inactivo no ve nada', async () => {
-    const { data, error } = await inactivo.client.rpc('buscar_cotizaciones', { cliente })
+    const { data, error } = await inactivo.client.rpc('buscar_cotizaciones', {
+      cliente,
+    })
     expect(error).toBeNull()
     expect(data).toEqual([])
   })
@@ -357,7 +497,11 @@ function statusEditor(changes: Partial<StatusEditor> = {}): StatusEditor {
     numero: null,
     estado: 'borrador',
     origen: 'app',
-    cliente: { id: ids.cliente_id, razon_social: 'VERTICE SERVICIOS INTEGRALES S.R.L.', cuit: null },
+    cliente: {
+      id: ids.cliente_id,
+      razon_social: 'VERTICE SERVICIOS INTEGRALES S.R.L.',
+      cuit: null,
+    },
     contactoId: '',
     templateId: ids.template_daily_id,
     formato: 'jornada',
@@ -397,7 +541,14 @@ function statusEditor(changes: Partial<StatusEditor> = {}): StatusEditor {
         unidad: 'VIAJE',
       },
     ],
-    bloques: [{ clave: 'c', titulo: 'Alcance', contenido: '- Horario de 8 a 17 hs.', hidden: false }],
+    bloques: [
+      {
+        clave: 'c',
+        titulo: 'Alcance',
+        contenido: '- Horario de 8 a 17 hs.',
+        hidden: false,
+      },
+    ],
     replacesA: null,
     ...changes,
   }
@@ -409,8 +560,14 @@ function statusEditor(changes: Partial<StatusEditor> = {}): StatusEditor {
  */
 function payload(estado: StatusEditor = statusEditor()): PayloadSave {
   const armado = payloadSave(estado)
-  if (!armado.ok) throw new Error('El estado del test no es válido: ' + JSON.stringify(armado.errors))
-  return { ...armado.payload, p_datos: { ...armado.payload.p_datos, notas: MARCA } }
+  if (!armado.ok)
+    throw new Error(
+      'El estado del test no es válido: ' + JSON.stringify(armado.errors),
+    )
+  return {
+    ...armado.payload,
+    p_datos: { ...armado.payload.p_datos, notas: MARCA },
+  }
 }
 
 /** Exige que la operación se rechace con un ErrorCotizacion (mensaje para el usuario) con ese texto. */
@@ -424,13 +581,17 @@ async function rechazaWith(operacion: Promise<unknown>, message: string) {
 }
 
 async function subidos(id: string) {
-  return sql<{ name: string }>('select name from storage.objects where name like $1 order by name', [
-    `cotizaciones/${id}/%`,
-  ])
+  return sql<{ name: string }>(
+    'select name from storage.objects where name like $1 order by name',
+    [`cotizaciones/${id}/%`],
+  )
 }
 
 async function statusOf(id: string) {
-  const [encontrada] = await sql<{ estado: string; presupuesto_estado: string | null }>(
+  const [encontrada] = await sql<{
+    estado: string
+    presupuesto_estado: string | null
+  }>(
     'select estado, presupuesto_estado from public.cotizaciones where id = $1',
     [id],
   )
@@ -439,7 +600,10 @@ async function statusOf(id: string) {
 
 /** Marca con MARCA una copia hecha por duplicar_cotizacion (no copia las notas) y devuelve su versión. */
 async function markCopy(id: string): Promise<string> {
-  await sql('update public.cotizaciones set notas = $1 where id = $2', [MARCA, id])
+  await sql('update public.cotizaciones set notas = $1 where id = $2', [
+    MARCA,
+    id,
+  ])
   return versionOf(activo.client, id)
 }
 
@@ -455,9 +619,12 @@ async function coloresOfRelleno(pdf: Buffer): Promise<Set<string>> {
   const document = await getDocumentProxy(new Uint8Array(pdf))
   const colores = new Set<string>()
   for (let numero = 1; numero <= document.numPages; numero++) {
-    const { fnArray, argsArray } = await (await document.getPage(numero)).getOperatorList()
+    const { fnArray, argsArray } = await (
+      await document.getPage(numero)
+    ).getOperatorList()
     fnArray.forEach((operacion, index) => {
-      if (operacion === OPS.setFillRGBColor) colores.add(String(argsArray[index][0]).toLowerCase())
+      if (operacion === OPS.setFillRGBColor)
+        colores.add(String(argsArray[index][0]).toLowerCase())
     })
   }
   return colores
@@ -472,15 +639,28 @@ describe('servicio: guardar', () => {
       'select precio_unitario from public.cotizacion_items where cotizacion_id = $1 order by orden',
       [creada.id],
     )
-    expect(prices.map((item) => Number(item.precio_unitario))).toEqual([1950000, 2800000])
+    expect(prices.map((item) => Number(item.precio_unitario))).toEqual([
+      1950000, 2800000,
+    ])
 
     const withSubject = (asunto: string) => payload(statusEditor({ asunto }))
-    const segunda = await saveQuote(activo.client, withSubject('Segunda'), creada.id, creada.version)
+    const segunda = await saveQuote(
+      activo.client,
+      withSubject('Segunda'),
+      creada.id,
+      creada.version,
+    )
     expect(segunda).toMatchObject({ id: creada.id, numero: creada.numero })
     expect(segunda.version).not.toBe(creada.version)
 
-    await rechazaWith(saveQuote(activo.client, withSubject('Vieja'), creada.id, creada.version), CAMBIO)
-    await rechazaWith(saveQuote(activo.client, payload(), creada.id), 'Falta la versión de la cotización')
+    await rechazaWith(
+      saveQuote(activo.client, withSubject('Vieja'), creada.id, creada.version),
+      CAMBIO,
+    )
+    await rechazaWith(
+      saveQuote(activo.client, payload(), creada.id),
+      'Falta la versión de la cotización',
+    )
     expect((await row(creada.id)).asunto).toBe('Segunda')
   })
 })
@@ -492,7 +672,10 @@ describe('servicio: enviar y aprobar con la versión de la pantalla', () => {
     expect(await subidos(id)).toEqual([])
 
     const { envioId: sendId } = await sendQuote(activo.client, id, version)
-    const [envio] = await sql<{ id: string }>('select id from public.cotizacion_envios where cotizacion_id = $1', [id])
+    const [envio] = await sql<{ id: string }>(
+      'select id from public.cotizacion_envios where cotizacion_id = $1',
+      [id],
+    )
     expect(sendId).toBe(envio.id)
     const mostrado = await pdfForShow(activo.client, id, sendId)
     expect(mostrado?.pdf.subarray(0, 5).toString()).toBe('%PDF-')
@@ -500,31 +683,53 @@ describe('servicio: enviar y aprobar con la versión de la pantalla', () => {
 
   it('la versión se compara al milisegundo, como llega de un Date del navegador', async () => {
     const { id, version } = await saveQuote(activo.client, payload())
-    await expect(sendQuote(activo.client, id, new Date(version).toISOString())).resolves.toHaveProperty('envioId')
+    await expect(
+      sendQuote(activo.client, id, new Date(version).toISOString()),
+    ).resolves.toHaveProperty('envioId')
   })
 
   it('aprobar con una versión vieja no genera ni sube nada', async () => {
     const { id } = await saveQuote(activo.client, payload())
-    await rechazaWith(approveQuote(activo.client, id, '2026-10-23', VERSION_VIEJA), CAMBIO)
+    await rechazaWith(
+      approveQuote(activo.client, id, '2026-10-23', VERSION_VIEJA),
+      CAMBIO,
+    )
     expect(await subidos(id)).toEqual([])
     expect((await statusOf(id)).estado).toBe('borrador')
   })
 
   it('aprobar una renegociación devuelve la anterior si su presupuesto sigue en curso; se la puede finalizar', async () => {
     const original = await saveQuote(activo.client, payload())
-    expect(await approveQuote(activo.client, original.id, '2026-10-23', original.version)).toEqual({ anterior: null })
+    expect(
+      await approveQuote(
+        activo.client,
+        original.id,
+        '2026-10-23',
+        original.version,
+      ),
+    ).toEqual({ anterior: null })
 
     // duplicar_cotizacion con el mismo cliente la deja como renegociación (reemplaza_a) y con fecha de hoy.
     const copy = await duplicateQuote(activo.client, original.id)
-    const { anterior: previous } = await approveQuote(activo.client, copy.id, undefined, await markCopy(copy.id))
+    const { anterior: previous } = await approveQuote(
+      activo.client,
+      copy.id,
+      undefined,
+      await markCopy(copy.id),
+    )
     expect(previous).toEqual({ id: original.id, numero: original.numero })
 
     await finishBudget(activo.client, original.id)
-    expect(await statusOf(original.id)).toEqual({ estado: 'aprobada', presupuesto_estado: 'finalizado' })
+    expect(await statusOf(original.id)).toEqual({
+      estado: 'aprobada',
+      presupuesto_estado: 'finalizado',
+    })
 
     const otra = await duplicateQuote(activo.client, original.id)
     const versionOtra = await markCopy(otra.id)
-    expect(await approveQuote(activo.client, otra.id, undefined, versionOtra)).toEqual({ anterior: null })
+    expect(
+      await approveQuote(activo.client, otra.id, undefined, versionOtra),
+    ).toEqual({ anterior: null })
   })
 })
 
@@ -536,30 +741,55 @@ describe('servicio: transiciones', () => {
     await reopenQuote(activo.client, id)
     expect((await statusOf(id)).estado).toBe('borrador')
 
-    await approveQuote(activo.client, id, '2026-10-23', await versionOf(activo.client, id))
+    await approveQuote(
+      activo.client,
+      id,
+      '2026-10-23',
+      await versionOf(activo.client, id),
+    )
     await revertApproval(activo.client, id)
-    expect(await statusOf(id)).toEqual({ estado: 'borrador', presupuesto_estado: null })
+    expect(await statusOf(id)).toEqual({
+      estado: 'borrador',
+      presupuesto_estado: null,
+    })
 
     const copy = await duplicateQuote(activo.client, id)
     await markCopy(copy.id)
     await removeQuote(activo.client, copy.id)
-    expect(await sql('select 1 from public.cotizaciones where id = $1', [copy.id])).toHaveLength(0)
+    expect(
+      await sql('select 1 from public.cotizaciones where id = $1', [copy.id]),
+    ).toHaveLength(0)
   })
 
   it('los errores de negocio llegan como ErrorCotizacion con el mensaje de la base', async () => {
     const { id } = await saveQuote(activo.client, payload())
-    await rechazaWith(reopenQuote(activo.client, id), 'Solo se puede reabrir una cotización rechazada')
+    await rechazaWith(
+      reopenQuote(activo.client, id),
+      'Solo se puede reabrir una cotización rechazada',
+    )
     await rechazaWith(
       revertApproval(activo.client, id),
       'Solo se puede revertir la aprobación de una cotización aprobada',
     )
-    await rechazaWith(finishBudget(activo.client, id), 'El presupuesto no existe')
-    await rechazaWith(duplicateQuote(activo.client, crypto.randomUUID()), 'La cotización no existe')
+    await rechazaWith(
+      finishBudget(activo.client, id),
+      'El presupuesto no existe',
+    )
+    await rechazaWith(
+      duplicateQuote(activo.client, crypto.randomUUID()),
+      'La cotización no existe',
+    )
 
     await sendQuote(activo.client, id)
-    await rechazaWith(removeQuote(activo.client, id), 'Solo se pueden borrar cotizaciones en borrador')
+    await rechazaWith(
+      removeQuote(activo.client, id),
+      'Solo se pueden borrar cotizaciones en borrador',
+    )
     await rejectQuote(activo.client, id)
-    await rechazaWith(rejectQuote(activo.client, id), 'Solo se puede rechazar una cotización en borrador o enviada')
+    await rechazaWith(
+      rejectQuote(activo.client, id),
+      'Solo se puede rechazar una cotización en borrador o enviada',
+    )
   })
 
   it('un error que no es de negocio llega tal cual (usuario inactivo)', async () => {
@@ -576,15 +806,27 @@ describe('servicio: transiciones', () => {
 
 describe('servicio: vista previa', () => {
   it('dibuja el editor sin guardar, con los datos de la base y las variables pendientes en amarillo', async () => {
-    const antes = await sql('select id from public.cotizaciones where notas = $1', [MARCA])
+    const antes = await sql(
+      'select id from public.cotizaciones where notas = $1',
+      [MARCA],
+    )
     const pdf = await viewPreview(activo.client, {
       estado: statusEditor({
-        cliente: { id: ids.cliente_id, razon_social: 'Lo que diga el navegador', cuit: null },
+        cliente: {
+          id: ids.cliente_id,
+          razon_social: 'Lo que diga el navegador',
+          cuit: null,
+        },
         contactoId: ids.contacto_id, // es de otro cliente (Milicic): no va
         datos: { ...statusEditor().datos, ubicacion: '' },
         bloques: [
           ...statusEditor().bloques,
-          { clave: 'd', titulo: 'Bloque oculto', contenido: '- No tiene que salir', hidden: true },
+          {
+            clave: 'd',
+            titulo: 'Bloque oculto',
+            contenido: '- No tiene que salir',
+            hidden: true,
+          },
         ],
       }),
     })
@@ -599,19 +841,30 @@ describe('servicio: vista previa', () => {
     expect(texto).not.toContain('No tiene que salir')
     // Sin guardar todavía no tiene número (decisión 8).
     expect(texto).toContain('Cotización N° {{numero}}')
-    expect(await coloresOfRelleno(pdf)).toContain(AMARILLO_VARIABLE.toLowerCase())
-    expect(await sql('select id from public.cotizaciones where notas = $1', [MARCA])).toEqual(antes)
+    expect(await coloresOfRelleno(pdf)).toContain(
+      AMARILLO_VARIABLE.toLowerCase(),
+    )
+    expect(
+      await sql('select id from public.cotizaciones where notas = $1', [MARCA]),
+    ).toEqual(antes)
   })
 
   it('con un contacto del cliente lo pone en Atte.; guardada, muestra su número', async () => {
-    const [contacto] = await sql<{ nombre: string }>('select nombre from public.contactos where id = $1', [ids.contacto_id])
+    const [contacto] = await sql<{ nombre: string }>(
+      'select nombre from public.contactos where id = $1',
+      [ids.contacto_id],
+    )
     const creada = await saveQuote(activo.client, payload())
     const pdf = await viewPreview(activo.client, {
       estado: statusEditor({
         id: creada.id,
         version: creada.version,
         numero: creada.numero,
-        cliente: { id: ids.client_with_contact_id, razon_social: 'Milicic S.A.', cuit: null },
+        cliente: {
+          id: ids.client_with_contact_id,
+          razon_social: 'Milicic S.A.',
+          cuit: null,
+        },
         contactoId: ids.contacto_id,
       }),
     })
@@ -624,7 +877,10 @@ describe('servicio: vista previa', () => {
 describe('servicio: PDF actual', () => {
   it('con actual, una enviada muestra lo guardado y no el último envío; una aprobada, su PDF congelado', async () => {
     const withIntro = (intro: string) => payload(statusEditor({ intro }))
-    const creada = await saveQuote(activo.client, withIntro('Versión enviada en {{ubicacion}}.'))
+    const creada = await saveQuote(
+      activo.client,
+      withIntro('Versión enviada en {{ubicacion}}.'),
+    )
     await sendQuote(activo.client, creada.id, creada.version)
     const edited = await saveQuote(
       activo.client,
@@ -635,7 +891,9 @@ describe('servicio: PDF actual', () => {
 
     const lastSend = await pdfForShow(activo.client, creada.id)
     expect(await textOfPdf(lastSend!.pdf)).toContain('Versión enviada en')
-    const actual = await pdfForShow(activo.client, creada.id, undefined, { actual: true })
+    const actual = await pdfForShow(activo.client, creada.id, undefined, {
+      actual: true,
+    })
     expect(await textOfPdf(actual!.pdf)).toContain('Versión corregida en')
 
     await approveQuote(activo.client, creada.id, '2026-10-23', edited.version)
@@ -643,8 +901,17 @@ describe('servicio: PDF actual', () => {
       'select pdf_aprobado_path from public.cotizaciones where id = $1',
       [creada.id],
     )
-    const congelado = await activo.client.storage.from('documentos').download(pdf_aprobado_path)
-    const approved = await pdfForShow(activo.client, creada.id, undefined, { actual: true })
-    expect(Buffer.compare(approved!.pdf, Buffer.from(await congelado.data!.arrayBuffer()))).toBe(0)
+    const congelado = await activo.client.storage
+      .from('documentos')
+      .download(pdf_aprobado_path)
+    const approved = await pdfForShow(activo.client, creada.id, undefined, {
+      actual: true,
+    })
+    expect(
+      Buffer.compare(
+        approved!.pdf,
+        Buffer.from(await congelado.data!.arrayBuffer()),
+      ),
+    ).toBe(0)
   })
 })

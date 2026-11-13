@@ -11,7 +11,9 @@ describe('búsqueda global', () => {
     expect(isGroupSearch('remito')).toBe(true)
     expect(isGroupSearch('constructor')).toBe(false)
     const enlace = hrefSearch('OC & 1/2', 'orden_compra', 2)
-    expect(new URL(enlace, 'http://localhost').searchParams.get('q')).toBe('OC & 1/2')
+    expect(new URL(enlace, 'http://localhost').searchParams.get('q')).toBe(
+      'OC & 1/2',
+    )
     expect(enlace).toContain('pagina=2')
   })
 })

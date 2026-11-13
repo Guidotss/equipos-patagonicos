@@ -1,10 +1,18 @@
-import { voidFinancialFixture, confirmedCashFixtureFinance } from './financial-fixtures'
+import {
+  voidFinancialFixture,
+  confirmedCashFixtureFinance,
+} from './financial-fixtures'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { FIELDS_DOCUMENT, schemaDocument } from '@/lib/documents/schemas'
 import { prepareUpload, registerDocument } from '@/lib/documents/service'
 import { contextoDocument } from '@/lib/documents/queries'
 import { idsOfExample } from './quotes-helpers'
-import { limpiarFilesSubidos, limpiarDocuments, newBudget, uploadFile } from './documents-helpers'
+import {
+  limpiarFilesSubidos,
+  limpiarDocuments,
+  newBudget,
+  uploadFile,
+} from './documents-helpers'
 import { adminClient, removeUser, crearUser, sql } from './helpers'
 
 const MARCA = `pantallas-${crypto.randomUUID()}`
@@ -29,7 +37,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await limpiarDocuments(MARCA)
   await limpiarFilesSubidos()
-  if (subidos.length) await adminClient().storage.from('documentos').remove(subidos)
+  if (subidos.length)
+    await adminClient().storage.from('documentos').remove(subidos)
   await removeUser(user.id)
   await removeUser(inactivo.id)
 })
@@ -37,7 +46,10 @@ afterAll(async () => {
 async function register(
   tipo: string,
   fields: Record<string, string> = {},
-  relaciones: { remitos?: string[]; aplicaciones?: { factura_id: string; monto_aplicado: number }[] } = {},
+  relaciones: {
+    remitos?: string[]
+    aplicaciones?: { factura_id: string; monto_aplicado: number }[]
+  } = {},
 ) {
   const archivo = await uploadFile(user.client, clientId)
   return registerDocument(user.client, {
@@ -46,13 +58,21 @@ async function register(
     datos: datos({ tipo, ...fields }),
     archivos: [archivo],
     remitos: relaciones.remitos,
-    finance: await confirmedCashFixtureFinance(datos({ tipo, ...fields }), relaciones.aplicaciones ?? [], [budget]),
+    finance: await confirmedCashFixtureFinance(
+      datos({ tipo, ...fields }),
+      relaciones.aplicaciones ?? [],
+      [budget],
+    ),
   })
 }
 
 describe('circuito documental de las pantallas', () => {
   it('sube directamente con firma, conserva fecha vacía y completa el circuito hasta saldo cero; anula y restaura un pago', async () => {
-    const signature = await prepareUpload(user.client, { clientId, mime: 'application/pdf', tamano: 24 })
+    const signature = await prepareUpload(user.client, {
+      clientId,
+      mime: 'application/pdf',
+      tamano: 24,
+    })
     subidos.push(signature.path)
     const upload = await fetch(signature.signedUrl, {
       method: 'PUT',
@@ -66,39 +86,86 @@ describe('circuito documental de las pantallas', () => {
       datos: datos({ tipo: 'orden_compra' }),
       archivos: [{ path: signature.path, nombre_original: 'OC.pdf' }],
     })
-    expect((await user.client.from('documentos').select('fecha, numero').eq('id', oc).single()).data).toEqual({
+    expect(
+      (
+        await user.client
+          .from('documentos')
+          .select('fecha, numero')
+          .eq('id', oc)
+          .single()
+      ).data,
+    ).toEqual({
       fecha: null,
       numero: '',
     })
     const deliveryNote = await register('remito')
-    const invoice = await register('factura', { monto: '1.000,00', tipo_comprobante: 'FA' }, { remitos: [deliveryNote] })
+    const invoice = await register(
+      'factura',
+      { monto: '1.000,00', tipo_comprobante: 'FA' },
+      { remitos: [deliveryNote] },
+    )
     const pago = await register(
       'orden_pago',
       { monto: '1.000,00' },
       { aplicaciones: [{ factura_id: invoice, monto_aplicado: 1000 }] },
     )
     const saldo = async () =>
-      (await user.client.from('v_facturas').select('saldo, estado_cobro').eq('id', invoice).single()).data
+      (
+        await user.client
+          .from('v_facturas')
+          .select('saldo, estado_cobro')
+          .eq('id', invoice)
+          .single()
+      ).data
     expect(await saldo()).toEqual({ saldo: 0, estado_cobro: 'cobrada' })
-    expect((await voidFinancialFixture(user.client, 'anular_documento', { p_id: pago })).error).toBeNull()
+    expect(
+      (
+        await voidFinancialFixture(user.client, 'anular_documento', {
+          p_id: pago,
+        })
+      ).error,
+    ).toBeNull()
     expect(await saldo()).toEqual({ saldo: 1000, estado_cobro: 'pendiente' })
-    await voidFinancialFixture(user.client, 'anular_documento', { p_id: invoice })
-    expect((await voidFinancialFixture(user.client, 'restaurar_documento', { p_id: pago })).error?.message).toContain(
-      'Restaurá primero las facturas anuladas',
-    )
-    await voidFinancialFixture(user.client, 'restaurar_documento', { p_id: invoice })
-    expect((await voidFinancialFixture(user.client, 'restaurar_documento', { p_id: pago })).error).toBeNull()
+    await voidFinancialFixture(user.client, 'anular_documento', {
+      p_id: invoice,
+    })
+    expect(
+      (
+        await voidFinancialFixture(user.client, 'restaurar_documento', {
+          p_id: pago,
+        })
+      ).error?.message,
+    ).toContain('Restaurá primero las facturas anuladas')
+    await voidFinancialFixture(user.client, 'restaurar_documento', {
+      p_id: invoice,
+    })
+    expect(
+      (
+        await voidFinancialFixture(user.client, 'restaurar_documento', {
+          p_id: pago,
+        })
+      ).error,
+    ).toBeNull()
     expect(await saldo()).toEqual({ saldo: 0, estado_cobro: 'cobrada' })
     const { data: resumen } = await user.client
       .from('v_presupuestos')
       .select('ordenes_compra, remitos, facturas, ordenes_pago, saldo')
       .eq('id', budget)
       .single()
-    expect(resumen).toEqual({ ordenes_compra: 1, remitos: 1, facturas: 1, ordenes_pago: 1, saldo: 0 })
+    expect(resumen).toEqual({
+      ordenes_compra: 1,
+      remitos: 1,
+      facturas: 1,
+      ordenes_pago: 1,
+      saldo: 0,
+    })
   })
 
   it('edita campos y archivos en una transacción y rechaza quitar archivos ajenos o dejar el documento vacío', async () => {
-    const id = await register('remito', { numero: 'Anterior', fecha: '2026-10-20' })
+    const id = await register('remito', {
+      numero: 'Anterior',
+      fecha: '2026-10-20',
+    })
     const { data: archivo } = await user.client
       .from('documento_archivos')
       .select('id')
@@ -112,10 +179,22 @@ describe('circuito documental de las pantallas', () => {
       p_aplicaciones: [],
     }
     expect(
-      (await user.client.rpc('actualizar_documento_con_archivos', { ...base, p_quitar: [archivo!.id] })).error
-        ?.message,
+      (
+        await user.client.rpc('actualizar_documento_con_archivos', {
+          ...base,
+          p_quitar: [archivo!.id],
+        })
+      ).error?.message,
     ).toContain('al menos un archivo')
-    expect((await user.client.from('documentos').select('numero, fecha').eq('id', id).single()).data).toEqual({
+    expect(
+      (
+        await user.client
+          .from('documentos')
+          .select('numero, fecha')
+          .eq('id', id)
+          .single()
+      ).data,
+    ).toEqual({
       numero: 'Anterior',
       fecha: '2026-10-20',
     })
@@ -129,15 +208,30 @@ describe('circuito documental de las pantallas', () => {
         })
       ).error,
     ).toBeNull()
-    expect((await user.client.from('documentos').select('numero, fecha').eq('id', id).single()).data).toEqual({
+    expect(
+      (
+        await user.client
+          .from('documentos')
+          .select('numero, fecha')
+          .eq('id', id)
+          .single()
+      ).data,
+    ).toEqual({
       numero: 'Nuevo',
       fecha: null,
     })
     expect(
-      (await user.client.rpc('actualizar_documento_con_archivos', { ...base, p_quitar: [crypto.randomUUID()] }))
-        .error?.message,
+      (
+        await user.client.rpc('actualizar_documento_con_archivos', {
+          ...base,
+          p_quitar: [crypto.randomUUID()],
+        })
+      ).error?.message,
     ).toContain('no pertenece')
-    expect((await inactivo.client.rpc('actualizar_documento_con_archivos', base)).error).not.toBeNull()
+    expect(
+      (await inactivo.client.rpc('actualizar_documento_con_archivos', base))
+        .error,
+    ).not.toBeNull()
   })
 
   it('normaliza MIME de Storage y da errores claros en nombre y motivo demasiado largos', async () => {
@@ -153,7 +247,13 @@ describe('circuito documental de las pantallas', () => {
       archivos: [archivo],
     })
     expect(
-      (await user.client.from('documento_archivos').select('mime').eq('documento_id', id).single()).data?.mime,
+      (
+        await user.client
+          .from('documento_archivos')
+          .select('mime')
+          .eq('documento_id', id)
+          .single()
+      ).data?.mime,
     ).toBe('application/pdf')
     const largo = await uploadFile(user.client, clientId)
     expect(
@@ -173,25 +273,53 @@ describe('circuito documental de las pantallas', () => {
         })
       ).error?.message,
     ).toContain('2000')
-    const { data: encontrados, error } = await user.client.rpc('buscar_presupuestos', {
-      texto: MARCA,
-      cliente: clientId,
-    })
+    const { data: encontrados, error } = await user.client.rpc(
+      'buscar_presupuestos',
+      {
+        texto: MARCA,
+        cliente: clientId,
+      },
+    )
     expect(error).toBeNull()
     expect(encontrados?.some((item) => item.id === budget)).toBe(true)
   })
   it('recupera documentos antiguos y sus finanzas aunque haya más de mil documentos posteriores', async () => {
-    const invoice = await register('factura', { monto: '100,10', tipo_comprobante: 'FA' })
-    const order = await register('orden_pago', { monto: '100,10' }, { aplicaciones: [{ factura_id: invoice, monto_aplicado: 100.10 }] })
-    await sql("update public.documentos set created_at = '2000-01-01' where id = any($1::uuid[])", [[invoice, order]])
-    await sql(`insert into public.documentos(cliente_id, tipo, notas, created_at)
-      select $1, 'orden_compra', $2, '2025-01-01'::timestamptz from generate_series(1, 1001)`, [clientId, MARCA])
+    const invoice = await register('factura', {
+      monto: '100,10',
+      tipo_comprobante: 'FA',
+    })
+    const order = await register(
+      'orden_pago',
+      { monto: '100,10' },
+      { aplicaciones: [{ factura_id: invoice, monto_aplicado: 100.1 }] },
+    )
+    await sql(
+      "update public.documentos set created_at = '2000-01-01' where id = any($1::uuid[])",
+      [[invoice, order]],
+    )
+    await sql(
+      `insert into public.documentos(cliente_id, tipo, notas, created_at)
+      select $1, 'orden_compra', $2, '2025-01-01'::timestamptz from generate_series(1, 1001)`,
+      [clientId, MARCA],
+    )
     const context = await contextoDocument(user.client, clientId)
-    expect(context.documentos.some((document) => document.id === invoice)).toBe(true)
-    expect(context.documentos.some((document) => document.id === order)).toBe(true)
-    expect(context.facturas.find((entry) => entry.id === invoice)?.exact_balance).toBe('0.00')
-    expect(context.financeByDocument[invoice].invoiceAllocations).toMatchObject([{ budgetId: budget, amount: '100.10' }])
-    expect(context.financeByDocument[order].paymentInstruments).toMatchObject([{ amount: '100.10', status: 'confirmed' }])
-    expect(context.financeByDocument[order].paymentAllocations).toMatchObject([{ invoiceId: invoice, amount: '100.10' }])
+    expect(context.documentos.some((document) => document.id === invoice)).toBe(
+      true,
+    )
+    expect(context.documentos.some((document) => document.id === order)).toBe(
+      true,
+    )
+    expect(
+      context.facturas.find((entry) => entry.id === invoice)?.exact_balance,
+    ).toBe('0.00')
+    expect(context.financeByDocument[invoice].invoiceAllocations).toMatchObject(
+      [{ budgetId: budget, amount: '100.10' }],
+    )
+    expect(context.financeByDocument[order].paymentInstruments).toMatchObject([
+      { amount: '100.10', status: 'confirmed' },
+    ])
+    expect(context.financeByDocument[order].paymentAllocations).toMatchObject([
+      { invoiceId: invoice, amount: '100.10' },
+    ])
   }, 30000)
 })

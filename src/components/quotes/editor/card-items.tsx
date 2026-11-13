@@ -33,7 +33,11 @@ import {
   type DragEndEvent,
   type UniqueIdentifier,
 } from '@dnd-kit/core'
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 
@@ -72,7 +76,10 @@ export function CardItems({
   /** Las plantillas guardan descripciones, cantidades y unidades; los precios se definen al cotizar. */
   editPrices?: boolean
 }) {
-  const [sectionRemoval, setSectionRemoval] = useState<{ section: string; itemKeys: string[] } | null>(null)
+  const [sectionRemoval, setSectionRemoval] = useState<{
+    section: string
+    itemKeys: string[]
+  } | null>(null)
   const dragId = useId()
   const inSheet = useSheetForm()
   const focusTarget = useRef<FocusRequest | 'agregar' | null>(null)
@@ -80,7 +87,10 @@ export function CardItems({
   const sensors = useSensors(
     // 4 px de movimiento antes de arrastrar: un clic en el agarre abre el menú.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates, keyboardCodes: DRAG_KEYBOARD_CODES }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: DRAG_KEYBOARD_CODES,
+    }),
   )
   const rows = rowsGrid(items)
   const { total, withoutPrice } = totalGeneral(items)
@@ -97,10 +107,13 @@ export function CardItems({
     const destination = focusDestination(request, items)
     if (!destination) return
     const element = document.getElementById(
-      destination.field === 'seccion' ? `seccion-${destination.key}` : `item-${destination.key}-descripcion`,
+      destination.field === 'seccion'
+        ? `seccion-${destination.key}`
+        : `item-${destination.key}-descripcion`,
     )
     element?.focus()
-    if (destination.field === 'seccion' && element instanceof HTMLInputElement) element.select()
+    if (destination.field === 'seccion' && element instanceof HTMLInputElement)
+      element.select()
   }, [items])
 
   // Si el ítem cae en el medio de otro grupo, el reducer le pone esa sección (Task 3).
@@ -111,7 +124,11 @@ export function CardItems({
 
   function addAfter(item: ItemEditor) {
     focusTarget.current = { type: 'siguiente', key: item.clave }
-    dispatch({ tipo: 'agregarItem', despuesOf: item.clave, seccion: item.seccion })
+    dispatch({
+      tipo: 'agregarItem',
+      despuesOf: item.clave,
+      seccion: item.seccion,
+    })
   }
 
   function addAtEnd() {
@@ -139,7 +156,9 @@ export function CardItems({
     if (!sectionRemoval) return
     const key = sectionRemoval.itemKeys[0]
     setSectionRemoval(null)
-    const target = document.getElementById(`seccion-${key}`) ?? document.getElementById(`item-${key}-descripcion`)
+    const target =
+      document.getElementById(`seccion-${key}`) ??
+      document.getElementById(`item-${key}-descripcion`)
     if (target) target.focus()
     else addButton.current?.focus()
   }
@@ -160,16 +179,20 @@ export function CardItems({
     )
   }
 
-  const position = (id: UniqueIdentifier) => items.findIndex((item) => item.clave === id) + 1
+  const position = (id: UniqueIdentifier) =>
+    items.findIndex((item) => item.clave === id) + 1
   const announcements: Announcements = {
     onDragStart: ({ active }) => `Tomaste el ítem ${position(active.id)}.`,
     onDragOver: ({ active, over }) =>
-      over ? `El ítem ${position(active.id)} pasa a la posición ${position(over.id)}.` : undefined,
+      over
+        ? `El ítem ${position(active.id)} pasa a la posición ${position(over.id)}.`
+        : undefined,
     onDragEnd: ({ active, over }) =>
       over
         ? `Soltaste el ítem ${position(active.id)} en la posición ${position(over.id)}.`
         : `Soltaste el ítem ${position(active.id)}.`,
-    onDragCancel: ({ active }) => `Se canceló el movimiento del ítem ${position(active.id)}.`,
+    onDragCancel: ({ active }) =>
+      `Se canceló el movimiento del ítem ${position(active.id)}.`,
   }
 
   return (
@@ -185,7 +208,11 @@ export function CardItems({
       {sectionRemoval ? (
         <InlineConfirmation
           pregunta={`¿Eliminar la sección «${sectionRemoval.section.trim() || 'Precios'}»?`}
-          detail={sectionRemoval.itemKeys.length === 1 ? 'Se eliminará su 1 ítem.' : `Se eliminarán sus ${sectionRemoval.itemKeys.length} ítems.`}
+          detail={
+            sectionRemoval.itemKeys.length === 1
+              ? 'Se eliminará su 1 ítem.'
+              : `Se eliminarán sus ${sectionRemoval.itemKeys.length} ítems.`
+          }
           textConfirm="Eliminar sección"
           tone="peligro"
           onConfirm={confirmSectionRemoval}
@@ -193,9 +220,13 @@ export function CardItems({
           className="mb-3"
         />
       ) : null}
-      <div className={cn('overflow-hidden rounded-lg border', !inSheet && '-mx-1')}>
+      <div
+        className={cn('overflow-hidden rounded-lg border', !inSheet && '-mx-1')}
+      >
         {items.length === 0 ? (
-          <p className="px-4 py-6 text-[15px] text-muted-foreground">Todavía no hay ítems.</p>
+          <p className="px-4 py-6 text-[15px] text-muted-foreground">
+            Todavía no hay ítems.
+          </p>
         ) : (
           <>
             <div
@@ -208,7 +239,9 @@ export function CardItems({
               <span />
               <span className="pl-2.5">Descripción</span>
               <span className="pl-1">Cantidad</span>
-              {editPrices ? <span className="pr-2 text-right">Precio unitario</span> : null}
+              {editPrices ? (
+                <span className="pr-2 text-right">Precio unitario</span>
+              ) : null}
               <span className="pl-2">Unidad</span>
               {editPrices ? <span className="text-right">Total</span> : null}
               <span />
@@ -218,9 +251,15 @@ export function CardItems({
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={onDrop}
-              accessibility={{ announcements, screenReaderInstructions: DRAG_SCREEN_READER_INSTRUCTIONS }}
+              accessibility={{
+                announcements,
+                screenReaderInstructions: DRAG_SCREEN_READER_INSTRUCTIONS,
+              }}
             >
-              <SortableContext items={items.map((item) => item.clave)} strategy={verticalListSortingStrategy}>
+              <SortableContext
+                items={items.map((item) => item.clave)}
+                strategy={verticalListSortingStrategy}
+              >
                 {rows.map((row) =>
                   row.type === 'seccion' ? (
                     <HeaderSection
@@ -229,7 +268,12 @@ export function CardItems({
                       error={errors[row.key]?.seccion}
                       dispatch={dispatch}
                       onChangeDraft={onChangeDraftSection}
-                      onRemove={(section) => setSectionRemoval({ section, itemKeys: sectionItemKeys(items, row.key) })}
+                      onRemove={(section) =>
+                        setSectionRemoval({
+                          section,
+                          itemKeys: sectionItemKeys(items, row.key),
+                        })
+                      }
                     />
                   ) : (
                     <RowItem
@@ -259,7 +303,9 @@ export function CardItems({
                       : 'Revisá las cantidades'}
                   </span>
                 ) : (
-                  <span className="min-w-24 text-right font-medium tabular-nums">{formatAmountTable(total)}</span>
+                  <span className="min-w-24 text-right font-medium tabular-nums">
+                    {formatAmountTable(total)}
+                  </span>
                 )}
               </div>
             ) : null}
@@ -296,9 +342,14 @@ export function CardItems({
             <Switch
               id="cotizacion-mostrar-total"
               checked={showTotal}
-              onCheckedChange={(value) => dispatch({ tipo: 'mostrarTotal', value })}
+              onCheckedChange={(value) =>
+                dispatch({ tipo: 'mostrarTotal', value })
+              }
             />
-            <Label htmlFor="cotizacion-mostrar-total" className="text-sm font-normal">
+            <Label
+              htmlFor="cotizacion-mostrar-total"
+              className="text-sm font-normal"
+            >
               Total en el PDF
             </Label>
           </div>

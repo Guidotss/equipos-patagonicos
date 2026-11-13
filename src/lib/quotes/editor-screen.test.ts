@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { statusNew, reduceEditor, type StatusEditor, type TemplateEditor } from './editor'
+import {
+  statusNew,
+  reduceEditor,
+  type StatusEditor,
+  type TemplateEditor,
+} from './editor'
 import {
   changesOfContent,
   fieldsDataVisible,
@@ -24,9 +29,20 @@ const TEMPLATE: TemplateEditor = {
   validez_dias: 30,
   bloques: [
     { titulo: 'Alcance', contenido: 'Horario de {{horario}}.', hidden: false },
-    { titulo: 'Renegociación', contenido: 'Con base en {{indice_base}}.', hidden: false },
+    {
+      titulo: 'Renegociación',
+      contenido: 'Con base en {{indice_base}}.',
+      hidden: false,
+    },
   ],
-  items: [{ seccion: 'Precios Jornada', descripcion: 'Jornada de grúa', unidad: 'JORNADA', cantidad: 1 }],
+  items: [
+    {
+      seccion: 'Precios Jornada',
+      descripcion: 'Jornada de grúa',
+      unidad: 'JORNADA',
+      cantidad: 1,
+    },
+  ],
 }
 
 const CLIENT = {
@@ -37,8 +53,16 @@ const CLIENT = {
 
 /** Una cotización nueva con la plantilla aplicada y un cliente elegido. */
 function newQuote(): StatusEditor {
-  const state = statusNew({ plantilla: TEMPLATE, firmanteId: '', today: '2026-10-25' })
-  return reduceEditor(state, { tipo: 'cliente', cliente: CLIENT, contactoId: '' })
+  const state = statusNew({
+    plantilla: TEMPLATE,
+    firmanteId: '',
+    today: '2026-10-25',
+  })
+  return reduceEditor(state, {
+    tipo: 'cliente',
+    cliente: CLIENT,
+    contactoId: '',
+  })
 }
 
 const SIGNERS = [
@@ -78,18 +102,35 @@ describe('contactoInicial', () => {
 
 describe('camposDatosVisibles', () => {
   it('muestra los campos que usa el texto visible, en el orden de CAMPOS_DATOS', () => {
-    expect(fieldsDataVisible(newQuote())).toEqual(['ubicacion', 'horario', 'indice_base'])
+    expect(fieldsDataVisible(newQuote())).toEqual([
+      'ubicacion',
+      'horario',
+      'indice_base',
+    ])
   })
 
   it('un bloque oculto no cuenta', () => {
     const state = newQuote()
-    const hidden = reduceEditor(state, { tipo: 'bloque', clave: state.bloques[1].clave, changes: { hidden: true } })
+    const hidden = reduceEditor(state, {
+      tipo: 'bloque',
+      clave: state.bloques[1].clave,
+      changes: { hidden: true },
+    })
     expect(fieldsDataVisible(hidden)).toEqual(['ubicacion', 'horario'])
   })
 
   it('un campo con valor se sigue mostrando aunque el texto no lo use', () => {
-    const withValue = reduceEditor(newQuote(), { tipo: 'dato', campo: 'forma_pago', value: '30 días F.F.' })
-    expect(fieldsDataVisible(withValue)).toEqual(['ubicacion', 'horario', 'forma_pago', 'indice_base'])
+    const withValue = reduceEditor(newQuote(), {
+      tipo: 'dato',
+      campo: 'forma_pago',
+      value: '30 días F.F.',
+    })
+    expect(fieldsDataVisible(withValue)).toEqual([
+      'ubicacion',
+      'horario',
+      'forma_pago',
+      'indice_base',
+    ])
   })
 })
 
@@ -99,20 +140,28 @@ describe('idCampoVariable', () => {
     expect(idFieldVariable('capacidad')).toBe('cotizacion-equipo')
     expect(idFieldVariable('equipo_descripcion')).toBe('cotizacion-equipo')
     expect(idFieldVariable('validez_dias')).toBe('cotizacion-validez')
-    expect(idFieldVariable('proxima_actualizacion')).toBe('cotizacion-proxima-actualizacion')
+    expect(idFieldVariable('proxima_actualizacion')).toBe(
+      'cotizacion-proxima-actualizacion',
+    )
     expect(idFieldVariable('numero')).toBeNull()
   })
 })
 
 describe('textoProximaActualizacion', () => {
   it('el mes elegido, el texto que ya tenía o el de la empresa', () => {
-    expect(textNextUpdate('2026-11', 'marzo de 2027', 'junio de 2027')).toBe('noviembre de 2026')
-    expect(textNextUpdate('', 'marzo de 2027', 'junio de 2027')).toBe('marzo de 2027')
+    expect(textNextUpdate('2026-11', 'marzo de 2027', 'junio de 2027')).toBe(
+      'noviembre de 2026',
+    )
+    expect(textNextUpdate('', 'marzo de 2027', 'junio de 2027')).toBe(
+      'marzo de 2027',
+    )
     expect(textNextUpdate('', '', 'junio de 2027')).toBe('junio de 2027')
   })
 
   it('un año a medio escribir (Chrome pasa por 0002-11) no rompe: queda el texto que había', () => {
-    expect(textNextUpdate('0002-11', 'marzo de 2027', 'junio de 2027')).toBe('marzo de 2027')
+    expect(textNextUpdate('0002-11', 'marzo de 2027', 'junio de 2027')).toBe(
+      'marzo de 2027',
+    )
   })
 })
 
@@ -134,18 +183,41 @@ describe('resumenEncabezado', () => {
   })
 
   it('"Vence el" solo en enviadas; el día del vencimiento todavía no está vencida', () => {
-    const sent = { ...newQuote(), numero: 112712, estado: 'enviada' as const, fecha: '2026-10-01', validezDias: '30' }
-    expect(headerSummary(sent, '2026-10-31').expiration).toEqual({ text: 'Vence el 31/10/2026', expired: false })
-    expect(headerSummary(sent, '2026-11-01').expiration).toEqual({ text: 'Venció el 31/10/2026', expired: true })
-    expect(headerSummary({ ...sent, estado: 'borrador' }, '2026-11-01')).toMatchObject({
+    const sent = {
+      ...newQuote(),
+      numero: 112712,
+      estado: 'enviada' as const,
+      fecha: '2026-10-01',
+      validezDias: '30',
+    }
+    expect(headerSummary(sent, '2026-10-31').expiration).toEqual({
+      text: 'Vence el 31/10/2026',
+      expired: false,
+    })
+    expect(headerSummary(sent, '2026-11-01').expiration).toEqual({
+      text: 'Venció el 31/10/2026',
+      expired: true,
+    })
+    expect(
+      headerSummary({ ...sent, estado: 'borrador' }, '2026-11-01'),
+    ).toMatchObject({
       title: 'Cotización N° 112712',
       expiration: null,
     })
   })
 
   it('una fecha o una validez inválidas no rompen el encabezado', () => {
-    const invalid = { ...newQuote(), estado: 'enviada' as const, fecha: '', validezDias: 'abc' }
-    expect(headerSummary(invalid, '2026-10-25')).toEqual({ title: 'Nueva cotización', detail: 'Por jornada', expiration: null })
+    const invalid = {
+      ...newQuote(),
+      estado: 'enviada' as const,
+      fecha: '',
+      validezDias: 'abc',
+    }
+    expect(headerSummary(invalid, '2026-10-25')).toEqual({
+      title: 'Nueva cotización',
+      detail: 'Por jornada',
+      expiration: null,
+    })
   })
 })
 
@@ -155,20 +227,42 @@ describe('cambiosDeContenido', () => {
   })
 
   it('los datos y el cliente no cuentan: la plantilla no los toca', () => {
-    expect(changesOfContent(reduceEditor(newQuote(), { tipo: 'dato', campo: 'ubicacion', value: 'Añelo' }), TEMPLATE)).toBe(
-      false,
-    )
+    expect(
+      changesOfContent(
+        reduceEditor(newQuote(), {
+          tipo: 'dato',
+          campo: 'ubicacion',
+          value: 'Añelo',
+        }),
+        TEMPLATE,
+      ),
+    ).toBe(false)
   })
 
   it('el asunto o un precio escritos a mano sí', () => {
     const state = newQuote()
-    expect(changesOfContent(reduceEditor(state, { tipo: 'campo', campo: 'asunto', value: 'Otro' }), TEMPLATE)).toBe(true)
-    const withPrice = reduceEditor(state, { tipo: 'item', clave: state.items[0].clave, changes: { precio: '1.950.000' } })
+    expect(
+      changesOfContent(
+        reduceEditor(state, { tipo: 'campo', campo: 'asunto', value: 'Otro' }),
+        TEMPLATE,
+      ),
+    ).toBe(true)
+    const withPrice = reduceEditor(state, {
+      tipo: 'item',
+      clave: state.items[0].clave,
+      changes: { precio: '1.950.000' },
+    })
     expect(changesOfContent(withPrice, TEMPLATE)).toBe(true)
   })
 
   it('sin plantilla actual, hay cambios si hay algo escrito', () => {
-    const empty = { ...newQuote(), asunto: '', intro: '', items: [], bloques: [] }
+    const empty = {
+      ...newQuote(),
+      asunto: '',
+      intro: '',
+      items: [],
+      bloques: [],
+    }
     expect(changesOfContent(empty, null)).toBe(false)
     expect(changesOfContent({ ...empty, intro: 'Hola' }, null)).toBe(true)
   })
@@ -199,17 +293,25 @@ describe('erroresDeBloques', () => {
     }
     expect(errorsOfBlocks(errors, ['a', 'b', 'c'])).toEqual({
       a: { titulo: 'Máximo 200 caracteres' },
-      c: { contenido: 'Máximo 10.000 caracteres', titulo: 'Máximo 200 caracteres' },
+      c: {
+        contenido: 'Máximo 10.000 caracteres',
+        titulo: 'Máximo 200 caracteres',
+      },
     })
   })
 
   it('ignora una posición que no estaba en lo que se mandó', () => {
-    expect(errorsOfBlocks({ 'bloques.3.contenido': 'Muy largo' }, ['a'])).toEqual({})
+    expect(
+      errorsOfBlocks({ 'bloques.3.contenido': 'Muy largo' }, ['a']),
+    ).toEqual({})
   })
 })
 
 describe('esAtajoGuardar', () => {
-  const key = (key: string, modifiers: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
+  const key = (
+    key: string,
+    modifiers: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {},
+  ) => ({
     key,
     ctrlKey: false,
     metaKey: false,
@@ -224,7 +326,9 @@ describe('esAtajoGuardar', () => {
   })
 
   it('no con Alt, sin Ctrl/⌘ ni con otra tecla', () => {
-    expect(isSaveShortcut(key('s', { ctrlKey: true, altKey: true }))).toBe(false)
+    expect(isSaveShortcut(key('s', { ctrlKey: true, altKey: true }))).toBe(
+      false,
+    )
     expect(isSaveShortcut(key('s'))).toBe(false)
     expect(isSaveShortcut(key('Enter', { ctrlKey: true }))).toBe(false)
   })

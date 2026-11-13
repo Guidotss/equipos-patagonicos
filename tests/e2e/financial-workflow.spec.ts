@@ -13,89 +13,202 @@ let equipmentIds: string[]
 test.beforeAll(async () => {
   validateEnvTests()
   await withBase(async (db) => {
-    clientId = (await db.query<{ id: string }>('insert into public.clientes (razon_social) values ($1) returning id', [marker])).rows[0].id
-    budgetId = (await db.query<{ id: string }>(`insert into public.cotizaciones (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado)
-      values ($1, 'directa', 'jornada', $2, $2, 'aprobada', current_date, 'en_curso') returning id`, [clientId, marker])).rows[0].id
-    secondBudgetId = (await db.query<{ id: string }>(`insert into public.cotizaciones (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado)
-      values ($1, 'directa', 'jornada', $2, $2, 'aprobada', current_date, 'en_curso') returning id`, [clientId, `${marker}-segundo`])).rows[0].id
-    equipmentIds = (await db.query<{ id: string }>("insert into public.equipos (nombre, activo) values ($1, true), ($2, false) returning id", [`${marker}-grua-1`, `${marker}-grua-2`])).rows.map((row) => row.id)
+    clientId = (
+      await db.query<{ id: string }>(
+        'insert into public.clientes (razon_social) values ($1) returning id',
+        [marker],
+      )
+    ).rows[0].id
+    budgetId = (
+      await db.query<{ id: string }>(
+        `insert into public.cotizaciones (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado)
+      values ($1, 'directa', 'jornada', $2, $2, 'aprobada', current_date, 'en_curso') returning id`,
+        [clientId, marker],
+      )
+    ).rows[0].id
+    secondBudgetId = (
+      await db.query<{ id: string }>(
+        `insert into public.cotizaciones (cliente_id, origen, formato, asunto, notas, estado, fecha_aprobacion, presupuesto_estado)
+      values ($1, 'directa', 'jornada', $2, $2, 'aprobada', current_date, 'en_curso') returning id`,
+        [clientId, `${marker}-segundo`],
+      )
+    ).rows[0].id
+    equipmentIds = (
+      await db.query<{ id: string }>(
+        'insert into public.equipos (nombre, activo) values ($1, true), ($2, false) returning id',
+        [`${marker}-grua-1`, `${marker}-grua-2`],
+      )
+    ).rows.map((row) => row.id)
   })
 })
 
 test.afterAll(async () => {
   validateEnvTests()
-  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } })
-  const { data: objects, error } = await admin.storage.from('documentos').list(`documentos/${clientId}`, { limit: 1000 })
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+    { auth: { persistSession: false } },
+  )
+  const { data: objects, error } = await admin.storage
+    .from('documentos')
+    .list(`documentos/${clientId}`, { limit: 1000 })
   if (error) throw error
   if (objects?.length) {
-    const removed = await admin.storage.from('documentos').remove(objects.map((item) => `documentos/${clientId}/${item.name}`))
+    const removed = await admin.storage
+      .from('documentos')
+      .remove(objects.map((item) => `documentos/${clientId}/${item.name}`))
     if (removed.error) throw removed.error
   }
   await withBase(async (db) => {
     await db.query('begin')
     try {
       await db.query('set local session_replication_role = replica')
-      await db.query('delete from public.financial_events where document_id in (select id from public.documentos where cliente_id = $1)', [clientId])
-      await db.query('delete from public.payment_allocations where instrument_id in (select id from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1))', [clientId])
-      await db.query('delete from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1)', [clientId])
-      await db.query('delete from public.invoice_allocations where invoice_id in (select id from public.documentos where cliente_id = $1)', [clientId])
-      await db.query('delete from public.facturas_historicas where factura_id in (select id from public.documentos where cliente_id = $1)', [clientId])
+      await db.query(
+        'delete from public.financial_events where document_id in (select id from public.documentos where cliente_id = $1)',
+        [clientId],
+      )
+      await db.query(
+        'delete from public.payment_allocations where instrument_id in (select id from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1))',
+        [clientId],
+      )
+      await db.query(
+        'delete from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1)',
+        [clientId],
+      )
+      await db.query(
+        'delete from public.invoice_allocations where invoice_id in (select id from public.documentos where cliente_id = $1)',
+        [clientId],
+      )
+      await db.query(
+        'delete from public.facturas_historicas where factura_id in (select id from public.documentos where cliente_id = $1)',
+        [clientId],
+      )
       await db.query('set local session_replication_role = origin')
-      await db.query('delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1) or factura_id in (select id from public.documentos where cliente_id = $1)', [clientId])
-      await db.query('delete from public.documentos where cliente_id = $1', [clientId])
-      await db.query('delete from public.cotizaciones where cliente_id = $1', [clientId])
+      await db.query(
+        'delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1) or factura_id in (select id from public.documentos where cliente_id = $1)',
+        [clientId],
+      )
+      await db.query('delete from public.documentos where cliente_id = $1', [
+        clientId,
+      ])
+      await db.query('delete from public.cotizaciones where cliente_id = $1', [
+        clientId,
+      ])
       await db.query('delete from public.clientes where id = $1', [clientId])
-      await db.query('delete from public.equipos where id = any($1::uuid[])', [equipmentIds])
+      await db.query('delete from public.equipos where id = any($1::uuid[])', [
+        equipmentIds,
+      ])
       await db.query('commit')
-    } catch (error) { await db.query('rollback'); throw error }
+    } catch (error) {
+      await db.query('rollback')
+      throw error
+    }
   })
 })
 
-test('asigna el total de una factura ya cargada sin volver a ingresar el importe', async ({ page }) => {
-  const [work] = await withBase(async (db) => (await db.query<{ id: string; numero: string }>(
-    `insert into public.cotizaciones (cliente_id, origen, formato, asunto, estado, fecha_aprobacion, presupuesto_estado)
+test('asigna el total de una factura ya cargada sin volver a ingresar el importe', async ({
+  page,
+}) => {
+  const [work] = await withBase(
+    async (db) =>
+      (
+        await db.query<{ id: string; numero: string }>(
+          `insert into public.cotizaciones (cliente_id, origen, formato, asunto, estado, fecha_aprobacion, presupuesto_estado)
      values ($1, 'directa', 'jornada', $2, 'aprobada', current_date, 'en_curso') returning id, numero`,
-    [clientId, `${marker}-sin-distribuir`],
-  )).rows)
+          [clientId, `${marker}-sin-distribuir`],
+        )
+      ).rows,
+  )
   await iniciarSession(page)
   await page.goto(`/presupuestos/${work.id}`)
   await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
-  await page.getByLabel('Número (opcional)', { exact: true }).fill('FA-SIN-DISTRIBUIR')
+  await page
+    .getByLabel('Número (opcional)', { exact: true })
+    .fill('FA-SIN-DISTRIBUIR')
   await page.getByLabel('Monto total con IVA', { exact: true }).fill('2783000')
   await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
-    name: 'factura.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+    name: 'factura.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n%%EOF'),
   })
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
-  await page.getByRole('checkbox', { name: /Asignar el total al presupuesto/ }).uncheck()
-  await page.getByRole('button', { name: 'Guardar documento', exact: true }).click()
+  await expect(
+    page.getByText('Listo para guardar', { exact: true }),
+  ).toBeVisible()
+  await page
+    .getByRole('checkbox', { name: /Asignar el total al presupuesto/ })
+    .uncheck()
+  await page
+    .getByRole('button', { name: 'Guardar documento', exact: true })
+    .click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${work.id}$`))
-  await expect(page.getByTestId('saldo-presupuesto')).toHaveText('Saldo pendiente de distribución')
-  await page.locator('[data-documento]').filter({ hasText: 'FA-SIN-DISTRIBUIR' })
-    .getByRole('link', { name: 'Editar', exact: true }).click()
-  await page.getByRole('button', { name: `Asignar $ 2.783.000,00 al presupuesto N° ${work.numero}`, exact: true }).click()
+  await expect(page.getByTestId('saldo-presupuesto')).toHaveText(
+    'Saldo pendiente de distribución',
+  )
+  await page
+    .locator('[data-documento]')
+    .filter({ hasText: 'FA-SIN-DISTRIBUIR' })
+    .getByRole('link', { name: 'Editar', exact: true })
+    .click()
+  await page
+    .getByRole('button', {
+      name: `Asignar $ 2.783.000,00 al presupuesto N° ${work.numero}`,
+      exact: true,
+    })
+    .click()
   await expect(page.getByLabel('Trabajo', { exact: true })).toHaveValue(work.id)
-  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Guardar cambios', exact: true })
+    .click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${work.id}$`))
-  await expect(page.getByTestId('saldo-presupuesto')).toHaveText('$ 2.783.000,00')
+  await expect(page.getByTestId('saldo-presupuesto')).toHaveText(
+    '$ 2.783.000,00',
+  )
 
-  const rows = await withBase(async (db) => (await db.query(
-    `select d.monto::text as total, a.amount::text as amount, a.budget_id, a.equipment_status
+  const rows = await withBase(
+    async (db) =>
+      (
+        await db.query(
+          `select d.monto::text as total, a.amount::text as amount, a.budget_id, a.equipment_status
      from public.documentos d join public.invoice_allocations a on a.invoice_id=d.id
-     where d.cliente_id=$1 and d.numero='FA-SIN-DISTRIBUIR'`, [clientId],
-  )).rows)
-  expect(rows).toEqual([{ total: '2783000.00', amount: '2783000.00', budget_id: work.id, equipment_status: 'unknown' }])
+     where d.cliente_id=$1 and d.numero='FA-SIN-DISTRIBUIR'`,
+          [clientId],
+        )
+      ).rows,
+  )
+  expect(rows).toEqual([
+    {
+      total: '2783000.00',
+      amount: '2783000.00',
+      budget_id: work.id,
+      equipment_status: 'unknown',
+    },
+  ])
 })
 
-test('guarda un anticipo con medio y destino explícitos', async ({ page }, testInfo) => {
+test('guarda un anticipo con medio y destino explícitos', async ({
+  page,
+}, testInfo) => {
   await iniciarSession(page)
   await page.goto(`/presupuestos/${budgetId}`)
-  const budgetHeader = page.locator('header').filter({ has: page.getByRole('heading', { name: /Presupuesto N°/ }) })
-  await expect(budgetHeader.getByText('Pendiente', { exact: true })).toHaveClass(/bg-blue-100/)
-  await page.getByRole('link', { name: 'Agregar Orden de pago', exact: true }).click()
+  const budgetHeader = page
+    .locator('header')
+    .filter({ has: page.getByRole('heading', { name: /Presupuesto N°/ }) })
+  await expect(
+    budgetHeader.getByText('Pendiente', { exact: true }),
+  ).toHaveClass(/bg-blue-100/)
+  await page
+    .getByRole('link', { name: 'Agregar Orden de pago', exact: true })
+    .click()
   await page.getByLabel('Número (opcional)').fill('OP-CIRCUITO')
   await page.getByLabel('Monto de la orden de pago').fill('120,00')
-  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({ name: 'pago.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
+    name: 'pago.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+  })
+  await expect(
+    page.getByText('Listo para guardar', { exact: true }),
+  ).toBeVisible()
   await page.getByLabel('Nuevo medio').selectOption('cash')
   await page.getByRole('button', { name: 'Agregar medio' }).click()
   await page.getByLabel('Importe', { exact: true }).first().fill('100,00')
@@ -106,128 +219,320 @@ test('guarda un anticipo con medio y destino explícitos', async ({ page }, test
   await page.setViewportSize({ width: 1200, height: 805 })
   await page.evaluate(() => document.fonts.ready)
   await page.evaluate(() => window.scrollTo(0, 0))
-  await page.screenshot({ path: testInfo.outputPath('op-desktop.png'), fullPage: true, animations: 'disabled' })
+  await page.screenshot({
+    path: testInfo.outputPath('op-desktop.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({ path: testInfo.outputPath('op-mobile.png'), fullPage: true, animations: 'disabled' })
+  await page.screenshot({
+    path: testInfo.outputPath('op-mobile.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
   await page.setViewportSize({ width: 1200, height: 805 })
   await page.getByRole('button', { name: 'Guardar documento' }).click()
-  await expect(page.getByRole('alert').first()).toContainText('Los medios no anulados deben sumar')
-  await expect(page.getByLabel('Monto de la orden de pago')).toHaveValue('$ 120,00')
+  await expect(page.getByRole('alert').first()).toContainText(
+    'Los medios no anulados deben sumar',
+  )
+  await expect(page.getByLabel('Monto de la orden de pago')).toHaveValue(
+    '$ 120,00',
+  )
   await expect(page.getByText('pago.pdf', { exact: true })).toBeVisible()
   const orderAmount = page.getByLabel('Monto de la orden de pago')
   await orderAmount.fill('100,00')
   await expect(orderAmount).toHaveValue('100,00')
   await page.getByRole('button', { name: 'Guardar documento' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
-  await expect(budgetHeader.getByText('Pendiente', { exact: true })).toHaveClass(/bg-amber-100/)
-  const records = await withBase(async (db) => (await db.query<{ id: string; kind: string; status: string; amount: string; budget_id: string; invoice_id: string | null }>(`select i.id, i.kind, i.status, i.amount::text, a.budget_id, a.invoice_id
+  await expect(
+    budgetHeader.getByText('Pendiente', { exact: true }),
+  ).toHaveClass(/bg-amber-100/)
+  const records = await withBase(
+    async (db) =>
+      (
+        await db.query<{
+          id: string
+          kind: string
+          status: string
+          amount: string
+          budget_id: string
+          invoice_id: string | null
+        }>(
+          `select i.id, i.kind, i.status, i.amount::text, a.budget_id, a.invoice_id
     from public.documentos d join public.payment_instruments i on i.op_id = d.id
-    join public.payment_allocations a on a.instrument_id = i.id where d.cliente_id = $1 and d.numero = 'OP-CIRCUITO'`, [clientId])).rows)
-  expect(records).toEqual([{ id: expect.any(String), kind: 'cash', status: 'confirmed', amount: '100.00', budget_id: budgetId, invoice_id: null }])
+    join public.payment_allocations a on a.instrument_id = i.id where d.cliente_id = $1 and d.numero = 'OP-CIRCUITO'`,
+          [clientId],
+        )
+      ).rows,
+  )
+  expect(records).toEqual([
+    {
+      id: expect.any(String),
+      kind: 'cash',
+      status: 'confirmed',
+      amount: '100.00',
+      budget_id: budgetId,
+      invoice_id: null,
+    },
+  ])
   await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
   await page.getByLabel('Número (opcional)').fill('FA-ANTICIPO')
   await page.getByLabel('Monto total con IVA').fill('100')
-  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({ name: 'factura.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
+    name: 'factura.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+  })
+  await expect(
+    page.getByText('Listo para guardar', { exact: true }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Agregar distribución' }).click()
   await page.getByRole('button', { name: 'Guardar documento' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
-  const invoiceId = await withBase(async (db) => (await db.query<{ id: string }>('select id from public.documentos where cliente_id = $1 and numero = $2', [clientId, 'FA-ANTICIPO'])).rows[0].id)
-  await page.locator('[data-documento]').filter({ hasText: 'OP-CIRCUITO' }).getByRole('link', { name: 'Editar' }).click()
-  await expect(page.getByLabel('Monto de la orden de pago')).toHaveValue('$ 100,00')
+  const invoiceId = await withBase(
+    async (db) =>
+      (
+        await db.query<{ id: string }>(
+          'select id from public.documentos where cliente_id = $1 and numero = $2',
+          [clientId, 'FA-ANTICIPO'],
+        )
+      ).rows[0].id,
+  )
+  await page
+    .locator('[data-documento]')
+    .filter({ hasText: 'OP-CIRCUITO' })
+    .getByRole('link', { name: 'Editar' })
+    .click()
+  await expect(page.getByLabel('Monto de la orden de pago')).toHaveValue(
+    '$ 100,00',
+  )
   await page.getByRole('button', { name: 'Aplicar anticipo' }).click()
   await page.getByLabel('Factura (opcional)').selectOption(invoiceId)
   await page.evaluate(() => window.scrollTo(0, 0))
-  await page.screenshot({ path: testInfo.outputPath('aplicar-anticipo.png'), fullPage: true, animations: 'disabled' })
-  await page.getByLabel('Motivo (cuando corresponda)').fill('Aplicación del anticipo')
+  await page.screenshot({
+    path: testInfo.outputPath('aplicar-anticipo.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await page
+    .getByLabel('Motivo (cuando corresponda)')
+    .fill('Aplicación del anticipo')
   await page.getByLabel('Importe', { exact: true }).last().fill('101')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(page.getByRole('alert').first()).toBeVisible()
-  await expect(page.getByLabel('Importe', { exact: true }).last()).toHaveValue('101')
+  await expect(page.getByLabel('Importe', { exact: true }).last()).toHaveValue(
+    '101',
+  )
   await page.getByLabel('Importe', { exact: true }).last().fill('100')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
-  const applied = await withBase(async (db) => (await db.query<{ id: string; allocation_id: string; invoice_id: string; count: string }>(`select i.id, a.id as allocation_id, a.invoice_id, count(*) over()::text from public.payment_instruments i
-    join public.payment_allocations a on a.instrument_id = i.id where i.op_id = (select id from public.documentos where cliente_id = $1 and numero = 'OP-CIRCUITO')`, [clientId])).rows)
-  expect(applied).toEqual([{ id: records[0].id, allocation_id: expect.any(String), invoice_id: invoiceId, count: '1' }])
-  await expect(budgetHeader.getByText('Finalizado', { exact: true })).toHaveClass(/bg-green-100/)
+  const applied = await withBase(
+    async (db) =>
+      (
+        await db.query<{
+          id: string
+          allocation_id: string
+          invoice_id: string
+          count: string
+        }>(
+          `select i.id, a.id as allocation_id, a.invoice_id, count(*) over()::text from public.payment_instruments i
+    join public.payment_allocations a on a.instrument_id = i.id where i.op_id = (select id from public.documentos where cliente_id = $1 and numero = 'OP-CIRCUITO')`,
+          [clientId],
+        )
+      ).rows,
+  )
+  expect(applied).toEqual([
+    {
+      id: records[0].id,
+      allocation_id: expect.any(String),
+      invoice_id: invoiceId,
+      count: '1',
+    },
+  ])
+  await expect(
+    budgetHeader.getByText('Finalizado', { exact: true }),
+  ).toHaveClass(/bg-green-100/)
   const invoiceRow = page.locator(`[data-documento="${invoiceId}"]`)
   await invoiceRow.getByRole('button', { name: 'Anular', exact: true }).click()
   await invoiceRow.getByLabel('Motivo').fill('Factura reemplazada')
   await invoiceRow.getByRole('button', { name: 'Confirmar anulación' }).click()
-  await expect(budgetHeader.getByText('Pendiente', { exact: true })).toHaveClass(/bg-amber-100/)
+  await expect(
+    budgetHeader.getByText('Pendiente', { exact: true }),
+  ).toHaveClass(/bg-amber-100/)
   await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
   await page.getByLabel('Número (opcional)').fill('FA-REEMPLAZO')
   await page.getByLabel('Monto total con IVA').fill('100')
-  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({ name: 'reemplazo.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
+    name: 'reemplazo.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+  })
+  await expect(
+    page.getByText('Listo para guardar', { exact: true }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Agregar distribución' }).click()
   await page.getByRole('button', { name: 'Guardar documento' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
-  const replacementId = await withBase(async (db) => (await db.query<{ id: string }>('select id from public.documentos where cliente_id = $1 and numero = $2', [clientId, 'FA-REEMPLAZO'])).rows[0].id)
-  await page.locator('[data-documento]').filter({ hasText: 'OP-CIRCUITO' }).getByRole('link', { name: 'Editar' }).click()
-  await expect(page.getByLabel('Monto de la orden de pago')).toHaveValue('$ 100,00')
+  const replacementId = await withBase(
+    async (db) =>
+      (
+        await db.query<{ id: string }>(
+          'select id from public.documentos where cliente_id = $1 and numero = $2',
+          [clientId, 'FA-REEMPLAZO'],
+        )
+      ).rows[0].id,
+  )
+  await page
+    .locator('[data-documento]')
+    .filter({ hasText: 'OP-CIRCUITO' })
+    .getByRole('link', { name: 'Editar' })
+    .click()
+  await expect(page.getByLabel('Monto de la orden de pago')).toHaveValue(
+    '$ 100,00',
+  )
   await expect(page.getByLabel('Factura (opcional)')).toHaveValue(invoiceId)
   await page.evaluate(() => document.fonts.ready)
   await page.evaluate(() => window.scrollTo(0, 0))
-  await page.screenshot({ path: testInfo.outputPath('anticipo-factura-anulada-desktop.png'), fullPage: true, animations: 'disabled' })
+  await page.screenshot({
+    path: testInfo.outputPath('anticipo-factura-anulada-desktop.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({ path: testInfo.outputPath('anticipo-factura-anulada-mobile.png'), fullPage: true, animations: 'disabled' })
+  await page.screenshot({
+    path: testInfo.outputPath('anticipo-factura-anulada-mobile.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
   await page.setViewportSize({ width: 1200, height: 805 })
   await page.getByRole('button', { name: 'Aplicar anticipo' }).click()
   await page.getByLabel('Factura (opcional)').selectOption(replacementId)
-  await page.getByLabel('Motivo (cuando corresponda)').fill('Aplicar a factura de reemplazo')
+  await page
+    .getByLabel('Motivo (cuando corresponda)')
+    .fill('Aplicar a factura de reemplazo')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
-  const reapplied = await withBase(async (db) => (await db.query<{ id: string; allocation_id: string; invoice_id: string }>(`select i.id, a.id as allocation_id, a.invoice_id from public.payment_instruments i join public.payment_allocations a on a.instrument_id = i.id where i.id = $1`, [records[0].id])).rows)
-  expect(reapplied).toEqual([{ id: records[0].id, allocation_id: applied[0].allocation_id, invoice_id: replacementId }])
+  const reapplied = await withBase(
+    async (db) =>
+      (
+        await db.query<{
+          id: string
+          allocation_id: string
+          invoice_id: string
+        }>(
+          `select i.id, a.id as allocation_id, a.invoice_id from public.payment_instruments i join public.payment_allocations a on a.instrument_id = i.id where i.id = $1`,
+          [records[0].id],
+        )
+      ).rows,
+  )
+  expect(reapplied).toEqual([
+    {
+      id: records[0].id,
+      allocation_id: applied[0].allocation_id,
+      invoice_id: replacementId,
+    },
+  ])
 })
 
-test('acredita y rechaza cheques persistidos sin descartar cambios', async ({ page }, testInfo) => {
+test('acredita y rechaza cheques persistidos sin descartar cambios', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await iniciarSession(page)
   await page.goto(`/presupuestos/${budgetId}`)
-  await page.getByRole('link', { name: 'Agregar Orden de pago', exact: true }).click()
+  await page
+    .getByRole('link', { name: 'Agregar Orden de pago', exact: true })
+    .click()
   await page.getByLabel('Número (opcional)').fill('OP-CHEQUES')
   await page.getByLabel('Monto de la orden de pago').fill('100')
-  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({ name: 'cheques.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
+    name: 'cheques.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+  })
+  await expect(
+    page.getByText('Listo para guardar', { exact: true }),
+  ).toBeVisible()
   for (const kind of ['check', 'check', 'withholding']) {
     await page.getByLabel('Nuevo medio').selectOption(kind)
     await page.getByRole('button', { name: 'Agregar medio' }).click()
   }
-  for (const [index, value] of ['40', '40', '20'].entries()) await page.getByLabel('Importe', { exact: true }).nth(index).fill(value)
+  for (const [index, value] of ['40', '40', '20'].entries())
+    await page.getByLabel('Importe', { exact: true }).nth(index).fill(value)
   await page.getByLabel('Fecha efectiva').fill('2024-06-20')
   for (const [index, value] of ['40', '40', '20'].entries()) {
     await page.getByRole('button', { name: 'Agregar destino' }).click()
-    await page.getByLabel('Medio', { exact: true }).nth(3 + index).selectOption({ index })
-    await page.getByLabel('Trabajo', { exact: true }).nth(index).selectOption(budgetId)
-    await page.getByLabel('Importe', { exact: true }).nth(3 + index).fill(value)
+    await page
+      .getByLabel('Medio', { exact: true })
+      .nth(3 + index)
+      .selectOption({ index })
+    await page
+      .getByLabel('Trabajo', { exact: true })
+      .nth(index)
+      .selectOption(budgetId)
+    await page
+      .getByLabel('Importe', { exact: true })
+      .nth(3 + index)
+      .fill(value)
   }
   await page.getByRole('button', { name: 'Guardar documento' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
-  await page.locator('[data-documento]').filter({ hasText: 'OP-CHEQUES' }).getByRole('link', { name: 'Editar' }).click()
+  await page
+    .locator('[data-documento]')
+    .filter({ hasText: 'OP-CHEQUES' })
+    .getByRole('link', { name: 'Editar' })
+    .click()
   await expect(page.getByLabel('Número (opcional)')).toHaveValue('OP-CHEQUES')
   const stalePage = await page.context().newPage()
   await stalePage.setViewportSize({ width: 390, height: 844 })
   await stalePage.goto(page.url())
   await stalePage.getByLabel('Número (opcional)').fill('OP-EDICION-OBSOLETA')
-  await stalePage.getByLabel('Seleccionar archivos del documento').setInputFiles({ name: 'archivo-conservado.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
-  await expect(stalePage.getByText('Listo para guardar', { exact: true })).toBeVisible()
-  const checkRows = page.locator('div.grid').filter({ has: page.getByLabel('Fecha de acreditación') })
+  await stalePage
+    .getByLabel('Seleccionar archivos del documento')
+    .setInputFiles({
+      name: 'archivo-conservado.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+    })
+  await expect(
+    stalePage.getByText('Listo para guardar', { exact: true }),
+  ).toBeVisible()
+  const checkRows = page
+    .locator('div.grid')
+    .filter({ has: page.getByLabel('Fecha de acreditación') })
   await expect(checkRows).toHaveCount(2)
-  const firstId = await checkRows.first().getByLabel('Estado').getAttribute('id')
-  const secondId = await checkRows.last().getByLabel('Estado').getAttribute('id')
-  const first = page.locator(`#${firstId}`).locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " grid ")][1]')
-  const second = page.locator(`#${secondId}`).locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " grid ")][1]')
+  const firstId = await checkRows
+    .first()
+    .getByLabel('Estado')
+    .getAttribute('id')
+  const secondId = await checkRows
+    .last()
+    .getByLabel('Estado')
+    .getAttribute('id')
+  const first = page
+    .locator(`#${firstId}`)
+    .locator(
+      'xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " grid ")][1]',
+    )
+  const second = page
+    .locator(`#${secondId}`)
+    .locator(
+      'xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " grid ")][1]',
+    )
   await first.getByLabel('Fecha de acreditación').fill('2024-06-20')
   await page.getByLabel('Número (opcional)').fill('OP-CHEQUES-CAMBIADO')
   await first.getByRole('button', { name: 'Acreditar cheque' }).click()
   await expect(first.getByRole('alert')).toContainText('Guardá los cambios')
   await page.evaluate(() => document.fonts.ready)
   await page.evaluate(() => window.scrollTo(0, 0))
-  await page.screenshot({ path: testInfo.outputPath('cheque-error-mobile.png'), fullPage: true, animations: 'disabled' })
-  await expect(page.getByLabel('Número (opcional)')).toHaveValue('OP-CHEQUES-CAMBIADO')
+  await page.screenshot({
+    path: testInfo.outputPath('cheque-error-mobile.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await expect(page.getByLabel('Número (opcional)')).toHaveValue(
+    'OP-CHEQUES-CAMBIADO',
+  )
   await page.getByLabel('Número (opcional)').fill('OP-CHEQUES')
   const instrumentAmount = first.getByLabel('Importe', { exact: true })
   const originalAmount = await instrumentAmount.inputValue()
@@ -254,81 +559,191 @@ test('acredita y rechaza cheques persistidos sin descartar cambios', async ({ pa
   await expect(first.getByLabel('Estado')).toHaveValue('cleared')
   await second.getByRole('button', { name: 'Rechazar cheque' }).click()
   await expect(second.getByLabel('Estado')).toHaveValue('rejected')
-  const record = await withBase(async (db) => (await db.query<{ status: string; amount: string }>(`select i.status, i.amount::text from public.payment_instruments i
-    join public.documentos d on d.id = i.op_id where d.cliente_id = $1 and d.numero = 'OP-CHEQUES' order by i.status`, [clientId])).rows)
-  expect(record).toEqual([{ status: 'cleared', amount: '40.00' }, { status: 'confirmed', amount: '20.00' }, { status: 'rejected', amount: '40.00' }])
+  const record = await withBase(
+    async (db) =>
+      (
+        await db.query<{ status: string; amount: string }>(
+          `select i.status, i.amount::text from public.payment_instruments i
+    join public.documentos d on d.id = i.op_id where d.cliente_id = $1 and d.numero = 'OP-CHEQUES' order by i.status`,
+          [clientId],
+        )
+      ).rows,
+  )
+  expect(record).toEqual([
+    { status: 'cleared', amount: '40.00' },
+    { status: 'confirmed', amount: '20.00' },
+    { status: 'rejected', amount: '40.00' },
+  ])
   await stalePage.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(stalePage.getByRole('alert').first()).toContainText('cambió')
-  await expect(stalePage.getByLabel('Número (opcional)')).toHaveValue('OP-EDICION-OBSOLETA')
+  await expect(stalePage.getByLabel('Número (opcional)')).toHaveValue(
+    'OP-EDICION-OBSOLETA',
+  )
   await expect(stalePage.getByText('archivo-conservado.pdf')).toBeVisible()
   await stalePage.close()
   await page.goto(`/presupuestos/${budgetId}`)
-  const payment = page.locator('[data-documento]').filter({ hasText: 'OP-CHEQUES' })
+  const payment = page
+    .locator('[data-documento]')
+    .filter({ hasText: 'OP-CHEQUES' })
   await payment.getByRole('button', { name: 'Anular', exact: true }).click()
   await payment.getByLabel('Motivo').fill('Corrección del comprobante')
   await payment.getByRole('button', { name: 'Confirmar anulación' }).click()
   await payment.getByRole('button', { name: 'Restaurar', exact: true }).click()
   await payment.getByLabel('Motivo').fill('Comprobante verificado')
   await payment.getByRole('button', { name: 'Confirmar restauración' }).click()
-  await expect(payment.getByRole('button', { name: 'Anular', exact: true })).toBeVisible()
+  await expect(
+    payment.getByRole('button', { name: 'Anular', exact: true }),
+  ).toBeVisible()
 })
 
-test('distribuye una factura de forma desigual entre trabajos y grúas', async ({ page }, testInfo) => {
+test('distribuye una factura de forma desigual entre trabajos y grúas', async ({
+  page,
+}, testInfo) => {
   await iniciarSession(page)
   await page.goto(`/presupuestos/${budgetId}`)
   await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
   await page.getByLabel('Número (opcional)').fill('FA-DISTRIBUCION')
   await page.getByLabel('Monto total con IVA').fill('1.000,00')
-  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({ name: 'factura.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
-  await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
-  await page.getByRole('checkbox', { name: new RegExp(`${marker}-segundo`) }).check()
+  await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
+    name: 'factura.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+  })
+  await expect(
+    page.getByText('Listo para guardar', { exact: true }),
+  ).toBeVisible()
+  await page
+    .getByRole('checkbox', { name: new RegExp(`${marker}-segundo`) })
+    .check()
   await page.getByRole('button', { name: 'Agregar distribución' }).click()
   await page.getByRole('button', { name: 'Agregar distribución' }).click()
-  await expect(page.getByLabel('Grúa', { exact: true }).last().locator(`option[value="${equipmentIds[1]}"]`)).toHaveText(`${marker}-grua-2 · Inactiva`)
-  for (const [index, budget, equipment, amount] of [[0, budgetId, equipmentIds[0], '600'], [1, secondBudgetId, equipmentIds[1], '400']] as const) {
-    await page.getByLabel('Trabajo', { exact: true }).nth(index).selectOption(budget)
-    await page.getByLabel('Grúa', { exact: true }).nth(index).selectOption(equipment)
+  await expect(
+    page
+      .getByLabel('Grúa', { exact: true })
+      .last()
+      .locator(`option[value="${equipmentIds[1]}"]`),
+  ).toHaveText(`${marker}-grua-2 · Inactiva`)
+  for (const [index, budget, equipment, amount] of [
+    [0, budgetId, equipmentIds[0], '600'],
+    [1, secondBudgetId, equipmentIds[1], '400'],
+  ] as const) {
+    await page
+      .getByLabel('Trabajo', { exact: true })
+      .nth(index)
+      .selectOption(budget)
+    await page
+      .getByLabel('Grúa', { exact: true })
+      .nth(index)
+      .selectOption(equipment)
     await page.getByLabel('Importe', { exact: true }).nth(index).fill(amount)
   }
   await expect(page.getByText('Sin distribuir: $ 0,00')).toBeVisible()
   await page.setViewportSize({ width: 1200, height: 805 })
   await page.evaluate(() => document.fonts.ready)
   await page.evaluate(() => window.scrollTo(0, 0))
-  await page.screenshot({ path: testInfo.outputPath('factura-desktop.png'), fullPage: true, animations: 'disabled' })
+  await page.screenshot({
+    path: testInfo.outputPath('factura-desktop.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({ path: testInfo.outputPath('factura-mobile.png'), fullPage: true, animations: 'disabled' })
+  await page.screenshot({
+    path: testInfo.outputPath('factura-mobile.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
   await page.getByRole('button', { name: 'Guardar documento' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}$`))
-  const rows = await withBase(async (db) => (await db.query<{ budget_id: string; equipment_id: string; amount: string }>(`select a.budget_id, a.equipment_id, a.amount::text from public.invoice_allocations a
-    join public.documentos d on d.id = a.invoice_id where d.cliente_id = $1 and d.numero = 'FA-DISTRIBUCION' order by a.amount desc`, [clientId])).rows)
-  expect(rows).toEqual([{ budget_id: budgetId, equipment_id: equipmentIds[0], amount: '600.00' }, { budget_id: secondBudgetId, equipment_id: equipmentIds[1], amount: '400.00' }])
+  const rows = await withBase(
+    async (db) =>
+      (
+        await db.query<{
+          budget_id: string
+          equipment_id: string
+          amount: string
+        }>(
+          `select a.budget_id, a.equipment_id, a.amount::text from public.invoice_allocations a
+    join public.documentos d on d.id = a.invoice_id where d.cliente_id = $1 and d.numero = 'FA-DISTRIBUCION' order by a.amount desc`,
+          [clientId],
+        )
+      ).rows,
+  )
+  expect(rows).toEqual([
+    { budget_id: budgetId, equipment_id: equipmentIds[0], amount: '600.00' },
+    {
+      budget_id: secondBudgetId,
+      equipment_id: equipmentIds[1],
+      amount: '400.00',
+    },
+  ])
 })
 
-test('conserva la evidencia histórica y explica el anticipo al anular la factura', async ({ page }, testInfo) => {
+test('conserva la evidencia histórica y explica el anticipo al anular la factura', async ({
+  page,
+}, testInfo) => {
   const path = `documentos/${clientId}/${crypto.randomUUID()}.pdf`
-  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } })
-  const upload = await admin.storage.from('documentos').upload(path, Buffer.from('%PDF-1.4\n%%EOF'), { contentType: 'application/pdf' })
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+    { auth: { persistSession: false } },
+  )
+  const upload = await admin.storage
+    .from('documentos')
+    .upload(path, Buffer.from('%PDF-1.4\n%%EOF'), {
+      contentType: 'application/pdf',
+    })
   if (upload.error) throw upload.error
   const fixture = await withBase(async (db) => {
     await db.query('begin')
     try {
-      const budget = (await db.query<{ id: string }>(`insert into public.cotizaciones (cliente_id, origen, formato, asunto, estado, fecha_aprobacion, presupuesto_estado)
-        values ($1, 'directa', 'jornada', $2, 'aprobada', current_date, 'en_curso') returning id`, [clientId, `${marker}-historico`])).rows[0].id
-      const invoice = (await db.query<{ id: string }>(`insert into public.documentos (cliente_id, tipo, numero, monto, tipo_comprobante, notas)
-        values ($1, 'factura', 'FA-HISTORICA', 100, 'FA', 'Evidencia original') returning id`, [clientId])).rows[0].id
-      await db.query('insert into public.documento_presupuestos (documento_id, cotizacion_id) values ($1, $2)', [invoice, budget])
-      await db.query("insert into public.documento_archivos (documento_id, path, nombre_original, mime, tamano, orden) values ($1, $2, 'original.pdf', 'application/pdf', 14, 1)", [invoice, path])
-      await db.query(`insert into public.facturas_historicas (factura_id, cotizacion_id, sha256, lote, cobrado, confirmacion_cobro, entrada)
-        values ($1, $2, $3, 'prueba', 100, 'Cobro confirmado', $4::jsonb)`, [invoice, budget, 'a'.repeat(64), JSON.stringify({ emisor_cuit: '20123456789', numero: marker })])
-      await db.query(`insert into public.invoice_allocations (invoice_id, budget_id, budget_number, budget_subject, equipment_status, amount, historical_settled_amount, source)
-        select $1, id, numero, asunto, 'unknown', 100, 100, 'historical_import' from public.cotizaciones where id = $2`, [invoice, budget])
+      const budget = (
+        await db.query<{ id: string }>(
+          `insert into public.cotizaciones (cliente_id, origen, formato, asunto, estado, fecha_aprobacion, presupuesto_estado)
+        values ($1, 'directa', 'jornada', $2, 'aprobada', current_date, 'en_curso') returning id`,
+          [clientId, `${marker}-historico`],
+        )
+      ).rows[0].id
+      const invoice = (
+        await db.query<{ id: string }>(
+          `insert into public.documentos (cliente_id, tipo, numero, monto, tipo_comprobante, notas)
+        values ($1, 'factura', 'FA-HISTORICA', 100, 'FA', 'Evidencia original') returning id`,
+          [clientId],
+        )
+      ).rows[0].id
+      await db.query(
+        'insert into public.documento_presupuestos (documento_id, cotizacion_id) values ($1, $2)',
+        [invoice, budget],
+      )
+      await db.query(
+        "insert into public.documento_archivos (documento_id, path, nombre_original, mime, tamano, orden) values ($1, $2, 'original.pdf', 'application/pdf', 14, 1)",
+        [invoice, path],
+      )
+      await db.query(
+        `insert into public.facturas_historicas (factura_id, cotizacion_id, sha256, lote, cobrado, confirmacion_cobro, entrada)
+        values ($1, $2, $3, 'prueba', 100, 'Cobro confirmado', $4::jsonb)`,
+        [
+          invoice,
+          budget,
+          'a'.repeat(64),
+          JSON.stringify({ emisor_cuit: '20123456789', numero: marker }),
+        ],
+      )
+      await db.query(
+        `insert into public.invoice_allocations (invoice_id, budget_id, budget_number, budget_subject, equipment_status, amount, historical_settled_amount, source)
+        select $1, id, numero, asunto, 'unknown', 100, 100, 'historical_import' from public.cotizaciones where id = $2`,
+        [invoice, budget],
+      )
       await db.query('commit')
       return { budget, invoice }
-    } catch (error) { await db.query('rollback'); throw error }
+    } catch (error) {
+      await db.query('rollback')
+      throw error
+    }
   })
   await iniciarSession(page)
   const scripts = '**/_next/static/**/*.js'
-  const { promise: hydrationAllowed, resolve: allowHydration } = Promise.withResolvers<void>()
+  const { promise: hydrationAllowed, resolve: allowHydration } =
+    Promise.withResolvers<void>()
   const pauseHydration = async (route: Route) => {
     await hydrationAllowed
     await route.continue()
@@ -338,47 +753,103 @@ test('conserva la evidencia histórica y explica el anticipo al anular la factur
   try {
     await page.goto(`/documentos/${fixture.invoice}`, { waitUntil: 'commit' })
     await expect(equipment).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
+    await expect(
+      page.getByRole('button', { name: 'Guardar cambios' }),
+    ).toBeDisabled()
   } finally {
     allowHydration()
   }
   await expect(equipment).toBeEnabled()
   await page.unroute(scripts, pauseHydration)
   await expect(equipment).toHaveValue('unknown')
-  await expect(page.getByLabel('Cancelación histórica atribuida')).toHaveValue('100.00')
+  await expect(page.getByLabel('Cancelación histórica atribuida')).toHaveValue(
+    '100.00',
+  )
   await equipment.selectOption(equipmentIds[1])
-  await page.getByLabel('Motivo (cuando corresponda)').fill('Identificación por documentación')
+  await page
+    .getByLabel('Motivo (cuando corresponda)')
+    .fill('Identificación por documentación')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(page).toHaveURL(new RegExp(`/presupuestos/${fixture.budget}$`))
-  const evidence = await withBase(async (db) => (await db.query<{ cobrado: string; confirmacion_cobro: string; path: string; equipment_id: string }>(`select h.cobrado::text, h.confirmacion_cobro, f.path, a.equipment_id
+  const evidence = await withBase(
+    async (db) =>
+      (
+        await db.query<{
+          cobrado: string
+          confirmacion_cobro: string
+          path: string
+          equipment_id: string
+        }>(
+          `select h.cobrado::text, h.confirmacion_cobro, f.path, a.equipment_id
     from public.facturas_historicas h join public.documento_archivos f on f.documento_id = h.factura_id
-    join public.invoice_allocations a on a.invoice_id = h.factura_id where h.factura_id = $1`, [fixture.invoice])).rows[0])
-  expect(evidence).toEqual({ cobrado: '100.00', confirmacion_cobro: 'Cobro confirmado', path, equipment_id: equipmentIds[1] })
-  const invoiceRow = page.locator('[data-documento]').filter({ hasText: 'FA-HISTORICA' })
+    join public.invoice_allocations a on a.invoice_id = h.factura_id where h.factura_id = $1`,
+          [fixture.invoice],
+        )
+      ).rows[0],
+  )
+  expect(evidence).toEqual({
+    cobrado: '100.00',
+    confirmacion_cobro: 'Cobro confirmado',
+    path,
+    equipment_id: equipmentIds[1],
+  })
+  const invoiceRow = page
+    .locator('[data-documento]')
+    .filter({ hasText: 'FA-HISTORICA' })
   await invoiceRow.getByRole('button', { name: 'Anular', exact: true }).click()
   await invoiceRow.getByLabel('Motivo').fill('Factura reemplazada')
   await invoiceRow.getByRole('button', { name: 'Confirmar anulación' }).click()
   const summary = page.getByRole('region', { name: 'Resumen financiero' })
-  await expect(summary).toContainText('cancelaciones históricas de facturas anuladas')
-  await expect(summary.getByRole('link', { name: 'FA-HISTORICA' })).toHaveAttribute('href', `/documentos/${fixture.invoice}`)
+  await expect(summary).toContainText(
+    'cancelaciones históricas de facturas anuladas',
+  )
+  await expect(
+    summary.getByRole('link', { name: 'FA-HISTORICA' }),
+  ).toHaveAttribute('href', `/documentos/${fixture.invoice}`)
   await page.reload()
-  await expect(summary.getByRole('link', { name: 'FA-HISTORICA' })).toBeVisible()
+  await expect(
+    summary.getByRole('link', { name: 'FA-HISTORICA' }),
+  ).toBeVisible()
   await page.setViewportSize({ width: 1200, height: 805 })
   await page.evaluate(() => document.fonts.ready)
   await page.evaluate(() => window.scrollTo(0, 0))
-  await page.screenshot({ path: testInfo.outputPath('historico-desktop.png'), fullPage: true, animations: 'disabled' })
+  await page.screenshot({
+    path: testInfo.outputPath('historico-desktop.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({ path: testInfo.outputPath('historico-mobile.png'), fullPage: true, animations: 'disabled' })
-  const means = await withBase(async (db) => (await db.query<{ count: string }>('select count(*)::text from public.payment_instruments i join public.documentos d on d.id = i.op_id where d.cliente_id = $1 and d.numero = $2', [clientId, 'FA-HISTORICA'])).rows[0].count)
+  await page.screenshot({
+    path: testInfo.outputPath('historico-mobile.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
+  const means = await withBase(
+    async (db) =>
+      (
+        await db.query<{ count: string }>(
+          'select count(*)::text from public.payment_instruments i join public.documentos d on d.id = i.op_id where d.cliente_id = $1 and d.numero = $2',
+          [clientId, 'FA-HISTORICA'],
+        )
+      ).rows[0].count,
+  )
   expect(means).toBe('0')
 })
 
-test('recupera la capacidad propia y reemplaza un cheque rechazado conservando evidencia', async ({ page }, testInfo) => {
+test('recupera la capacidad propia y reemplaza un cheque rechazado conservando evidencia', async ({
+  page,
+}, testInfo) => {
   await iniciarSession(page)
   await page.goto(`/presupuestos/${budgetId}`)
   async function attach(name: string) {
-    await page.getByLabel('Seleccionar archivos del documento').setInputFiles({ name, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') })
-    await expect(page.getByText('Listo para guardar', { exact: true })).toBeVisible()
+    await page.getByLabel('Seleccionar archivos del documento').setInputFiles({
+      name,
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n%%EOF'),
+    })
+    await expect(
+      page.getByText('Listo para guardar', { exact: true }),
+    ).toBeVisible()
   }
   async function save(name: string) {
     await page.getByRole('button', { name, exact: true }).click()
@@ -388,9 +859,17 @@ test('recupera la capacidad propia y reemplaza un cheque rechazado conservando e
     await page.setViewportSize({ width: 1200, height: 805 })
     await page.evaluate(() => document.fonts.ready)
     await page.evaluate(() => window.scrollTo(0, 0))
-    await page.screenshot({ path: testInfo.outputPath(`${name}-desktop.png`), fullPage: true, animations: 'disabled' })
+    await page.screenshot({
+      path: testInfo.outputPath(`${name}-desktop.png`),
+      fullPage: true,
+      animations: 'disabled',
+    })
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.screenshot({ path: testInfo.outputPath(`${name}-mobile.png`), fullPage: true, animations: 'disabled' })
+    await page.screenshot({
+      path: testInfo.outputPath(`${name}-mobile.png`),
+      fullPage: true,
+      animations: 'disabled',
+    })
     await page.setViewportSize({ width: 1200, height: 805 })
   }
   await page.getByRole('link', { name: 'Agregar Factura', exact: true }).click()
@@ -399,9 +878,19 @@ test('recupera la capacidad propia y reemplaza un cheque rechazado conservando e
   await attach('factura-capacidad.pdf')
   await page.getByRole('button', { name: 'Agregar distribución' }).click()
   await save('Guardar documento')
-  const invoiceId = await withBase(async (db) => (await db.query<{ id: string }>('select id from public.documentos where cliente_id = $1 and numero = $2', [clientId, 'FA-CAPACIDAD'])).rows[0].id)
+  const invoiceId = await withBase(
+    async (db) =>
+      (
+        await db.query<{ id: string }>(
+          'select id from public.documentos where cliente_id = $1 and numero = $2',
+          [clientId, 'FA-CAPACIDAD'],
+        )
+      ).rows[0].id,
+  )
 
-  await page.getByRole('link', { name: 'Agregar Orden de pago', exact: true }).click()
+  await page
+    .getByRole('link', { name: 'Agregar Orden de pago', exact: true })
+    .click()
   await page.getByLabel('Número (opcional)').fill('OP-CAPACIDAD')
   await page.getByLabel('Monto de la orden de pago').fill('100')
   await attach('orden-capacidad.pdf')
@@ -418,28 +907,61 @@ test('recupera la capacidad propia y reemplaza un cheque rechazado conservando e
   await page.getByLabel('Vencimiento').fill('2024-07-20')
   for (const [index, amount] of ['60', '40'].entries()) {
     await page.getByRole('button', { name: 'Agregar destino' }).click()
-    await page.getByLabel('Medio', { exact: true }).nth(index + 2).selectOption({ index })
-    await page.getByLabel('Trabajo', { exact: true }).nth(index).selectOption(budgetId)
-    await page.getByLabel('Factura (opcional)').nth(index).selectOption(invoiceId)
-    await page.getByLabel('Importe', { exact: true }).nth(index + 2).fill(amount)
+    await page
+      .getByLabel('Medio', { exact: true })
+      .nth(index + 2)
+      .selectOption({ index })
+    await page
+      .getByLabel('Trabajo', { exact: true })
+      .nth(index)
+      .selectOption(budgetId)
+    await page
+      .getByLabel('Factura (opcional)')
+      .nth(index)
+      .selectOption(invoiceId)
+    await page
+      .getByLabel('Importe', { exact: true })
+      .nth(index + 2)
+      .fill(amount)
   }
   await save('Guardar documento')
   const [opId, checkId] = await withBase(async (db) => {
-    const { rows: [entry] } = await db.query<{ op_id: string; check_id: string }>(`select d.id as op_id, i.id as check_id from public.documentos d
-      join public.payment_instruments i on i.op_id = d.id and i.kind = 'check' where d.cliente_id = $1 and d.numero = 'OP-CAPACIDAD'`, [clientId])
+    const {
+      rows: [entry],
+    } = await db.query<{ op_id: string; check_id: string }>(
+      `select d.id as op_id, i.id as check_id from public.documentos d
+      join public.payment_instruments i on i.op_id = d.id and i.kind = 'check' where d.cliente_id = $1 and d.numero = 'OP-CAPACIDAD'`,
+      [clientId],
+    )
     return [entry.op_id, entry.check_id]
   })
-  const originalCapacity = await withBase(async (db) => (await db.query<{ available: string }>('select available_amount::text as available from public.v_facturas where id = $1', [invoiceId])).rows[0].available)
+  const originalCapacity = await withBase(
+    async (db) =>
+      (
+        await db.query<{ available: string }>(
+          'select available_amount::text as available from public.v_facturas where id = $1',
+          [invoiceId],
+        )
+      ).rows[0].available,
+  )
   expect(originalCapacity).toMatch(/^0(?:\.00)?$/)
   await page.goto(`/documentos/${opId}`)
   const invoices = page.getByLabel('Factura (opcional)')
   await invoices.first().selectOption('')
-  await expect(invoices.first().locator(`option[value="${invoiceId}"]`)).toHaveCount(1)
+  await expect(
+    invoices.first().locator(`option[value="${invoiceId}"]`),
+  ).toHaveCount(1)
   await invoices.first().selectOption(invoiceId)
-  for (const index of [0, 1, 2, 3]) await page.getByLabel('Importe', { exact: true }).nth(index).fill('50')
+  for (const index of [0, 1, 2, 3])
+    await page.getByLabel('Importe', { exact: true }).nth(index).fill('50')
   await page.getByRole('button', { name: 'Agregar destino' }).click()
-  await page.getByLabel('Trabajo', { exact: true }).last().selectOption(budgetId)
-  await expect(invoices.last().locator(`option[value="${invoiceId}"]`)).toHaveCount(0)
+  await page
+    .getByLabel('Trabajo', { exact: true })
+    .last()
+    .selectOption(budgetId)
+  await expect(
+    invoices.last().locator(`option[value="${invoiceId}"]`),
+  ).toHaveCount(0)
   await page.getByRole('button', { name: 'Quitar destino 3' }).click()
   await capture('capacidad-propia')
   const reason = page.getByLabel('Motivo (cuando corresponda)')
@@ -450,20 +972,58 @@ test('recupera la capacidad propia y reemplaza un cheque rechazado conservando e
   const checkStatus = page.locator(`#instrument-${checkId}-status`)
   await page.getByRole('button', { name: 'Rechazar cheque' }).click()
   await expect(checkStatus).toHaveValue('rejected')
-  for (const field of ['kind', 'amount', 'reference', 'bank', 'received', 'due']) {
+  for (const field of [
+    'kind',
+    'amount',
+    'reference',
+    'bank',
+    'received',
+    'due',
+  ]) {
     await expect(page.locator(`#instrument-${checkId}-${field}`)).toBeDisabled()
   }
-  const evidence = () => withBase(async (db) => (await db.query<{ id: string; kind: string; status: string; amount: string; reference: string; bank: string; received_on: string; due_on: string }>(`select id, kind, status, amount::text, reference, bank, received_on::text, due_on::text from public.payment_instruments where id = $1`, [checkId])).rows[0])
+  const evidence = () =>
+    withBase(
+      async (db) =>
+        (
+          await db.query<{
+            id: string
+            kind: string
+            status: string
+            amount: string
+            reference: string
+            bank: string
+            received_on: string
+            due_on: string
+          }>(
+            `select id, kind, status, amount::text, reference, bank, received_on::text, due_on::text from public.payment_instruments where id = $1`,
+            [checkId],
+          )
+        ).rows[0],
+    )
   const rejected = await evidence()
-  expect(rejected).toEqual({ id: checkId, kind: 'check', status: 'rejected', amount: '50.00', reference: 'CH-REEMPLAZO', bank: 'Banco original', received_on: '2024-06-10', due_on: '2024-07-20' })
+  expect(rejected).toEqual({
+    id: checkId,
+    kind: 'check',
+    status: 'rejected',
+    amount: '50.00',
+    reference: 'CH-REEMPLAZO',
+    bank: 'Banco original',
+    received_on: '2024-06-10',
+    due_on: '2024-07-20',
+  })
   await attach('comprobante-reemplazo.pdf')
   await page.getByLabel('Medio de reemplazo').selectOption('cash')
   await page.getByRole('button', { name: 'Reemplazar cheque' }).click()
   await page.getByLabel('Fecha efectiva').last().fill('2024-06-21')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
-  await expect(page.getByRole('alert').first()).toContainText('Indicá el motivo del reemplazo')
+  await expect(page.getByRole('alert').first()).toContainText(
+    'Indicá el motivo del reemplazo',
+  )
   await expect(reason).toBeFocused()
-  await expect(page.getByText('comprobante-reemplazo.pdf', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('comprobante-reemplazo.pdf', { exact: true }),
+  ).toBeVisible()
   await expect(checkStatus).toHaveValue('voided')
   expect(await evidence()).toEqual(rejected)
   await capture('reemplazo-cheque')
@@ -471,11 +1031,30 @@ test('recupera la capacidad propia y reemplaza un cheque rechazado conservando e
   await save('Guardar cambios')
   expect(await evidence()).toEqual({ ...rejected, status: 'voided' })
   const result = await withBase(async (db) => {
-    const instruments = (await db.query<{ id: string; status: string; amount: string }>(`select id, status, amount::text from public.payment_instruments where op_id = $1 and kind = 'cash' order by settled_on`, [opId])).rows
-    const invoice = (await db.query<{ received: string; pending: string; balance: string }>(`select cobrado::text as received, pending_check_amount::text as pending, saldo::text as balance from public.v_facturas where id = $1`, [invoiceId])).rows[0]
+    const instruments = (
+      await db.query<{ id: string; status: string; amount: string }>(
+        `select id, status, amount::text from public.payment_instruments where op_id = $1 and kind = 'cash' order by settled_on`,
+        [opId],
+      )
+    ).rows
+    const invoice = (
+      await db.query<{ received: string; pending: string; balance: string }>(
+        `select cobrado::text as received, pending_check_amount::text as pending, saldo::text as balance from public.v_facturas where id = $1`,
+        [invoiceId],
+      )
+    ).rows[0]
     return { instruments, invoice }
   })
-  expect(result.instruments).toEqual([{ id: expect.any(String), status: 'confirmed', amount: '50.00' }, { id: expect.any(String), status: 'confirmed', amount: '50.00' }])
-  expect(new Set([checkId, ...result.instruments.map((item) => item.id)]).size).toBe(3)
-  expect(result.invoice).toEqual({ received: '100.00', pending: '0', balance: '0.00' })
+  expect(result.instruments).toEqual([
+    { id: expect.any(String), status: 'confirmed', amount: '50.00' },
+    { id: expect.any(String), status: 'confirmed', amount: '50.00' },
+  ])
+  expect(
+    new Set([checkId, ...result.instruments.map((item) => item.id)]).size,
+  ).toBe(3)
+  expect(result.invoice).toEqual({
+    received: '100.00',
+    pending: '0',
+    balance: '0.00',
+  })
 })

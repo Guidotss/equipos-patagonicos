@@ -12,15 +12,30 @@ export function BarCrumbs({ crumbs }: { crumbs: Crumb[] }) {
           {crumbs.map((crumb, index) => (
             <li
               key={`${index}-${crumb.texto}`}
-              className={cn('flex min-w-0 items-center gap-1.5', index === 0 && 'shrink-0')}
+              className={cn(
+                'flex min-w-0 items-center gap-1.5',
+                index === 0 && 'shrink-0',
+              )}
             >
-              {index > 0 ? <span aria-hidden className="shrink-0">/</span> : null}
+              {index > 0 ? (
+                <span aria-hidden className="shrink-0">
+                  /
+                </span>
+              ) : null}
               {crumb.href ? (
-                <Link href={crumb.href} title={crumb.texto} className="min-w-0 truncate transition-colors hover:text-foreground">
+                <Link
+                  href={crumb.href}
+                  title={crumb.texto}
+                  className="min-w-0 truncate transition-colors hover:text-foreground"
+                >
                   {crumb.texto}
                 </Link>
               ) : (
-                <span aria-current="page" title={crumb.texto} className="min-w-0 truncate text-foreground">
+                <span
+                  aria-current="page"
+                  title={crumb.texto}
+                  className="min-w-0 truncate text-foreground"
+                >
                   {crumb.texto}
                 </span>
               )}
@@ -33,9 +48,20 @@ export function BarCrumbs({ crumbs }: { crumbs: Crumb[] }) {
 }
 
 /** Banda azul con la trama de ganchos de grúa que abre las fichas y las secciones principales. */
-export function Cover({ className, children }: { className?: string; children?: React.ReactNode }) {
+export function Cover({
+  className,
+  children,
+}: {
+  className?: string
+  children?: React.ReactNode
+}) {
   return (
-    <div className={cn('relative h-30 overflow-hidden bg-linear-to-r from-cover-from to-cover-to', className)}>
+    <div
+      className={cn(
+        'relative h-30 overflow-hidden bg-linear-to-r from-cover-from to-cover-to',
+        className,
+      )}
+    >
       <div
         aria-hidden
         className="absolute inset-y-0 right-0 w-3/5 bg-[url(/cover-hooks.svg)] bg-size-[auto_100%] bg-right bg-repeat-x mask-l-from-40%"
@@ -46,12 +72,22 @@ export function Cover({ className, children }: { className?: string; children?: 
 }
 
 /** Encabezado de una sección principal: título y bajada en blanco sobre la banda. */
-export function HeaderSection({ titulo: title, descripcion }: { titulo: string; descripcion?: string }) {
+export function HeaderSection({
+  titulo: title,
+  descripcion,
+}: {
+  titulo: string
+  descripcion?: string
+}) {
   return (
     <Cover>
       <div className="flex h-full flex-col justify-center gap-1 px-4 md:px-9">
-        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-[2rem]">{title}</h1>
-        {descripcion ? <p className="text-white/80 md:text-lg">{descripcion}</p> : null}
+        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-[2rem]">
+          {title}
+        </h1>
+        {descripcion ? (
+          <p className="text-white/80 md:text-lg">{descripcion}</p>
+        ) : null}
       </div>
     </Cover>
   )
@@ -89,9 +125,13 @@ export function HeaderFicha({
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
             {estado}
           </div>
-          {datos ? <div className="text-[15px] text-foreground/80">{datos}</div> : null}
+          {datos ? (
+            <div className="text-[15px] text-foreground/80">{datos}</div>
+          ) : null}
         </div>
-        {actions ? <div className="flex items-center gap-2 sm:pt-4">{actions}</div> : null}
+        {actions ? (
+          <div className="flex items-center gap-2 sm:pt-4">{actions}</div>
+        ) : null}
       </div>
     </header>
   )
@@ -121,21 +161,37 @@ export function HeaderPage({
           <h1
             className={cn(
               'leading-tight tracking-tight',
-              compact ? 'text-[1.75rem] font-semibold' : 'text-[2.1875rem] font-normal',
+              compact
+                ? 'text-[1.75rem] font-semibold'
+                : 'text-[2.1875rem] font-normal',
             )}
           >
             {title}
           </h1>
           {extra}
         </div>
-        {descripcion ? <p className="text-[15px] text-muted-foreground">{descripcion}</p> : null}
+        {descripcion ? (
+          <p className="text-[15px] text-muted-foreground">{descripcion}</p>
+        ) : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   )
 }
 
 /** Margen del contenido de cada página, debajo de la barra de migas y la banda. */
-export function Content({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn('max-w-[90rem] space-y-6 px-4 py-8 md:px-9', className)}>{children}</div>
+export function Content({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn('max-w-[90rem] space-y-6 px-4 py-8 md:px-9', className)}>
+      {children}
+    </div>
+  )
 }

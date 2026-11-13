@@ -5,7 +5,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { formatAmountTable, parsePrice } from '@/lib/format/amounts'
 import type { EditorDispatch } from '@/lib/quotes/editor-screen'
 import type { ItemEditor } from '@/lib/quotes/editor/types'
-import { normalizePrice, totalLine, type ErrorsItem, type FieldGrid } from '@/lib/quotes/grid'
+import {
+  normalizePrice,
+  totalLine,
+  type ErrorsItem,
+  type FieldGrid,
+} from '@/lib/quotes/grid'
 import { UNITS, type Unit } from '@/lib/templates/content'
 import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
@@ -13,7 +18,12 @@ import { CSS } from '@dnd-kit/utilities'
 import { useState } from 'react'
 
 import { ItemRowControls } from './item-row-controls'
-import { ITEM_INPUT_CLASS, ITEM_NUMBER_CLASS, ITEM_COLUMNS, TEMPLATE_ITEM_COLUMNS } from './items-grid.constants'
+import {
+  ITEM_INPUT_CLASS,
+  ITEM_NUMBER_CLASS,
+  ITEM_COLUMNS,
+  TEMPLATE_ITEM_COLUMNS,
+} from './items-grid.constants'
 
 type FieldItem = Exclude<FieldGrid, 'seccion'>
 
@@ -41,7 +51,15 @@ export function RowItem({
   onRemove: () => void
   editPrices: boolean
 }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: item.clave,
     attributes: { roleDescription: 'ítem ordenable' },
   })
@@ -53,15 +71,24 @@ export function RowItem({
   const number = index + 1
   const id = `item-${item.clave}`
   const error = (field: FieldItem) => errors[field]
-  const messages = (['descripcion', 'cantidad', 'precio', 'unidad'] as const).map(error).filter(Boolean)
-  const describe = (field: FieldItem) => (error(field) ? `${id}-error` : undefined)
-  const invalidPrice = !item.isComplimentary && item.precio.trim() !== '' && parsePrice(item.precio) === null
+  const messages = (['descripcion', 'cantidad', 'precio', 'unidad'] as const)
+    .map(error)
+    .filter(Boolean)
+  const describe = (field: FieldItem) =>
+    error(field) ? `${id}-error` : undefined
+  const invalidPrice =
+    !item.isComplimentary &&
+    item.precio.trim() !== '' &&
+    parsePrice(item.precio) === null
   const total = totalLine(item)
   const change = (changes: Partial<Omit<ItemEditor, 'clave'>>) =>
     dispatch({ tipo: 'item', clave: item.clave, changes })
 
   const complimentaryControl = (
-    <Label htmlFor={`${id}-complimentary`} className="flex min-h-9 cursor-pointer items-center gap-2 text-sm">
+    <Label
+      htmlFor={`${id}-complimentary`}
+      className="flex min-h-9 cursor-pointer items-center gap-2 text-sm"
+    >
       <input
         id={`${id}-complimentary`}
         type="checkbox"
@@ -76,7 +103,12 @@ export function RowItem({
 
   // Enter (sin Shift, que deja escribir un salto en la descripción) agrega una fila debajo y la enfoca.
   function onKeyDown(event: React.KeyboardEvent) {
-    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+    if (
+      event.key !== 'Enter' ||
+      event.shiftKey ||
+      event.nativeEvent.isComposing
+    )
+      return
     event.preventDefault()
     onEnter()
   }
@@ -104,7 +136,10 @@ export function RowItem({
       />
 
       <div className="col-span-2 col-start-1 row-start-1 min-w-0 space-y-1.5 @min-[44rem]:col-span-1 @min-[44rem]:col-start-auto @min-[44rem]:row-start-auto @min-[44rem]:space-y-0">
-        <Label htmlFor={`${id}-descripcion`} className="flex h-11 items-center pr-12 pl-10 @min-[44rem]:hidden">
+        <Label
+          htmlFor={`${id}-descripcion`}
+          className="flex h-11 items-center pr-12 pl-10 @min-[44rem]:hidden"
+        >
           Descripción
         </Label>
         <Textarea
@@ -136,7 +171,11 @@ export function RowItem({
             onKeyDown={onKeyDown}
             aria-invalid={Boolean(error('cantidad'))}
             aria-describedby={describe('cantidad')}
-            className={cn(ITEM_INPUT_CLASS, 'px-2 tabular-nums', ITEM_NUMBER_CLASS)}
+            className={cn(
+              ITEM_INPUT_CLASS,
+              'px-2 tabular-nums',
+              ITEM_NUMBER_CLASS,
+            )}
           />
         </div>
         {editPrices ? (
@@ -148,7 +187,13 @@ export function RowItem({
               id={`${id}-precio`}
               aria-label={`Precio del ítem ${number}`}
               inputMode="decimal"
-              value={item.isComplimentary ? 'BONIFICADA' : editingPrice ? item.precio : normalizePrice(item.precio)}
+              value={
+                item.isComplimentary
+                  ? 'BONIFICADA'
+                  : editingPrice
+                    ? item.precio
+                    : normalizePrice(item.precio)
+              }
               disabled={item.isComplimentary}
               placeholder="Sin precio"
               onChange={(event) => {
@@ -166,7 +211,9 @@ export function RowItem({
               className={cn(
                 ITEM_INPUT_CLASS,
                 'px-2 text-right tabular-nums',
-                !item.isComplimentary && item.precio.trim() === '' && 'border-brand-yellow/70 bg-brand-yellow/10',
+                !item.isComplimentary &&
+                  item.precio.trim() === '' &&
+                  'border-brand-yellow/70 bg-brand-yellow/10',
                 ITEM_NUMBER_CLASS,
               )}
             />
@@ -197,7 +244,9 @@ export function RowItem({
         </div>
         {editPrices ? (
           <div className="order-4 min-w-0 space-y-1.5 @min-[44rem]:order-none @min-[44rem]:space-y-0">
-            <p className="text-sm font-medium @min-[44rem]:hidden">Total del ítem</p>
+            <p className="text-sm font-medium @min-[44rem]:hidden">
+              Total del ítem
+            </p>
             <output
               htmlFor={`${id}-cantidad ${id}-precio`}
               aria-label={`Total del ítem ${number}`}

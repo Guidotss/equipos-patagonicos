@@ -8,7 +8,13 @@ import { valueField, type StatusForm } from '@/lib/forms'
 
 export type ValuesClient = Partial<Record<FieldClient, string | null>>
 
-export function FieldsClient({ estado, initial }: { estado: StatusForm; initial?: ValuesClient }) {
+export function FieldsClient({
+  estado,
+  initial,
+}: {
+  estado: StatusForm
+  initial?: ValuesClient
+}) {
   const value = (field: FieldClient) => valueField(estado, initial, field)
   const error = (field: FieldClient) => estado.errors[field]
   const texto = (
@@ -18,15 +24,29 @@ export function FieldsClient({ estado, initial }: { estado: StatusForm; initial?
     className?: string,
   ) => (
     <Field id={field} label={label} error={error(field)} className={className}>
-      <Input id={field} name={field} defaultValue={value(field)} aria-invalid={Boolean(error(field))} {...props} />
+      <Input
+        id={field}
+        name={field}
+        defaultValue={value(field)}
+        aria-invalid={Boolean(error(field))}
+        {...props}
+      />
     </Field>
   )
 
   return (
     <>
-      <SectionForm titulo="Identificación" descripcion="Nombre y datos fiscales del cliente.">
+      <SectionForm
+        titulo="Identificación"
+        descripcion="Nombre y datos fiscales del cliente."
+      >
         <div className="grid gap-4 @md:grid-cols-2">
-          <Field id="razon_social" label="Razón social" error={error('razon_social')} className="@md:col-span-2">
+          <Field
+            id="razon_social"
+            label="Razón social"
+            error={error('razon_social')}
+            className="@md:col-span-2"
+          >
             <Input
               id="razon_social"
               name="razon_social"
@@ -45,7 +65,11 @@ export function FieldsClient({ estado, initial }: { estado: StatusForm; initial?
               aria-invalid={Boolean(error('cuit'))}
             />
           </Field>
-          <Field id="condicion_iva" label="Condición frente al IVA" error={error('condicion_iva')}>
+          <Field
+            id="condicion_iva"
+            label="Condición frente al IVA"
+            error={error('condicion_iva')}
+          >
             {/* React no actualiza el defaultValue de un <select> ya montado y el reset del form tras la acción
                 volvería al valor del montaje: la key lo remonta cuando cambia (lo enviado o lo guardado). */}
             <NativeSelect
@@ -65,20 +89,39 @@ export function FieldsClient({ estado, initial }: { estado: StatusForm; initial?
           </Field>
         </div>
       </SectionForm>
-      <SectionForm titulo="Contacto y domicilio" descripcion="Datos para comunicarte con el cliente.">
+      <SectionForm
+        titulo="Contacto y domicilio"
+        descripcion="Datos para comunicarte con el cliente."
+      >
         <div className="grid gap-4 @md:grid-cols-2">
           {texto('email', 'Email', { type: 'email', autoComplete: 'email' })}
           {texto('telefono', 'Teléfono', { type: 'tel' })}
-          {texto('direccion', 'Dirección', { autoComplete: 'street-address' }, '@md:col-span-2')}
+          {texto(
+            'direccion',
+            'Dirección',
+            { autoComplete: 'street-address' },
+            '@md:col-span-2',
+          )}
           {texto('localidad', 'Localidad')}
           {texto('provincia', 'Provincia')}
         </div>
       </SectionForm>
-      <SectionForm titulo="Gestión comercial" descripcion="Condiciones habituales y notas internas.">
+      <SectionForm
+        titulo="Gestión comercial"
+        descripcion="Condiciones habituales y notas internas."
+      >
         <div className="space-y-4">
-          {texto('condicion_pago', 'Condición de pago habitual', { placeholder: 'Ej.: 30 - 45 días F.F.' })}
+          {texto('condicion_pago', 'Condición de pago habitual', {
+            placeholder: 'Ej.: 30 - 45 días F.F.',
+          })}
           <Field id="notas" label="Notas" error={error('notas')}>
-            <Textarea id="notas" name="notas" rows={3} defaultValue={value('notas')} placeholder="Escribí notas internas sobre el cliente" />
+            <Textarea
+              id="notas"
+              name="notas"
+              rows={3}
+              defaultValue={value('notas')}
+              placeholder="Escribí notas internas sobre el cliente"
+            />
           </Field>
         </div>
       </SectionForm>

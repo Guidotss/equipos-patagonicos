@@ -15,7 +15,13 @@ type StyleImagen = React.ComponentProps<typeof Image>['style']
  * Va por prop y no por un contexto de React: las rutas de Next empaquetan estos componentes con el React de
  * servidor (sin createContext ni useContext) y react-pdf, que se carga sin empaquetar, los dibuja con otro React.
  */
-export function TextVariables({ texto, highlight = false }: { texto: string; highlight?: boolean }) {
+export function TextVariables({
+  texto,
+  highlight = false,
+}: {
+  texto: string
+  highlight?: boolean
+}) {
   if (!highlight || !texto.includes('{{')) return <>{texto}</>
   // partirVariables deja los nombres en las posiciones impares.
   return (
@@ -46,7 +52,13 @@ export function Letterhead({ logo = styles.logo }: { logo?: StyleImagen }) {
   )
 }
 
-export function Segmentos({ segmentos, highlight }: { segmentos: Segmento[]; highlight?: boolean }) {
+export function Segmentos({
+  segmentos,
+  highlight,
+}: {
+  segmentos: Segmento[]
+  highlight?: boolean
+}) {
   return (
     <>
       {segmentos.map((segmento, index) => (
@@ -77,7 +89,11 @@ export function TextFormatted({
           </Text>
         ) : (
           <View key={index} style={styles.vineta} wrap={false}>
-            <Text style={nodo.nivel === 1 ? styles.markVineta1 : styles.markVineta2}>{nodo.nivel === 1 ? '-' : '•'}</Text>
+            <Text
+              style={nodo.nivel === 1 ? styles.markVineta1 : styles.markVineta2}
+            >
+              {nodo.nivel === 1 ? '-' : '•'}
+            </Text>
             <Text style={styles.textVineta}>
               <Segmentos segmentos={nodo.segmentos} highlight={highlight} />
             </Text>
@@ -89,7 +105,13 @@ export function TextFormatted({
 }
 
 /** Con `conLogo`, debajo va un logo más chico alineado a la izquierda (como en la por jornada original). */
-export function Signature({ firmante, withLogo }: { firmante: DocumentQuote['firmante']; withLogo?: boolean }) {
+export function Signature({
+  firmante,
+  withLogo,
+}: {
+  firmante: DocumentQuote['firmante']
+  withLogo?: boolean
+}) {
   if (!firmante) return null
   return (
     <View style={styles.signature} wrap={false}>
@@ -105,9 +127,18 @@ export function Signature({ firmante, withLogo }: { firmante: DocumentQuote['fir
 }
 
 /** Con `linea` (la por jornada), arriba va una línea azul fina del ancho del cuerpo, en una posición fija. */
-export function Footer({ pie: footer, line }: { pie: DocumentQuote['pie']; line?: boolean }) {
+export function Footer({
+  pie: footer,
+  line,
+}: {
+  pie: DocumentQuote['pie']
+  line?: boolean
+}) {
   return (
-    <View style={[styles.pie, line ? styles.footerDaily : styles.footerMonthly]} fixed>
+    <View
+      style={[styles.pie, line ? styles.footerDaily : styles.footerMonthly]}
+      fixed
+    >
       <Text style={styles.footerDireccion}>{footer.line}</Text>
       {footer.web ? <Text>{footer.web}</Text> : null}
     </View>

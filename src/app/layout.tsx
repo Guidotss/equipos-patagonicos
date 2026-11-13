@@ -4,19 +4,32 @@ import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
 
 export const metadata: Metadata = {
-  title: { default: 'Equipos Patagónicos', template: '%s · Equipos Patagónicos' },
+  title: {
+    default: 'Equipos Patagónicos',
+    template: '%s · Equipos Patagónicos',
+  },
   description: 'Administración y logística',
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es-AR">
       <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
         {children}
-        <Toaster richColors position="bottom-right" offset={{ bottom: 96, right: 24 }} mobileOffset={{ bottom: 96, left: 16, right: 16 }} />
+        <Toaster
+          richColors
+          position="bottom-right"
+          offset={{ bottom: 96, right: 24 }}
+          mobileOffset={{ bottom: 96, left: 16, right: 16 }}
+        />
       </body>
     </html>
   )

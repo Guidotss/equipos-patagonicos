@@ -3,7 +3,13 @@ import { StatusQuote } from '@/components/quotes/status-quote'
 import { ActionsRow } from '@/components/quotes/list/actions-row'
 import { RowListing } from '@/components/listings/row-listing'
 import { TableListing } from '@/components/listings/table-listing'
-import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { listTransitions } from '@/lib/quotes/actions-status'
 import type { RowQuote } from '@/lib/quotes/list-view'
 import { cn } from '@/lib/utils'
@@ -24,7 +30,9 @@ export function TableQuotes({ rows }: { rows: RowQuote[] }) {
           <TableHead>Cliente / trabajo</TableHead>
           <TableHead>Estado</TableHead>
           <TableHead>Vencimiento</TableHead>
-          <TableHead><span className="sr-only">Acciones</span></TableHead>
+          <TableHead>
+            <span className="sr-only">Acciones</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -37,18 +45,35 @@ export function TableQuotes({ rows }: { rows: RowQuote[] }) {
               >
                 {row.numero}
               </Link>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground tabular-nums">{row.fecha}</p>
-              <p className="text-xs leading-5 text-muted-foreground">{row.origen ?? row.formato}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground tabular-nums">
+                {row.fecha}
+              </p>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {row.origen ?? row.formato}
+              </p>
             </TableCell>
             <TableCell>
               <p className="font-medium leading-5">{row.cliente}</p>
-              <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{row.trabajo}</p>
+              <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+                {row.trabajo}
+              </p>
             </TableCell>
-            <TableCell><StatusQuote estado={row.estado} vencida={row.vencida} /></TableCell>
+            <TableCell>
+              <StatusQuote estado={row.estado} vencida={row.vencida} />
+            </TableCell>
             <TableCell>
               {row.venceEl ? (
-                <span className={cn('whitespace-nowrap tabular-nums', row.vencida && 'text-amber-700')}>{row.venceEl}</span>
-              ) : <span className="text-muted-foreground">—</span>}
+                <span
+                  className={cn(
+                    'whitespace-nowrap tabular-nums',
+                    row.vencida && 'text-amber-700',
+                  )}
+                >
+                  {row.venceEl}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
             </TableCell>
             <TableCell className="px-2!">
               <ActionsRow

@@ -9,7 +9,15 @@ import { Field } from '@/components/form/field'
 
 type BudgetTransition = 'en_curso' | 'finalizado' | 'anulado'
 
-export function ActionsBudget({ id, status, paidInFull }: { id: string; status: string | null; paidInFull: boolean }) {
+export function ActionsBudget({
+  id,
+  status,
+  paidInFull,
+}: {
+  id: string
+  status: string | null
+  paidInFull: boolean
+}) {
   const [destination, setDestination] = useState<BudgetTransition | null>(null)
   const [reason, setReason] = useState('')
   const [error, setError] = useState('')
@@ -22,7 +30,11 @@ export function ActionsBudget({ id, status, paidInFull }: { id: string; status: 
     submitting.current = true
     startTransition(async () => {
       try {
-        const result = await changeStatusBudget({ id, estado: destination, motivo: reason })
+        const result = await changeStatusBudget({
+          id,
+          estado: destination,
+          motivo: reason,
+        })
         if (!result.ok) {
           setError(result.message)
           return
@@ -46,10 +58,18 @@ export function ActionsBudget({ id, status, paidInFull }: { id: string; status: 
               ? '¿Anular este presupuesto?'
               : destination === 'finalizado'
                 ? '¿Confirmás que el trabajo está cobrado?'
-                : cancelled ? '¿Restaurar este presupuesto?' : '¿Quitar el cierre manual?'
+                : cancelled
+                  ? '¿Restaurar este presupuesto?'
+                  : '¿Quitar el cierre manual?'
           }
-          detail={destination === 'en_curso' && !cancelled ? 'El estado volverá a depender del cobro registrado.' : undefined}
-          textConfirm={destination === 'anulado' ? 'Confirmar anulación' : 'Confirmar'}
+          detail={
+            destination === 'en_curso' && !cancelled
+              ? 'El estado volverá a depender del cobro registrado.'
+              : undefined
+          }
+          textConfirm={
+            destination === 'anulado' ? 'Confirmar anulación' : 'Confirmar'
+          }
           pendiente={pending}
           tone={destination === 'anulado' ? 'peligro' : 'aviso'}
           confirmDeshabilitado={destination === 'anulado' && !reason.trim()}
@@ -75,12 +95,22 @@ export function ActionsBudget({ id, status, paidInFull }: { id: string; status: 
       ) : (
         <div className="flex gap-2">
           {!open || !paidInFull ? (
-            <Button variant="outline" onClick={() => setDestination(open ? 'finalizado' : 'en_curso')}>
-              {open ? 'Finalizar' : cancelled ? 'Restaurar presupuesto' : 'Quitar cierre manual'}
+            <Button
+              variant="outline"
+              onClick={() => setDestination(open ? 'finalizado' : 'en_curso')}
+            >
+              {open
+                ? 'Finalizar'
+                : cancelled
+                  ? 'Restaurar presupuesto'
+                  : 'Quitar cierre manual'}
             </Button>
           ) : null}
           {!cancelled ? (
-            <Button variant="destructive" onClick={() => setDestination('anulado')}>
+            <Button
+              variant="destructive"
+              onClick={() => setDestination('anulado')}
+            >
               Anular presupuesto
             </Button>
           ) : null}

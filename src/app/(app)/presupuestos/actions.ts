@@ -16,10 +16,18 @@ export async function changeStatusBudget(entrada: unknown): Promise<Result> {
       motivo: z.string().trim().max(2000),
     })
     .safeParse(entrada)
-  if (!datos.success) return { ok: false, message: 'Revisá el estado y el motivo (máximo 2000 caracteres).' }
+  if (!datos.success)
+    return {
+      ok: false,
+      message: 'Revisá el estado y el motivo (máximo 2000 caracteres).',
+    }
   const { error } = await (
     await createClient()
-  ).rpc('cambiar_estado_presupuesto', { p_id: datos.data.id, p_estado: datos.data.estado, p_motivo: datos.data.motivo })
+  ).rpc('cambiar_estado_presupuesto', {
+    p_id: datos.data.id,
+    p_estado: datos.data.estado,
+    p_motivo: datos.data.motivo,
+  })
   if (error) return { ok: false, message: databaseErrorMessage(error) }
   revalidatePath('/presupuestos', 'layout')
   revalidatePath('/')

@@ -5,11 +5,26 @@ import { toast } from 'sonner'
 import { saveTemplateEditor } from '@/app/(app)/cotizaciones/specials-actions'
 import { Field } from '@/components/form/field'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import type { StatusEditor } from '@/lib/quotes/editor/types'
 
-export function SaveTemplate({ state, disabled, beforeOpen }: { state: StatusEditor; disabled?: boolean; beforeOpen?: () => void }) {
+export function SaveTemplate({
+  state,
+  disabled,
+  beforeOpen,
+}: {
+  state: StatusEditor
+  disabled?: boolean
+  beforeOpen?: () => void
+}) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -18,21 +33,64 @@ export function SaveTemplate({ state, disabled, beforeOpen }: { state: StatusEdi
   async function save(e: React.FormEvent) {
     e.preventDefault()
     if (inProgress.current) return
-    inProgress.current = true; setBusy(true)
+    inProgress.current = true
+    setBusy(true)
     try {
       const r = await saveTemplateEditor(state, name)
-      if (!r.ok) { setMessage(r.message); return }
-      toast.success('Plantilla guardada'); setOpen(false)
-    } catch { setMessage('No se pudo guardar. Probá nuevamente.') }
-    finally { inProgress.current = false; setBusy(false) }
+      if (!r.ok) {
+        setMessage(r.message)
+        return
+      }
+      toast.success('Plantilla guardada')
+      setOpen(false)
+    } catch {
+      setMessage('No se pudo guardar. Probá nuevamente.')
+    } finally {
+      inProgress.current = false
+      setBusy(false)
+    }
   }
-  return <Dialog open={open} onOpenChange={(open) => { if (open) beforeOpen?.(); setOpen(open) }}>
-    <DialogTrigger asChild><Button variant="outline" disabled={disabled}>Guardar como plantilla</Button></DialogTrigger>
-    <DialogContent><DialogHeader><DialogTitle>Guardar como plantilla</DialogTitle><DialogDescription>Se guardan los textos y los ítems sin precios ni datos del cliente.</DialogDescription></DialogHeader>
-      <form onSubmit={save} className="flex flex-col gap-4"><Field id="nombre-nueva-plantilla" label="Nombre de la plantilla"><Input id="nombre-nueva-plantilla" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} required /></Field>
-        {message ? <p role="alert" className="text-sm text-destructive">{message}</p> : null}
-        <Button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Crear plantilla'}</Button>
-      </form>
-    </DialogContent>
-  </Dialog>
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        if (open) beforeOpen?.()
+        setOpen(open)
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="outline" disabled={disabled}>
+          Guardar como plantilla
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Guardar como plantilla</DialogTitle>
+          <DialogDescription>
+            Se guardan los textos y los ítems sin precios ni datos del cliente.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={save} className="flex flex-col gap-4">
+          <Field id="nombre-nueva-plantilla" label="Nombre de la plantilla">
+            <Input
+              id="nombre-nueva-plantilla"
+              maxLength={100}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={busy}
+              required
+            />
+          </Field>
+          {message ? (
+            <p role="alert" className="text-sm text-destructive">
+              {message}
+            </p>
+          ) : null}
+          <Button type="submit" disabled={busy}>
+            {busy ? 'Guardando…' : 'Crear plantilla'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }

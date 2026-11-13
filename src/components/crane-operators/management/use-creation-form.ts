@@ -1,13 +1,26 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createStaffCraneOperator } from '@/app/(crane-management)/crane-operators/actions'
-import { newCraneOperatorSchema, type NewCraneOperatorInput } from '@/lib/crane-operators/management-schemas'
+import {
+  newCraneOperatorSchema,
+  type NewCraneOperatorInput,
+} from '@/lib/crane-operators/management-schemas'
 import { errorsByPath } from '@/lib/forms'
 
-const initialValues: NewCraneOperatorInput = { name: '', email: '', password: '' }
+const initialValues: NewCraneOperatorInput = {
+  name: '',
+  email: '',
+  password: '',
+}
 
 export function useCreationForm() {
   const router = useRouter()
@@ -20,7 +33,10 @@ export function useCreationForm() {
 
   useEffect(() => {
     if (!message) return
-    ;(formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? formRef.current?.querySelector<HTMLElement>('[data-form-error]'))?.focus()
+    ;(
+      formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+      formRef.current?.querySelector<HTMLElement>('[data-form-error]')
+    )?.focus()
   }, [message, errors])
 
   function change(field: keyof NewCraneOperatorInput, value: string) {
@@ -42,12 +58,20 @@ export function useCreationForm() {
     startTransition(async () => {
       try {
         const result = await createStaffCraneOperator(parsed.data)
-        if (!result.ok) { setErrors(result.errors ?? {}); setMessage(result.message); return }
+        if (!result.ok) {
+          setErrors(result.errors ?? {})
+          setMessage(result.message)
+          return
+        }
         setValues(initialValues)
-        toast.success('Gruista creado. Ya puede ingresar con el email y la contraseña que elegiste.')
+        toast.success(
+          'Gruista creado. Ya puede ingresar con el email y la contraseña que elegiste.',
+        )
         router.push(`/crane-operators/${result.datos.userId}`)
       } catch {
-        setMessage('Se interrumpió el alta. Reintentá con los datos que ingresaste. Si ya se creó la cuenta, buscala en Gruistas.')
+        setMessage(
+          'Se interrumpió el alta. Reintentá con los datos que ingresaste. Si ya se creó la cuenta, buscala en Gruistas.',
+        )
       } finally {
         saving.current = false
       }

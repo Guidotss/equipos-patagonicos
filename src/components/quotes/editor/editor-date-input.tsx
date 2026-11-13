@@ -7,7 +7,10 @@ function dateComplete(value: string): boolean {
   return isDateIso(value) && !value.startsWith('0')
 }
 
-type PropsInputDate = Omit<React.ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'onBlur'> & {
+type PropsInputDate = Omit<
+  React.ComponentProps<'input'>,
+  'type' | 'value' | 'onChange' | 'onBlur'
+> & {
   value: string
   dispatch: EditorDispatch
 }
@@ -31,7 +34,8 @@ export function InputDate({ value, dispatch, ...props }: PropsInputDate) {
       onChange={(event) => {
         const text = event.target.value
         setDraft({ de: value, texto: text })
-        if (dateComplete(text) && text !== value) dispatch({ tipo: 'campo', campo: 'fecha', value: text })
+        if (dateComplete(text) && text !== value)
+          dispatch({ tipo: 'campo', campo: 'fecha', value: text })
       }}
       onBlur={() => {
         if (draft.texto !== value) setDraft({ de: value, texto: value })

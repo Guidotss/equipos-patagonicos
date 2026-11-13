@@ -6,41 +6,62 @@ const marca = `grilla-e2e-${sufijoUnico()}`
 let clientes: string[] = []
 let quote: string
 let budget: string
-let templateBudgets: { id: string; numero: string; equipo_id: string | null; asunto: string }[]
+let templateBudgets: {
+  id: string
+  numero: string
+  equipo_id: string | null
+  asunto: string
+}[]
 
 test.beforeAll(async () => {
   await withBase(async (db) => {
     const r = await db.query<{ id: string }>(
       `insert into public.clientes(razon_social,localidad,notas)
        select 'Ingeniería, Montajes y Servicios de la Patagonia ' || $1 || ' ' || n, 'Neuquén', $1
-       from generate_series(1,26) n returning id`, [marca],
+       from generate_series(1,26) n returning id`,
+      [marca],
     )
     clientes = r.rows.map((row) => row.id)
     const base = await crearQuoteComplete(db)
     quote = base.id
-    await db.query('update public.cotizaciones set cliente_id=$1,notas=$2 where id=$3', [clientes[0], marca, quote])
-    budget = (await db.query<{ id: string }>(
-      `insert into public.cotizaciones(cliente_id,origen,formato,asunto,estado,fecha_aprobacion,presupuesto_estado,notas)
+    await db.query(
+      'update public.cotizaciones set cliente_id=$1,notas=$2 where id=$3',
+      [clientes[0], marca, quote],
+    )
+    budget = (
+      await db.query<{ id: string }>(
+        `insert into public.cotizaciones(cliente_id,origen,formato,asunto,estado,fecha_aprobacion,presupuesto_estado,notas)
        values($1,'directa','jornada','Izaje para prueba de filtros','aprobada',current_date,'en_curso',$2) returning id`,
-      [clientes[0], marca],
-    )).rows[0].id
-    templateBudgets = (await db.query<typeof templateBudgets[number]>(
-      `insert into public.cotizaciones (cliente_id, equipo_id, formato, asunto, estado, fecha_aprobacion, presupuesto_estado, notas)
+        [clientes[0], marca],
+      )
+    ).rows[0].id
+    templateBudgets = (
+      await db.query<(typeof templateBudgets)[number]>(
+        `insert into public.cotizaciones (cliente_id, equipo_id, formato, asunto, estado, fecha_aprobacion, presupuesto_estado, notas)
        select c.cliente_id, equipment.id, c.formato, c.asunto, 'aprobada', current_date, 'en_curso', c.notas
        from public.cotizaciones c cross join lateral (values (c.equipo_id), (null::uuid)) equipment(id)
-       where c.id=$1 returning id, numero, equipo_id, asunto`, [quote],
-    )).rows
+       where c.id=$1 returning id, numero, equipo_id, asunto`,
+        [quote],
+      )
+    ).rows
   })
 })
 
 test.afterAll(async () => {
   await withBase(async (db) => {
-    await db.query('delete from public.cotizaciones where id=any($1::uuid[])', [[quote, budget, ...(templateBudgets ?? []).map(({ id }) => id)]])
-    await db.query('delete from public.clientes where id=any($1::uuid[])', [clientes])
+    await db.query('delete from public.cotizaciones where id=any($1::uuid[])', [
+      [quote, budget, ...(templateBudgets ?? []).map(({ id }) => id)],
+    ])
+    await db.query('delete from public.clientes where id=any($1::uuid[])', [
+      clientes,
+    ])
   })
 })
 
-test('Clientes conserva la búsqueda al paginar y abre el registro desde el espacio de la fila', async ({ page, baseURL }) => {
+test('Clientes conserva la búsqueda al paginar y abre el registro desde el espacio de la fila', async ({
+  page,
+  baseURL,
+}) => {
   await iniciarSession(page)
   await page.goto(`/clientes?q=${marca}`)
   await expect(page.getByText('Mostrando 1–25 de 26')).toBeVisible()
@@ -50,105 +71,197 @@ test('Clientes conserva la búsqueda al paginar y abre el registro desde el espa
   const row = page.getByRole('table').getByRole('row').nth(1)
   const enlace = row.getByRole('link').first()
   const href = await enlace.getAttribute('href')
-  await row.getByRole('cell').first().click({ position: { x: 3, y: 3 } })
+  await row
+    .getByRole('cell')
+    .first()
+    .click({ position: { x: 3, y: 3 } })
   await expect(page).toHaveURL(new URL(href!, baseURL).href)
 })
 
-test('el encabezado de la grilla permanece visible al recorrer los resultados', async ({ page }) => {
+test('el encabezado de la grilla permanece visible al recorrer los resultados', async ({
+  page,
+}) => {
   await iniciarSession(page)
   await page.goto(`/clientes?q=${marca}`)
   const table = page.getByRole('table')
   const container = table.locator('..')
-  await container.evaluate((element) => { element.scrollTop = element.scrollHeight })
-  await expect.poll(async () => {
-    const header = await table.getByRole('columnheader').first().boundingBox()
-    const caja = await container.boundingBox()
-    return header && caja ? Math.abs(header.y - caja.y) : Infinity
-  }).toBeLessThan(2)
+  await container.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+  await expect
+    .poll(async () => {
+      const header = await table.getByRole('columnheader').first().boundingBox()
+      const caja = await container.boundingBox()
+      return header && caja ? Math.abs(header.y - caja.y) : Infinity
+    })
+    .toBeLessThan(2)
 })
 
-test('los clientes de nombre largo conservan datos y navegación sin desborde móvil', async ({ page }) => {
+test('los clientes de nombre largo conservan datos y navegación sin desborde móvil', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await iniciarSession(page)
   await page.goto(`/clientes?q=${marca}`)
   await expect(page.getByText('Mostrando 1–25 de 26')).toBeVisible()
-  await expect(page.getByRole('list').getByText('Neuquén', { exact: true }).first()).toBeVisible()
-  const ancho = await page.evaluate(() => ({ disponible: innerWidth, usado: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) }))
+  await expect(
+    page.getByRole('list').getByText('Neuquén', { exact: true }).first(),
+  ).toBeVisible()
+  const ancho = await page.evaluate(() => ({
+    disponible: innerWidth,
+    usado: Math.max(
+      document.body.scrollWidth,
+      document.documentElement.scrollWidth,
+    ),
+  }))
   expect(ancho.usado).toBeLessThanOrEqual(ancho.disponible)
   await page.getByRole('link', { name: 'Siguiente', exact: true }).click()
   await expect(page.getByText('Mostrando 26–26 de 26')).toBeVisible()
 })
 
-test('a 1200px los ítems usan el ancho de trabajo y el PDF sigue disponible en el panel', async ({ page }) => {
+test('a 1200px los ítems usan el ancho de trabajo y el PDF sigue disponible en el panel', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1200, height: 805 })
   await iniciarSession(page)
   await page.goto(`/cotizaciones/${quote}`)
-  await expect(page.getByRole('region', { name: 'Vista previa', exact: true })).toHaveCount(0)
+  await expect(
+    page.getByRole('region', { name: 'Vista previa', exact: true }),
+  ).toHaveCount(0)
   await page.getByRole('button', { name: 'Vista previa', exact: true }).click()
-  const panel = page.getByRole('dialog', { name: 'Vista previa del PDF', exact: true })
-  await expect(panel.getByTitle('Vista previa del PDF', { exact: true })).toBeVisible()
+  const panel = page.getByRole('dialog', {
+    name: 'Vista previa del PDF',
+    exact: true,
+  })
+  await expect(
+    panel.getByTitle('Vista previa del PDF', { exact: true }),
+  ).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
-  await expect(page.getByLabel('Precio del ítem 1', { exact: true })).toBeEnabled()
+  await expect(
+    page.getByLabel('Precio del ítem 1', { exact: true }),
+  ).toBeEnabled()
 })
 
-test('en móvil cada precio tiene contexto y sigue calculando su total al editar', async ({ page }) => {
+test('en móvil cada precio tiene contexto y sigue calculando su total al editar', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await iniciarSession(page)
   await page.goto(`/cotizaciones/${quote}`)
-  await expect(page.locator('label').filter({ hasText: /^Precio unitario$/ }).first()).toBeVisible()
-  await expect(page.getByText('Total del ítem', { exact: true }).first()).toBeVisible()
+  await expect(
+    page
+      .locator('label')
+      .filter({ hasText: /^Precio unitario$/ })
+      .first(),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Total del ítem', { exact: true }).first(),
+  ).toBeVisible()
   const price = page.getByLabel('Precio del ítem 1', { exact: true })
   await price.fill('39.000.000,00')
   await price.press('Tab')
   await expect(price).toHaveValue('39.000.000,00')
-  await expect(page.getByText('39.000.000,00', { exact: true }).first()).toBeVisible()
+  await expect(
+    page.getByText('39.000.000,00', { exact: true }).first(),
+  ).toBeVisible()
 })
 
-test('Presupuestos sincroniza los controles al limpiar filtros y al volver', async ({ page, baseURL }) => {
+test('Presupuestos sincroniza los controles al limpiar filtros y al volver', async ({
+  page,
+  baseURL,
+}) => {
   await iniciarSession(page)
   await page.goto(`/presupuestos?q=${marca}`)
   const estado = page.getByRole('combobox', { name: 'Estado', exact: true })
   await estado.selectOption('finalizado')
   await expect(page).toHaveURL(/estado=finalizado/)
-  await page.getByRole('link', { name: 'Limpiar filtros', exact: true }).first().click()
+  await page
+    .getByRole('link', { name: 'Limpiar filtros', exact: true })
+    .first()
+    .click()
   await expect(page).toHaveURL(`${baseURL}/presupuestos`)
   await expect(estado).toHaveValue('')
-  await expect(page.getByRole('searchbox', { name: 'Buscar presupuestos' })).toHaveValue('')
+  await expect(
+    page.getByRole('searchbox', { name: 'Buscar presupuestos' }),
+  ).toHaveValue('')
   await page.goBack()
   await expect(page).toHaveURL(/estado=finalizado/)
   await expect(estado).toHaveValue('finalizado')
-  await expect(page.getByRole('searchbox', { name: 'Buscar presupuestos' })).toHaveValue(marca)
+  await expect(
+    page.getByRole('searchbox', { name: 'Buscar presupuestos' }),
+  ).toHaveValue(marca)
 })
 
-test('Presupuestos completa el asunto de plantilla en la grilla y la ficha', async ({ page }) => {
+test('Presupuestos completa el asunto de plantilla en la grilla y la ficha', async ({
+  page,
+}) => {
   const withEquipment = templateBudgets.find((item) => item.equipo_id)!
   const withoutEquipment = templateBudgets.find((item) => !item.equipo_id)!
   const fullSubject = `Cotización N° ${withEquipment.numero} alquiler de 1 (una) Grúa Telescópica capacidad 70 TN con operador.`
   const partialSubject = `Cotización N° ${withoutEquipment.numero} alquiler de 1 (una) Grúa Telescópica con operador.`
   await iniciarSession(page)
   await page.goto(`/presupuestos?q=${marca}`)
-  await expect(page.getByRole('table', { name: 'Presupuestos' }).getByText(fullSubject, { exact: true })).toBeVisible()
-  await expect(page.getByText(partialSubject, { exact: true }).filter({ visible: true })).toBeVisible()
-  await expect(page.getByText('Izaje para prueba de filtros', { exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(
+    page
+      .getByRole('table', { name: 'Presupuestos' })
+      .getByText(fullSubject, { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText(partialSubject, { exact: true }).filter({ visible: true }),
+  ).toBeVisible()
+  await expect(
+    page
+      .getByText('Izaje para prueba de filtros', { exact: true })
+      .filter({ visible: true }),
+  ).toBeVisible()
 
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.getByText(fullSubject, { exact: true }).filter({ visible: true })).toBeVisible()
-  await page.getByRole('link', { name: `Abrir presupuesto ${withEquipment.numero}`, exact: true }).click()
-  await expect(page.getByRole('heading', { name: `Presupuesto N° ${withEquipment.numero}` })).toBeVisible()
+  await expect(
+    page.getByText(fullSubject, { exact: true }).filter({ visible: true }),
+  ).toBeVisible()
+  await page
+    .getByRole('link', {
+      name: `Abrir presupuesto ${withEquipment.numero}`,
+      exact: true,
+    })
+    .click()
+  await expect(
+    page.getByRole('heading', {
+      name: `Presupuesto N° ${withEquipment.numero}`,
+    }),
+  ).toBeVisible()
   await expect(page.getByText(fullSubject, { exact: false })).toBeVisible()
 
-  const [saved] = await withBase(async (db) => (await db.query<{ asunto: string }>(
-    'select asunto from public.cotizaciones where id = $1', [withEquipment.id],
-  )).rows)
+  const [saved] = await withBase(
+    async (db) =>
+      (
+        await db.query<{ asunto: string }>(
+          'select asunto from public.cotizaciones where id = $1',
+          [withEquipment.id],
+        )
+      ).rows,
+  )
   expect(saved.asunto).toBe(withEquipment.asunto)
 })
 
-test('Presupuestos encuentra la capacidad visible de un asunto de plantilla', async ({ page }) => {
+test('Presupuestos encuentra la capacidad visible de un asunto de plantilla', async ({
+  page,
+}) => {
   const withEquipment = templateBudgets.find((item) => item.equipo_id)!
   const withoutEquipment = templateBudgets.find((item) => !item.equipo_id)!
   await iniciarSession(page)
   await page.goto('/presupuestos?q=70%20TN')
-  await expect(page.getByRole('link', { name: `Abrir presupuesto ${withEquipment.numero}`, exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: `Abrir presupuesto ${withoutEquipment.numero}`, exact: true })).toHaveCount(0)
+  await expect(
+    page.getByRole('link', {
+      name: `Abrir presupuesto ${withEquipment.numero}`,
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', {
+      name: `Abrir presupuesto ${withoutEquipment.numero}`,
+      exact: true,
+    }),
+  ).toHaveCount(0)
 })

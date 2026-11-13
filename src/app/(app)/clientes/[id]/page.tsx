@@ -16,7 +16,11 @@ import { actualizarClient, changeStatusClient } from '../actions'
 
 export const metadata: Metadata = { title: 'Cliente' }
 
-export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClientPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
   await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
@@ -33,17 +37,29 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
 
   const dataKey = [
     cliente.cuit ? `CUIT ${formatCuit(cliente.cuit)}` : null,
-    CONDICIONES_IVA[cliente.condicion_iva as keyof typeof CONDICIONES_IVA] ?? null,
+    CONDICIONES_IVA[cliente.condicion_iva as keyof typeof CONDICIONES_IVA] ??
+      null,
     [cliente.localidad, cliente.provincia].filter(Boolean).join(', ') || null,
   ].filter(Boolean)
 
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Clientes', href: '/clientes' }, { texto: cliente.razon_social }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Clientes', href: '/clientes' },
+          { texto: cliente.razon_social },
+        ]}
+      />
       <HeaderFicha
         titulo={cliente.razon_social}
         recuadro={iniciales(cliente.razon_social, 1)}
-        estado={cliente.activo ? <Pill tone="exito">Activo</Pill> : <Pill>Inactivo</Pill>}
+        estado={
+          cliente.activo ? (
+            <Pill tone="exito">Activo</Pill>
+          ) : (
+            <Pill>Inactivo</Pill>
+          )
+        }
         datos={dataKey.length > 0 ? dataKey.join(' • ') : null}
         actions={
           <ButtonStatus
@@ -55,16 +71,24 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
       />
 
       <Content className="grid max-w-6xl items-start gap-6 space-y-0 pb-28 lg:grid-cols-2">
-        <section aria-label="Datos del cliente" className="min-w-0 lg:col-span-2">
+        <section
+          aria-label="Datos del cliente"
+          className="min-w-0 lg:col-span-2"
+        >
           <ClientForm
             accion={actualizarClient.bind(null, id)}
-            initial={{ ...cliente, cuit: cliente.cuit ? formatCuit(cliente.cuit) : '' }}
+            initial={{
+              ...cliente,
+              cuit: cliente.cuit ? formatCuit(cliente.cuit) : '',
+            }}
             textButton="Guardar cambios"
           />
         </section>
 
         <Contacts clientId={id} contactos={cliente.contactos} />
-        <section className="min-w-0"><HistoryCommercial clientId={id} /></section>
+        <section className="min-w-0">
+          <HistoryCommercial clientId={id} />
+        </section>
       </Content>
     </>
   )

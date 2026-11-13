@@ -1,6 +1,18 @@
 import { Button } from '@/components/ui/button'
-import { toggleBold, toggleBullet, removeIndent, type Editing, type TextSelection } from '@/lib/templates/editing'
-import { Bold, List, ListIndentDecrease, ListIndentIncrease, type LucideIcon } from 'lucide-react'
+import {
+  toggleBold,
+  toggleBullet,
+  removeIndent,
+  type Editing,
+  type TextSelection,
+} from '@/lib/templates/editing'
+import {
+  Bold,
+  List,
+  ListIndentDecrease,
+  ListIndentIncrease,
+  type LucideIcon,
+} from 'lucide-react'
 
 type FormattingTool = {
   label: string
@@ -12,8 +24,16 @@ type FormattingTool = {
 /** Solo lo que entiende el formato de texto y dibuja el PDF (decisión 5): sin itálica ni lista numerada. */
 const TOOLS: FormattingTool[] = [
   { label: 'Negrita', shortcut: 'Ctrl+B', Icon: Bold, apply: toggleBold },
-  { label: 'Viñeta', Icon: List, apply: (text, selection) => toggleBullet(text, selection, 1) },
-  { label: 'Subviñeta', Icon: ListIndentIncrease, apply: (text, selection) => toggleBullet(text, selection, 2) },
+  {
+    label: 'Viñeta',
+    Icon: List,
+    apply: (text, selection) => toggleBullet(text, selection, 1),
+  },
+  {
+    label: 'Subviñeta',
+    Icon: ListIndentIncrease,
+    apply: (text, selection) => toggleBullet(text, selection, 2),
+  },
   { label: 'Quitar sangría', Icon: ListIndentDecrease, apply: removeIndent },
 ]
 

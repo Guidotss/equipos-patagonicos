@@ -5,7 +5,9 @@ export default function CargandoSection() {
     <div>
       <div aria-hidden className="h-14 border-b bg-background/90" />
       <Content>
-        <p role="status" className="text-sm text-muted-foreground">Cargando sección…</p>
+        <p role="status" className="text-sm text-muted-foreground">
+          Cargando sección…
+        </p>
         <div aria-hidden className="space-y-6 motion-safe:animate-pulse">
           <div className="h-7 w-56 rounded-md bg-muted" />
           <div className="space-y-5 rounded-xl border p-4 md:p-6">

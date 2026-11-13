@@ -4,10 +4,14 @@ import type { SourceDocument } from '../document'
 import { ErrorQuote, type QuoteServiceClient as Client } from './contracts'
 
 /** Datos de la empresa que van en el PDF (membrete, pie y valores por defecto de las variables). */
-export async function readCompany(supabase: Client): Promise<SourceDocument['empresa']> {
+export async function readCompany(
+  supabase: Client,
+): Promise<SourceDocument['empresa']> {
   const { data, error } = await supabase
     .from('empresa_config')
-    .select('razon_social, direccion, ciudad, telefono, email, web, indice_base, proxima_actualizacion')
+    .select(
+      'razon_social, direccion, ciudad, telefono, email, web, indice_base, proxima_actualizacion',
+    )
     .single()
   if (error) throw error
   return data
@@ -62,16 +66,26 @@ export async function requireQuoteSource(supabase: Client, id: string) {
   return loadedQuote
 }
 
-export type Row = NonNullable<Awaited<ReturnType<typeof loadQuoteSource>>>['fila']
+export type Row = NonNullable<
+  Awaited<ReturnType<typeof loadQuoteSource>>
+>['fila']
 
 export async function readClient(supabase: Client, id: string) {
-  const { data, error } = await supabase.from('clientes').select('id, razon_social, cuit').eq('id', id).maybeSingle()
+  const { data, error } = await supabase
+    .from('clientes')
+    .select('id, razon_social, cuit')
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
   return data
 }
 
 /** El contacto solo si es de ese cliente (como exige la base al guardar). */
-export async function readContact(supabase: Client, clientId: string, id: string) {
+export async function readContact(
+  supabase: Client,
+  clientId: string,
+  id: string,
+) {
   const { data, error } = await supabase
     .from('contactos')
     .select('nombre, email')

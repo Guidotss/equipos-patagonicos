@@ -1,6 +1,10 @@
 import { z } from 'zod'
 
-export const STATUSES_BUDGET = { en_curso: 'Pendiente', finalizado: 'Finalizado', anulado: 'Anulado' } as const
+export const STATUSES_BUDGET = {
+  en_curso: 'Pendiente',
+  finalizado: 'Finalizado',
+  anulado: 'Anulado',
+} as const
 export const PER_PAGE = 25
 const first = (value: unknown) => (Array.isArray(value) ? value[0] : value)
 const schema = z.object({
@@ -14,7 +18,9 @@ const schema = z.object({
       ),
     )
     .catch(''),
-  estado: z.preprocess(first, z.enum(['', 'en_curso', 'finalizado', 'anulado'])).catch(''),
+  estado: z
+    .preprocess(first, z.enum(['', 'en_curso', 'finalizado', 'anulado']))
+    .catch(''),
   cliente: z.preprocess(first, z.uuid()).catch(''),
   pagina: z
     .preprocess(
@@ -28,11 +34,13 @@ const schema = z.object({
     .catch(1),
 })
 export type FiltersBudgets = z.output<typeof schema>
-export const readFiltersBudgets = (values: Record<string, string | string[] | undefined>) =>
-  schema.parse(values)
+export const readFiltersBudgets = (
+  values: Record<string, string | string[] | undefined>,
+) => schema.parse(values)
 export function hrefBudgets(filters: FiltersBudgets, pagina = 1) {
   const params = new URLSearchParams()
-  for (const field of ['q', 'cliente', 'estado'] as const) if (filters[field]) params.set(field, filters[field])
+  for (const field of ['q', 'cliente', 'estado'] as const)
+    if (filters[field]) params.set(field, filters[field])
   if (pagina > 1) params.set('pagina', String(pagina))
   return `/presupuestos${params.size ? '?' + params.toString() : ''}`
 }

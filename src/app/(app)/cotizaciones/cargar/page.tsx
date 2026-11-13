@@ -4,5 +4,15 @@ import { FormSpecial } from '@/components/quotes/specials/form-special'
 import { todayArgentina } from '@/lib/format/dates'
 export default async function CargarQuotePage() {
   await requireStaff()
-  return <><BarCrumbs crumbs={[{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: 'Cargar existente' }]} /><FormSpecial origen="importada" today={todayArgentina()} /></>
+  return (
+    <>
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Cotizaciones', href: '/cotizaciones' },
+          { texto: 'Cargar existente' },
+        ]}
+      />
+      <FormSpecial origen="importada" today={todayArgentina()} />
+    </>
+  )
 }

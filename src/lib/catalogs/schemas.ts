@@ -1,5 +1,11 @@
 import { z } from 'zod'
-import { cuitOptional, emailOptional, numberPositiveOptional, textOptional, textRequired } from '@/lib/validation'
+import {
+  cuitOptional,
+  emailOptional,
+  numberPositiveOptional,
+  textOptional,
+  textRequired,
+} from '@/lib/validation'
 
 export const FIELDS_COMPANY = [
   'razon_social',
@@ -28,7 +34,10 @@ export const schemaCompany = z.object({
   proxima_actualizacion: textOptional(100),
 })
 
-export const schemaEditableCompany = schemaCompany.omit({ indice_base: true, proxima_actualizacion: true })
+export const schemaEditableCompany = schemaCompany.omit({
+  indice_base: true,
+  proxima_actualizacion: true,
+})
 export const EDITABLE_COMPANY_FIELDS = schemaEditableCompany.keyof().options
 
 export const FIELDS_SIGNER = ['nombre', 'cargo', 'telefono', 'email'] as const
@@ -41,12 +50,21 @@ export const schemaSigner = z.object({
   email: emailOptional,
 })
 
-export const FIELDS_EQUIPMENT = ['nombre', 'capacidad_tn', 'marca', 'modelo', 'identificacion', 'descripcion'] as const
+export const FIELDS_EQUIPMENT = [
+  'nombre',
+  'capacidad_tn',
+  'marca',
+  'modelo',
+  'identificacion',
+  'descripcion',
+] as const
 export type FieldEquipment = (typeof FIELDS_EQUIPMENT)[number]
 
 export const schemaEquipment = z.object({
   nombre: textRequired('Ingresá el nombre del equipo', 150),
-  capacidad_tn: numberPositiveOptional('Ingresá una capacidad en toneladas mayor a 0').refine(
+  capacidad_tn: numberPositiveOptional(
+    'Ingresá una capacidad en toneladas mayor a 0',
+  ).refine(
     (capacity) => capacity === null || capacity < 100_000,
     'La capacidad tiene que ser menor a 100.000 TN',
   ),

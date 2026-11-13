@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { E2E_EMAIL, E2E_NAME, E2E_PASSWORD } from './credentials'
 
-test('sin sesión redirige al login y vuelve a la página pedida después de ingresar', async ({ page }) => {
+test('sin sesión redirige al login y vuelve a la página pedida después de ingresar', async ({
+  page,
+}) => {
   await page.goto('/clientes')
   await expect(page).toHaveURL(/\/login\?next=%2Fclientes$/)
 
@@ -30,11 +32,20 @@ test('navega por las secciones y cierra sesión', async ({ page }) => {
   await page.getByRole('button', { name: 'Ingresar' }).click()
 
   await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible()
-  await expect(page.getByRole('button', { name: `${E2E_NAME}, menú de usuario`, exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Seguimiento', exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', {
+      name: `${E2E_NAME}, menú de usuario`,
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Seguimiento', exact: true }),
+  ).toBeVisible()
 
   await page.getByRole('link', { name: 'Cotizaciones', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Cotizaciones' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Cotizaciones' }),
+  ).toBeVisible()
 
   await page.getByRole('button', { name: 'Menú de usuario' }).click()
   await page.getByRole('menuitem', { name: 'Cerrar sesión' }).click()

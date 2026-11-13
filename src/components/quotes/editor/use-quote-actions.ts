@@ -17,10 +17,16 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 import { downloadFile } from './download-file'
-import type { ActionsStatus, Confirmation, ServerUpdateMode, SavedQuote } from './quote-actions.types'
+import type {
+  ActionsStatus,
+  Confirmation,
+  ServerUpdateMode,
+  SavedQuote,
+} from './quote-actions.types'
 
 /** Una Server Action que no llegó a responder (sin red, por ejemplo): no hay mensaje del servidor que mostrar. */
-const MESSAGE_WITHOUT_RESPONSE = 'No se pudo completar la operación. Probá de nuevo.'
+const MESSAGE_WITHOUT_RESPONSE =
+  'No se pudo completar la operación. Probá de nuevo.'
 
 const SUCCESS_MESSAGES = {
   rechazar: 'Cotización rechazada',
@@ -36,8 +42,11 @@ function confirmationInitial(
 ): Confirmation | null {
   if (!action) return null
   const { buttons, menu } = layoutActions(state, context)
-  const available = buttons.some((button) => button.action === action) || menu.includes(action)
-  return available && reasonBlock(action, pendingList) === null ? { type: action } : null
+  const available =
+    buttons.some((button) => button.action === action) || menu.includes(action)
+  return available && reasonBlock(action, pendingList) === null
+    ? { type: action }
+    : null
 }
 
 /**
@@ -66,7 +75,10 @@ export function useQuoteActions({
    * guardar); null si no se pudo (ya lo mostró) o si la cotización no se edita. Con `navigate: false`, una nueva se
    * crea sin ir a su página; con `notify: false`, sin el toast de guardado.
    */
-  save: (options?: { navigate?: boolean; notify?: boolean }) => Promise<SavedQuote | null>
+  save: (options?: {
+    navigate?: boolean
+    notify?: boolean
+  }) => Promise<SavedQuote | null>
   /** La acción en curso del editor (Task 8): con una en curso se deshabilitan todos los botones. */
   action: string | null
   setAction: (action: string | null) => void
@@ -77,7 +89,10 @@ export function useQuoteActions({
    * `localVersion` y de la que había en `initial` al llamarlo; 'descartar' toma lo que haya en `initial` cuando
    * termina el refresco de "Recargar" (`reloading`), sin comparar versiones.
    */
-  awaitServerUpdate: (mode: ServerUpdateMode | null, localVersion?: string | null) => void
+  awaitServerUpdate: (
+    mode: ServerUpdateMode | null,
+    localVersion?: string | null,
+  ) => void
   /** ?accion= de la URL: abre esa confirmación al entrar. */
   actionInitial?: ActionConfirmable | null
 }): ActionsStatus {
@@ -100,11 +115,15 @@ export function useQuoteActions({
 
   // El ?accion= ya se usó: se saca de la URL para que recargar la página no vuelva a abrir la confirmación.
   useEffect(() => {
-    if (actionInitial) window.history.replaceState(null, '', window.location.pathname)
+    if (actionInitial)
+      window.history.replaceState(null, '', window.location.pathname)
   }, [actionInitial])
 
   function open(nextConfirmation: Confirmation) {
-    trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    trigger.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
     setConfirmation(nextConfirmation)
   }
 
@@ -145,11 +164,16 @@ export function useQuoteActions({
    * de guardado: el que avisa es el de la transición (o su error). `save()` deja la acción del editor en null al
    * terminar: se vuelve a marcar la que sigue corriendo.
    */
-  async function versionForAction(ownAction: string): Promise<{ id: string; version: string } | null> {
-    if (!hasChangesWithoutSave && state.id && state.version) return { id: state.id, version: state.version }
+  async function versionForAction(
+    ownAction: string,
+  ): Promise<{ id: string; version: string } | null> {
+    if (!hasChangesWithoutSave && state.id && state.version)
+      return { id: state.id, version: state.version }
     const savedQuote = await save({ navigate: false, notify: false })
     setAction(ownAction)
-    return savedQuote ? { id: savedQuote.id, version: savedQuote.version } : null
+    return savedQuote
+      ? { id: savedQuote.id, version: savedQuote.version }
+      : null
   }
 
   /**
@@ -178,7 +202,9 @@ export function useQuoteActions({
         failure(result.message)
         return afterTransition(id, wasNew, false)
       }
-      downloadFile(`/cotizaciones/${id}/pdf?envio=${result.datos.envioId}&descargar=1`)
+      downloadFile(
+        `/cotizaciones/${id}/pdf?envio=${result.datos.envioId}&descargar=1`,
+      )
       toast.success('Se descargó el PDF y la cotización quedó enviada')
       afterTransition(id, wasNew, true)
     } catch (error) {
@@ -223,10 +249,12 @@ export function useQuoteActions({
     if (action === 'duplicar') {
       // Con cambios sin guardar se pregunta qué copiar: guardar la original en silencio pisaría, por ejemplo, una
       // enviada con algo que el cliente no recibió.
-      if (hasChangesWithoutSave && isEditable(state)) return open({ type: 'duplicar' })
+      if (hasChangesWithoutSave && isEditable(state))
+        return open({ type: 'duplicar' })
       return void duplicate(false)
     }
-    if (action === 'descargar' && state.id) downloadFile(`/cotizaciones/${state.id}/pdf?descargar=1`)
+    if (action === 'descargar' && state.id)
+      downloadFile(`/cotizaciones/${state.id}/pdf?descargar=1`)
   }
 
   async function approve(date: string) {
@@ -264,7 +292,14 @@ export function useQuoteActions({
   async function confirm() {
     const id = state.id
     const type = confirmation?.type
-    if (!id || (type !== 'rechazar' && type !== 'reabrir' && type !== 'revertir' && type !== 'borrar')) return
+    if (
+      !id ||
+      (type !== 'rechazar' &&
+        type !== 'reabrir' &&
+        type !== 'revertir' &&
+        type !== 'borrar')
+    )
+      return
     setAction(type)
     setTransitioning(true)
     try {
@@ -276,7 +311,10 @@ export function useQuoteActions({
         return
       }
       // Una rechazada no se edita: lo que no se guardó se guarda antes de rechazar para no perderlo.
-      const version = type === 'rechazar' ? (await versionForAction('rechazar'))?.version : state.version
+      const version =
+        type === 'rechazar'
+          ? (await versionForAction('rechazar'))?.version
+          : state.version
       if (!version) return
       awaitServerUpdate('adoptar', version)
       const result =

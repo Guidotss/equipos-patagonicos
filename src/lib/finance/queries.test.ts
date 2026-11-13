@@ -10,11 +10,21 @@ describe('lectura completa de distribuciones', () => {
       return Promise.resolve({ data: all.slice(from, to + 1), error: null })
     })
     expect(result).toEqual(all)
-    expect(ranges).toEqual([[0, 499], [500, 999], [1000, 1499]])
+    expect(ranges).toEqual([
+      [0, 499],
+      [500, 999],
+      [1000, 1499],
+    ])
   })
   it('propaga un error intermedio en lugar de devolver una colección parcial', async () => {
-    await expect(readAllPages((from) => Promise.resolve(from === 0
-      ? { data: Array(500).fill(1), error: null }
-      : { data: null, error: new Error('Lectura interrumpida') }))).rejects.toThrow('Lectura interrumpida')
+    await expect(
+      readAllPages((from) =>
+        Promise.resolve(
+          from === 0
+            ? { data: Array(500).fill(1), error: null }
+            : { data: null, error: new Error('Lectura interrumpida') },
+        ),
+      ),
+    ).rejects.toThrow('Lectura interrumpida')
   })
 })

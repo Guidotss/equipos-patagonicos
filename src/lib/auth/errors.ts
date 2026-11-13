@@ -1,4 +1,8 @@
-import { type AuthError, isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js'
+import {
+  type AuthError,
+  isAuthApiError,
+  isAuthSessionMissingError,
+} from '@supabase/supabase-js'
 
 /**
  * getClaims da error tanto si la sesión no sirve (token adulterado, o vencido con el refresh
@@ -9,7 +13,10 @@ export function isSessionInvalid(error: AuthError): boolean {
   return (
     isAuthSessionMissingError(error) ||
     error.name === 'AuthInvalidJwtError' ||
-    (isAuthApiError(error) && error.status >= 400 && error.status < 500 && error.status !== 429)
+    (isAuthApiError(error) &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      error.status !== 429)
   )
 }
 
@@ -20,7 +27,10 @@ export function messageErrorLogin(error: AuthError): string {
   }
   // Solo un 400 de Auth habla de las credenciales. Todo lo demás (red caída, 5xx, una respuesta
   // que no es JSON, una URL o una key mal configuradas) es un problema del servidor.
-  if (isAuthApiError(error) && (error.code === 'invalid_credentials' || error.status === 400)) {
+  if (
+    isAuthApiError(error) &&
+    (error.code === 'invalid_credentials' || error.status === 400)
+  ) {
     return 'Email o contraseña incorrectos'
   }
   return 'No pudimos conectar con el servidor. Probá de nuevo en un momento.'

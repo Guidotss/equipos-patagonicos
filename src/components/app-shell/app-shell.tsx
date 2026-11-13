@@ -20,15 +20,27 @@ function Logo({ className }: { className?: string }) {
   )
 }
 
-export function AppShell({ user, children }: { user: UserCurrent; children: React.ReactNode }) {
+export function AppShell({
+  user,
+  children,
+}: {
+  user: UserCurrent
+  children: React.ReactNode
+}) {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex min-h-svh">
         <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
-          <Link href="/" className="block px-5 pt-6 pb-10" aria-label="Ir al inicio">
+          <Link
+            href="/"
+            className="block px-5 pt-6 pb-10"
+            aria-label="Ir al inicio"
+          >
             <Logo className="h-[42px] w-auto" />
           </Link>
-          <div className="px-3 pb-4"><SearchGlobal /></div>
+          <div className="px-3 pb-4">
+            <SearchGlobal />
+          </div>
           <div className="flex-1 overflow-y-auto px-3 py-1">
             <SidebarNav />
           </div>

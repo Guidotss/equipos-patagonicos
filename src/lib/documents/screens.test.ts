@@ -7,36 +7,68 @@ const budget = crypto.randomUUID()
 const entrada = () => ({
   clientId,
   budgets: [budget],
-  datos: { ...Object.fromEntries(FIELDS_DOCUMENT.map((field) => [field, ''])), tipo: 'remito' },
-  archivos: [{ path: `documentos/${clientId}/${crypto.randomUUID()}.pdf`, nombre_original: 'Remito.pdf' }],
+  datos: {
+    ...Object.fromEntries(FIELDS_DOCUMENT.map((field) => [field, ''])),
+    tipo: 'remito',
+  },
+  archivos: [
+    {
+      path: `documentos/${clientId}/${crypto.randomUUID()}.pdf`,
+      nombre_original: 'Remito.pdf',
+    },
+  ],
 })
 
 describe('entrada de documentos desde el navegador', () => {
   it('rechaza UUIDs, rutas de otro cliente, nombres largos y binarios sin procesar', () => {
-    expect(schemaSaveDocument.safeParse({ ...entrada(), clientId: '../otro' }).success).toBe(false)
-    expect(schemaSaveDocument.safeParse({ ...entrada(), budgets: ['x'] }).success).toBe(false)
+    expect(
+      schemaSaveDocument.safeParse({ ...entrada(), clientId: '../otro' })
+        .success,
+    ).toBe(false)
+    expect(
+      schemaSaveDocument.safeParse({ ...entrada(), budgets: ['x'] }).success,
+    ).toBe(false)
     expect(
       schemaSaveDocument.safeParse({
         ...entrada(),
         archivos: [
-          { path: `documentos/${crypto.randomUUID()}/${crypto.randomUUID()}.pdf`, nombre_original: 'Remito.pdf' },
+          {
+            path: `documentos/${crypto.randomUUID()}/${crypto.randomUUID()}.pdf`,
+            nombre_original: 'Remito.pdf',
+          },
         ],
       }).success,
     ).toBe(false)
     expect(
       schemaSaveDocument.safeParse({
         ...entrada(),
-        archivos: [{ ...entrada().archivos[0], nombre_original: 'a'.repeat(256) }],
+        archivos: [
+          { ...entrada().archivos[0], nombre_original: 'a'.repeat(256) },
+        ],
       }).success,
     ).toBe(false)
-    expect(schemaSaveDocument.safeParse({ ...entrada(), archivos: [new Blob(['pdf'])] }).success).toBe(false)
+    expect(
+      schemaSaveDocument.safeParse({
+        ...entrada(),
+        archivos: [new Blob(['pdf'])],
+      }).success,
+    ).toBe(false)
   })
   it('acepta fecha y número vacíos, pero exige archivo al crear y monto al facturar', () => {
-    expect(schemaSaveDocument.parse(entrada()).datos).toMatchObject({ fecha: null, numero: '' })
-    expect(schemaSaveDocument.safeParse({ ...entrada(), archivos: [] }).success).toBe(false)
-    expect(schemaSaveDocument.safeParse({ ...entrada(), id: crypto.randomUUID(), archivos: [] }).success).toBe(
-      true,
-    )
+    expect(schemaSaveDocument.parse(entrada()).datos).toMatchObject({
+      fecha: null,
+      numero: '',
+    })
+    expect(
+      schemaSaveDocument.safeParse({ ...entrada(), archivos: [] }).success,
+    ).toBe(false)
+    expect(
+      schemaSaveDocument.safeParse({
+        ...entrada(),
+        id: crypto.randomUUID(),
+        archivos: [],
+      }).success,
+    ).toBe(true)
     expect(
       schemaSaveDocument.safeParse({
         ...entrada(),
@@ -46,18 +78,43 @@ describe('entrada de documentos desde el navegador', () => {
   })
   it('solo admite editar una factura cuando se envía la lista de presupuestos vacía', () => {
     const noBudgets = { ...entrada(), budgets: [] }
-    const invoice = { ...noBudgets, datos: { ...noBudgets.datos, tipo: 'factura', tipo_comprobante: 'FA', monto: '100' } }
+    const invoice = {
+      ...noBudgets,
+      datos: {
+        ...noBudgets.datos,
+        tipo: 'factura',
+        tipo_comprobante: 'FA',
+        monto: '100',
+      },
+    }
     expect(schemaSaveDocument.safeParse(invoice).success).toBe(false)
-    expect(schemaSaveDocument.safeParse({ ...invoice, id: crypto.randomUUID(), archivos: [] }).success).toBe(true)
+    expect(
+      schemaSaveDocument.safeParse({
+        ...invoice,
+        id: crypto.randomUUID(),
+        archivos: [],
+      }).success,
+    ).toBe(true)
     for (const tipo of ['orden_compra', 'remito', 'orden_pago']) {
-      expect(schemaSaveDocument.safeParse({
-        ...noBudgets, id: crypto.randomUUID(), datos: { ...noBudgets.datos, tipo, monto: tipo === 'orden_pago' ? '100' : '' },
-      }).error?.issues).toContainEqual(expect.objectContaining({ path: ['budgets'] }))
+      expect(
+        schemaSaveDocument.safeParse({
+          ...noBudgets,
+          id: crypto.randomUUID(),
+          datos: {
+            ...noBudgets.datos,
+            tipo,
+            monto: tipo === 'orden_pago' ? '100' : '',
+          },
+        }).error?.issues,
+      ).toContainEqual(expect.objectContaining({ path: ['budgets'] }))
     }
   })
   it('rechaza año cero y aplicaciones sin monto o con más decimales de los que admite la base', () => {
     expect(
-      schemaSaveDocument.safeParse({ ...entrada(), datos: { ...entrada().datos, fecha: '0000-01-01' } }).success,
+      schemaSaveDocument.safeParse({
+        ...entrada(),
+        datos: { ...entrada().datos, fecha: '0000-01-01' },
+      }).success,
     ).toBe(false)
     for (const monto_aplicado of ['', '0', '1,001', 'abc'])
       expect(
@@ -69,7 +126,9 @@ describe('entrada de documentos desde el navegador', () => {
   })
   it('solo admite aprobación con una OC del presupuesto correspondiente', () => {
     const quote = { id: budget, version: '2026-10-28T12:00:00.000Z' }
-    expect(schemaSaveDocument.safeParse({ ...entrada(), cotizacion: quote }).success).toBe(false)
+    expect(
+      schemaSaveDocument.safeParse({ ...entrada(), cotizacion: quote }).success,
+    ).toBe(false)
     expect(
       schemaSaveDocument.safeParse({
         ...entrada(),

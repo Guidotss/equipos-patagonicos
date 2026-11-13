@@ -5,11 +5,18 @@ import type { UploadedFile } from '@/lib/documents/service'
 import { todayArgentina } from '@/lib/format/dates'
 import { renderQuote } from '@/lib/pdf/render'
 
-import { ErrorQuote, type QuoteServiceClient as Client } from './service/contracts'
+import {
+  ErrorQuote,
+  type QuoteServiceClient as Client,
+} from './service/contracts'
 import { documentComplete, uploadPdf } from './service/pdf'
 import { previousInProgress } from './service/persistence'
 import { executeRpc, mapRpcError } from './service/rpc'
-import { requireApprovable, requireSendable, requireVersion } from './service/rules'
+import {
+  requireApprovable,
+  requireSendable,
+  requireVersion,
+} from './service/rules'
 import { requireQuoteSource } from './service/source'
 export { ErrorQuote } from './service/contracts'
 export { pdfForShow, viewPreview, type EntryViewPreview } from './service/pdf'
@@ -34,7 +41,8 @@ export async function approveWithPurchaseOrder(
   const { fila: row, source } = await requireQuoteSource(supabase, id)
   requireVersion(row, version)
   requireApprovable(row, documentData.fecha ?? todayArgentina())
-  if (documentData.tipo !== 'orden_compra') throw new ErrorQuote('Elegí una orden de compra')
+  if (documentData.tipo !== 'orden_compra')
+    throw new ErrorQuote('Elegí una orden de compra')
   let path: string | undefined
   if (row.origen === 'app') {
     path = `cotizaciones/${id}/aprobada-${crypto.randomUUID()}.pdf`
@@ -56,7 +64,11 @@ export async function approveWithPurchaseOrder(
  * Con `version`, exige que sea la que vio la pantalla antes de generar nada. Devuelve el id del envío,
  * para descargar exactamente ese PDF (/cotizaciones/{id}/pdf?envio={envioId}&descargar=1).
  */
-export async function sendQuote(supabase: Client, id: string, version?: string): Promise<{ envioId: string }> {
+export async function sendQuote(
+  supabase: Client,
+  id: string,
+  version?: string,
+): Promise<{ envioId: string }> {
   const { fila: row, source } = await requireQuoteSource(supabase, id)
   requireVersion(row, version)
   requireSendable(row)
@@ -64,7 +76,13 @@ export async function sendQuote(supabase: Client, id: string, version?: string):
   const pdf = await renderQuote(documentComplete(source))
   const path = `cotizaciones/${id}/enviada-${Date.now()}.pdf`
   await uploadPdf(supabase, path, pdf)
-  await executeRpc(supabase.rpc('marcar_enviada', { p_id: id, p_updated_at: row.updated_at, p_pdf_path: path }))
+  await executeRpc(
+    supabase.rpc('marcar_enviada', {
+      p_id: id,
+      p_updated_at: row.updated_at,
+      p_pdf_path: path,
+    }),
+  )
 
   // La ruta lleva la hora en milisegundos y no se pisa: identifica el envío que se acaba de registrar.
   const { data: delivery, error } = await supabase

@@ -6,15 +6,29 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { NAV_ITEMS, estaActive } from './nav-items'
 
-function ContentEnlace({ label, icon: Icon, activo }: { label: string; icon: LucideIcon; activo: boolean }) {
+function ContentEnlace({
+  label,
+  icon: Icon,
+  activo,
+}: {
+  label: string
+  icon: LucideIcon
+  activo: boolean
+}) {
   const { pending } = useLinkStatus()
   return (
     <>
-      <Icon className={cn('size-[18px] shrink-0', activo ? null : 'text-slate-500')} aria-hidden />
+      <Icon
+        className={cn('size-[18px] shrink-0', activo ? null : 'text-slate-500')}
+        aria-hidden
+      />
       <span className="min-w-0 flex-1">{label}</span>
       {pending ? (
         <span role="status" aria-label={`Abriendo ${label}`}>
-          <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden />
+          <LoaderCircle
+            className="size-4 motion-safe:animate-spin"
+            aria-hidden
+          />
         </span>
       ) : null}
     </>

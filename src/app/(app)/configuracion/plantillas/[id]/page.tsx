@@ -4,20 +4,33 @@ import { notFound } from 'next/navigation'
 import { BarCrumbs } from '@/components/app-shell/header'
 import { TemplateForm } from '@/components/settings/template-form'
 import { ButtonStatus } from '@/components/form/button-status'
-import { FORMATS, readBlocks, readItemsTemplate, type Format } from '@/lib/templates/content'
+import {
+  FORMATS,
+  readBlocks,
+  readItemsTemplate,
+  type Format,
+} from '@/lib/templates/content'
 import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 import { changeStatusTemplate, renameTemplate } from '../../actions'
 
 export const metadata: Metadata = { title: 'Plantilla' }
 
-export default async function TemplatePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TemplatePage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
   await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
-  const { data: template, error } = await supabase.from('plantillas').select('*').eq('id', id).maybeSingle()
+  const { data: template, error } = await supabase
+    .from('plantillas')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
   if (!template) notFound()
 

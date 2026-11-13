@@ -47,7 +47,13 @@ export function CardSubject({
               id={ID_FIELD.asunto}
               value={state.asunto}
               placeholder="Sin asunto"
-              onChange={(event) => dispatch({ tipo: 'campo', campo: 'asunto', value: event.target.value })}
+              onChange={(event) =>
+                dispatch({
+                  tipo: 'campo',
+                  campo: 'asunto',
+                  value: event.target.value,
+                })
+              }
               aria-invalid={Boolean(errors.asunto)}
             />
           </Field>
@@ -60,7 +66,13 @@ export function CardSubject({
               value={state.intro}
               rows={3}
               placeholder="Sin introducción"
-              onChange={(event) => dispatch({ tipo: 'campo', campo: 'intro', value: event.target.value })}
+              onChange={(event) =>
+                dispatch({
+                  tipo: 'campo',
+                  campo: 'intro',
+                  value: event.target.value,
+                })
+              }
               aria-invalid={Boolean(errors.intro)}
               className="min-h-20 text-[15px] md:text-[15px]"
             />

@@ -38,7 +38,9 @@ describe('fechaEnLetras', () => {
 
 describe('encabezadoFecha', () => {
   it('arma "Ciudad, fecha." como el encabezado del PDF', () => {
-    expect(headerDate('Neuquén', '2026-10-22')).toBe('Neuquén, 22 de octubre de 2026.')
+    expect(headerDate('Neuquén', '2026-10-22')).toBe(
+      'Neuquén, 22 de octubre de 2026.',
+    )
   })
 })
 
@@ -83,12 +85,19 @@ describe('mesEnLetras', () => {
     expect(monthInLetters('')).toBe('')
   })
 
-  it.each(['2026-13', '2026-00', '2026-1', '26-11', '2026/11', '2026-11-01', ' 2026-11', '0999-11', 'noviembre'])(
-    'rechaza %j',
-    (month) => {
-      expect(() => monthInLetters(month)).toThrow('Mes inválido')
-    },
-  )
+  it.each([
+    '2026-13',
+    '2026-00',
+    '2026-1',
+    '26-11',
+    '2026/11',
+    '2026-11-01',
+    ' 2026-11',
+    '0999-11',
+    'noviembre',
+  ])('rechaza %j', (month) => {
+    expect(() => monthInLetters(month)).toThrow('Mes inválido')
+  })
 })
 
 describe('esMes y esFecha', () => {

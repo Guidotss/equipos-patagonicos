@@ -9,52 +9,86 @@ describe('leerBloques', () => {
   })
 
   it('conserva la marca de oculto', () => {
-    expect(readBlocks([{ titulo: 'Alcance', contenido: '- Item', hidden: true }])).toEqual([
-      { titulo: 'Alcance', contenido: '- Item', hidden: true },
-    ])
+    expect(
+      readBlocks([{ titulo: 'Alcance', contenido: '- Item', hidden: true }]),
+    ).toEqual([{ titulo: 'Alcance', contenido: '- Item', hidden: true }])
   })
 
   it('conserva los bloques ocultos guardados antes del renombrado', () => {
-    expect(readBlocks([{ titulo: 'Alcance', contenido: '- Item', oculto: true }])).toEqual([
-      { titulo: 'Alcance', contenido: '- Item', hidden: true },
-    ])
+    expect(
+      readBlocks([{ titulo: 'Alcance', contenido: '- Item', oculto: true }]),
+    ).toEqual([{ titulo: 'Alcance', contenido: '- Item', hidden: true }])
   })
 
   it('prioriza la marca actual cuando aparecen ambos nombres', () => {
-    expect(readBlocks([{ titulo: 'Alcance', contenido: '- Item', hidden: false, oculto: true }])).toEqual([
-      { titulo: 'Alcance', contenido: '- Item', hidden: false },
-    ])
+    expect(
+      readBlocks([
+        { titulo: 'Alcance', contenido: '- Item', hidden: false, oculto: true },
+      ]),
+    ).toEqual([{ titulo: 'Alcance', contenido: '- Item', hidden: false }])
   })
 
   it('rechaza datos con otra forma', () => {
     expect(() => readBlocks([{ titulo: 1 }])).toThrow()
     expect(() => readBlocks({})).toThrow()
-    expect(() => readBlocks([{ titulo: 'Alcance', contenido: '', hidden: 'si' }])).toThrow()
-    expect(() => readBlocks([{ titulo: 'Alcance', contenido: '', oculto: 'si' }])).toThrow()
+    expect(() =>
+      readBlocks([{ titulo: 'Alcance', contenido: '', hidden: 'si' }]),
+    ).toThrow()
+    expect(() =>
+      readBlocks([{ titulo: 'Alcance', contenido: '', oculto: 'si' }]),
+    ).toThrow()
   })
 })
 
 describe('leerItemsPlantilla', () => {
   it('acepta ítems con unidad válida y cantidad positiva', () => {
-    const items = [{ seccion: 'Precios Jornada', descripcion: 'Jornada', unidad: 'JORNADA', cantidad: 1 }]
-    expect(readItemsTemplate(items)).toEqual(items.map((item) => ({ ...item, isComplimentary: false })))
+    const items = [
+      {
+        seccion: 'Precios Jornada',
+        descripcion: 'Jornada',
+        unidad: 'JORNADA',
+        cantidad: 1,
+      },
+    ]
+    expect(readItemsTemplate(items)).toEqual(
+      items.map((item) => ({ ...item, isComplimentary: false })),
+    )
   })
 
   it('rechaza unidades desconocidas', () => {
-    expect(() => readItemsTemplate([{ seccion: '', descripcion: 'x', unidad: 'LITRO', cantidad: 1 }])).toThrow()
+    expect(() =>
+      readItemsTemplate([
+        { seccion: '', descripcion: 'x', unidad: 'LITRO', cantidad: 1 },
+      ]),
+    ).toThrow()
   })
 })
 
 describe('catálogos', () => {
   it('expone los formatos y las unidades del diseño', () => {
     expect(Object.keys(FORMATS)).toEqual(['mensual', 'jornada'])
-    expect(UNITS).toEqual(['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'])
+    expect(UNITS).toEqual([
+      'UNIDAD',
+      'JORNADA',
+      'HORA',
+      'SEMANA',
+      'MES',
+      'VIAJE',
+    ])
   })
 })
 
-
 it('lee la bonificación persistida y rechaza marcas de otro tipo', () => {
-  const item = { seccion: '', descripcion: 'Traslado', unidad: 'VIAJE', cantidad: 2 }
-  expect(readItemsTemplate([{ ...item, is_complimentary: true }])[0]).toMatchObject({ isComplimentary: true })
-  expect(() => readItemsTemplate([{ ...item, is_complimentary: 'true' }])).toThrow()
+  const item = {
+    seccion: '',
+    descripcion: 'Traslado',
+    unidad: 'VIAJE',
+    cantidad: 2,
+  }
+  expect(
+    readItemsTemplate([{ ...item, is_complimentary: true }])[0],
+  ).toMatchObject({ isComplimentary: true })
+  expect(() =>
+    readItemsTemplate([{ ...item, is_complimentary: 'true' }]),
+  ).toThrow()
 })

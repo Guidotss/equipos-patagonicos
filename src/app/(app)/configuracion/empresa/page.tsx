@@ -12,15 +12,26 @@ export const metadata: Metadata = { title: 'Empresa' }
 export default async function CompanyPage() {
   const user = await requireStaff()
   const supabase = await createClient()
-  const { data: company, error } = await supabase.from('empresa_config').select('*').single()
+  const { data: company, error } = await supabase
+    .from('empresa_config')
+    .select('*')
+    .single()
   if (error) throw error
 
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Empresa' }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Configuración', href: '/configuracion' },
+          { texto: 'Empresa' },
+        ]}
+      />
       <CompanyForm
         accion={actualizarCompany}
-        initial={{ ...company, cuit: company.cuit ? formatCuit(company.cuit) : '' }}
+        initial={{
+          ...company,
+          cuit: company.cuit ? formatCuit(company.cuit) : '',
+        }}
         soloQuery={user.rol !== 'admin'}
         today={todayArgentina()}
       />

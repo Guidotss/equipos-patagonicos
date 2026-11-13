@@ -4,5 +4,15 @@ import { FormSpecial } from '@/components/quotes/specials/form-special'
 import { todayArgentina } from '@/lib/format/dates'
 export default async function BudgetDirectoPage() {
   await requireStaff()
-  return <><BarCrumbs crumbs={[{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: 'Presupuesto directo' }]} /><FormSpecial origen="directa" today={todayArgentina()} /></>
+  return (
+    <>
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Cotizaciones', href: '/cotizaciones' },
+          { texto: 'Presupuesto directo' },
+        ]}
+      />
+      <FormSpecial origen="directa" today={todayArgentina()} />
+    </>
+  )
 }

@@ -6,7 +6,10 @@ import { type RowSection } from '@/lib/quotes/grid'
 import { cn } from '@/lib/utils'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-import { ITEM_INPUT_CLASS, type OnChangeDraftSection } from './items-grid.constants'
+import {
+  ITEM_INPUT_CLASS,
+  type OnChangeDraftSection,
+} from './items-grid.constants'
 
 /**
  * Encabezado editable de una sección. El nombre se aplica al salir del encabezado o con Enter, no en cada tecla:
@@ -77,7 +80,10 @@ export function HeaderSection({
         }}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(ITEM_INPUT_CLASS, 'min-w-0 flex-1 basis-32 @min-[44rem]:max-w-md px-2.5 font-semibold')}
+        className={cn(
+          ITEM_INPUT_CLASS,
+          'min-w-0 flex-1 basis-32 @min-[44rem]:max-w-md px-2.5 font-semibold',
+        )}
       />
       <Button
         type="button"
@@ -98,7 +104,10 @@ export function HeaderSection({
         Eliminar sección
       </Button>
       {error ? (
-        <p id={`${id}-error`} className="basis-full px-2.5 text-sm text-destructive">
+        <p
+          id={`${id}-error`}
+          className="basis-full px-2.5 text-sm text-destructive"
+        >
           {error}
         </p>
       ) : null}

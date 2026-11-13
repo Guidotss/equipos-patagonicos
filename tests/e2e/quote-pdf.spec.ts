@@ -24,12 +24,20 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await withBase((db) => db.query(`delete from public.cotizaciones where notas = 'e2e-pdf'`))
+  await withBase((db) =>
+    db.query(`delete from public.cotizaciones where notas = 'e2e-pdf'`),
+  )
 })
 
-test('el PDF de una cotización se sirve con su nombre de archivo y solo con sesión', async ({ page, playwright, baseURL }) => {
+test('el PDF de una cotización se sirve con su nombre de archivo y solo con sesión', async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
   const anonymous = await playwright.request.newContext({ baseURL })
-  const withoutSession = await anonymous.get(`/cotizaciones/${quoteId}/pdf`, { maxRedirects: 0 })
+  const withoutSession = await anonymous.get(`/cotizaciones/${quoteId}/pdf`, {
+    maxRedirects: 0,
+  })
   expect(withoutSession.status()).toBe(307)
   await anonymous.dispose()
 
@@ -40,6 +48,8 @@ test('el PDF de una cotización se sirve con su nombre de archivo y solo con ses
   expect(response.headers()['content-disposition']).toContain('VERTICE.pdf')
   expect((await response.body()).subarray(0, 5).toString()).toBe('%PDF-')
 
-  const missing = await page.request.get(`/cotizaciones/${crypto.randomUUID()}/pdf`)
+  const missing = await page.request.get(
+    `/cotizaciones/${crypto.randomUUID()}/pdf`,
+  )
   expect(missing.status()).toBe(404)
 })

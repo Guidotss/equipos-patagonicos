@@ -31,12 +31,21 @@ export default async function BudgetPage({
   if (!isUuid(id)) notFound()
   const consulta = await searchParams
   const supabase = await createClient()
-  const { data: budget, error } = await supabase.from('v_presupuestos').select('*, exact_balance:saldo::text, exact_billed:facturado::text, exact_credited:credited_money::text, exact_withheld:withheld_amount::text, exact_legacy:legacy_settled_amount::text, exact_advances:unapplied_advances::text, exact_pending:pending_check_amount::text').eq('id', id).maybeSingle()
+  const { data: budget, error } = await supabase
+    .from('v_presupuestos')
+    .select(
+      '*, exact_balance:saldo::text, exact_billed:facturado::text, exact_credited:credited_money::text, exact_withheld:withheld_amount::text, exact_legacy:legacy_settled_amount::text, exact_advances:unapplied_advances::text, exact_pending:pending_check_amount::text',
+    )
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
   if (!budget) notFound()
   const [contexto, vinculos, [displayBudget]] = await Promise.all([
     contextoDocument(supabase, budget.cliente_id),
-    supabase.from('documento_presupuestos').select('documento_id').eq('cotizacion_id', id),
+    supabase
+      .from('documento_presupuestos')
+      .select('documento_id')
+      .eq('cotizacion_id', id),
     withBudgetSubjects(supabase, [budget]),
   ])
   if (vinculos.error) throw vinculos.error
@@ -44,7 +53,11 @@ export default async function BudgetPage({
   const documentos = contexto.documentos.filter((item) => ids.includes(item.id))
   const [archivos, aplicaciones] = ids.length
     ? await Promise.all([
-        supabase.from('documento_archivos').select('*').in('documento_id', ids).order('orden'),
+        supabase
+          .from('documento_archivos')
+          .select('*')
+          .in('documento_id', ids)
+          .order('orden'),
         supabase.from('op_facturas').select('*').in('op_id', ids),
       ])
     : [
@@ -54,11 +67,18 @@ export default async function BudgetPage({
   if (archivos.error) throw archivos.error
   if (aplicaciones.error) throw aplicaciones.error
   const nuevo =
-    typeof consulta.nuevo === 'string' && Object.hasOwn(DOCUMENT_TYPES, consulta.nuevo)
+    typeof consulta.nuevo === 'string' &&
+    Object.hasOwn(DOCUMENT_TYPES, consulta.nuevo)
       ? (consulta.nuevo as DocumentType)
       : null
-  const deliveryNoteId = typeof consulta.remito === 'string' && isUuid(consulta.remito) ? consulta.remito : undefined
-  const invoiceId = typeof consulta.factura === 'string' && isUuid(consulta.factura) ? consulta.factura : undefined
+  const deliveryNoteId =
+    typeof consulta.remito === 'string' && isUuid(consulta.remito)
+      ? consulta.remito
+      : undefined
+  const invoiceId =
+    typeof consulta.factura === 'string' && isUuid(consulta.factura)
+      ? consulta.factura
+      : undefined
   const indicadores = [
     ['orden de compra', 'órdenes de compra', budget.ordenes_compra],
     ['remito', 'remitos', budget.remitos],
@@ -67,30 +87,69 @@ export default async function BudgetPage({
   ] as const
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Presupuestos', href: '/presupuestos' }, { texto: String(budget.numero) }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Presupuestos', href: '/presupuestos' },
+          { texto: String(budget.numero) },
+        ]}
+      />
       <HeaderFicha
         titulo={`Presupuesto N° ${budget.numero}`}
         recuadro={<FileText className="size-10 text-primary" />}
-        estado={<BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} />}
+        estado={
+          <BudgetStatus
+            status={budget.display_status}
+            invoices={budget.facturas}
+            paymentOrders={budget.ordenes_pago}
+          />
+        }
         datos={
           <>
-            <Link href={`/clientes/${budget.cliente_id}`} className="hover:underline">
+            <Link
+              href={`/clientes/${budget.cliente_id}`}
+              className="hover:underline"
+            >
               {budget.cliente_razon_social}
             </Link>
             <span className="mx-2">·</span>
             {displayBudget.displaySubject || 'Sin trabajo indicado'}
           </>
         }
-        actions={<ActionsBudget id={id} status={budget.presupuesto_estado} paidInFull={budget.paid_in_full === true} />}
+        actions={
+          <ActionsBudget
+            id={id}
+            status={budget.presupuesto_estado}
+            paidInFull={budget.paid_in_full === true}
+          />
+        }
       />
       <Content>
         {budget.presupuesto_motivo ? (
           <Alert>
-            <AlertDescription>Motivo de anulación: {budget.presupuesto_motivo}</AlertDescription>
+            <AlertDescription>
+              Motivo de anulación: {budget.presupuesto_motivo}
+            </AlertDescription>
           </Alert>
         ) : null}
-        <FinancialSummary billed={budget.exact_billed} credited={budget.exact_credited} withheld={budget.exact_withheld} legacy={budget.exact_legacy} advances={budget.exact_advances} pendingChecks={budget.exact_pending} balance={budget.exact_balance} documents={unresolvedDocuments(documentos, contexto)} historicalAdvances={historicalAdvances(contexto, id)} />
-        <p className="text-sm text-muted-foreground">{indicadores.map(([singular, plural, value]) => `${value ?? 0} ${value === 1 ? singular : plural}`).join(' · ')}</p>
+        <FinancialSummary
+          billed={budget.exact_billed}
+          credited={budget.exact_credited}
+          withheld={budget.exact_withheld}
+          legacy={budget.exact_legacy}
+          advances={budget.exact_advances}
+          pendingChecks={budget.exact_pending}
+          balance={budget.exact_balance}
+          documents={unresolvedDocuments(documentos, contexto)}
+          historicalAdvances={historicalAdvances(contexto, id)}
+        />
+        <p className="text-sm text-muted-foreground">
+          {indicadores
+            .map(
+              ([singular, plural, value]) =>
+                `${value ?? 0} ${value === 1 ? singular : plural}`,
+            )
+            .join(' · ')}
+        </p>
         {nuevo && budget.presupuesto_estado !== 'anulado' ? (
           <DocumentForm
             key={`${nuevo}-${deliveryNoteId}-${invoiceId}`}
@@ -111,10 +170,19 @@ export default async function BudgetPage({
           aplicaciones={aplicaciones.data!}
         />
         <div className="flex justify-between gap-4 text-sm">
-          <Link href={`/cotizaciones/${id}`} className="text-primary hover:underline">
-            Ver {budget.origen === 'directa' ? 'presupuesto original' : 'cotización original'}
+          <Link
+            href={`/cotizaciones/${id}`}
+            className="text-primary hover:underline"
+          >
+            Ver{' '}
+            {budget.origen === 'directa'
+              ? 'presupuesto original'
+              : 'cotización original'}
           </Link>
-          <Link href="/presupuestos" className="text-muted-foreground hover:underline">
+          <Link
+            href="/presupuestos"
+            className="text-muted-foreground hover:underline"
+          >
             Volver a presupuestos
           </Link>
         </div>

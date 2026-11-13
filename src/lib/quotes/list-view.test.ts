@@ -46,7 +46,10 @@ describe('filaCotizacion', () => {
   })
 
   it('"Vence el" solo en las enviadas, al día o vencidas', () => {
-    expect(rowQuote(row({ vencida: true }))).toMatchObject({ vencida: true, venceEl: '19/11/2026' })
+    expect(rowQuote(row({ vencida: true }))).toMatchObject({
+      vencida: true,
+      venceEl: '19/11/2026',
+    })
     for (const estado of ['borrador', 'aprobada', 'rechazada']) {
       expect(rowQuote(row({ estado, vencida: false })).venceEl).toBeNull()
     }
@@ -55,8 +58,14 @@ describe('filaCotizacion', () => {
 
   it('marca las cargadas y las directas; una directa no tiene PDF y ninguna de las dos tiene formato', () => {
     // Su formato es el valor por defecto de importar.sql y no dice nada: se muestra el origen (relev-pendientes A).
-    expect(rowQuote(row({ origen: 'importada' }))).toMatchObject({ origen: 'Cargada', tienePdf: true, formato: '—' })
-    expect(rowQuote(row({ origen: 'directa', estado: 'aprobada' }))).toMatchObject({
+    expect(rowQuote(row({ origen: 'importada' }))).toMatchObject({
+      origen: 'Cargada',
+      tienePdf: true,
+      formato: '—',
+    })
+    expect(
+      rowQuote(row({ origen: 'directa', estado: 'aprobada' })),
+    ).toMatchObject({
       origen: 'Directa',
       tienePdf: false,
       venceEl: null,
@@ -96,15 +105,23 @@ describe('atajosFechas', () => {
       { label: 'Este mes', desde: '2027-01-01', hasta: '2027-01-31' },
       { label: 'Mes anterior', desde: '2026-12-01', hasta: '2026-12-31' },
     ])
-    expect(dateShortcuts('2026-02-14')[0]).toMatchObject({ desde: '2026-02-01', hasta: '2026-02-28' })
-    expect(dateShortcuts('2028-03-10')[1]).toMatchObject({ desde: '2028-02-01', hasta: '2028-02-29' })
+    expect(dateShortcuts('2026-02-14')[0]).toMatchObject({
+      desde: '2026-02-01',
+      hasta: '2026-02-28',
+    })
+    expect(dateShortcuts('2028-03-10')[1]).toMatchObject({
+      desde: '2028-02-01',
+      hasta: '2028-02-29',
+    })
   })
 })
 
 describe('textoRangoFechas', () => {
   it('describe el rango como se ve en el botón', () => {
     expect(formatDateRange('', '')).toBe('Cualquier fecha')
-    expect(formatDateRange('2026-10-01', '2026-10-31')).toBe('01/10/2026 – 31/10/2026')
+    expect(formatDateRange('2026-10-01', '2026-10-31')).toBe(
+      '01/10/2026 – 31/10/2026',
+    )
     expect(formatDateRange('2026-10-01', '')).toBe('Desde 01/10/2026')
     expect(formatDateRange('', '2026-10-31')).toBe('Hasta 31/10/2026')
   })

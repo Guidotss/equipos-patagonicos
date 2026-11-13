@@ -7,7 +7,11 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { AMBIGUOUS_EQUIPMENT_MESSAGE } from '@/lib/documents/equipment'
 import { getDocumentTextLimits, INVOICE_TYPES } from '@/lib/documents/schemas'
-import { centsToDecimal, formatFinancialAmount, parseAmountCents } from '@/lib/finance/amounts'
+import {
+  centsToDecimal,
+  formatFinancialAmount,
+  parseAmountCents,
+} from '@/lib/finance/amounts'
 
 import type { DocumentFormValues } from './document-form-model'
 import type { DocumentFormState } from './use-document-form'
@@ -19,15 +23,26 @@ export function DocumentDetailsSection({
   equipment,
   equipmentLabel,
   duplicate,
-}: Pick<DocumentFormState, 'values' | 'changeField' | 'errors' | 'equipment' | 'equipmentLabel'> & { duplicate: string | boolean }) {
+}: Pick<
+  DocumentFormState,
+  'values' | 'changeField' | 'errors' | 'equipment' | 'equipmentLabel'
+> & { duplicate: string | boolean }) {
   const [editingAmount, setEditingAmount] = useState(false)
   const amountCents = editingAmount ? null : parseAmountCents(values.monto)
-  const displayedAmount = amountCents === null ? values.monto : formatFinancialAmount(centsToDecimal(amountCents))
+  const displayedAmount =
+    amountCents === null
+      ? values.monto
+      : formatFinancialAmount(centsToDecimal(amountCents))
   const textLimits = getDocumentTextLimits(values.tipo)
   // maxlength cuenta UTF-16: dos unidades por punto de código evitan recortar caracteres suplementarios.
   const inputLengthMultiplier = values.tipo === 'remito' ? 2 : 1
 
-  function field(name: keyof DocumentFormValues, label: string, inputType = 'text', required = false) {
+  function field(
+    name: keyof DocumentFormValues,
+    label: string,
+    inputType = 'text',
+    required = false,
+  ) {
     return (
       <Field id={name} label={label} error={errors[`datos.${name}`]}>
         <Input
@@ -41,7 +56,13 @@ export function DocumentDetailsSection({
           onBlur={name === 'monto' ? () => setEditingAmount(false) : undefined}
           type={inputType}
           required={required}
-          maxLength={name === 'numero' ? textLimits.number * inputLengthMultiplier : name === 'numero_oc_ref' ? 50 : undefined}
+          maxLength={
+            name === 'numero'
+              ? textLimits.number * inputLengthMultiplier
+              : name === 'numero_oc_ref'
+                ? 50
+                : undefined
+          }
           inputMode={name === 'monto' ? 'decimal' : undefined}
           aria-invalid={Boolean(errors[`datos.${name}`])}
         />
@@ -56,7 +77,8 @@ export function DocumentDetailsSection({
         {duplicate ? (
           <Alert className="sm:col-span-2">
             <AlertDescription>
-              Ya hay un documento del mismo tipo con este número. Revisalo antes de guardar.
+              Ya hay un documento del mismo tipo con este número. Revisalo antes
+              de guardar.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -72,11 +94,17 @@ export function DocumentDetailsSection({
         )}
         {values.tipo === 'factura' ? (
           <>
-            <Field id="tipo_comprobante" label="Comprobante" error={errors['datos.tipo_comprobante']}>
+            <Field
+              id="tipo_comprobante"
+              label="Comprobante"
+              error={errors['datos.tipo_comprobante']}
+            >
               <NativeSelect
                 id="tipo_comprobante"
                 value={values.tipo_comprobante}
-                onChange={(event) => changeField('tipo_comprobante', event.target.value)}
+                onChange={(event) =>
+                  changeField('tipo_comprobante', event.target.value)
+                }
                 className="w-full"
               >
                 {Object.entries(INVOICE_TYPES).map(([value, label]) => (
@@ -95,19 +123,22 @@ export function DocumentDetailsSection({
             <Field
               id="document-equipment"
               label="Equipo"
-              error={equipment.ambiguous ? AMBIGUOUS_EQUIPMENT_MESSAGE : undefined}
+              error={
+                equipment.ambiguous ? AMBIGUOUS_EQUIPMENT_MESSAGE : undefined
+              }
             >
-              <Input
-                id="document-equipment"
-                value={equipmentLabel}
-                readOnly
-              />
+              <Input id="document-equipment" value={equipmentLabel} readOnly />
             </Field>
             {field('periodo_desde', 'Período desde (opcional)', 'date')}
             {field('periodo_hasta', 'Período hasta (opcional)', 'date')}
           </>
         ) : null}
-        <Field id="notas" label="Notas (opcional)" error={errors['datos.notas']} className="sm:col-span-2">
+        <Field
+          id="notas"
+          label="Notas (opcional)"
+          error={errors['datos.notas']}
+          className="sm:col-span-2"
+        >
           <Textarea
             id="notas"
             value={values.notas}

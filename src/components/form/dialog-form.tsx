@@ -1,7 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import type { ActionForm, StatusForm } from '@/lib/forms'
 import { FormAction } from './form-action'
 
@@ -29,7 +36,9 @@ export function DialogForm({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {descripcion ? <DialogDescription>{descripcion}</DialogDescription> : null}
+          {descripcion ? (
+            <DialogDescription>{descripcion}</DialogDescription>
+          ) : null}
         </DialogHeader>
         {/* Se monta solo abierto: cada apertura arranca con el estado limpio. */}
         {open ? (

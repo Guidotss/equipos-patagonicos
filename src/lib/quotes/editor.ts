@@ -17,4 +17,8 @@ export type {
   StatusEditor,
   TemplateEditor,
 } from './editor/types'
-export { hasChanges, payloadSave, schemaStatusEditor } from './editor/validation'
+export {
+  hasChanges,
+  payloadSave,
+  schemaStatusEditor,
+} from './editor/validation'

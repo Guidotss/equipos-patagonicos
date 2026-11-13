@@ -5,19 +5,37 @@ import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useCallback, useId, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Content } from '@/components/app-shell/header'
-import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import {
+  ActionsForm,
+  HeaderForm,
+  SheetForm,
+} from '@/components/form/structure-form'
 import { Field } from '@/components/form/field'
 import { FormAction } from '@/components/form/form-action'
 import { MessageForm } from '@/components/form/message-form'
-import { BandView, Highlight, Card, useViewInLive } from '@/components/form/card'
+import {
+  BandView,
+  Highlight,
+  Card,
+  useViewInLive,
+} from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { FieldContact } from '@/lib/clients/schemas'
 import { valueField, type ActionForm, type StatusForm } from '@/lib/forms'
 
-export type Contact = { nombre: string; cargo: string; email: string; telefono: string }
+export type Contact = {
+  nombre: string
+  cargo: string
+  email: string
+  telefono: string
+}
 
-const CAMPOS: { campo: FieldContact; label: string; props?: React.ComponentProps<typeof Input> }[] = [
+const CAMPOS: {
+  campo: FieldContact
+  label: string
+  props?: React.ComponentProps<typeof Input>
+}[] = [
   { campo: 'nombre', label: 'Nombre' },
   { campo: 'cargo', label: 'Cargo' },
   { campo: 'email', label: 'Email', props: { type: 'email' } },
@@ -27,7 +45,13 @@ const CAMPOS: { campo: FieldContact; label: string; props?: React.ComponentProps
 const FIELDS_VIEW = ['nombre', 'email'] as const
 
 /** Como CamposGrilla, pero con los id "contacto-…" de siempre. */
-function FieldsContact({ estado, initial }: { estado: StatusForm; initial?: Contact }) {
+function FieldsContact({
+  estado,
+  initial,
+}: {
+  estado: StatusForm
+  initial?: Contact
+}) {
   return (
     <div className="grid gap-4 md:gap-y-3 @md:grid-cols-2">
       {CAMPOS.map(({ campo: field, label, props }) => {
@@ -72,21 +96,34 @@ function BandDestinatario({
         ) : null}
       </div>
       {view.email ? (
-        <p className="pt-1 text-[13px] text-muted-foreground">La cotización por jornada no lleva el email.</p>
+        <p className="pt-1 text-[13px] text-muted-foreground">
+          La cotización por jornada no lleva el email.
+        </p>
       ) : null}
     </BandView>
   )
 }
 
 /** Borrar sin modal: el botón pide confirmar en el mismo lugar. */
-function RemoveContact({ nombre, borrar: remove, back }: { nombre: string; borrar: () => Promise<void>; back: string }) {
+function RemoveContact({
+  nombre,
+  borrar: remove,
+  back,
+}: {
+  nombre: string
+  borrar: () => Promise<void>
+  back: string
+}) {
   const router = useRouter()
   const pregunta = useId()
   const [confirmando, setConfirmando] = useState(false)
   const [borrando, iniciarBorrado] = useTransition()
   // El foco va a "Cancelar" al abrir la confirmación y vuelve al botón al cerrarla.
   const devolverFoco = useRef(false)
-  const enfocar = useCallback((button: HTMLButtonElement | null) => button?.focus(), [])
+  const enfocar = useCallback(
+    (button: HTMLButtonElement | null) => button?.focus(),
+    [],
+  )
   const onMontarButton = useCallback((button: HTMLButtonElement | null) => {
     if (button && devolverFoco.current) {
       devolverFoco.current = false
@@ -116,7 +153,12 @@ function RemoveContact({ nombre, borrar: remove, back }: { nombre: string; borra
 
   if (!confirmando) {
     return (
-      <Button ref={onMontarButton} type="button" variant="destructive" onClick={() => setConfirmando(true)}>
+      <Button
+        ref={onMontarButton}
+        type="button"
+        variant="destructive"
+        onClick={() => setConfirmando(true)}
+      >
         <Trash2 aria-hidden />
         Borrar contacto
       </Button>
@@ -133,10 +175,18 @@ function RemoveContact({ nombre, borrar: remove, back }: { nombre: string; borra
       className="ml-auto flex w-full flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 sm:w-auto"
     >
       <p id={pregunta} className="text-sm">
-        ¿Borrar a <span className="font-medium [overflow-wrap:anywhere]">{nombre}</span>? No se puede deshacer.
+        ¿Borrar a{' '}
+        <span className="font-medium [overflow-wrap:anywhere]">{nombre}</span>?
+        No se puede deshacer.
       </p>
       <div className="ml-auto flex gap-2">
-        <Button ref={enfocar} type="button" variant="outline" onClick={cancelar} disabled={borrando}>
+        <Button
+          ref={enfocar}
+          type="button"
+          variant="outline"
+          onClick={cancelar}
+          disabled={borrando}
+        >
           Cancelar
         </Button>
         <Button
@@ -169,12 +219,18 @@ export function ContactForm({
 }) {
   const router = useRouter()
   const back = `/clientes/${clientId}`
-  const { view, onEscribir, sincronizar } = useViewInLive(FIELDS_VIEW, initial ?? {})
+  const { view, onEscribir, sincronizar } = useViewInLive(
+    FIELDS_VIEW,
+    initial ?? {},
+  )
   const textSave = initial ? 'Guardar cambios' : 'Guardar contacto'
 
   return (
     <Content className="max-w-6xl pb-28">
-      <HeaderForm titulo={initial?.nombre || 'Nuevo contacto'} descripcion={razonSocial} />
+      <HeaderForm
+        titulo={initial?.nombre || 'Nuevo contacto'}
+        descripcion={razonSocial}
+      />
       <FormAction
         accion={accion}
         textButton={textSave}
@@ -189,17 +245,27 @@ export function ContactForm({
                 <Card
                   titulo="Datos del contacto"
                   descripcion="El nombre y el email encabezan la cotización; el cargo y el teléfono no se imprimen."
-                  band={<BandDestinatario razonSocial={razonSocial} view={view} />}
+                  band={
+                    <BandDestinatario razonSocial={razonSocial} view={view} />
+                  }
                 >
                   <FieldsContact estado={estado} initial={initial} />
                 </Card>
               </SheetForm>
             </div>
-            <ActionsForm back={back} textButton={textSave} pendiente={pending} />
+            <ActionsForm
+              back={back}
+              textButton={textSave}
+              pendiente={pending}
+            />
           </>
         )}
       </FormAction>
-      {initial && remove ? <div className="flex justify-end"><RemoveContact nombre={initial.nombre} borrar={remove} back={back} /></div> : null}
+      {initial && remove ? (
+        <div className="flex justify-end">
+          <RemoveContact nombre={initial.nombre} borrar={remove} back={back} />
+        </div>
+      ) : null}
     </Content>
   )
 }

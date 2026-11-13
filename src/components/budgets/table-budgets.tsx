@@ -2,21 +2,30 @@ import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { RowListing } from '@/components/listings/row-listing'
 import { TableListing } from '@/components/listings/table-listing'
-import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { formatShortDate } from '@/lib/format/dates'
 import { formatFinancialAmount } from '@/lib/finance/amounts'
 import type { Database } from '@/lib/supabase/database.types'
 import { cn } from '@/lib/utils'
 import { BudgetStatus } from './budget-status'
 
-type RowBudget = Database['public']['Functions']['buscar_presupuestos']['Returns'][number] & {
-  exact_balance: string | null
-  displaySubject: string
-}
+type RowBudget =
+  Database['public']['Functions']['buscar_presupuestos']['Returns'][number] & {
+    exact_balance: string | null
+    displaySubject: string
+  }
 
 function displayBalance(value: string | null) {
   if (value === null) return 'Saldo pendiente de distribución'
-  return value.startsWith('-') ? `Crédito a favor ${formatFinancialAmount(value.slice(1))}` : formatFinancialAmount(value)
+  return value.startsWith('-')
+    ? `Crédito a favor ${formatFinancialAmount(value.slice(1))}`
+    : formatFinancialAmount(value)
 }
 
 export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
@@ -37,9 +46,18 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
               <TableHead scope="col">Presupuesto</TableHead>
               <TableHead scope="col">Cliente / trabajo</TableHead>
               <TableHead scope="col">Estado</TableHead>
-              <TableHead scope="col" className="hidden @min-[52rem]/listado:table-cell">Documentos</TableHead>
-              <TableHead scope="col" className="text-right">Saldo a cobrar</TableHead>
-              <TableHead scope="col"><span className="sr-only">Abrir presupuesto</span></TableHead>
+              <TableHead
+                scope="col"
+                className="hidden @min-[52rem]/listado:table-cell"
+              >
+                Documentos
+              </TableHead>
+              <TableHead scope="col" className="text-right">
+                Saldo a cobrar
+              </TableHead>
+              <TableHead scope="col">
+                <span className="sr-only">Abrir presupuesto</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -53,20 +71,38 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
                   >
                     {budget.numero}
                   </Link>
-                  <p className="mt-1 text-xs text-muted-foreground tabular-nums">{dateApproval(budget)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                    {dateApproval(budget)}
+                  </p>
                 </TableCell>
                 <TableCell>
-                  <Link href={`/presupuestos/${budget.id}`} className="font-medium leading-5 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
+                  <Link
+                    href={`/presupuestos/${budget.id}`}
+                    className="font-medium leading-5 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+                  >
                     {budget.cliente_razon_social}
                   </Link>
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{budget.displaySubject || 'Sin trabajo indicado'}</p>
-                  <DocumentsBudget presupuesto={budget} className="mt-3 @min-[52rem]/listado:hidden" />
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                    {budget.displaySubject || 'Sin trabajo indicado'}
+                  </p>
+                  <DocumentsBudget
+                    presupuesto={budget}
+                    className="mt-3 @min-[52rem]/listado:hidden"
+                  />
                 </TableCell>
-                <TableCell><BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} /></TableCell>
+                <TableCell>
+                  <BudgetStatus
+                    status={budget.display_status}
+                    invoices={budget.facturas}
+                    paymentOrders={budget.ordenes_pago}
+                  />
+                </TableCell>
                 <TableCell className="hidden @min-[52rem]/listado:table-cell">
                   <DocumentsBudget presupuesto={budget} column />
                 </TableCell>
-                <TableCell className="text-right font-medium tabular-nums">{displayBalance(budget.exact_balance)}</TableCell>
+                <TableCell className="text-right font-medium tabular-nums">
+                  {displayBalance(budget.exact_balance)}
+                </TableCell>
                 <TableCell className="px-2!">
                   <Link
                     href={`/presupuestos/${budget.id}`}
@@ -91,19 +127,36 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
             >
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-primary tabular-nums">N° {budget.numero}</p>
-                  <p className="mt-1 text-xs text-muted-foreground tabular-nums">{dateApproval(budget)}</p>
+                  <p className="font-semibold text-primary tabular-nums">
+                    N° {budget.numero}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                    {dateApproval(budget)}
+                  </p>
                 </div>
-                <BudgetStatus status={budget.display_status} invoices={budget.facturas} paymentOrders={budget.ordenes_pago} />
+                <BudgetStatus
+                  status={budget.display_status}
+                  invoices={budget.facturas}
+                  paymentOrders={budget.ordenes_pago}
+                />
               </div>
-              <p className="font-medium leading-6 [overflow-wrap:anywhere]">{budget.cliente_razon_social}</p>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{budget.displaySubject || 'Sin trabajo indicado'}</p>
+              <p className="font-medium leading-6 [overflow-wrap:anywhere]">
+                {budget.cliente_razon_social}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">
+                {budget.displaySubject || 'Sin trabajo indicado'}
+              </p>
               <DocumentsBudget presupuesto={budget} className="mt-3" />
               <dl className="mt-3 flex items-baseline justify-between gap-3 border-t pt-3 text-sm">
                 <dt className="text-muted-foreground">Saldo a cobrar</dt>
-                <dd className="text-right font-semibold tabular-nums">{displayBalance(budget.exact_balance)}</dd>
+                <dd className="text-right font-semibold tabular-nums">
+                  {displayBalance(budget.exact_balance)}
+                </dd>
               </dl>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs text-primary">Abrir presupuesto <ArrowUpRight className="size-3.5" aria-hidden /></span>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs text-primary">
+                Abrir presupuesto{' '}
+                <ArrowUpRight className="size-3.5" aria-hidden />
+              </span>
             </Link>
           </li>
         ))}
@@ -112,7 +165,11 @@ export function TableBudgets({ budgets }: { budgets: RowBudget[] }) {
   )
 }
 
-function DocumentsBudget({ presupuesto: budget, column = false, className }: {
+function DocumentsBudget({
+  presupuesto: budget,
+  column = false,
+  className,
+}: {
   presupuesto: RowBudget
   column?: boolean
   className?: string
@@ -124,10 +181,26 @@ function DocumentsBudget({ presupuesto: budget, column = false, className }: {
     ['Órdenes de pago', 'OP', budget.ordenes_pago],
   ] as const
   return (
-    <dl className={cn(column ? 'grid grid-cols-2 gap-x-2 gap-y-1' : 'flex flex-wrap gap-x-4 gap-y-1', 'text-xs', className)}>
+    <dl
+      className={cn(
+        column
+          ? 'grid grid-cols-2 gap-x-2 gap-y-1'
+          : 'flex flex-wrap gap-x-4 gap-y-1',
+        'text-xs',
+        className,
+      )}
+    >
       {documentos.map(([label, corta, cantidad]) => (
         <div key={label} className="flex items-baseline gap-1">
-          <dt className="shrink-0 whitespace-nowrap text-muted-foreground">{column && corta !== label ? <abbr title={label} className="no-underline">{corta}</abbr> : label}</dt>
+          <dt className="shrink-0 whitespace-nowrap text-muted-foreground">
+            {column && corta !== label ? (
+              <abbr title={label} className="no-underline">
+                {corta}
+              </abbr>
+            ) : (
+              label
+            )}
+          </dt>
           <dd className="shrink-0 font-medium tabular-nums">{cantidad ?? 0}</dd>
         </div>
       ))}
@@ -136,5 +209,7 @@ function DocumentsBudget({ presupuesto: budget, column = false, className }: {
 }
 
 function dateApproval(budget: RowBudget) {
-  return budget.fecha_aprobacion ? formatShortDate(budget.fecha_aprobacion) : 'Sin fecha'
+  return budget.fecha_aprobacion
+    ? formatShortDate(budget.fecha_aprobacion)
+    : 'Sin fecha'
 }

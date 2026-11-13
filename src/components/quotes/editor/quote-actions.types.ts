@@ -1,4 +1,7 @@
-import type { ActionConfirmable, ActionStatus } from '@/lib/quotes/actions-status'
+import type {
+  ActionConfirmable,
+  ActionStatus,
+} from '@/lib/quotes/actions-status'
 
 export type Confirmation =
   | { type: ActionConfirmable }

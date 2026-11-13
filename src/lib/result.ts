@@ -9,16 +9,28 @@ export type Result<T = null> =
   | { ok: true; datos: T; message?: string }
   | { ok: false; message: string; errors?: Record<string, string> }
 
-export const UNEXPECTED_MESSAGE = 'No se pudo completar la operación. Probá de nuevo en un momento.'
+export const UNEXPECTED_MESSAGE =
+  'No se pudo completar la operación. Probá de nuevo en un momento.'
 
 // Códigos de Postgres (SQLSTATE: 5 caracteres) y de PostgREST (PGRST116…). Un error de Storage también trae `code`
 // ('NoSuchKey'), pero no es de la base: se separa por la marca de storage-js y por la forma del código.
 const CODE_BASE = /^(?:[0-9A-Z]{5}|PGRST\d+)$/
 
-function isErrorOfBase(error: unknown): error is { code: string; message: string } {
-  if (typeof error !== 'object' || error === null || '__isStorageError' in error) return false
+function isErrorOfBase(
+  error: unknown,
+): error is { code: string; message: string } {
+  if (
+    typeof error !== 'object' ||
+    error === null ||
+    '__isStorageError' in error
+  )
+    return false
   const { code, message } = error as { code?: unknown; message?: unknown }
-  return typeof code === 'string' && CODE_BASE.test(code) && typeof message === 'string'
+  return (
+    typeof code === 'string' &&
+    CODE_BASE.test(code) &&
+    typeof message === 'string'
+  )
 }
 
 /** Lo que devuelve mensajeErrorBase para un código que no traduce ("No se pudo guardar…"). */

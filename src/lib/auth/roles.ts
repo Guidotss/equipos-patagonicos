@@ -9,7 +9,9 @@ export const ROLE_LABELS = {
 } as const satisfies Record<Role, string>
 
 export function isRole(value: unknown): value is Role {
-  return typeof value === 'string' && (ROLES as readonly string[]).includes(value)
+  return (
+    typeof value === 'string' && (ROLES as readonly string[]).includes(value)
+  )
 }
 
 export function isStaffRole(value: unknown): value is StaffRole {

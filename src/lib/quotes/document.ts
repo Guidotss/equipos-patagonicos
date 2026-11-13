@@ -2,7 +2,11 @@ import { formatCuit } from '@/lib/cuit'
 import { headerDate } from '@/lib/format/dates'
 import type { Format, Unit } from '@/lib/templates/content'
 import { parsearFormat, type NodoFormat } from '@/lib/templates/format'
-import { resolverVariables, variablesDesconocidas, type NameVariable } from '@/lib/templates/variables'
+import {
+  resolverVariables,
+  variablesDesconocidas,
+  type NameVariable,
+} from '@/lib/templates/variables'
 import { readData } from './data'
 import { lineFooter } from './footer'
 
@@ -50,7 +54,12 @@ export type DocumentQuote = {
   numero: number | null
   formato: Format
   encabezadoFecha: string
-  destinatario: { razonSocial: string; cuit: string | null; atencion: string | null; email: string | null }
+  destinatario: {
+    razonSocial: string
+    cuit: string | null
+    atencion: string | null
+    email: string | null
+  }
   asunto: string
   intro: string
   items: {
@@ -80,13 +89,20 @@ function formatCapacity(capacity: number | null | undefined): string {
 
 /** Valor de cada variable de plantilla para esta cotización. */
 export function valuesVariables(source: {
-  cotizacion: Pick<SourceDocument['cotizacion'], 'numero' | 'validez_dias' | 'datos'>
+  cotizacion: Pick<
+    SourceDocument['cotizacion'],
+    'numero' | 'validez_dias' | 'datos'
+  >
   equipo: SourceDocument['equipo']
-  empresa?: Pick<SourceDocument['empresa'], 'indice_base' | 'proxima_actualizacion'>
+  empresa?: Pick<
+    SourceDocument['empresa'],
+    'indice_base' | 'proxima_actualizacion'
+  >
 }): Partial<Record<NameVariable, string>> {
   const datos = readData(source.cotizacion.datos)
   return {
-    numero: source.cotizacion.numero === null ? '' : String(source.cotizacion.numero),
+    numero:
+      source.cotizacion.numero === null ? '' : String(source.cotizacion.numero),
     capacidad: formatCapacity(source.equipo?.capacidad_tn),
     equipo_descripcion: source.equipo?.descripcion ?? '',
     validez_dias: String(source.cotizacion.validez_dias),
@@ -97,7 +113,10 @@ export function valuesVariables(source: {
     forma_pago: datos.forma_pago,
     disponibilidad: datos.disponibilidad,
     indice_base: datos.indice_base || source.empresa?.indice_base || '',
-    proxima_actualizacion: datos.proxima_actualizacion || source.empresa?.proxima_actualizacion || '',
+    proxima_actualizacion:
+      datos.proxima_actualizacion ||
+      source.empresa?.proxima_actualizacion ||
+      '',
   }
 }
 
@@ -131,7 +150,10 @@ export function buildDocument(source: SourceDocument): DocumentQuote {
     registerDesconocidas(content)
     return parsearFormat(content).map((nodo) => ({
       ...nodo,
-      segmentos: nodo.segmentos.map((segmento) => ({ ...segmento, texto: replace(segmento.texto) })),
+      segmentos: nodo.segmentos.map((segmento) => ({
+        ...segmento,
+        texto: replace(segmento.texto),
+      })),
     }))
   }
 
@@ -145,10 +167,15 @@ export function buildDocument(source: SourceDocument): DocumentQuote {
       priceUnitario: item.is_complimentary ? 0 : item.precio_unitario,
       isComplimentary: item.is_complimentary ?? false,
       unidad: item.unidad,
-      total: item.is_complimentary ? 0 : item.precio_unitario === null ? null : redondear(item.cantidad * item.precio_unitario),
+      total: item.is_complimentary
+        ? 0
+        : item.precio_unitario === null
+          ? null
+          : redondear(item.cantidad * item.precio_unitario),
     }))
 
-  const todosWithPrice = items.length > 0 && items.every((item) => item.total !== null)
+  const todosWithPrice =
+    items.length > 0 && items.every((item) => item.total !== null)
   const total =
     source.cotizacion.mostrar_total && todosWithPrice
       ? redondear(items.reduce((sum, item) => sum + (item.total ?? 0), 0))

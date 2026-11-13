@@ -3,10 +3,19 @@ import { readData } from '../data'
 import { EDITOR_STATUSES, EDITOR_FORMATS, EDITOR_ORIGINS } from './constants'
 import { textPrice, textQuantity } from './numbers'
 import { newKey } from './keys'
-import type { BlockEditor, RowEditor, StatusEditor, TemplateEditor } from './types'
+import type {
+  BlockEditor,
+  RowEditor,
+  StatusEditor,
+  TemplateEditor,
+} from './types'
 
 /** La base garantiza estos valores (CHECK): uno distinto es un error de programación. */
-function oneOf<const T extends readonly string[]>(value: string, options: T, error: string): T[number] {
+function oneOf<const T extends readonly string[]>(
+  value: string,
+  options: T,
+  error: string,
+): T[number] {
   if (!options.includes(value)) throw new Error(`${error}: ${value}`)
   return value as T[number]
 }
@@ -21,7 +30,11 @@ export function createEditorBlocks(blocks: Block[]): BlockEditor[] {
 }
 
 /** Una cotización nueva: borrador de la app, con la plantilla aplicada si hay una. */
-export function statusNew(args: { plantilla: TemplateEditor | null; firmanteId: string; today: string }): StatusEditor {
+export function statusNew(args: {
+  plantilla: TemplateEditor | null
+  firmanteId: string
+  today: string
+}): StatusEditor {
   const empty: StatusEditor = {
     id: null,
     version: null,
@@ -56,7 +69,11 @@ export function statusFromRow(row: RowEditor): StatusEditor {
     numero: row.numero,
     estado: oneOf(row.estado, EDITOR_STATUSES, 'Estado desconocido'),
     origen: oneOf(row.origen, EDITOR_ORIGINS, 'Origen desconocido'),
-    cliente: { id: row.cliente.id, razon_social: row.cliente.razon_social, cuit: row.cliente.cuit },
+    cliente: {
+      id: row.cliente.id,
+      razon_social: row.cliente.razon_social,
+      cuit: row.cliente.cuit,
+    },
     contactoId: row.contacto_id ?? '',
     templateId: row.plantilla_id ?? '',
     formato: oneOf(row.formato, EDITOR_FORMATS, 'Formato desconocido'),
@@ -77,7 +94,11 @@ export function statusFromRow(row: RowEditor): StatusEditor {
         seccion: item.seccion,
         descripcion: item.descripcion,
         cantidad: textQuantity(item.cantidad),
-        precio: item.is_complimentary ? '0' : item.precio_unitario === null ? '' : textPrice(item.precio_unitario),
+        precio: item.is_complimentary
+          ? '0'
+          : item.precio_unitario === null
+            ? ''
+            : textPrice(item.precio_unitario),
         isComplimentary: item.is_complimentary ?? false,
         unidad: oneOf(item.unidad, UNITS, 'Unidad desconocida'),
       })),
@@ -90,7 +111,10 @@ export function statusFromRow(row: RowEditor): StatusEditor {
  * Precarga lo que trae la plantilla: formato, asunto, introducción, textos, validez e ítems sin precio.
  * Cliente, contacto, equipo, firmante, fecha, datos, próxima actualización y "mostrar total" no cambian.
  */
-export function applyTemplate(state: StatusEditor, template: TemplateEditor): StatusEditor {
+export function applyTemplate(
+  state: StatusEditor,
+  template: TemplateEditor,
+): StatusEditor {
   return {
     ...state,
     templateId: template.id,

@@ -21,19 +21,25 @@ export default async function NewDocumentPage({
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('v_presupuestos')
-    .select('id, numero, cliente_id, cliente_razon_social, asunto, presupuesto_estado')
+    .select(
+      'id, numero, cliente_id, cliente_razon_social, asunto, presupuesto_estado',
+    )
     .neq('presupuesto_estado', 'anulado')
     .order('numero', { ascending: false })
   if (error) throw error
   const options = data as OptionBudget[]
   let budget =
-    typeof consulta.presupuesto === 'string' ? options.find((item) => item.id === consulta.presupuesto) : undefined
+    typeof consulta.presupuesto === 'string'
+      ? options.find((item) => item.id === consulta.presupuesto)
+      : undefined
   let quote: { id: string; version: string } | undefined
   if (typeof consulta.cotizacion === 'string') {
     if (!isUuid(consulta.cotizacion)) notFound()
     const { data: original, error } = await supabase
       .from('cotizaciones')
-      .select('id, updated_at, numero, cliente_id, asunto, estado, cliente:clientes(razon_social)')
+      .select(
+        'id, updated_at, numero, cliente_id, asunto, estado, cliente:clientes(razon_social)',
+      )
       .eq('id', consulta.cotizacion)
       .maybeSingle()
     if (error) throw error
@@ -47,17 +53,31 @@ export default async function NewDocumentPage({
       presupuesto_estado: 'en_curso',
     }
     options.unshift(budget)
-    quote = { id: original.id, version: typeof consulta.version === 'string' ? consulta.version : original.updated_at }
+    quote = {
+      id: original.id,
+      version:
+        typeof consulta.version === 'string'
+          ? consulta.version
+          : original.updated_at,
+    }
   }
   const tipo = quote
     ? 'orden_compra'
-    : typeof consulta.tipo === 'string' && Object.hasOwn(DOCUMENT_TYPES, consulta.tipo)
+    : typeof consulta.tipo === 'string' &&
+        Object.hasOwn(DOCUMENT_TYPES, consulta.tipo)
       ? (consulta.tipo as DocumentType)
       : 'remito'
-  const contexto = budget ? await contextoDocument(supabase, budget.cliente_id) : undefined
+  const contexto = budget
+    ? await contextoDocument(supabase, budget.cliente_id)
+    : undefined
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Presupuestos', href: '/presupuestos' }, { texto: 'Subir documento' }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Presupuestos', href: '/presupuestos' },
+          { texto: 'Subir documento' },
+        ]}
+      />
       <Content className="max-w-6xl">
         <HeaderForm
           titulo="Subir documento"

@@ -15,8 +15,12 @@ export function sourceFromEditor(
   catalogs: CatalogsEditor,
   contact: { nombre: string; email: string } | null,
 ): SourceDocument {
-  const equipment = catalogs.equipos.find((candidate) => candidate.id === state.equipoId)
-  const signer = catalogs.firmantes.find((candidate) => candidate.id === state.firmanteId)
+  const equipment = catalogs.equipos.find(
+    (candidate) => candidate.id === state.equipoId,
+  )
+  const signer = catalogs.firmantes.find(
+    (candidate) => candidate.id === state.firmanteId,
+  )
   const validity = Number(state.validezDias.trim())
   return {
     cotizacion: {
@@ -29,13 +33,18 @@ export function sourceFromEditor(
       mostrar_total: state.mostrarTotal,
       datos: {
         ...state.datos,
-        proxima_actualizacion: nextUpdateInText(state.proximaActualizacion, state.datos.proxima_actualizacion),
+        proxima_actualizacion: nextUpdateInText(
+          state.proximaActualizacion,
+          state.datos.proxima_actualizacion,
+        ),
       },
-      bloques: state.bloques.map(({ titulo: title, contenido: content, hidden }) => ({
-        titulo: title,
-        contenido: content,
-        hidden,
-      })),
+      bloques: state.bloques.map(
+        ({ titulo: title, contenido: content, hidden }) => ({
+          titulo: title,
+          contenido: content,
+          hidden,
+        }),
+      ),
     },
     items: state.items.map((item, index) => ({
       orden: index + 1,
@@ -46,26 +55,52 @@ export function sourceFromEditor(
       is_complimentary: item.isComplimentary ?? false,
       unidad: item.unidad,
     })),
-    cliente: { razon_social: state.cliente?.razon_social ?? '', cuit: state.cliente?.cuit ?? null },
+    cliente: {
+      razon_social: state.cliente?.razon_social ?? '',
+      cuit: state.cliente?.cuit ?? null,
+    },
     contacto: contact,
-    equipo: equipment ? { capacidad_tn: equipment.capacidad_tn, descripcion: equipment.descripcion } : null,
-    firmante: signer ? { nombre: signer.nombre, cargo: signer.cargo, telefono: signer.telefono } : null,
+    equipo: equipment
+      ? {
+          capacidad_tn: equipment.capacidad_tn,
+          descripcion: equipment.descripcion,
+        }
+      : null,
+    firmante: signer
+      ? {
+          nombre: signer.nombre,
+          cargo: signer.cargo,
+          telefono: signer.telefono,
+        }
+      : null,
     empresa: catalogs.empresa,
   }
 }
 
 /** Lo que falta para poder enviar o aprobar, calculado con el mismo buildDocument que dibuja el PDF. */
-export function pendingListEditor(state: StatusEditor, catalogs: CatalogsEditor): PendingList {
+export function pendingListEditor(
+  state: StatusEditor,
+  catalogs: CatalogsEditor,
+): PendingList {
   const document = buildDocument(sourceFromEditor(state, catalogs, null))
   return {
     // Sin guardar todavía no hay número: se asigna al guardar, no es algo que el usuario tenga que completar.
-    variables: document.faltantes.filter((name) => name !== 'numero' || state.id !== null),
+    variables: document.faltantes.filter(
+      (name) => name !== 'numero' || state.id !== null,
+    ),
     desconocidas: document.desconocidas,
-    itemsWithoutPrice: state.items.filter((item) => !item.isComplimentary && parsePrice(item.precio) === null).length,
+    itemsWithoutPrice: state.items.filter(
+      (item) => !item.isComplimentary && parsePrice(item.precio) === null,
+    ).length,
     withoutItems: state.items.length === 0,
   }
 }
 
 export function canSend(p: PendingList): boolean {
-  return p.variables.length === 0 && p.desconocidas.length === 0 && p.itemsWithoutPrice === 0 && !p.withoutItems
+  return (
+    p.variables.length === 0 &&
+    p.desconocidas.length === 0 &&
+    p.itemsWithoutPrice === 0 &&
+    !p.withoutItems
+  )
 }

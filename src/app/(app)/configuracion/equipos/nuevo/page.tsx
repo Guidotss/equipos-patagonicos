@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: 'Nuevo equipo' }
 export default async function NewEquipmentPage() {
   await requireStaff()
   const supabase = await createClient()
-  const { data: plantillas, error } = await supabase.from('plantillas').select('bloques').eq('activa', true)
+  const { data: plantillas, error } = await supabase
+    .from('plantillas')
+    .select('bloques')
+    .eq('activa', true)
   if (error) throw error
 
   return (
@@ -24,7 +27,10 @@ export default async function NewEquipmentPage() {
           { texto: 'Nuevo equipo' },
         ]}
       />
-      <FormEquipment accion={crearEquipment} phrases={phrasesWithVariables(plantillas, VARIABLES_EQUIPMENT)} />
+      <FormEquipment
+        accion={crearEquipment}
+        phrases={phrasesWithVariables(plantillas, VARIABLES_EQUIPMENT)}
+      />
     </>
   )
 }

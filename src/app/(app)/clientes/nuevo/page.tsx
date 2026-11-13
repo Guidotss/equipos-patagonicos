@@ -11,10 +11,18 @@ export default async function NewClientPage() {
   await requireStaff()
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Clientes', href: '/clientes' }, { texto: 'Nuevo cliente' }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Clientes', href: '/clientes' },
+          { texto: 'Nuevo cliente' },
+        ]}
+      />
       <Content className="max-w-6xl pb-28">
-        <HeaderForm titulo="Nuevo cliente" descripcion="Los contactos se agregan desde la ficha, después de crearlo." />
-          <ClientForm accion={crearClient} textButton="Crear cliente" />
+        <HeaderForm
+          titulo="Nuevo cliente"
+          descripcion="Los contactos se agregan desde la ficha, después de crearlo."
+        />
+        <ClientForm accion={crearClient} textButton="Crear cliente" />
       </Content>
     </>
   )

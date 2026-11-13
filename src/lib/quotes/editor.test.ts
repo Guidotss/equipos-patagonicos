@@ -53,18 +53,49 @@ const TEMPLATE_DAILY: TemplateEditor = {
   id: TEMPLATE_DAILY_ID,
   nombre: 'Por jornada - Grúa con operador',
   formato: 'jornada',
-  asunto: 'Cotización N° {{numero}} alquiler de 1 (una) Grúa Telescópica capacidad {{capacidad}} TN con operador.',
-  intro: 'Alquiler de 1 (una) Grúa Telescópica de {{capacidad}} TN para servicios de izajes en {{ubicacion}}.',
+  asunto:
+    'Cotización N° {{numero}} alquiler de 1 (una) Grúa Telescópica capacidad {{capacidad}} TN con operador.',
+  intro:
+    'Alquiler de 1 (una) Grúa Telescópica de {{capacidad}} TN para servicios de izajes en {{ubicacion}}.',
   validez_dias: 30,
   bloques: [
-    { titulo: 'Equipo ofrecido', contenido: '{{equipo_descripcion}}', hidden: false },
-    { titulo: 'Alcance', contenido: 'Horario de {{horario}}.\nTiempo estimado: {{duracion_estimada}}.', hidden: false },
-    { titulo: '', contenido: '**Forma de pago:** {{forma_pago}}.\n**Disponibilidad:** {{disponibilidad}}.', hidden: false },
+    {
+      titulo: 'Equipo ofrecido',
+      contenido: '{{equipo_descripcion}}',
+      hidden: false,
+    },
+    {
+      titulo: 'Alcance',
+      contenido:
+        'Horario de {{horario}}.\nTiempo estimado: {{duracion_estimada}}.',
+      hidden: false,
+    },
+    {
+      titulo: '',
+      contenido:
+        '**Forma de pago:** {{forma_pago}}.\n**Disponibilidad:** {{disponibilidad}}.',
+      hidden: false,
+    },
   ],
   items: [
-    { seccion: 'Precios Jornada', descripcion: DESCRIPTIONS_DAILY[0], unidad: 'JORNADA', cantidad: 1 },
-    { seccion: 'Precios Jornada', descripcion: DESCRIPTIONS_DAILY[1], unidad: 'VIAJE', cantidad: 1 },
-    { seccion: 'Precios Jornada Adicional', descripcion: DESCRIPTIONS_DAILY[2], unidad: 'JORNADA', cantidad: 1 },
+    {
+      seccion: 'Precios Jornada',
+      descripcion: DESCRIPTIONS_DAILY[0],
+      unidad: 'JORNADA',
+      cantidad: 1,
+    },
+    {
+      seccion: 'Precios Jornada',
+      descripcion: DESCRIPTIONS_DAILY[1],
+      unidad: 'VIAJE',
+      cantidad: 1,
+    },
+    {
+      seccion: 'Precios Jornada Adicional',
+      descripcion: DESCRIPTIONS_DAILY[2],
+      unidad: 'JORNADA',
+      cantidad: 1,
+    },
   ],
 }
 
@@ -76,9 +107,20 @@ const TEMPLATE_MONTHLY: TemplateEditor = {
   intro: '',
   validez_dias: 15,
   bloques: [
-    { titulo: 'RENEGOCIACIÓN DE TARIFAS', contenido: 'Próxima actualización: {{proxima_actualizacion}}.', hidden: false },
+    {
+      titulo: 'RENEGOCIACIÓN DE TARIFAS',
+      contenido: 'Próxima actualización: {{proxima_actualizacion}}.',
+      hidden: false,
+    },
   ],
-  items: [{ seccion: '', descripcion: 'Alquiler mensual Grúa {{capacidad}} TN', unidad: 'UNIDAD', cantidad: 1 }],
+  items: [
+    {
+      seccion: '',
+      descripcion: 'Alquiler mensual Grúa {{capacidad}} TN',
+      unidad: 'UNIDAD',
+      cantidad: 1,
+    },
+  ],
 }
 
 const CATALOGOS: CatalogsEditor = {
@@ -91,10 +133,22 @@ const CATALOGOS: CatalogsEditor = {
       descripcion: 'Grúa XCMG QY70K-1 de 40 TN.',
       activo: true,
     },
-    { id: EQUIPMENT_70, nombre: 'Grúa XCMG 70 TN', capacidad_tn: 70, descripcion: 'Grúa XCMG de 70 TN.', activo: false },
+    {
+      id: EQUIPMENT_70,
+      nombre: 'Grúa XCMG 70 TN',
+      capacidad_tn: 70,
+      descripcion: 'Grúa XCMG de 70 TN.',
+      activo: false,
+    },
   ],
   firmantes: [
-    { id: FIRMANTE, nombre: 'Thomas Cravero', cargo: 'Contrataciones / Logística', telefono: '299 418 3985', activo: true },
+    {
+      id: FIRMANTE,
+      nombre: 'Thomas Cravero',
+      cargo: 'Contrataciones / Logística',
+      telefono: '299 418 3985',
+      activo: true,
+    },
   ],
   empresa: EXAMPLE_DAILY.empresa,
 }
@@ -112,7 +166,11 @@ const DATA_COMPLETOS = {
 
 /** Una por jornada nueva con todo completo y precios, lista para guardar. */
 function complete(): StatusEditor {
-  const estado = statusNew({ plantilla: TEMPLATE_DAILY, firmanteId: FIRMANTE, today: '2026-10-25' })
+  const estado = statusNew({
+    plantilla: TEMPLATE_DAILY,
+    firmanteId: FIRMANTE,
+    today: '2026-10-25',
+  })
   const prices = ['1.950.000', '2.800.000', '2530000']
   return {
     ...estado,
@@ -120,7 +178,10 @@ function complete(): StatusEditor {
     contactoId: CONTACTO,
     equipoId: EQUIPMENT_40,
     datos: DATA_COMPLETOS,
-    items: estado.items.map((item, index) => ({ ...item, precio: prices[index] })),
+    items: estado.items.map((item, index) => ({
+      ...item,
+      precio: prices[index],
+    })),
   }
 }
 
@@ -128,8 +189,14 @@ function complete(): StatusEditor {
 function withoutKeys(estado: StatusEditor) {
   return {
     ...estado,
-    items: estado.items.map(({ clave, ...item }) => ({ ...item, clave: typeof clave })),
-    bloques: estado.bloques.map(({ clave, ...block }) => ({ ...block, clave: typeof clave })),
+    items: estado.items.map(({ clave, ...item }) => ({
+      ...item,
+      clave: typeof clave,
+    })),
+    bloques: estado.bloques.map(({ clave, ...block }) => ({
+      ...block,
+      clave: typeof clave,
+    })),
   }
 }
 
@@ -138,7 +205,15 @@ function keys(items: { clave: string }[]) {
 }
 
 function item(changes: Partial<ItemEditor>): ItemEditor {
-  return { clave: newKey(), seccion: '', descripcion: 'Jornada', cantidad: '1', precio: '', unidad: 'JORNADA', ...changes }
+  return {
+    clave: newKey(),
+    seccion: '',
+    descripcion: 'Jornada',
+    cantidad: '1',
+    precio: '',
+    unidad: 'JORNADA',
+    ...changes,
+  }
 }
 
 function withItems(items: ItemEditor[]): StatusEditor {
@@ -153,7 +228,8 @@ function errors(estado: StatusEditor) {
 
 function payload(estado: StatusEditor) {
   const result = payloadSave(estado)
-  if (!result.ok) throw new Error(`no debería fallar: ${JSON.stringify(result.errors)}`)
+  if (!result.ok)
+    throw new Error(`no debería fallar: ${JSON.stringify(result.errors)}`)
   return result.payload
 }
 
@@ -184,18 +260,44 @@ const FILA: RowEditor = {
   updated_at: '2026-10-20T15:04:05.123456+00:00',
   cliente: CLIENTE,
   items: [
-    { orden: 2, seccion: 'Precios', descripcion: 'Movilización', cantidad: 1.5, precio_unitario: null, unidad: 'VIAJE' },
-    { orden: 1, seccion: 'Precios', descripcion: 'Jornada', cantidad: 1, precio_unitario: 1_950_000.5, unidad: 'JORNADA' },
+    {
+      orden: 2,
+      seccion: 'Precios',
+      descripcion: 'Movilización',
+      cantidad: 1.5,
+      precio_unitario: null,
+      unidad: 'VIAJE',
+    },
+    {
+      orden: 1,
+      seccion: 'Precios',
+      descripcion: 'Jornada',
+      cantidad: 1,
+      precio_unitario: 1_950_000.5,
+      unidad: 'JORNADA',
+    },
   ],
-  envios: [{ id: '9f0a1b2c-3d4e-4f5a-8b7c-8d9e0f1a2b3c', enviada_at: '2026-10-21T10:00:00+00:00' }],
+  envios: [
+    {
+      id: '9f0a1b2c-3d4e-4f5a-8b7c-8d9e0f1a2b3c',
+      enviada_at: '2026-10-21T10:00:00+00:00',
+    },
+  ],
 }
 
 describe('FilaEditor', () => {
   it('encaja con lo que devuelve la consulta de SELECT_EDITOR (lo comprueba npm run typecheck)', () => {
     // No se ejecuta ninguna consulta: solo se compara el tipo que infiere supabase-js con FilaEditor.
     const consulta = (supabase: SupabaseClient<Database>) =>
-      supabase.from('cotizaciones').select(SELECT_EDITOR).eq('id', ID).maybeSingle()
-    expectTypeOf(consulta).returns.resolves.toHaveProperty('data').exclude<null>().toExtend<RowEditor>()
+      supabase
+        .from('cotizaciones')
+        .select(SELECT_EDITOR)
+        .eq('id', ID)
+        .maybeSingle()
+    expectTypeOf(consulta)
+      .returns.resolves.toHaveProperty('data')
+      .exclude<null>()
+      .toExtend<RowEditor>()
   })
 })
 
@@ -228,21 +330,27 @@ describe('textoPrecio y textoCantidad', () => {
     expect(textQuantity(0.25)).toBe('0,25')
   })
 
-  it.each([0, 1, 950, 1_950, 260_000, 1_950_000.5, 39_000_000, 999_999_999_999.99, 0.5])(
-    'parsePrecio vuelve a leer el precio %d',
-    (price) => {
-      expect(parsePrice(textPrice(price))).toBe(price)
+  it.each([
+    0, 1, 950, 1_950, 260_000, 1_950_000.5, 39_000_000, 999_999_999_999.99, 0.5,
+  ])('parsePrecio vuelve a leer el precio %d', (price) => {
+    expect(parsePrice(textPrice(price))).toBe(price)
+  })
+
+  it.each([1, 1.5, 2.25, 12, 1000, 999_999])(
+    'parsePrecio vuelve a leer la cantidad %d',
+    (cantidad) => {
+      expect(parsePrice(textQuantity(cantidad))).toBe(cantidad)
     },
   )
-
-  it.each([1, 1.5, 2.25, 12, 1000, 999_999])('parsePrecio vuelve a leer la cantidad %d', (cantidad) => {
-    expect(parsePrice(textQuantity(cantidad))).toBe(cantidad)
-  })
 })
 
 describe('estadoNuevo', () => {
   it('con plantilla: borrador de la app con asunto, textos, validez e ítems sin precio', () => {
-    const estado = statusNew({ plantilla: TEMPLATE_DAILY, firmanteId: FIRMANTE, today: '2026-10-25' })
+    const estado = statusNew({
+      plantilla: TEMPLATE_DAILY,
+      firmanteId: FIRMANTE,
+      today: '2026-10-25',
+    })
     expect(withoutKeys(estado)).toEqual({
       id: null,
       version: null,
@@ -280,15 +388,30 @@ describe('estadoNuevo', () => {
         unidad: item.unidad,
         clave: 'string',
       })),
-      bloques: TEMPLATE_DAILY.bloques.map((block) => ({ ...block, clave: 'string' })),
+      bloques: TEMPLATE_DAILY.bloques.map((block) => ({
+        ...block,
+        clave: 'string',
+      })),
       replacesA: null,
     })
-    expect(new Set([...keys(estado.items), ...keys(estado.bloques)]).size).toBe(6)
+    expect(new Set([...keys(estado.items), ...keys(estado.bloques)]).size).toBe(
+      6,
+    )
   })
 
   it('sin plantilla: vacía, mensual y con la validez por defecto de la base', () => {
-    const estado = statusNew({ plantilla: null, firmanteId: '', today: '2026-10-25' })
-    expect(estado).toMatchObject({ templateId: '', formato: 'mensual', validezDias: '30', items: [], bloques: [] })
+    const estado = statusNew({
+      plantilla: null,
+      firmanteId: '',
+      today: '2026-10-25',
+    })
+    expect(estado).toMatchObject({
+      templateId: '',
+      formato: 'mensual',
+      validezDias: '30',
+      items: [],
+      bloques: [],
+    })
   })
 })
 
@@ -323,11 +446,32 @@ describe('estadoDesdeFila', () => {
         proxima_actualizacion: '',
       },
       items: [
-        { seccion: 'Precios', descripcion: 'Jornada', cantidad: '1', precio: '1.950.000,50', unidad: 'JORNADA', isComplimentary: false, clave: 'string' },
-        { seccion: 'Precios', descripcion: 'Movilización', cantidad: '1,5', precio: '', unidad: 'VIAJE', isComplimentary: false, clave: 'string' },
+        {
+          seccion: 'Precios',
+          descripcion: 'Jornada',
+          cantidad: '1',
+          precio: '1.950.000,50',
+          unidad: 'JORNADA',
+          isComplimentary: false,
+          clave: 'string',
+        },
+        {
+          seccion: 'Precios',
+          descripcion: 'Movilización',
+          cantidad: '1,5',
+          precio: '',
+          unidad: 'VIAJE',
+          isComplimentary: false,
+          clave: 'string',
+        },
       ],
       bloques: [
-        { titulo: 'Alcance', contenido: '- Item', hidden: false, clave: 'string' },
+        {
+          titulo: 'Alcance',
+          contenido: '- Item',
+          hidden: false,
+          clave: 'string',
+        },
         { titulo: 'Notas', contenido: 'Oculto', hidden: true, clave: 'string' },
       ],
       replacesA: ANTERIOR,
@@ -335,7 +479,10 @@ describe('estadoDesdeFila', () => {
   })
 
   it('sin fecha de próxima actualización el mes queda vacío', () => {
-    expect(statusFromRow({ ...FILA, fecha_proxima_actualizacion: null }).proximaActualizacion).toBe('')
+    expect(
+      statusFromRow({ ...FILA, fecha_proxima_actualizacion: null })
+        .proximaActualizacion,
+    ).toBe('')
   })
 
   it('leer dos veces la misma fila no cuenta como cambio (las claves no importan)', () => {
@@ -343,18 +490,29 @@ describe('estadoDesdeFila', () => {
   })
 
   it('un valor que la base no permite es un error de programación', () => {
-    expect(() => statusFromRow({ ...FILA, estado: 'anulada' })).toThrow('Estado desconocido: anulada')
-    expect(() => statusFromRow({ ...FILA, formato: 'semanal' })).toThrow('Formato desconocido: semanal')
-    expect(() => statusFromRow({ ...FILA, items: [{ ...FILA.items[0], unidad: 'LITRO' }] })).toThrow(
-      'Unidad desconocida: LITRO',
+    expect(() => statusFromRow({ ...FILA, estado: 'anulada' })).toThrow(
+      'Estado desconocido: anulada',
     )
+    expect(() => statusFromRow({ ...FILA, formato: 'semanal' })).toThrow(
+      'Formato desconocido: semanal',
+    )
+    expect(() =>
+      statusFromRow({
+        ...FILA,
+        items: [{ ...FILA.items[0], unidad: 'LITRO' }],
+      }),
+    ).toThrow('Unidad desconocida: LITRO')
     expect(() => statusFromRow({ ...FILA, bloques: [{ titulo: 1 }] })).toThrow()
   })
 })
 
 describe('aplicarPlantilla', () => {
   it('reemplaza formato, asunto, introducción, textos, validez e ítems; conserva lo demás', () => {
-    const antes = { ...complete(), proximaActualizacion: '2026-11', mostrarTotal: true }
+    const antes = {
+      ...complete(),
+      proximaActualizacion: '2026-11',
+      mostrarTotal: true,
+    }
     const despues = applyTemplate(antes, TEMPLATE_MONTHLY)
     expect(despues).toMatchObject({
       templateId: TEMPLATE_MONTHLY_ID,
@@ -371,56 +529,128 @@ describe('aplicarPlantilla', () => {
       proximaActualizacion: '2026-11',
       mostrarTotal: true,
     })
-    expect(despues.items.map(({ descripcion, precio: price, unidad }) => ({ descripcion, precio: price, unidad }))).toEqual([
-      { descripcion: 'Alquiler mensual Grúa {{capacidad}} TN', precio: '', unidad: 'UNIDAD' },
+    expect(
+      despues.items.map(({ descripcion, precio: price, unidad }) => ({
+        descripcion,
+        precio: price,
+        unidad,
+      })),
+    ).toEqual([
+      {
+        descripcion: 'Alquiler mensual Grúa {{capacidad}} TN',
+        precio: '',
+        unidad: 'UNIDAD',
+      },
     ])
-    expect(despues.bloques.map((block) => block.titulo)).toEqual(['RENEGOCIACIÓN DE TARIFAS'])
+    expect(despues.bloques.map((block) => block.titulo)).toEqual([
+      'RENEGOCIACIÓN DE TARIFAS',
+    ])
   })
 })
 
 describe('reducirEditor', () => {
   it('campo: cambia el campo pedido sin tocar el estado anterior', () => {
     const antes = complete()
-    const despues = reduceEditor(antes, { tipo: 'campo', campo: 'asunto', value: 'Otro asunto' })
+    const despues = reduceEditor(antes, {
+      tipo: 'campo',
+      campo: 'asunto',
+      value: 'Otro asunto',
+    })
     expect(despues.asunto).toBe('Otro asunto')
     expect(antes.asunto).toBe(TEMPLATE_DAILY.asunto)
-    expect(reduceEditor(antes, { tipo: 'campo', campo: 'validezDias', value: '45' }).validezDias).toBe('45')
-    const month = reduceEditor(antes, { tipo: 'campo', campo: 'proximaActualizacion', value: '2026-11' })
+    expect(
+      reduceEditor(antes, { tipo: 'campo', campo: 'validezDias', value: '45' })
+        .validezDias,
+    ).toBe('45')
+    const month = reduceEditor(antes, {
+      tipo: 'campo',
+      campo: 'proximaActualizacion',
+      value: '2026-11',
+    })
     expect(month.proximaActualizacion).toBe('2026-11')
-    expect(reduceEditor(antes, { tipo: 'campo', campo: 'equipoId', value: '' }).equipoId).toBe('')
+    expect(
+      reduceEditor(antes, { tipo: 'campo', campo: 'equipoId', value: '' })
+        .equipoId,
+    ).toBe('')
   })
 
   it('próxima actualización: el mes escribe también el texto del PDF y vaciarlo lo borra (decisión 7)', () => {
-    const withText = { ...complete(), datos: { ...DATA_COMPLETOS, proxima_actualizacion: 'marzo de 2027' } }
-    const month = reduceEditor(withText, { tipo: 'campo', campo: 'proximaActualizacion', value: '2026-11' })
-    expect(month).toMatchObject({ proximaActualizacion: '2026-11', datos: { proxima_actualizacion: 'noviembre de 2026' } })
-    const empty = reduceEditor(month, { tipo: 'campo', campo: 'proximaActualizacion', value: '' })
-    expect(empty).toMatchObject({ proximaActualizacion: '', datos: { proxima_actualizacion: '' } })
+    const withText = {
+      ...complete(),
+      datos: { ...DATA_COMPLETOS, proxima_actualizacion: 'marzo de 2027' },
+    }
+    const month = reduceEditor(withText, {
+      tipo: 'campo',
+      campo: 'proximaActualizacion',
+      value: '2026-11',
+    })
+    expect(month).toMatchObject({
+      proximaActualizacion: '2026-11',
+      datos: { proxima_actualizacion: 'noviembre de 2026' },
+    })
+    const empty = reduceEditor(month, {
+      tipo: 'campo',
+      campo: 'proximaActualizacion',
+      value: '',
+    })
+    expect(empty).toMatchObject({
+      proximaActualizacion: '',
+      datos: { proxima_actualizacion: '' },
+    })
     // Sin fecha ni texto, el PDF usa el de la empresa: lo mismo antes y después de recargar.
-    expect(payload(empty).p_datos).toMatchObject({ fecha_proxima_actualizacion: null, datos: { proxima_actualizacion: '' } })
+    expect(payload(empty).p_datos).toMatchObject({
+      fecha_proxima_actualizacion: null,
+      datos: { proxima_actualizacion: '' },
+    })
   })
 
   it('dato: cambia una variable de la cotización', () => {
-    const despues = reduceEditor(complete(), { tipo: 'dato', campo: 'ubicacion', value: 'Añelo' })
+    const despues = reduceEditor(complete(), {
+      tipo: 'dato',
+      campo: 'ubicacion',
+      value: 'Añelo',
+    })
     expect(despues.datos).toEqual({ ...DATA_COMPLETOS, ubicacion: 'Añelo' })
   })
 
   it('mostrarTotal', () => {
-    expect(reduceEditor(complete(), { tipo: 'mostrarTotal', value: true }).mostrarTotal).toBe(true)
+    expect(
+      reduceEditor(complete(), { tipo: 'mostrarTotal', value: true })
+        .mostrarTotal,
+    ).toBe(true)
   })
 
   it('cliente: cambia el cliente y el contacto juntos', () => {
     const otro = { id: ANTERIOR, razon_social: 'Milicic S.A.', cuit: null }
-    expect(reduceEditor(complete(), { tipo: 'cliente', cliente: otro, contactoId: '' })).toMatchObject({
+    expect(
+      reduceEditor(complete(), {
+        tipo: 'cliente',
+        cliente: otro,
+        contactoId: '',
+      }),
+    ).toMatchObject({
       cliente: otro,
       contactoId: '',
     })
-    expect(reduceEditor(complete(), { tipo: 'cliente', cliente: null, contactoId: '' }).cliente).toBeNull()
+    expect(
+      reduceEditor(complete(), {
+        tipo: 'cliente',
+        cliente: null,
+        contactoId: '',
+      }).cliente,
+    ).toBeNull()
   })
 
   it('plantilla: aplica la plantilla', () => {
-    const despues = reduceEditor(complete(), { tipo: 'plantilla', plantilla: TEMPLATE_MONTHLY })
-    expect(despues).toMatchObject({ templateId: TEMPLATE_MONTHLY_ID, formato: 'mensual', validezDias: '15' })
+    const despues = reduceEditor(complete(), {
+      tipo: 'plantilla',
+      plantilla: TEMPLATE_MONTHLY,
+    })
+    expect(despues).toMatchObject({
+      templateId: TEMPLATE_MONTHLY_ID,
+      formato: 'mensual',
+      validezDias: '15',
+    })
   })
 
   describe('agregarItem', () => {
@@ -442,53 +672,101 @@ describe('reducirEditor', () => {
 
     it('después de una fila: la agrega debajo, con su sección y su unidad', () => {
       const antes = complete()
-      const despues = reduceEditor(antes, { tipo: 'agregarItem', despuesOf: antes.items[1].clave })
+      const despues = reduceEditor(antes, {
+        tipo: 'agregarItem',
+        despuesOf: antes.items[1].clave,
+      })
       expect(keys(despues.items).indexOf(antes.items[1].clave)).toBe(1)
-      expect(despues.items[2]).toMatchObject({ seccion: 'Precios Jornada', unidad: 'VIAJE', descripcion: '' })
+      expect(despues.items[2]).toMatchObject({
+        seccion: 'Precios Jornada',
+        unidad: 'VIAJE',
+        descripcion: '',
+      })
       expect(despues.items[3]).toEqual(antes.items[2])
     })
 
     it('con sección explícita la usa', () => {
-      const despues = reduceEditor(complete(), { tipo: 'agregarItem', seccion: 'Otros' })
+      const despues = reduceEditor(complete(), {
+        tipo: 'agregarItem',
+        seccion: 'Otros',
+      })
       expect(despues.items.at(-1)?.seccion).toBe('Otros')
     })
 
     it('con una fila que ya no existe agrega al final', () => {
-      const despues = reduceEditor(complete(), { tipo: 'agregarItem', despuesOf: 'no-existe' })
+      const despues = reduceEditor(complete(), {
+        tipo: 'agregarItem',
+        despuesOf: 'no-existe',
+      })
       expect(despues.items).toHaveLength(4)
       expect(despues.items[3].descripcion).toBe('')
     })
 
     it('en una grilla vacía usa la unidad del formato', () => {
       const daily = { ...complete(), items: [] }
-      expect(reduceEditor(daily, { tipo: 'agregarItem' }).items[0]).toMatchObject({ seccion: '', unidad: 'JORNADA' })
+      expect(
+        reduceEditor(daily, { tipo: 'agregarItem' }).items[0],
+      ).toMatchObject({ seccion: '', unidad: 'JORNADA' })
       const monthly = { ...daily, formato: 'mensual' as const }
-      expect(reduceEditor(monthly, { tipo: 'agregarItem' }).items[0].unidad).toBe('UNIDAD')
+      expect(
+        reduceEditor(monthly, { tipo: 'agregarItem' }).items[0].unidad,
+      ).toBe('UNIDAD')
     })
   })
 
   it('item: cambia solo esa fila y conserva su clave', () => {
     const antes = complete()
     const clave = antes.items[1].clave
-    const despues = reduceEditor(antes, { tipo: 'item', clave, changes: { precio: '3.000.000', unidad: 'JORNADA' } })
-    expect(despues.items[1]).toEqual({ ...antes.items[1], precio: '3.000.000', unidad: 'JORNADA' })
+    const despues = reduceEditor(antes, {
+      tipo: 'item',
+      clave,
+      changes: { precio: '3.000.000', unidad: 'JORNADA' },
+    })
+    expect(despues.items[1]).toEqual({
+      ...antes.items[1],
+      precio: '3.000.000',
+      unidad: 'JORNADA',
+    })
     expect(despues.items[0]).toBe(antes.items[0])
-    const withKey = { precio: '1', clave: 'otra' } as Partial<Omit<ItemEditor, 'clave'>>
-    expect(reduceEditor(antes, { tipo: 'item', clave, changes: withKey }).items[1].clave).toBe(clave)
+    const withKey = { precio: '1', clave: 'otra' } as Partial<
+      Omit<ItemEditor, 'clave'>
+    >
+    expect(
+      reduceEditor(antes, { tipo: 'item', clave, changes: withKey }).items[1]
+        .clave,
+    ).toBe(clave)
   })
 
   describe('moverItem', () => {
     it('mueve una fila de lugar', () => {
-      const antes = withItems([item({ descripcion: 'a' }), item({ descripcion: 'b' }), item({ descripcion: 'c' })])
-      const despues = reduceEditor(antes, { tipo: 'moverItem', desde: 2, hasta: 0 })
-      expect(despues.items.map((row) => row.descripcion)).toEqual(['c', 'a', 'b'])
+      const antes = withItems([
+        item({ descripcion: 'a' }),
+        item({ descripcion: 'b' }),
+        item({ descripcion: 'c' }),
+      ])
+      const despues = reduceEditor(antes, {
+        tipo: 'moverItem',
+        desde: 2,
+        hasta: 0,
+      })
+      expect(despues.items.map((row) => row.descripcion)).toEqual([
+        'c',
+        'a',
+        'b',
+      ])
     })
 
     it('fuera de rango o al mismo lugar no cambia nada', () => {
       const antes = withItems([item({}), item({})])
-      expect(reduceEditor(antes, { tipo: 'moverItem', desde: 0, hasta: 5 })).toBe(antes)
-      expect(reduceEditor(antes, { tipo: 'moverItem', desde: -1, hasta: 0 })).toBe(antes)
-      expect(reduceEditor(antes, { tipo: 'moverItem', desde: 1, hasta: 1 })).toBe(antes)
+      expect(
+        reduceEditor(antes, { tipo: 'moverItem', desde: 0, hasta: 5 }),
+      ).toBe(antes)
+      expect(
+        reduceEditor(antes, { tipo: 'moverItem', desde: -1, hasta: 0 }),
+      ).toBe(antes)
+      expect(
+        reduceEditor(antes, { tipo: 'moverItem', desde: 1, hasta: 1 }),
+      ).toBe(antes)
     })
 
     it('si cae en el medio de otro grupo, se suma a ese grupo', () => {
@@ -497,8 +775,14 @@ describe('reducirEditor', () => {
         item({ seccion: 'B', descripcion: 'b1' }),
         item({ seccion: 'B', descripcion: 'b2' }),
       ])
-      const despues = reduceEditor(antes, { tipo: 'moverItem', desde: 0, hasta: 1 })
-      expect(despues.items.map((row) => `${row.seccion}:${row.descripcion}`)).toEqual(['B:b1', 'B:a1', 'B:b2'])
+      const despues = reduceEditor(antes, {
+        tipo: 'moverItem',
+        desde: 0,
+        hasta: 1,
+      })
+      expect(
+        despues.items.map((row) => `${row.seccion}:${row.descripcion}`),
+      ).toEqual(['B:b1', 'B:a1', 'B:b2'])
     })
 
     it('en el borde entre dos grupos conserva su sección', () => {
@@ -508,55 +792,116 @@ describe('reducirEditor', () => {
         item({ seccion: 'B', descripcion: 'b1' }),
         item({ seccion: 'C', descripcion: 'c1' }),
       ])
-      const onFinal = reduceEditor(antes, { tipo: 'moverItem', desde: 0, hasta: 3 })
-      expect(onFinal.items.map((row) => `${row.seccion}:${row.descripcion}`)).toEqual([
-        'A:a2',
-        'B:b1',
-        'C:c1',
-        'A:a1',
+      const onFinal = reduceEditor(antes, {
+        tipo: 'moverItem',
+        desde: 0,
+        hasta: 3,
+      })
+      expect(
+        onFinal.items.map((row) => `${row.seccion}:${row.descripcion}`),
+      ).toEqual(['A:a2', 'B:b1', 'C:c1', 'A:a1'])
+      const betweenGroups = reduceEditor(antes, {
+        tipo: 'moverItem',
+        desde: 3,
+        hasta: 2,
+      })
+      expect(betweenGroups.items.map((row) => row.seccion)).toEqual([
+        'A',
+        'A',
+        'C',
+        'B',
       ])
-      const betweenGroups = reduceEditor(antes, { tipo: 'moverItem', desde: 3, hasta: 2 })
-      expect(betweenGroups.items.map((row) => row.seccion)).toEqual(['A', 'A', 'C', 'B'])
     })
   })
 
   it('quitarItem', () => {
     const antes = complete()
-    const despues = reduceEditor(antes, { tipo: 'quitarItem', clave: antes.items[0].clave })
+    const despues = reduceEditor(antes, {
+      tipo: 'quitarItem',
+      clave: antes.items[0].clave,
+    })
     expect(despues.items).toEqual(antes.items.slice(1))
   })
 
   it('elimina las claves solicitadas aunque el nombre se haya unido a la sección vecina', () => {
-    const before = withItems([item({ seccion: 'A' }), item({ seccion: 'B' }), item({ seccion: 'A' })])
+    const before = withItems([
+      item({ seccion: 'A' }),
+      item({ seccion: 'B' }),
+      item({ seccion: 'A' }),
+    ])
     const itemKeys = [before.items[1].clave]
-    const merged = reduceEditor(before, { tipo: 'renombrarSeccion', clave: itemKeys[0], seccion: 'A' })
-    const after = reduceEditor(merged, { tipo: 'removeSectionItems', itemKeys })
+    const merged = reduceEditor(before, {
+      tipo: 'renombrarSeccion',
+      clave: itemKeys[0],
+      seccion: 'A',
+    })
+    const after = reduceEditor(merged, {
+      tipo: 'removeSectionItems',
+      itemKeys,
+    })
     expect(after.items).toEqual([merged.items[0], merged.items[2]])
     expect(before.items).toHaveLength(3)
-    expect(reduceEditor(after, { tipo: 'removeSectionItems', itemKeys })).toBe(after)
+    expect(reduceEditor(after, { tipo: 'removeSectionItems', itemKeys })).toBe(
+      after,
+    )
   })
 
   it('elimina una racha concreta de nombres repetidos y permite dejar la grilla vacía', () => {
-    const before = withItems([item({ seccion: 'A' }), item({ seccion: 'A' }), item({ seccion: 'B' }), item({ seccion: 'A' })])
-    const after = reduceEditor(before, { tipo: 'removeSectionItems', itemKeys: before.items.slice(0, 2).map((row) => row.clave) })
+    const before = withItems([
+      item({ seccion: 'A' }),
+      item({ seccion: 'A' }),
+      item({ seccion: 'B' }),
+      item({ seccion: 'A' }),
+    ])
+    const after = reduceEditor(before, {
+      tipo: 'removeSectionItems',
+      itemKeys: before.items.slice(0, 2).map((row) => row.clave),
+    })
     expect(after.items).toEqual(before.items.slice(2))
-    expect(reduceEditor(after, { tipo: 'removeSectionItems', itemKeys: after.items.map((row) => row.clave) }).items).toEqual([])
+    expect(
+      reduceEditor(after, {
+        tipo: 'removeSectionItems',
+        itemKeys: after.items.map((row) => row.clave),
+      }).items,
+    ).toEqual([])
   })
 
   it('con una clave que ya no existe, item, quitarItem y bloque devuelven el mismo estado', () => {
     const antes = complete()
-    expect(reduceEditor(antes, { tipo: 'item', clave: 'no-existe', changes: { precio: '1' } })).toBe(antes)
-    expect(reduceEditor(antes, { tipo: 'quitarItem', clave: 'no-existe' })).toBe(antes)
-    expect(reduceEditor(antes, { tipo: 'bloque', clave: 'no-existe', changes: { hidden: true } })).toBe(antes)
+    expect(
+      reduceEditor(antes, {
+        tipo: 'item',
+        clave: 'no-existe',
+        changes: { precio: '1' },
+      }),
+    ).toBe(antes)
+    expect(
+      reduceEditor(antes, { tipo: 'quitarItem', clave: 'no-existe' }),
+    ).toBe(antes)
+    expect(
+      reduceEditor(antes, {
+        tipo: 'bloque',
+        clave: 'no-existe',
+        changes: { hidden: true },
+      }),
+    ).toBe(antes)
   })
 
   it('duplicarItem: la copia va debajo con otra clave', () => {
     const antes = complete()
-    const despues = reduceEditor(antes, { tipo: 'duplicarItem', clave: antes.items[0].clave })
+    const despues = reduceEditor(antes, {
+      tipo: 'duplicarItem',
+      clave: antes.items[0].clave,
+    })
     expect(despues.items).toHaveLength(4)
-    expect(despues.items[1]).toEqual({ ...antes.items[0], clave: expect.any(String) })
+    expect(despues.items[1]).toEqual({
+      ...antes.items[0],
+      clave: expect.any(String),
+    })
     expect(despues.items[1].clave).not.toBe(antes.items[0].clave)
-    expect(reduceEditor(antes, { tipo: 'duplicarItem', clave: 'no-existe' })).toBe(antes)
+    expect(
+      reduceEditor(antes, { tipo: 'duplicarItem', clave: 'no-existe' }),
+    ).toBe(antes)
   })
 
   it('renombrarSeccion: renombra solo el grupo consecutivo de esa fila', () => {
@@ -566,22 +911,51 @@ describe('reducirEditor', () => {
       item({ seccion: 'B' }),
       item({ seccion: 'A' }),
     ])
-    const despues = reduceEditor(antes, { tipo: 'renombrarSeccion', clave: antes.items[1].clave, seccion: 'Precios' })
-    expect(despues.items.map((row) => row.seccion)).toEqual(['Precios', 'Precios', 'B', 'A'])
-    expect(reduceEditor(antes, { tipo: 'renombrarSeccion', clave: 'no-existe', seccion: 'X' })).toBe(antes)
+    const despues = reduceEditor(antes, {
+      tipo: 'renombrarSeccion',
+      clave: antes.items[1].clave,
+      seccion: 'Precios',
+    })
+    expect(despues.items.map((row) => row.seccion)).toEqual([
+      'Precios',
+      'Precios',
+      'B',
+      'A',
+    ])
+    expect(
+      reduceEditor(antes, {
+        tipo: 'renombrarSeccion',
+        clave: 'no-existe',
+        seccion: 'X',
+      }),
+    ).toBe(antes)
   })
 
   it('agregarSeccion: agrega una fila vacía en una sección nueva al final', () => {
-    const despues = reduceEditor(complete(), { tipo: 'agregarSeccion', nombre: '  Horas extra ' })
-    expect(despues.items.at(-1)).toMatchObject({ seccion: 'Horas extra', descripcion: '', unidad: 'JORNADA' })
-    const withoutName = reduceEditor(complete(), { tipo: 'agregarSeccion', nombre: ' ' })
+    const despues = reduceEditor(complete(), {
+      tipo: 'agregarSeccion',
+      nombre: '  Horas extra ',
+    })
+    expect(despues.items.at(-1)).toMatchObject({
+      seccion: 'Horas extra',
+      descripcion: '',
+      unidad: 'JORNADA',
+    })
+    const withoutName = reduceEditor(complete(), {
+      tipo: 'agregarSeccion',
+      nombre: ' ',
+    })
     expect(withoutName.items.at(-1)?.seccion).toBe('Nueva sección')
   })
 
   it('bloque: cambia texto u oculto de un bloque', () => {
     const antes = complete()
     const clave = antes.bloques[1].clave
-    const despues = reduceEditor(antes, { tipo: 'bloque', clave, changes: { hidden: true } })
+    const despues = reduceEditor(antes, {
+      tipo: 'bloque',
+      clave,
+      changes: { hidden: true },
+    })
     expect(despues.bloques[1]).toEqual({ ...antes.bloques[1], hidden: true })
     expect(despues.bloques[0]).toBe(antes.bloques[0])
   })
@@ -589,35 +963,63 @@ describe('reducirEditor', () => {
   it('moverBloque: sube o baja uno; en los extremos no cambia', () => {
     const antes = complete()
     const [first, segundo, tercero] = keys(antes.bloques)
-    expect(keys(reduceEditor(antes, { tipo: 'moverBloque', clave: segundo, direccion: -1 }).bloques)).toEqual([
-      segundo,
-      first,
-      tercero,
-    ])
-    expect(keys(reduceEditor(antes, { tipo: 'moverBloque', clave: segundo, direccion: 1 }).bloques)).toEqual([
-      first,
-      tercero,
-      segundo,
-    ])
-    expect(reduceEditor(antes, { tipo: 'moverBloque', clave: first, direccion: -1 })).toBe(antes)
-    expect(reduceEditor(antes, { tipo: 'moverBloque', clave: tercero, direccion: 1 })).toBe(antes)
+    expect(
+      keys(
+        reduceEditor(antes, {
+          tipo: 'moverBloque',
+          clave: segundo,
+          direccion: -1,
+        }).bloques,
+      ),
+    ).toEqual([segundo, first, tercero])
+    expect(
+      keys(
+        reduceEditor(antes, {
+          tipo: 'moverBloque',
+          clave: segundo,
+          direccion: 1,
+        }).bloques,
+      ),
+    ).toEqual([first, tercero, segundo])
+    expect(
+      reduceEditor(antes, { tipo: 'moverBloque', clave: first, direccion: -1 }),
+    ).toBe(antes)
+    expect(
+      reduceEditor(antes, {
+        tipo: 'moverBloque',
+        clave: tercero,
+        direccion: 1,
+      }),
+    ).toBe(antes)
   })
 
   it('restaurarBloques: reemplaza los bloques por los dados, con claves nuevas', () => {
-    const despues = reduceEditor(complete(), { tipo: 'restaurarBloques', bloques: TEMPLATE_MONTHLY.bloques })
-    expect(despues.bloques).toEqual([{ ...TEMPLATE_MONTHLY.bloques[0], clave: expect.any(String) }])
+    const despues = reduceEditor(complete(), {
+      tipo: 'restaurarBloques',
+      bloques: TEMPLATE_MONTHLY.bloques,
+    })
+    expect(despues.bloques).toEqual([
+      { ...TEMPLATE_MONTHLY.bloques[0], clave: expect.any(String) },
+    ])
   })
 
   it('guardado: anota id, versión y número sin tocar el contenido', () => {
     const antes = complete()
     const version = '2026-10-25T12:00:00+00:00'
-    const despues = reduceEditor(antes, { tipo: 'guardado', id: ID, version, numero: 112713 })
+    const despues = reduceEditor(antes, {
+      tipo: 'guardado',
+      id: ID,
+      version,
+      numero: 112713,
+    })
     expect(despues).toEqual({ ...antes, id: ID, version, numero: 112713 })
   })
 
   it('reemplazar: devuelve el estado dado', () => {
     const otro = statusFromRow(FILA)
-    expect(reduceEditor(complete(), { tipo: 'reemplazar', estado: otro })).toBe(otro)
+    expect(reduceEditor(complete(), { tipo: 'reemplazar', estado: otro })).toBe(
+      otro,
+    )
   })
 })
 
@@ -629,36 +1031,87 @@ describe('hayCambios', () => {
 
   it('cambiar algo y volverlo atrás', () => {
     const saved = complete()
-    const edited = reduceEditor(saved, { tipo: 'dato', campo: 'ubicacion', value: 'Añelo' })
+    const edited = reduceEditor(saved, {
+      tipo: 'dato',
+      campo: 'ubicacion',
+      value: 'Añelo',
+    })
     expect(hasChanges(saved, edited)).toBe(true)
-    const revertido = reduceEditor(edited, { tipo: 'dato', campo: 'ubicacion', value: DATA_COMPLETOS.ubicacion })
+    const revertido = reduceEditor(edited, {
+      tipo: 'dato',
+      campo: 'ubicacion',
+      value: DATA_COMPLETOS.ubicacion,
+    })
     expect(hasChanges(saved, revertido)).toBe(false)
   })
 
   it('lo que no cambia lo guardado no cuenta: formato del precio, espacios de más y el número asignado', () => {
     const saved = complete()
     const clave = saved.items[2].clave
-    const price = reduceEditor(saved, { tipo: 'item', clave, changes: { precio: '2.530.000,00' } })
+    const price = reduceEditor(saved, {
+      tipo: 'item',
+      clave,
+      changes: { precio: '2.530.000,00' },
+    })
     expect(hasChanges(saved, price)).toBe(false)
-    expect(hasChanges(saved, { ...saved, asunto: `${saved.asunto}  ` })).toBe(false)
-    const withNumber = reduceEditor(saved, { tipo: 'guardado', id: ID, version: 'v2', numero: 112713 })
+    expect(hasChanges(saved, { ...saved, asunto: `${saved.asunto}  ` })).toBe(
+      false,
+    )
+    const withNumber = reduceEditor(saved, {
+      tipo: 'guardado',
+      id: ID,
+      version: 'v2',
+      numero: 112713,
+    })
     expect(hasChanges(saved, withNumber)).toBe(false)
   })
 
   it('reordenar ítems u ocultar un bloque sí es un cambio', () => {
     const saved = complete()
-    expect(hasChanges(saved, reduceEditor(saved, { tipo: 'moverItem', desde: 0, hasta: 1 }))).toBe(true)
+    expect(
+      hasChanges(
+        saved,
+        reduceEditor(saved, { tipo: 'moverItem', desde: 0, hasta: 1 }),
+      ),
+    ).toBe(true)
     const clave = saved.bloques[0].clave
-    expect(hasChanges(saved, reduceEditor(saved, { tipo: 'bloque', clave, changes: { hidden: true } }))).toBe(true)
+    expect(
+      hasChanges(
+        saved,
+        reduceEditor(saved, {
+          tipo: 'bloque',
+          clave,
+          changes: { hidden: true },
+        }),
+      ),
+    ).toBe(true)
   })
 
   it('con algo a medio escribir compara el contenido', () => {
     const saved = complete()
     const clave = saved.items[0].clave
-    expect(hasChanges(saved, reduceEditor(saved, { tipo: 'item', clave, changes: { precio: 'abc' } }))).toBe(true)
-    const nueva = statusNew({ plantilla: TEMPLATE_DAILY, firmanteId: FIRMANTE, today: '2026-10-25' })
+    expect(
+      hasChanges(
+        saved,
+        reduceEditor(saved, {
+          tipo: 'item',
+          clave,
+          changes: { precio: 'abc' },
+        }),
+      ),
+    ).toBe(true)
+    const nueva = statusNew({
+      plantilla: TEMPLATE_DAILY,
+      firmanteId: FIRMANTE,
+      today: '2026-10-25',
+    })
     expect(hasChanges(nueva, nueva)).toBe(false)
-    expect(hasChanges(nueva, reduceEditor(nueva, { tipo: 'campo', campo: 'asunto', value: 'x' }))).toBe(true)
+    expect(
+      hasChanges(
+        nueva,
+        reduceEditor(nueva, { tipo: 'campo', campo: 'asunto', value: 'x' }),
+      ),
+    ).toBe(true)
   })
 })
 
@@ -672,8 +1125,19 @@ describe('payloadGuardar', () => {
       mostrarTotal: true,
       replacesA: ANTERIOR,
       items: [
-        item({ seccion: ' Precios Jornada ', descripcion: ' Jornada ', cantidad: '1,5', precio: '39.000.000,00' }),
-        item({ seccion: '', descripcion: 'Movilización', cantidad: '2', precio: '', unidad: 'VIAJE' }),
+        item({
+          seccion: ' Precios Jornada ',
+          descripcion: ' Jornada ',
+          cantidad: '1,5',
+          precio: '39.000.000,00',
+        }),
+        item({
+          seccion: '',
+          descripcion: 'Movilización',
+          cantidad: '2',
+          precio: '',
+          unidad: 'VIAJE',
+        }),
       ],
     }
     expect(payload(estado)).toEqual({
@@ -687,7 +1151,10 @@ describe('payloadGuardar', () => {
         fecha: '2026-10-25',
         asunto: 'Cotización N° {{numero}}',
         intro: TEMPLATE_DAILY.intro,
-        datos: { ...DATA_COMPLETOS, proxima_actualizacion: 'noviembre de 2026' },
+        datos: {
+          ...DATA_COMPLETOS,
+          proxima_actualizacion: 'noviembre de 2026',
+        },
         bloques: TEMPLATE_DAILY.bloques,
         validez_dias: 45,
         mostrar_total: true,
@@ -695,19 +1162,47 @@ describe('payloadGuardar', () => {
         reemplaza_a: ANTERIOR,
       },
       p_items: [
-        { seccion: 'Precios Jornada', descripcion: 'Jornada', cantidad: 1.5, precio_unitario: 39e6, is_complimentary: false, unidad: 'JORNADA' },
-        { seccion: '', descripcion: 'Movilización', cantidad: 2, precio_unitario: null, is_complimentary: false, unidad: 'VIAJE' },
+        {
+          seccion: 'Precios Jornada',
+          descripcion: 'Jornada',
+          cantidad: 1.5,
+          precio_unitario: 39e6,
+          is_complimentary: false,
+          unidad: 'JORNADA',
+        },
+        {
+          seccion: '',
+          descripcion: 'Movilización',
+          cantidad: 2,
+          precio_unitario: null,
+          is_complimentary: false,
+          unidad: 'VIAJE',
+        },
       ],
     })
   })
 
   it('los uuid vacíos van como null', () => {
-    const datos = payload({ ...complete(), contactoId: '', equipoId: '', firmanteId: '', templateId: '' }).p_datos
-    expect(datos).toMatchObject({ contacto_id: null, equipo_id: null, firmante_id: null, plantilla_id: null })
+    const datos = payload({
+      ...complete(),
+      contactoId: '',
+      equipoId: '',
+      firmanteId: '',
+      templateId: '',
+    }).p_datos
+    expect(datos).toMatchObject({
+      contacto_id: null,
+      equipo_id: null,
+      firmante_id: null,
+      plantilla_id: null,
+    })
   })
 
   it('sin mes de actualización: la fecha va en null y se conserva el texto que hubiera', () => {
-    const estado = { ...complete(), datos: { ...DATA_COMPLETOS, proxima_actualizacion: 'marzo de 2027' } }
+    const estado = {
+      ...complete(),
+      datos: { ...DATA_COMPLETOS, proxima_actualizacion: 'marzo de 2027' },
+    }
     expect(payload(estado).p_datos).toMatchObject({
       fecha_proxima_actualizacion: null,
       datos: { proxima_actualizacion: 'marzo de 2027' },
@@ -716,7 +1211,11 @@ describe('payloadGuardar', () => {
 
   it('los bloques ocultos viajan con oculto: true y sin las claves', () => {
     const estado = complete()
-    const hidden = reduceEditor(estado, { tipo: 'bloque', clave: estado.bloques[1].clave, changes: { hidden: true } })
+    const hidden = reduceEditor(estado, {
+      tipo: 'bloque',
+      clave: estado.bloques[1].clave,
+      changes: { hidden: true },
+    })
     expect(payload(hidden).p_datos.bloques).toEqual([
       TEMPLATE_DAILY.bloques[0],
       { ...TEMPLATE_DAILY.bloques[1], hidden: true },
@@ -731,7 +1230,14 @@ describe('payloadGuardar', () => {
       clave: estado.bloques[0].clave,
       changes: { titulo: '  Equipo  ', contenido: '  - Grúa\n' },
     })
-    expect((payload(withSangria).p_datos.bloques as { titulo: string; contenido: string }[])[0]).toMatchObject({
+    expect(
+      (
+        payload(withSangria).p_datos.bloques as {
+          titulo: string
+          contenido: string
+        }[]
+      )[0],
+    ).toMatchObject({
       titulo: 'Equipo',
       contenido: '  - Grúa\n',
     })
@@ -742,22 +1248,39 @@ describe('payloadGuardar', () => {
   })
 
   it('exige el cliente', () => {
-    expect(errors({ ...complete(), cliente: null })).toEqual({ cliente: 'Elegí el cliente' })
-    expect(errors({ ...complete(), cliente: { ...CLIENTE, id: 'x' } })).toEqual({ cliente: 'Elegí el cliente' })
+    expect(errors({ ...complete(), cliente: null })).toEqual({
+      cliente: 'Elegí el cliente',
+    })
+    expect(errors({ ...complete(), cliente: { ...CLIENTE, id: 'x' } })).toEqual(
+      { cliente: 'Elegí el cliente' },
+    )
   })
 
-  it.each(['', '0', '366', 'abc', '30.5', '-3'])('rechaza la validez %j', (validityDays) => {
-    expect(errors({ ...complete(), validezDias: validityDays })).toEqual({ validezDias: 'Ingresá una validez de 1 a 365 días' })
-  })
+  it.each(['', '0', '366', 'abc', '30.5', '-3'])(
+    'rechaza la validez %j',
+    (validityDays) => {
+      expect(errors({ ...complete(), validezDias: validityDays })).toEqual({
+        validezDias: 'Ingresá una validez de 1 a 365 días',
+      })
+    },
+  )
 
   it('valida fecha, mes, formato e identificadores', () => {
-    expect(errors({ ...complete(), fecha: '2026-02-30' })).toEqual({ fecha: 'Ingresá una fecha válida' })
-    expect(errors({ ...complete(), fecha: '' })).toEqual({ fecha: 'Ingresá una fecha válida' })
+    expect(errors({ ...complete(), fecha: '2026-02-30' })).toEqual({
+      fecha: 'Ingresá una fecha válida',
+    })
+    expect(errors({ ...complete(), fecha: '' })).toEqual({
+      fecha: 'Ingresá una fecha válida',
+    })
     expect(errors({ ...complete(), proximaActualizacion: '2026-13' })).toEqual({
       proximaActualizacion: 'Elegí un mes válido',
     })
-    expect(errors({ ...complete(), formato: 'semanal' as never })).toEqual({ formato: 'Elegí el formato' })
-    expect(errors({ ...complete(), equipoId: 'x', contactoId: 'y', replacesA: 'z' })).toEqual({
+    expect(errors({ ...complete(), formato: 'semanal' as never })).toEqual({
+      formato: 'Elegí el formato',
+    })
+    expect(
+      errors({ ...complete(), equipoId: 'x', contactoId: 'y', replacesA: 'z' }),
+    ).toEqual({
       equipoId: 'Equipo inválido',
       contactoId: 'Contacto inválido',
       replacesA: 'Cotización anterior inválida',
@@ -785,25 +1308,49 @@ describe('payloadGuardar', () => {
   })
 
   it('rechaza una fila cuyo total no entra en la base', () => {
-    const estado = withItems([item({ cantidad: '999.999', precio: '999.999.999' })])
-    expect(errors(estado)).toEqual({ 'items.0.precio': 'El total de la fila es demasiado grande' })
+    const estado = withItems([
+      item({ cantidad: '999.999', precio: '999.999.999' }),
+    ])
+    expect(errors(estado)).toEqual({
+      'items.0.precio': 'El total de la fila es demasiado grande',
+    })
   })
 
   it('valida el largo de los datos y los textos', () => {
     const largo = 'x'.repeat(501)
-    expect(errors({ ...complete(), asunto: largo, datos: { ...DATA_COMPLETOS, ubicacion: largo } })).toEqual({
+    expect(
+      errors({
+        ...complete(),
+        asunto: largo,
+        datos: { ...DATA_COMPLETOS, ubicacion: largo },
+      }),
+    ).toEqual({
       asunto: 'Máximo 500 caracteres',
       'datos.ubicacion': 'Máximo 500 caracteres',
     })
   })
 
   it('junta todos los errores a la vez', () => {
-    const estado = { ...complete(), cliente: null, validezDias: '', items: [item({ descripcion: '' })] }
-    expect(Object.keys(errors(estado))).toEqual(['cliente', 'validezDias', 'items.0.descripcion'])
+    const estado = {
+      ...complete(),
+      cliente: null,
+      validezDias: '',
+      items: [item({ descripcion: '' })],
+    }
+    expect(Object.keys(errors(estado))).toEqual([
+      'cliente',
+      'validezDias',
+      'items.0.descripcion',
+    ])
   })
 
   it('no explota con datos mal formados (la Server Action recibe lo que mande el navegador)', () => {
-    const broken = { ...complete(), items: 'nada', bloques: null, datos: 3 } as unknown as StatusEditor
+    const broken = {
+      ...complete(),
+      items: 'nada',
+      bloques: null,
+      datos: 3,
+    } as unknown as StatusEditor
     expect(Object.keys(errors(broken))).toEqual(['datos', 'items', 'bloques'])
     expect(errors(null as unknown as StatusEditor)).toHaveProperty('')
   })
@@ -811,16 +1358,30 @@ describe('payloadGuardar', () => {
 
 describe('esquemaEstadoEditor', () => {
   it('acepta el CUIT textual del cliente sin limitarlo al formato fiscal', () => {
-    const estado = { ...complete(), cliente: { ...CLIENTE, cuit: 'identificación informada por el cliente' } }
-    expect(schemaStatusEditor.parse(estado).cliente?.cuit).toBe(estado.cliente.cuit)
+    const estado = {
+      ...complete(),
+      cliente: { ...CLIENTE, cuit: 'identificación informada por el cliente' },
+    }
+    expect(schemaStatusEditor.parse(estado).cliente?.cuit).toBe(
+      estado.cliente.cuit,
+    )
   })
 
   it('acepta cualquier estado que arma el editor, aunque no se pueda guardar', () => {
-    const nueva = statusNew({ plantilla: TEMPLATE_DAILY, firmanteId: '', today: '2026-10-25' })
+    const nueva = statusNew({
+      plantilla: TEMPLATE_DAILY,
+      firmanteId: '',
+      today: '2026-10-25',
+    })
     expect(schemaStatusEditor.parse(nueva)).toEqual(nueva)
     const leida = statusFromRow(FILA)
     expect(schemaStatusEditor.parse(leida)).toEqual(leida)
-    const aMedias = { ...complete(), fecha: '', validezDias: 'x', items: [item({ precio: 'abc', cantidad: '' })] }
+    const aMedias = {
+      ...complete(),
+      fecha: '',
+      validezDias: 'x',
+      items: [item({ precio: 'abc', cantidad: '' })],
+    }
     expect(schemaStatusEditor.safeParse(aMedias).success).toBe(true)
   })
 
@@ -843,8 +1404,15 @@ describe('esquemaEstadoEditor', () => {
 
 describe('fuenteDesdeEditor', () => {
   it('arma el documento con los catálogos, el contacto y el estado sin guardar', () => {
-    const estado = { ...complete(), numero: 112713, proximaActualizacion: '2026-12' }
-    const source = sourceFromEditor(estado, CATALOGOS, { nombre: 'Yanina Colman', email: 'yanina@vertice.com.ar' })
+    const estado = {
+      ...complete(),
+      numero: 112713,
+      proximaActualizacion: '2026-12',
+    }
+    const source = sourceFromEditor(estado, CATALOGOS, {
+      nombre: 'Yanina Colman',
+      email: 'yanina@vertice.com.ar',
+    })
     expect(source).toEqual({
       cotizacion: {
         numero: 112713,
@@ -854,7 +1422,10 @@ describe('fuenteDesdeEditor', () => {
         intro: TEMPLATE_DAILY.intro,
         validez_dias: 30,
         mostrar_total: false,
-        datos: { ...DATA_COMPLETOS, proxima_actualizacion: 'diciembre de 2026' },
+        datos: {
+          ...DATA_COMPLETOS,
+          proxima_actualizacion: 'diciembre de 2026',
+        },
         bloques: TEMPLATE_DAILY.bloques,
       },
       items: TEMPLATE_DAILY.items.map((item, index) => ({
@@ -869,12 +1440,21 @@ describe('fuenteDesdeEditor', () => {
       cliente: { razon_social: CLIENTE.razon_social, cuit: CLIENTE.cuit },
       contacto: { nombre: 'Yanina Colman', email: 'yanina@vertice.com.ar' },
       equipo: { capacidad_tn: 40, descripcion: 'Grúa XCMG QY70K-1 de 40 TN.' },
-      firmante: { nombre: 'Thomas Cravero', cargo: 'Contrataciones / Logística', telefono: '299 418 3985' },
+      firmante: {
+        nombre: 'Thomas Cravero',
+        cargo: 'Contrataciones / Logística',
+        telefono: '299 418 3985',
+      },
       empresa: EXAMPLE_DAILY.empresa,
     })
     const doc = buildDocument(source)
-    expect(doc.asunto).toBe('Cotización N° 112713 alquiler de 1 (una) Grúa Telescópica capacidad 40 TN con operador.')
-    expect(doc.destinatario).toMatchObject({ cuit: '30-71952967-0', atencion: 'Yanina Colman' })
+    expect(doc.asunto).toBe(
+      'Cotización N° 112713 alquiler de 1 (una) Grúa Telescópica capacidad 40 TN con operador.',
+    )
+    expect(doc.destinatario).toMatchObject({
+      cuit: '30-71952967-0',
+      atencion: 'Yanina Colman',
+    })
   })
 
   it('lo que está a medio escribir no rompe el documento', () => {
@@ -887,19 +1467,38 @@ describe('fuenteDesdeEditor', () => {
       items: [item({ cantidad: 'x', precio: 'y' })],
     }
     const source = sourceFromEditor(estado, CATALOGOS, null)
-    expect(source.cotizacion).toMatchObject({ fecha: todayArgentina(), validez_dias: 0, numero: null })
-    expect(source.items[0]).toMatchObject({ cantidad: 1, precio_unitario: null })
-    expect(source).toMatchObject({ cliente: { razon_social: '', cuit: null }, equipo: null })
+    expect(source.cotizacion).toMatchObject({
+      fecha: todayArgentina(),
+      validez_dias: 0,
+      numero: null,
+    })
+    expect(source.items[0]).toMatchObject({
+      cantidad: 1,
+      precio_unitario: null,
+    })
+    expect(source).toMatchObject({
+      cliente: { razon_social: '', cuit: null },
+      equipo: null,
+    })
     expect(() => buildDocument(source)).not.toThrow()
   })
 })
 
 describe('pendientesEditor y puedeEnviar', () => {
-  const guardada = (estado: StatusEditor): StatusEditor => ({ ...estado, id: ID, numero: 112713 })
+  const guardada = (estado: StatusEditor): StatusEditor => ({
+    ...estado,
+    id: ID,
+    numero: 112713,
+  })
 
   it('una cotización completa no tiene pendientes y se puede enviar', () => {
     const pendingList = pendingListEditor(guardada(complete()), CATALOGOS)
-    expect(pendingList).toEqual({ variables: [], desconocidas: [], itemsWithoutPrice: 0, withoutItems: false })
+    expect(pendingList).toEqual({
+      variables: [],
+      desconocidas: [],
+      itemsWithoutPrice: 0,
+      withoutItems: false,
+    })
     expect(canSend(pendingList)).toBe(true)
   })
 
@@ -919,13 +1518,28 @@ describe('pendientesEditor y puedeEnviar', () => {
   })
 
   it('un equipo inactivo que ya estaba elegido sigue resolviendo sus variables', () => {
-    expect(pendingListEditor(guardada({ ...complete(), equipoId: EQUIPMENT_70 }), CATALOGOS).variables).toEqual([])
+    expect(
+      pendingListEditor(
+        guardada({ ...complete(), equipoId: EQUIPMENT_70 }),
+        CATALOGOS,
+      ).variables,
+    ).toEqual([])
   })
 
   it('las variables de un bloque oculto no cuentan', () => {
-    const estado = guardada({ ...complete(), datos: { ...DATA_COMPLETOS, horario: '', duracion_estimada: '' } })
-    expect(pendingListEditor(estado, CATALOGOS).variables).toEqual(['horario', 'duracion_estimada'])
-    const hidden = reduceEditor(estado, { tipo: 'bloque', clave: estado.bloques[1].clave, changes: { hidden: true } })
+    const estado = guardada({
+      ...complete(),
+      datos: { ...DATA_COMPLETOS, horario: '', duracion_estimada: '' },
+    })
+    expect(pendingListEditor(estado, CATALOGOS).variables).toEqual([
+      'horario',
+      'duracion_estimada',
+    ])
+    const hidden = reduceEditor(estado, {
+      tipo: 'bloque',
+      clave: estado.bloques[1].clave,
+      changes: { hidden: true },
+    })
     expect(pendingListEditor(hidden, CATALOGOS).variables).toEqual([])
   })
 
@@ -933,36 +1547,77 @@ describe('pendientesEditor y puedeEnviar', () => {
     const monthly = guardada({
       ...complete(),
       formato: 'mensual',
-      bloques: [{ clave: newKey(), titulo: '', contenido: 'Próxima: {{proxima_actualizacion}}.', hidden: false }],
+      bloques: [
+        {
+          clave: newKey(),
+          titulo: '',
+          contenido: 'Próxima: {{proxima_actualizacion}}.',
+          hidden: false,
+        },
+      ],
     })
     expect(pendingListEditor(monthly, CATALOGOS).variables).toEqual([])
-    const withoutCompany = { ...CATALOGOS, empresa: { ...CATALOGOS.empresa, proxima_actualizacion: '' } }
-    expect(pendingListEditor(monthly, withoutCompany).variables).toEqual(['proxima_actualizacion'])
-    expect(pendingListEditor({ ...monthly, proximaActualizacion: '2026-11' }, withoutCompany).variables).toEqual([])
+    const withoutCompany = {
+      ...CATALOGOS,
+      empresa: { ...CATALOGOS.empresa, proxima_actualizacion: '' },
+    }
+    expect(pendingListEditor(monthly, withoutCompany).variables).toEqual([
+      'proxima_actualizacion',
+    ])
+    expect(
+      pendingListEditor(
+        { ...monthly, proximaActualizacion: '2026-11' },
+        withoutCompany,
+      ).variables,
+    ).toEqual([])
   })
 
   it('informa las variables mal escritas', () => {
-    const estado = guardada({ ...complete(), intro: 'Servicios en {{ubicación}}.' })
+    const estado = guardada({
+      ...complete(),
+      intro: 'Servicios en {{ubicación}}.',
+    })
     const pendingList = pendingListEditor(estado, CATALOGOS)
     expect(pendingList.desconocidas).toEqual(['ubicación'])
     expect(canSend(pendingList)).toBe(false)
   })
 
   it('cuenta los ítems sin precio (vacíos o mal escritos) y si no hay ítems', () => {
-    const estado = guardada(withItems([item({ precio: '100' }), item({ precio: '' }), item({ precio: 'abc' })]))
-    expect(pendingListEditor(estado, CATALOGOS)).toMatchObject({ itemsWithoutPrice: 2, withoutItems: false })
-    expect(pendingListEditor(guardada({ ...complete(), items: [] }), CATALOGOS)).toMatchObject({
+    const estado = guardada(
+      withItems([
+        item({ precio: '100' }),
+        item({ precio: '' }),
+        item({ precio: 'abc' }),
+      ]),
+    )
+    expect(pendingListEditor(estado, CATALOGOS)).toMatchObject({
+      itemsWithoutPrice: 2,
+      withoutItems: false,
+    })
+    expect(
+      pendingListEditor(guardada({ ...complete(), items: [] }), CATALOGOS),
+    ).toMatchObject({
       itemsWithoutPrice: 0,
       withoutItems: true,
     })
   })
 
   it('con fecha o validez a medio escribir no explota', () => {
-    expect(() => pendingListEditor({ ...complete(), fecha: '2026-1', validezDias: 'x' }, CATALOGOS)).not.toThrow()
+    expect(() =>
+      pendingListEditor(
+        { ...complete(), fecha: '2026-1', validezDias: 'x' },
+        CATALOGOS,
+      ),
+    ).not.toThrow()
   })
 
   it('puedeEnviar exige que no falte nada', () => {
-    const nada: PendingList = { variables: [], desconocidas: [], itemsWithoutPrice: 0, withoutItems: false }
+    const nada: PendingList = {
+      variables: [],
+      desconocidas: [],
+      itemsWithoutPrice: 0,
+      withoutItems: false,
+    }
     expect(canSend(nada)).toBe(true)
     expect(canSend({ ...nada, variables: ['ubicacion'] })).toBe(false)
     expect(canSend({ ...nada, desconocidas: ['ubicación'] })).toBe(false)
@@ -971,37 +1626,90 @@ describe('pendientesEditor y puedeEnviar', () => {
   })
 })
 
-
 describe('ítems bonificados', () => {
   it('distingue cero normal, precio faltante y marca explícita antigua ausente', () => {
     const state = complete()
     state.items[0] = { ...state.items[0], precio: '0' }
-    expect(payloadSave(state)).toMatchObject({ ok: true, payload: { p_items: [{ precio_unitario: 0, is_complimentary: false }, {}, {}] } })
-    expect(statusFromRow(FILA).items.every((item) => item.isComplimentary === false)).toBe(true)
+    expect(payloadSave(state)).toMatchObject({
+      ok: true,
+      payload: {
+        p_items: [{ precio_unitario: 0, is_complimentary: false }, {}, {}],
+      },
+    })
+    expect(
+      statusFromRow(FILA).items.every((item) => item.isComplimentary === false),
+    ).toBe(true)
     const parsed = schemaStatusEditor.parse(state)
     expect(parsed.items[0].isComplimentary).toBe(false)
-    expect(schemaStatusEditor.safeParse({ ...state, items: [{ ...state.items[0], isComplimentary: 'true' }] }).success).toBe(false)
+    expect(
+      schemaStatusEditor.safeParse({
+        ...state,
+        items: [{ ...state.items[0], isComplimentary: 'true' }],
+      }).success,
+    ).toBe(false)
   })
 
-  it.each(['1.500', '', 'BONIFICADA'])('normaliza el precio manipulado %s y conserva la cantidad y el contenido', (precio) => {
-    const state = complete()
-    state.items = [{ ...state.items[0], cantidad: '2', precio, isComplimentary: true }]
-    expect(payloadSave(state)).toMatchObject({ ok: true, payload: { p_items: [{ cantidad: 2, precio_unitario: 0, is_complimentary: true }] } })
-    const source = sourceFromEditor(state, CATALOGOS, null)
-    expect(source.items[0]).toMatchObject({ cantidad: 2, precio_unitario: 0, is_complimentary: true })
-    expect(buildDocument(source).items[0]).toMatchObject({ priceUnitario: 0, total: 0, isComplimentary: true })
-    expect(pendingListEditor(state, CATALOGOS).itemsWithoutPrice).toBe(0)
-    expect(payloadSave({ ...state, items: [{ ...state.items[0], cantidad: 'inválida' }] }).ok).toBe(false)
-  })
+  it.each(['1.500', '', 'BONIFICADA'])(
+    'normaliza el precio manipulado %s y conserva la cantidad y el contenido',
+    (precio) => {
+      const state = complete()
+      state.items = [
+        { ...state.items[0], cantidad: '2', precio, isComplimentary: true },
+      ]
+      expect(payloadSave(state)).toMatchObject({
+        ok: true,
+        payload: {
+          p_items: [
+            { cantidad: 2, precio_unitario: 0, is_complimentary: true },
+          ],
+        },
+      })
+      const source = sourceFromEditor(state, CATALOGOS, null)
+      expect(source.items[0]).toMatchObject({
+        cantidad: 2,
+        precio_unitario: 0,
+        is_complimentary: true,
+      })
+      expect(buildDocument(source).items[0]).toMatchObject({
+        priceUnitario: 0,
+        total: 0,
+        isComplimentary: true,
+      })
+      expect(pendingListEditor(state, CATALOGOS).itemsWithoutPrice).toBe(0)
+      expect(
+        payloadSave({
+          ...state,
+          items: [{ ...state.items[0], cantidad: 'inválida' }],
+        }).ok,
+      ).toBe(false)
+    },
+  )
 
   it('marca, duplica y desmarca: vuelve a pedir tarifa después de reabrir', () => {
     const state = complete()
     const key = state.items[0].clave
-    const marked = reduceEditor(state, { tipo: 'item', clave: key, changes: { isComplimentary: true } })
-    expect(marked.items[0]).toEqual({ ...state.items[0], isComplimentary: true, precio: '0' })
-    expect(reduceEditor(marked, { tipo: 'duplicarItem', clave: key }).items[1]).toMatchObject({ isComplimentary: true, precio: '0' })
-    const reopened = statusFromRow({ ...FILA, items: [{ ...FILA.items[0], precio_unitario: 0, is_complimentary: true }] })
-    const cleared = reduceEditor(reopened, { tipo: 'item', clave: reopened.items[0].clave, changes: { isComplimentary: false } })
+    const marked = reduceEditor(state, {
+      tipo: 'item',
+      clave: key,
+      changes: { isComplimentary: true },
+    })
+    expect(marked.items[0]).toEqual({
+      ...state.items[0],
+      isComplimentary: true,
+      precio: '0',
+    })
+    expect(
+      reduceEditor(marked, { tipo: 'duplicarItem', clave: key }).items[1],
+    ).toMatchObject({ isComplimentary: true, precio: '0' })
+    const reopened = statusFromRow({
+      ...FILA,
+      items: [{ ...FILA.items[0], precio_unitario: 0, is_complimentary: true }],
+    })
+    const cleared = reduceEditor(reopened, {
+      tipo: 'item',
+      clave: reopened.items[0].clave,
+      changes: { isComplimentary: false },
+    })
     expect(cleared.items[0].precio).toBe('')
     expect(pendingListEditor(cleared, CATALOGOS).itemsWithoutPrice).toBe(1)
   })
@@ -1009,8 +1717,17 @@ describe('ítems bonificados', () => {
   it('la marca cuenta como cambio incluso con otros campos inválidos', () => {
     for (const cliente of [CLIENTE, null]) {
       const state = { ...complete(), cliente }
-      state.items[0] = { ...state.items[0], precio: '0', isComplimentary: false }
-      const marked = { ...state, items: state.items.map((item, index) => index ? item : { ...item, isComplimentary: true }) }
+      state.items[0] = {
+        ...state.items[0],
+        precio: '0',
+        isComplimentary: false,
+      }
+      const marked = {
+        ...state,
+        items: state.items.map((item, index) =>
+          index ? item : { ...item, isComplimentary: true },
+        ),
+      }
       expect(hasChanges(state, marked)).toBe(true)
     }
   })

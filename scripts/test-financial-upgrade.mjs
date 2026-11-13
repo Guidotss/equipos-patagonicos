@@ -1,58 +1,79 @@
-import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { validateEnvTests } from './test-env.mjs';
-import { runTests } from './test-runner.mjs';
-import { seedLegacyFinancialData } from './financial-upgrade-fixtures.mjs';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { validateEnvTests } from './test-env.mjs'
+import { runTests } from './test-runner.mjs'
+import { seedLegacyFinancialData } from './financial-upgrade-fixtures.mjs'
 
-const firstFinancialVersion = '20261104120000';
+const firstFinancialVersion = '20261104120000'
 
 function isUpgradeMigration(name) {
-  const version = /^(\d{14})_.+\.sql$/.exec(name)?.[1];
-  return version !== undefined && version >= firstFinancialVersion;
+  const version = /^(\d{14})_.+\.sql$/.exec(name)?.[1]
+  return version !== undefined && version >= firstFinancialVersion
 }
 
 async function assertOwnedCopy(temp, projectId) {
-  if (!path.basename(temp).startsWith('.test-run-')) throw new Error('Se requiere una copia temporal propia del runner');
-  const owner = JSON.parse(await readFile(path.join(temp, 'ejecucion.json'), 'utf8'));
-  if (owner.projectId !== projectId || owner.pid !== process.pid) throw new Error('La copia temporal no pertenece a esta ejecución');
+  if (!path.basename(temp).startsWith('.test-run-'))
+    throw new Error('Se requiere una copia temporal propia del runner')
+  const owner = JSON.parse(
+    await readFile(path.join(temp, 'ejecucion.json'), 'utf8'),
+  )
+  if (owner.projectId !== projectId || owner.pid !== process.pid)
+    throw new Error('La copia temporal no pertenece a esta ejecución')
 }
 
 export function createUpgradeHooks({ seed = seedLegacyFinancialData } = {}) {
-  let migrations;
+  let migrations
   return {
     async afterProjectCopy({ temp, projectId }) {
-      await assertOwnedCopy(temp, projectId);
-      const directory = path.join(temp, 'supabase/migrations');
-      migrations = (await readdir(directory)).filter(isUpgradeMigration).sort();
-      if (!migrations.some((name) => name.startsWith(`${firstFinancialVersion}_`))) throw new Error('Falta la primera migración financiera');
-      await mkdir(path.join(temp, 'financial-migrations'));
-      for (const name of migrations) await rename(path.join(directory, name), path.join(temp, 'financial-migrations', name));
+      await assertOwnedCopy(temp, projectId)
+      const directory = path.join(temp, 'supabase/migrations')
+      migrations = (await readdir(directory)).filter(isUpgradeMigration).sort()
+      if (
+        !migrations.some((name) => name.startsWith(`${firstFinancialVersion}_`))
+      )
+        throw new Error('Falta la primera migración financiera')
+      await mkdir(path.join(temp, 'financial-migrations'))
+      for (const name of migrations)
+        await rename(
+          path.join(directory, name),
+          path.join(temp, 'financial-migrations', name),
+        )
     },
     async beforeTests({ temp, projectId, testEnv, signal, run }) {
-      validateEnvTests(testEnv);
-      await assertOwnedCopy(temp, projectId);
-      signal?.throwIfAborted();
-      const snapshot = await seed(testEnv, { signal });
-      signal?.throwIfAborted();
-      const snapshotPath = path.join(temp, 'financial-upgrade-snapshot.json');
-      await writeFile(snapshotPath, JSON.stringify(snapshot), { mode: 0o600 });
-      for (const name of migrations) await rename(path.join(temp, 'financial-migrations', name), path.join(temp, 'supabase/migrations', name));
-      validateEnvTests(testEnv);
-      await run(path.join(testEnv.EP_TESTS_REPO_ROOT, 'node_modules/.bin/supabase'),
-        ['migration', 'up', '--local', '--workdir', temp]);
-      testEnv.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT = snapshotPath;
+      validateEnvTests(testEnv)
+      await assertOwnedCopy(temp, projectId)
+      signal?.throwIfAborted()
+      const snapshot = await seed(testEnv, { signal })
+      signal?.throwIfAborted()
+      const snapshotPath = path.join(temp, 'financial-upgrade-snapshot.json')
+      await writeFile(snapshotPath, JSON.stringify(snapshot), { mode: 0o600 })
+      for (const name of migrations)
+        await rename(
+          path.join(temp, 'financial-migrations', name),
+          path.join(temp, 'supabase/migrations', name),
+        )
+      validateEnvTests(testEnv)
+      await run(
+        path.join(testEnv.EP_TESTS_REPO_ROOT, 'node_modules/.bin/supabase'),
+        ['migration', 'up', '--local', '--workdir', temp],
+      )
+      testEnv.EP_TESTS_FINANCIAL_UPGRADE_SNAPSHOT = snapshotPath
     },
-  };
+  }
 }
 
 export async function runFinancialUpgrade({ seed, ...runnerOptions } = {}) {
   return runTests('int', ['tests/integration/financial-upgrade.test.ts'], {
-    ...runnerOptions, ...createUpgradeHooks({ seed }),
-  });
+    ...runnerOptions,
+    ...createUpgradeHooks({ seed }),
+  })
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  process.umask(0o077);
-  process.exitCode = await runFinancialUpgrade();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+) {
+  process.umask(0o077)
+  process.exitCode = await runFinancialUpgrade()
 }

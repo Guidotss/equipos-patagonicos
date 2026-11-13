@@ -3,23 +3,32 @@ import { z } from 'zod'
 export const FORMATS = { mensual: 'Mensual', jornada: 'Por jornada' } as const
 export type Format = keyof typeof FORMATS
 
-export const UNITS = ['UNIDAD', 'JORNADA', 'HORA', 'SEMANA', 'MES', 'VIAJE'] as const
+export const UNITS = [
+  'UNIDAD',
+  'JORNADA',
+  'HORA',
+  'SEMANA',
+  'MES',
+  'VIAJE',
+] as const
 export type Unit = (typeof UNITS)[number]
 
 /**
  * Un bloque de texto de la plantilla o de la cotización. Se leen las marcas actuales y las guardadas como
  * `oculto` antes del renombrado, y se expone siempre `hidden`. Sin marca, el bloque queda visible.
  */
-export const schemaBlock = z.object({
-  titulo: z.string(),
-  contenido: z.string(),
-  hidden: z.boolean().optional(),
-  oculto: z.boolean().optional(),
-}).transform(({ titulo, contenido, hidden, oculto }) => ({
-  titulo,
-  contenido,
-  hidden: hidden ?? oculto ?? false,
-}))
+export const schemaBlock = z
+  .object({
+    titulo: z.string(),
+    contenido: z.string(),
+    hidden: z.boolean().optional(),
+    oculto: z.boolean().optional(),
+  })
+  .transform(({ titulo, contenido, hidden, oculto }) => ({
+    titulo,
+    contenido,
+    hidden: hidden ?? oculto ?? false,
+  }))
 export type Block = z.infer<typeof schemaBlock>
 
 export const schemaItemTemplate = z.object({
@@ -29,7 +38,10 @@ export const schemaItemTemplate = z.object({
   cantidad: z.number().positive(),
   is_complimentary: z.boolean().default(false),
 })
-export type ItemTemplate = Omit<z.infer<typeof schemaItemTemplate>, 'is_complimentary'> & { isComplimentary?: boolean }
+export type ItemTemplate = Omit<
+  z.infer<typeof schemaItemTemplate>,
+  'is_complimentary'
+> & { isComplimentary?: boolean }
 
 /** Valida el jsonb `bloques` de plantillas/cotizaciones. Lanza si no tiene la forma esperada. */
 export function readBlocks(value: unknown): Block[] {
@@ -37,5 +49,11 @@ export function readBlocks(value: unknown): Block[] {
 }
 
 export function readItemsTemplate(value: unknown): ItemTemplate[] {
-  return z.array(schemaItemTemplate).parse(value).map(({ is_complimentary: isComplimentary, ...item }) => ({ ...item, isComplimentary }))
+  return z
+    .array(schemaItemTemplate)
+    .parse(value)
+    .map(({ is_complimentary: isComplimentary, ...item }) => ({
+      ...item,
+      isComplimentary,
+    }))
 }

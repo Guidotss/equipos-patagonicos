@@ -17,11 +17,26 @@ export function ClientForm({
 }) {
   return (
     <FormAction accion={accion} textButton={textButton} button={false}>
-      {(estado, pending) => <>
-        <div className="mb-4"><MessageForm estado={estado} /></div>
-        <SheetForm><FieldsClient estado={estado} initial={initial} /></SheetForm>
-        <ActionsForm back="/clientes" textButton={textButton} pendiente={pending} detail={initial ? undefined : 'Los contactos se agregan después de crear el cliente.'} />
-      </>}
+      {(estado, pending) => (
+        <>
+          <div className="mb-4">
+            <MessageForm estado={estado} />
+          </div>
+          <SheetForm>
+            <FieldsClient estado={estado} initial={initial} />
+          </SheetForm>
+          <ActionsForm
+            back="/clientes"
+            textButton={textButton}
+            pendiente={pending}
+            detail={
+              initial
+                ? undefined
+                : 'Los contactos se agregan después de crear el cliente.'
+            }
+          />
+        </>
+      )}
     </FormAction>
   )
 }

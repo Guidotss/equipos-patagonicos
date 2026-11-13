@@ -17,7 +17,9 @@ export const DOCUMENT_TEXT_LIMITS = {
 } as const
 
 export function getDocumentTextLimits(type: string) {
-  return type === 'remito' ? DOCUMENT_TEXT_LIMITS.deliveryNote : DOCUMENT_TEXT_LIMITS.standard
+  return type === 'remito'
+    ? DOCUMENT_TEXT_LIMITS.deliveryNote
+    : DOCUMENT_TEXT_LIMITS.standard
 }
 
 function trimDocumentNumber(value: string, type: string) {
@@ -65,9 +67,12 @@ const amountOptional = z
 
 export const schemaDocument = z
   .object({
-    tipo: z.enum(Object.keys(DOCUMENT_TYPES) as [DocumentType, ...DocumentType[]], {
-      error: 'Elegí el tipo de documento',
-    }),
+    tipo: z.enum(
+      Object.keys(DOCUMENT_TYPES) as [DocumentType, ...DocumentType[]],
+      {
+        error: 'Elegí el tipo de documento',
+      },
+    ),
     numero: z.string(),
     fecha: dateOptional,
     monto: amountOptional,
@@ -88,25 +93,60 @@ export const schemaDocument = z
     const limits = getDocumentTextLimits(datos.tipo)
     const notes = datos.tipo === 'remito' ? datos.notas : datos.notas.trim()
     // PostgreSQL cuenta puntos de código; los remitos conservan todo el texto recibido por RPC.
-    const textLength = (value: string) => datos.tipo === 'remito' ? Array.from(value).length : value.length
-    if (textLength(trimDocumentNumber(datos.numero, datos.tipo)) > limits.number) {
-      ctx.addIssue({ code: 'custom', path: ['numero'], message: `Máximo ${limits.number} caracteres` })
+    const textLength = (value: string) =>
+      datos.tipo === 'remito' ? Array.from(value).length : value.length
+    if (
+      textLength(trimDocumentNumber(datos.numero, datos.tipo)) > limits.number
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['numero'],
+        message: `Máximo ${limits.number} caracteres`,
+      })
     }
     if (textLength(notes) > limits.notes) {
-      ctx.addIssue({ code: 'custom', path: ['notas'], message: `Máximo ${limits.notes} caracteres` })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['notas'],
+        message: `Máximo ${limits.notes} caracteres`,
+      })
     }
-    if ((datos.tipo === 'factura' || datos.tipo === 'orden_pago') && datos.monto === null) {
-      ctx.addIssue({ code: 'custom', path: ['monto'], message: 'Ingresá el monto' })
+    if (
+      (datos.tipo === 'factura' || datos.tipo === 'orden_pago') &&
+      datos.monto === null
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['monto'],
+        message: 'Ingresá el monto',
+      })
     }
     if (datos.tipo === 'factura') {
       if (datos.tipo_comprobante === '') {
-        ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí el tipo de comprobante' })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['tipo_comprobante'],
+          message: 'Elegí el tipo de comprobante',
+        })
       } else if (!isTipoComprobante(datos.tipo_comprobante)) {
-        ctx.addIssue({ code: 'custom', path: ['tipo_comprobante'], message: 'Elegí un comprobante válido' })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['tipo_comprobante'],
+          message: 'Elegí un comprobante válido',
+        })
       }
     }
-    if (datos.tipo === 'remito' && datos.periodo_desde && datos.periodo_hasta && datos.periodo_desde > datos.periodo_hasta) {
-      ctx.addIssue({ code: 'custom', path: ['periodo_hasta'], message: 'El período termina antes de empezar' })
+    if (
+      datos.tipo === 'remito' &&
+      datos.periodo_desde &&
+      datos.periodo_hasta &&
+      datos.periodo_desde > datos.periodo_hasta
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['periodo_hasta'],
+        message: 'El período termina antes de empezar',
+      })
     }
   })
   // Lo que no corresponde al tipo se vacía: la base lo exige (CHECKs por tipo).
@@ -114,8 +154,12 @@ export const schemaDocument = z
     ...datos,
     numero: trimDocumentNumber(datos.numero, datos.tipo),
     notas: datos.tipo === 'remito' ? datos.notas : datos.notas.trim(),
-    tipo_comprobante: datos.tipo === 'factura' && isTipoComprobante(datos.tipo_comprobante) ? datos.tipo_comprobante : null,
-    fecha_vencimiento: datos.tipo === 'factura' ? datos.fecha_vencimiento : null,
+    tipo_comprobante:
+      datos.tipo === 'factura' && isTipoComprobante(datos.tipo_comprobante)
+        ? datos.tipo_comprobante
+        : null,
+    fecha_vencimiento:
+      datos.tipo === 'factura' ? datos.fecha_vencimiento : null,
     numero_oc_ref: datos.tipo === 'factura' ? datos.numero_oc_ref : '',
     periodo_desde: datos.tipo === 'remito' ? datos.periodo_desde : null,
     periodo_hasta: datos.tipo === 'remito' ? datos.periodo_hasta : null,

@@ -6,15 +6,35 @@ import { NEW_CONTEXT } from '@/lib/quotes/context-status'
 import { hasChanges, payloadSave } from '@/lib/quotes/editor/validation'
 import { pendingListEditor } from '@/lib/quotes/editor/document'
 import { reduceEditor } from '@/lib/quotes/editor/reducer'
-import type { ActionEditor, CatalogsEditor, StatusEditor } from '@/lib/quotes/editor/types'
-import { errorsOfBlocks, errorsWithoutField, isSaveShortcut, type ErrorsBlock } from '@/lib/quotes/editor-screen'
+import type {
+  ActionEditor,
+  CatalogsEditor,
+  StatusEditor,
+} from '@/lib/quotes/editor/types'
+import {
+  errorsOfBlocks,
+  errorsWithoutField,
+  isSaveShortcut,
+  type ErrorsBlock,
+} from '@/lib/quotes/editor-screen'
 import { errorsByKey, type ErrorsItem } from '@/lib/quotes/grid'
 import { lineViewPreview } from '@/lib/quotes/preview'
 import { unstable_rethrow, useRouter } from 'next/navigation'
-import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react'
 import { toast } from 'sonner'
 
-import type { ServerUpdateMode, SavedQuote as SavedQuoteVersion } from './quote-actions.types'
+import type {
+  ServerUpdateMode,
+  SavedQuote as SavedQuoteVersion,
+} from './quote-actions.types'
 import type { QuoteEditorProps } from './quote-editor.types'
 import { useQuoteActions } from './use-quote-actions'
 import { useQuotePreview } from './use-quote-preview'
@@ -39,9 +59,12 @@ export function useQuoteEditor({
   /** Los errores de los ítems ('items.N.campo') por clave de ítem (ver mostrarErrores). */
   const [errorsItems, setErrorsItems] = useState<Record<string, ErrorsItem>>({})
   /** Los errores de los bloques de texto ('bloques.N.campo') por clave de bloque, como los de los ítems. */
-  const [errorsBlocks, setErrorsBlocks] = useState<Record<string, ErrorsBlock>>({})
+  const [errorsBlocks, setErrorsBlocks] = useState<Record<string, ErrorsBlock>>(
+    {},
+  )
   const [warning, setWarning] = useState<string | null>(null)
-  const { hasDraftSection, onChangeDraftSection, applySectionDrafts } = useSectionDrafts()
+  const { hasDraftSection, onChangeDraftSection, applySectionDrafts } =
+    useSectionDrafts()
   /** Qué acción corre ('guardar'; la Task 12 suma las suyas). Con una en curso se deshabilitan todas (decisión 12). */
   const [action, setAction] = useState<string | null>(null)
   const inProgress = useRef(false)
@@ -51,8 +74,13 @@ export function useQuoteEditor({
   // Un nombre de sección a medio escribir también es un cambio sin guardar: habilita Guardar y el aviso al cerrar
   // la pestaña. Guardar lo aplica antes de leer el estado (applySectionDrafts).
   const withoutSave = changes || hasDraftSection
-  const pendingList = useMemo(() => pendingListEditor(state, catalogs), [state, catalogs])
-  const editable = state.origen === 'app' && (state.estado === 'borrador' || state.estado === 'enviada')
+  const pendingList = useMemo(
+    () => pendingListEditor(state, catalogs),
+    [state, catalogs],
+  )
+  const editable =
+    state.origen === 'app' &&
+    (state.estado === 'borrador' || state.estado === 'enviada')
   const unassignedErrors = errorsWithoutField(errors)
   /** Otro guardó mientras tanto: franja con "Recargar" (Task 12). */
   const [conflict, setConflict] = useState(false)
@@ -62,12 +90,21 @@ export function useQuoteEditor({
    * acciones). Después de una transición se ignoran la versión que había al empezar y la que dejó el guardado previo,
    * que pueden llegar antes que la nueva. "Recargar" no compara versiones: toma lo que haya cuando termina el refresco.
    */
-  const [serverUpdate, setServerUpdate] = useState<{ mode: 'adoptar'; ignoredVersions: (string | null)[] } | { mode: 'descartar' } | null>(
-    null,
-  )
-  function awaitServerUpdate(mode: ServerUpdateMode | null, localVersion: string | null = null) {
+  const [serverUpdate, setServerUpdate] = useState<
+    | { mode: 'adoptar'; ignoredVersions: (string | null)[] }
+    | { mode: 'descartar' }
+    | null
+  >(null)
+  function awaitServerUpdate(
+    mode: ServerUpdateMode | null,
+    localVersion: string | null = null,
+  ) {
     if (!mode) return setServerUpdate(null)
-    setServerUpdate(mode === 'descartar' ? { mode } : { mode, ignoredVersions: [initial.version, localVersion] })
+    setServerUpdate(
+      mode === 'descartar'
+        ? { mode }
+        : { mode, ignoredVersions: [initial.version, localVersion] },
+    )
   }
 
   // Vista previa (Task 11): un solo estado para la columna fija (≥ 90rem) y el panel lateral (md a 90rem).
@@ -87,7 +124,11 @@ export function useQuoteEditor({
    * lista que haya cuando vuelve la respuesta), así la marca queda en el que la tuvo aunque mientras se guardaba o
    * después se agreguen, muevan o borren otros.
    */
-  function showErrors(message: string, next: Record<string, string>, sent: StatusEditor) {
+  function showErrors(
+    message: string,
+    next: Record<string, string>,
+    sent: StatusEditor,
+  ) {
     setWarning(message)
     setErrors(next)
     setErrorsItems(
@@ -112,7 +153,9 @@ export function useQuoteEditor({
    * hacen la transición con el id que vuelve y navegan después (decisión 12). Con `notify: false` no muestra el
    * toast de guardado: cuando guarda antes de una transición, el aviso es el de la transición (no dos apilados).
    */
-  function save(options: { navigate?: boolean; notify?: boolean } = {}): Promise<SavedQuoteVersion | null> {
+  function save(
+    options: { navigate?: boolean; notify?: boolean } = {},
+  ): Promise<SavedQuoteVersion | null> {
     applySectionDrafts()
     return saveCurrent.current(options)
   }
@@ -120,9 +163,17 @@ export function useQuoteEditor({
   async function saveStatus({
     navigate = true,
     notify = true,
-  }: { navigate?: boolean; notify?: boolean } = {}): Promise<SavedQuoteVersion | null> {
+  }: {
+    navigate?: boolean
+    notify?: boolean
+  } = {}): Promise<SavedQuoteVersion | null> {
     if (!editable || inProgress.current) return null
-    if (state.id !== null && state.version !== null && state.numero !== null && !changes) {
+    if (
+      state.id !== null &&
+      state.version !== null &&
+      state.numero !== null &&
+      !changes
+    ) {
       return { id: state.id, version: state.version, numero: state.numero }
     }
     const sent = state
@@ -146,7 +197,12 @@ export function useQuoteEditor({
       }
       setConflict(false)
       const { id, version, numero: number } = result.datos
-      const savedNow: ActionEditor = { tipo: 'guardado', id, version, numero: number }
+      const savedNow: ActionEditor = {
+        tipo: 'guardado',
+        id,
+        version,
+        numero: number,
+      }
       // Lo que se mandó pasa a ser lo guardado; lo tipeado mientras tanto sigue contando como cambio.
       setSaved(reduceEditor(sent, savedNow))
       dispatch(savedNow)
@@ -154,7 +210,12 @@ export function useQuoteEditor({
       setErrorsItems({})
       setErrorsBlocks({})
       setWarning(null)
-      if (notify) toast.success(sent.id === null ? `Cotización N° ${number} creada` : 'Cotización guardada')
+      if (notify)
+        toast.success(
+          sent.id === null
+            ? `Cotización N° ${number} creada`
+            : 'Cotización guardada',
+        )
       // replace: "Atrás" no vuelve a una cotización nueva vacía (decisión 8).
       if (sent.id === null && navigate) router.replace(`/cotizaciones/${id}`)
       return result.datos
@@ -217,7 +278,9 @@ export function useQuoteEditor({
   const serverVersionArrived =
     serverUpdate?.mode === 'descartar'
       ? !actions.reloading
-      : serverUpdate !== null && initial.version !== null && !serverUpdate.ignoredVersions.includes(initial.version)
+      : serverUpdate !== null &&
+        initial.version !== null &&
+        !serverUpdate.ignoredVersions.includes(initial.version)
   if (serverUpdate && serverVersionArrived) {
     // Recargar descarta lo local. Después de una transición, lo que se haya tipeado mientras corría queda encima del
     // estado y la versión nuevos.
@@ -230,7 +293,8 @@ export function useQuoteEditor({
     dispatch({ tipo: 'reemplazar', estado: adopted })
     // Los contactos son los del cliente del estado tomado: los de `initial` (la página los vuelve a leer en cada
     // render), salvo que lo local que queda encima tenga otro cliente: ahí siguen los de ese, que son los que hay.
-    if (adopted.cliente?.id === initial.cliente?.id) setContacts(initialContacts)
+    if (adopted.cliente?.id === initial.cliente?.id)
+      setContacts(initialContacts)
     // Lo que marcaba la versión anterior (errores, aviso, conflicto) no corresponde a la que se toma.
     setErrors({})
     setErrorsItems({})

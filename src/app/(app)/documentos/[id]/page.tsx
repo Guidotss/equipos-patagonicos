@@ -14,21 +14,40 @@ import { createClient } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Documento' }
-export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
   await requireStaff()
   const { id } = await params
   if (!isUuid(id)) notFound()
   const supabase = await createClient()
-  const { data: document, error } = await supabase.from('documentos').select('*').eq('id', id).maybeSingle()
+  const { data: document, error } = await supabase
+    .from('documentos')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
   if (!document) notFound()
   const [contexto, archivos, vinculos, aplicaciones] = await Promise.all([
     contextoDocument(supabase, document.cliente_id),
-    supabase.from('documento_archivos').select('*').eq('documento_id', id).order('orden'),
-    supabase.from('documento_presupuestos').select('cotizacion_id').eq('documento_id', id),
-    supabase.from('op_facturas').select('factura_id, monto_aplicado').eq('op_id', id),
+    supabase
+      .from('documento_archivos')
+      .select('*')
+      .eq('documento_id', id)
+      .order('orden'),
+    supabase
+      .from('documento_presupuestos')
+      .select('cotizacion_id')
+      .eq('documento_id', id),
+    supabase
+      .from('op_facturas')
+      .select('factura_id, monto_aplicado')
+      .eq('op_id', id),
   ])
-  for (const result of [archivos, vinculos, aplicaciones]) if (result.error) throw result.error
+  for (const result of [archivos, vinculos, aplicaciones])
+    if (result.error) throw result.error
   const budgetId = vinculos.data![0]?.cotizacion_id
   return (
     <>
@@ -39,7 +58,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
             ? [
                 {
                   texto: String(
-                    contexto.budgets.find((item) => item.id === budgetId)?.numero ?? 'Presupuesto',
+                    contexto.budgets.find((item) => item.id === budgetId)
+                      ?.numero ?? 'Presupuesto',
                   ),
                   href: `/presupuestos/${budgetId}`,
                 },
@@ -56,18 +76,32 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
           <>
             <Alert>
               <AlertDescription>
-                Este documento está anulado. Sus archivos y vínculos se conservan. Para restaurar un pago, sus facturas
-                deben estar vigentes y tener saldo disponible.
+                Este documento está anulado. Sus archivos y vínculos se
+                conservan. Para restaurar un pago, sus facturas deben estar
+                vigentes y tener saldo disponible.
               </AlertDescription>
             </Alert>
-            <ActionsDocument id={id} anulado financialVersion={['factura', 'orden_pago'].includes(document.tipo) ? document.financial_version : undefined} />
+            <ActionsDocument
+              id={id}
+              anulado
+              financialVersion={
+                ['factura', 'orden_pago'].includes(document.tipo)
+                  ? document.financial_version
+                  : undefined
+              }
+            />
             {aplicaciones.data!.length ? (
               <ul className="flex flex-col gap-2">
                 {aplicaciones.data!.map((item) => (
                   <li key={item.factura_id}>
-                    <Link href={`/documentos/${item.factura_id}`} className="text-sm text-primary underline">
+                    <Link
+                      href={`/documentos/${item.factura_id}`}
+                      className="text-sm text-primary underline"
+                    >
                       Revisar factura{' '}
-                      {contexto.documentos.find((invoice) => invoice.id === item.factura_id)?.numero || 'sin número'}
+                      {contexto.documentos.find(
+                        (invoice) => invoice.id === item.factura_id,
+                      )?.numero || 'sin número'}
                     </Link>
                   </li>
                 ))}

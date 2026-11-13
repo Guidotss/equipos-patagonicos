@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { formatCurrency, formatAmountDaily, formatAmountTable, parsePrice } from './amounts'
+import {
+  formatCurrency,
+  formatAmountDaily,
+  formatAmountTable,
+  parsePrice,
+} from './amounts'
 
 describe('formatMontoTabla', () => {
   it('usa punto de miles y coma decimal con 2 decimales, como la tabla mensual', () => {

@@ -1,14 +1,29 @@
 'use client'
 
-import { PanelsLeftBottom, Pencil, Plus, Printer, StickyNote } from 'lucide-react'
+import {
+  PanelsLeftBottom,
+  Pencil,
+  Plus,
+  Printer,
+  StickyNote,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Content } from '@/components/app-shell/header'
 import { Field } from '@/components/form/field'
-import { ActionsForm, HeaderForm, SheetForm } from '@/components/form/structure-form'
+import {
+  ActionsForm,
+  HeaderForm,
+  SheetForm,
+} from '@/components/form/structure-form'
 import { FormAction } from '@/components/form/form-action'
 import { MessageForm } from '@/components/form/message-form'
-import { BandView, PhrasesResolved, Card, useViewInLive } from '@/components/form/card'
+import {
+  BandView,
+  PhrasesResolved,
+  Card,
+  useViewInLive,
+} from '@/components/form/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Pill } from '@/components/ui/pill'
@@ -32,11 +47,20 @@ export type Equipment = {
 
 const LISTA = '/configuracion/equipos'
 
-type DefinitionField = { campo: FieldEquipment; label: string; ancho?: boolean; props?: React.ComponentProps<typeof Input> }
+type DefinitionField = {
+  campo: FieldEquipment
+  label: string
+  ancho?: boolean
+  props?: React.ComponentProps<typeof Input>
+}
 
 const FIELDS_DATA: DefinitionField[] = [
   { campo: 'nombre', label: 'Nombre', ancho: true },
-  { campo: 'capacidad_tn', label: 'Capacidad (TN)', props: { inputMode: 'decimal' } },
+  {
+    campo: 'capacidad_tn',
+    label: 'Capacidad (TN)',
+    props: { inputMode: 'decimal' },
+  },
   { campo: 'identificacion', label: 'N° interno o dominio' },
   { campo: 'marca', label: 'Marca' },
   { campo: 'modelo', label: 'Modelo' },
@@ -46,7 +70,15 @@ const FIELDS_VIEW = ['capacidad_tn', 'descripcion'] as const
 
 type Initial = Partial<Record<FieldEquipment, string>>
 
-function Data({ activo, className, children }: { activo: boolean; className?: string; children: React.ReactNode }) {
+function Data({
+  activo,
+  className,
+  children,
+}: {
+  activo: boolean
+  className?: string
+  children: React.ReactNode
+}) {
   return (
     <span
       className={cn(
@@ -72,7 +104,13 @@ function dataKey(equipo: Equipment): string[] {
   ].filter(Boolean)
 }
 
-function FieldsData({ estado, initial }: { estado: StatusForm; initial: Initial }) {
+function FieldsData({
+  estado,
+  initial,
+}: {
+  estado: StatusForm
+  initial: Initial
+}) {
   return (
     <div className="grid gap-x-4 gap-y-3 @sm:grid-cols-2">
       {FIELDS_DATA.map(({ campo: field, label, ancho, props }) => (
@@ -127,7 +165,11 @@ export function FormEquipment({
           <HeaderForm
             titulo={equipo?.nombre || 'Nuevo equipo'}
             estado={equipo ? <PillStatus activo={equipo.activo} /> : null}
-            descripcion={chips.length > 0 ? chips.join(' · ') : 'Datos del equipo y descripción que se usa al cotizar.'}
+            descripcion={
+              chips.length > 0
+                ? chips.join(' · ')
+                : 'Datos del equipo y descripción que se usa al cotizar.'
+            }
             actions={buttonStatus}
           />
         </Content>
@@ -153,13 +195,20 @@ export function FormEquipment({
                   <BandView icon={Printer} titulo="Así sale en la cotización">
                     <PhrasesResolved
                       phrases={phrases}
-                      values={{ capacidad: view.capacidad_tn, equipo_descripcion: view.descripcion }}
+                      values={{
+                        capacidad: view.capacidad_tn,
+                        equipo_descripcion: view.descripcion,
+                      }}
                     />
                   </BandView>
                 ) : null
               }
             >
-              <Field id="equipo-descripcion" label="Descripción para la cotización" error={estado.errors.descripcion}>
+              <Field
+                id="equipo-descripcion"
+                label="Descripción para la cotización"
+                error={estado.errors.descripcion}
+              >
                 <Textarea
                   id="equipo-descripcion"
                   name="descripcion"
@@ -179,7 +228,11 @@ export function FormEquipment({
 
 export function NewEquipment() {
   return (
-    <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
+    <Button
+      asChild
+      size="lg"
+      className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20"
+    >
       <Link href={`${LISTA}/nuevo`}>
         <Plus aria-hidden />
         Nuevo equipo
@@ -188,7 +241,11 @@ export function NewEquipment() {
   )
 }
 
-export function Equipment({ equipos }: { equipos: (Equipment & { button: React.ReactNode })[] }) {
+export function Equipment({
+  equipos,
+}: {
+  equipos: (Equipment & { button: React.ReactNode })[]
+}) {
   if (equipos.length === 0) {
     return (
       <p className="rounded-xl border border-dashed px-6 py-12 text-center text-muted-foreground">
@@ -204,7 +261,9 @@ export function Equipment({ equipos }: { equipos: (Equipment & { button: React.R
           <span
             className={cn(
               'grid size-12 shrink-0 place-items-center rounded-xl sm:size-[72px]',
-              equipo.activo ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground',
+              equipo.activo
+                ? 'bg-accent text-primary'
+                : 'bg-muted text-muted-foreground',
             )}
           >
             <IconCrane className="size-6 stroke-[1.5] sm:size-9" />
@@ -212,21 +271,41 @@ export function Equipment({ equipos }: { equipos: (Equipment & { button: React.R
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
               <div className="min-w-0 flex-1 basis-56 space-y-1.5">
-                <p className={cn('text-lg font-medium', equipo.activo ? null : 'text-muted-foreground')}>{equipo.nombre}</p>
-                {equipo.capacidad_tn || equipo.marca || equipo.modelo || equipo.identificacion ? (
+                <p
+                  className={cn(
+                    'text-lg font-medium',
+                    equipo.activo ? null : 'text-muted-foreground',
+                  )}
+                >
+                  {equipo.nombre}
+                </p>
+                {equipo.capacidad_tn ||
+                equipo.marca ||
+                equipo.modelo ||
+                equipo.identificacion ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {[...dataKey(equipo), equipo.identificacion].filter(Boolean).map((data, index) => (
-                      <Data key={index} activo={equipo.activo}>
-                        {data}
-                      </Data>
-                    ))}
+                    {[...dataKey(equipo), equipo.identificacion]
+                      .filter(Boolean)
+                      .map((data, index) => (
+                        <Data key={index} activo={equipo.activo}>
+                          {data}
+                        </Data>
+                      ))}
                   </div>
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
                 <PillStatus activo={equipo.activo} />
-                <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
-                  <Link href={`${LISTA}/${equipo.id}`} aria-label={`Editar ${equipo.nombre}`}>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
+                  <Link
+                    href={`${LISTA}/${equipo.id}`}
+                    aria-label={`Editar ${equipo.nombre}`}
+                  >
                     <Pencil />
                   </Link>
                 </Button>
@@ -234,7 +313,14 @@ export function Equipment({ equipos }: { equipos: (Equipment & { button: React.R
               </div>
             </div>
             {equipo.descripcion ? (
-              <p className={cn('mt-2 max-w-3xl text-[15px]', equipo.activo ? 'text-foreground/80' : 'text-muted-foreground')}>
+              <p
+                className={cn(
+                  'mt-2 max-w-3xl text-[15px]',
+                  equipo.activo
+                    ? 'text-foreground/80'
+                    : 'text-muted-foreground',
+                )}
+              >
                 {equipo.descripcion}
               </p>
             ) : null}

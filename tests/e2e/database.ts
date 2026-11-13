@@ -5,7 +5,9 @@ import { validateEnvTests } from '../../scripts/test-env.mjs'
 
 validateEnvTests()
 
-export async function withBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T> {
+export async function withBase<T>(
+  fn: (db: pg.Client) => Promise<T>,
+): Promise<T> {
   validateEnvTests()
   const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
   await db.connect()
@@ -17,15 +19,33 @@ export async function withBase<T>(fn: (db: pg.Client) => Promise<T>): Promise<T>
 }
 
 /** Solo para el cierre de fixtures propios, dentro de una transacción descartable. */
-export async function removeOwnedFinancialData(db: pg.Client, clientId: string) {
+export async function removeOwnedFinancialData(
+  db: pg.Client,
+  clientId: string,
+) {
   validateEnvTests()
   await db.query('set local session_replication_role = replica')
-  await db.query('delete from public.financial_events where document_id in (select id from public.documentos where cliente_id = $1)', [clientId])
-  await db.query('delete from public.payment_allocations where instrument_id in (select id from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1))', [clientId])
-  await db.query('delete from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1)', [clientId])
-  await db.query('delete from public.invoice_allocations where invoice_id in (select id from public.documentos where cliente_id = $1)', [clientId])
+  await db.query(
+    'delete from public.financial_events where document_id in (select id from public.documentos where cliente_id = $1)',
+    [clientId],
+  )
+  await db.query(
+    'delete from public.payment_allocations where instrument_id in (select id from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1))',
+    [clientId],
+  )
+  await db.query(
+    'delete from public.payment_instruments where op_id in (select id from public.documentos where cliente_id = $1)',
+    [clientId],
+  )
+  await db.query(
+    'delete from public.invoice_allocations where invoice_id in (select id from public.documentos where cliente_id = $1)',
+    [clientId],
+  )
   await db.query('set local session_replication_role = origin')
-  await db.query('delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1) or factura_id in (select id from public.documentos where cliente_id = $1)', [clientId])
+  await db.query(
+    'delete from public.op_facturas where op_id in (select id from public.documentos where cliente_id = $1) or factura_id in (select id from public.documentos where cliente_id = $1)',
+    [clientId],
+  )
 }
 
 /** Todos los datos que usa la plantilla por jornada de la semilla, completos. */
@@ -49,7 +69,11 @@ export async function crearQuoteComplete(
     estado = 'borrador',
     datos = DATA_COMPLETOS,
     priceMovilizacion = 2800000,
-  }: { estado?: 'borrador' | 'aprobada'; datos?: Record<string, string>; priceMovilizacion?: number | null } = {},
+  }: {
+    estado?: 'borrador' | 'aprobada'
+    datos?: Record<string, string>
+    priceMovilizacion?: number | null
+  } = {},
 ): Promise<{ id: string; numero: number }> {
   const { rows } = await db.query<{ id: string; numero: string }>(
     `insert into public.cotizaciones
@@ -80,5 +104,7 @@ export async function crearQuoteComplete(
 
 /** Borra las cotizaciones (con sus ítems y envíos). Los PDF que hayan quedado en Storage no se tocan. */
 export async function removeQuotes(db: pg.Client, ids: string[]) {
-  await db.query('delete from public.cotizaciones where id = any($1::uuid[])', [ids])
+  await db.query('delete from public.cotizaciones where id = any($1::uuid[])', [
+    ids,
+  ])
 }

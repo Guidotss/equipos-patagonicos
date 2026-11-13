@@ -8,7 +8,9 @@ export function mapRpcError(error: ErrorRpc) {
 }
 
 /** Ejecuta una RPC que no devuelve nada y tira su error (ver errorDeRpc). */
-export async function executeRpc(rpc: PromiseLike<{ error: ErrorRpc | null }>): Promise<void> {
+export async function executeRpc(
+  rpc: PromiseLike<{ error: ErrorRpc | null }>,
+): Promise<void> {
   const { error } = await rpc
   if (error) throw mapRpcError(error)
 }

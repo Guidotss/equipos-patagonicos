@@ -54,8 +54,14 @@ test.beforeAll(async () => {
       [clientId, numberInvoice, marca],
     )
     invoiceId = invoice.rows[0].id
-    await db.query('insert into public.documento_presupuestos values ($1, $3), ($2, $3), ($4, $3)', [deliveryNoteId, invoiceId, budgetId, longDeliveryNoteId])
-    await db.query("insert into public.invoice_allocations (invoice_id, budget_id, budget_number, budget_subject, equipment_status, amount, historical_settled_amount, source) select $1, id, numero, asunto, 'unknown', 125000, 0, 'explicit' from public.cotizaciones where id = $2", [invoiceId, budgetId])
+    await db.query(
+      'insert into public.documento_presupuestos values ($1, $3), ($2, $3), ($4, $3)',
+      [deliveryNoteId, invoiceId, budgetId, longDeliveryNoteId],
+    )
+    await db.query(
+      "insert into public.invoice_allocations (invoice_id, budget_id, budget_number, budget_subject, equipment_status, amount, historical_settled_amount, source) select $1, id, numero, asunto, 'unknown', 125000, 0, 'explicit' from public.cotizaciones where id = $2",
+      [invoiceId, budgetId],
+    )
     await db.query('commit')
   })
 })
@@ -66,110 +72,239 @@ test.afterAll(async () => {
   await withBase(async (db) => {
     await db.query('begin')
     try {
-    await removeOwnedFinancialData(db, clientId)
-    await db.query('delete from public.documentos where cliente_id = $1', [clientId])
-    await db.query('delete from public.cotizaciones where cliente_id = $1', [clientId])
-    await db.query('delete from public.clientes where id = $1', [clientId])
-    await db.query('commit')
-    } catch (error) { await db.query('rollback'); throw error }
+      await removeOwnedFinancialData(db, clientId)
+      await db.query('delete from public.documentos where cliente_id = $1', [
+        clientId,
+      ])
+      await db.query('delete from public.cotizaciones where cliente_id = $1', [
+        clientId,
+      ])
+      await db.query('delete from public.clientes where id = $1', [clientId])
+      await db.query('commit')
+    } catch (error) {
+      await db.query('rollback')
+      throw error
+    }
   })
 })
 
-test('búsqueda global encuentra cliente sin acentos y documento, y abre cada registro', async ({ page }) => {
+test('búsqueda global encuentra cliente sin acentos y documento, y abre cada registro', async ({
+  page,
+}) => {
   await iniciarSession(page)
-  const search = page.locator('aside').getByRole('search', { name: 'Búsqueda global' })
-  await search.getByLabel('Buscar en todo el sistema').fill(`gruas nandu ${marca}`)
+  const search = page
+    .locator('aside')
+    .getByRole('search', { name: 'Búsqueda global' })
+  await search
+    .getByLabel('Buscar en todo el sistema')
+    .fill(`gruas nandu ${marca}`)
   await search.getByRole('button', { name: 'Buscar', exact: true }).click()
   const clientes = page.getByRole('region', { name: 'Clientes', exact: true })
   await clientes.getByRole('link', { name: new RegExp(razonSocial) }).click()
   await expect(page).toHaveURL(`/clientes/${clientId}`)
-  await expect(page.getByRole('heading', { name: razonSocial, exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: razonSocial, exact: true }),
+  ).toBeVisible()
 
-  await search.getByLabel('Buscar en todo el sistema').fill(numberDeliveryNote.replaceAll('-', ''))
+  await search
+    .getByLabel('Buscar en todo el sistema')
+    .fill(numberDeliveryNote.replaceAll('-', ''))
   await search.getByRole('button', { name: 'Buscar', exact: true }).click()
-  await page.getByRole('region', { name: 'Remitos', exact: true }).getByRole('link', { name: new RegExp(numberDeliveryNote) }).click()
+  await page
+    .getByRole('region', { name: 'Remitos', exact: true })
+    .getByRole('link', { name: new RegExp(numberDeliveryNote) })
+    .click()
   await expect(page).toHaveURL(`/documentos/${deliveryNoteId}`)
-  await expect(page.getByLabel('Número (opcional)', { exact: true })).toHaveValue(numberDeliveryNote)
+  await expect(
+    page.getByLabel('Número (opcional)', { exact: true }),
+  ).toHaveValue(numberDeliveryNote)
 })
 
-test('cinco colas accionables con selección de remito/factura y navegación móvil', async ({ page }, testInfo) => {
+test('cinco colas accionables con selección de remito/factura y navegación móvil', async ({
+  page,
+}, testInfo) => {
   await iniciarSession(page)
   await page.setViewportSize({ width: 1200, height: 805 })
-  for (const nombre of ['Seguimiento', 'Falta OC', 'Para facturar', 'Cobranzas', 'Actualización de tarifa']) {
-    await expect(page.getByRole('heading', { name: nombre, exact: true })).toBeVisible()
+  for (const nombre of [
+    'Seguimiento',
+    'Falta OC',
+    'Para facturar',
+    'Cobranzas',
+    'Actualización de tarifa',
+  ]) {
+    await expect(
+      page.getByRole('heading', { name: nombre, exact: true }),
+    ).toBeVisible()
   }
   await expect(page.getByTestId('total-cobranzas')).toContainText('$')
-  await expect(page.getByRole('link', { name: 'Subir documento', exact: true }).first()).toHaveAttribute('href', '/documentos/nuevo')
-  await page.screenshot({ path: testInfo.outputPath('inicio-escritorio.png'), fullPage: true, animations: 'disabled', caret: 'initial' })
+  await expect(
+    page.getByRole('link', { name: 'Subir documento', exact: true }).first(),
+  ).toHaveAttribute('href', '/documentos/nuevo')
+  await page.screenshot({
+    path: testInfo.outputPath('inicio-escritorio.png'),
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'initial',
+  })
 
   await page.goto('/?cola=falta_oc')
-  await page.locator(`[data-pendiente="${budgetId}"]`).getByRole('link', { name: /Cargar OC/ }).click()
-  await expect(page).toHaveURL(new RegExp(`/presupuestos/${budgetId}\\?nuevo=orden_compra`))
-  await expect(page.getByRole('radio', { name: 'Orden de compra', exact: true })).toBeChecked()
+  await page
+    .locator(`[data-pendiente="${budgetId}"]`)
+    .getByRole('link', { name: /Cargar OC/ })
+    .click()
+  await expect(page).toHaveURL(
+    new RegExp(`/presupuestos/${budgetId}\\?nuevo=orden_compra`),
+  )
+  await expect(
+    page.getByRole('radio', { name: 'Orden de compra', exact: true }),
+  ).toBeChecked()
 
   await page.goto('/?cola=para_facturar')
   const pendingNote = page.locator(`[data-pendiente="${deliveryNoteId}"]`)
-  await expect(pendingNote.getByRole('link', { name: /Vincular factura/ }))
-    .toHaveAttribute('href', `/documentos/${deliveryNoteId}#delivery-note-invoice`)
+  await expect(
+    pendingNote.getByRole('link', { name: /Vincular factura/ }),
+  ).toHaveAttribute(
+    'href',
+    `/documentos/${deliveryNoteId}#delivery-note-invoice`,
+  )
   await pendingNote.getByRole('link', { name: /Nueva factura/ }).click()
-  await expect(page.getByRole('checkbox', { name: `Remito ${numberDeliveryNote}`, exact: true })).toBeChecked()
+  await expect(
+    page.getByRole('checkbox', {
+      name: `Remito ${numberDeliveryNote}`,
+      exact: true,
+    }),
+  ).toBeChecked()
 
   await page.goto('/?cola=cobranzas')
-  await page.locator(`[data-pendiente="${invoiceId}"]`).getByRole('link', { name: /Registrar pago/ }).click()
-  await expect(page.getByLabel('Monto de la orden de pago', { exact: true })).toHaveValue('$ 125.000,00')
+  await page
+    .locator(`[data-pendiente="${invoiceId}"]`)
+    .getByRole('link', { name: /Registrar pago/ })
+    .click()
+  await expect(
+    page.getByLabel('Monto de la orden de pago', { exact: true }),
+  ).toHaveValue('$ 125.000,00')
   await page.getByLabel('Nuevo medio').selectOption('cash')
   await page.getByRole('button', { name: 'Agregar medio' }).click()
   await page.getByRole('button', { name: 'Agregar destino' }).click()
   await page.getByLabel('Trabajo', { exact: true }).selectOption(budgetId)
-  await expect(page.getByLabel('Factura (opcional)').locator(`option[value="${invoiceId}"]`)).toHaveText(new RegExp(numberInvoice))
+  await expect(
+    page
+      .getByLabel('Factura (opcional)')
+      .locator(`option[value="${invoiceId}"]`),
+  ).toHaveText(new RegExp(numberInvoice))
 
   await page.goto('/?cola=seguimiento')
-  await page.locator(`[data-pendiente="${quoteId}"]`).getByRole('link', { name: /Registrar respuesta/ }).click()
+  await page
+    .locator(`[data-pendiente="${quoteId}"]`)
+    .getByRole('link', { name: /Registrar respuesta/ })
+    .click()
   await expect(page).toHaveURL(`/cotizaciones/${quoteId}`)
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
-  const longDeliveryNote = page.locator(`[data-pendiente="${longDeliveryNoteId}"]`)
-  await expect(longDeliveryNote.getByText(`Remito ${longDeliveryNoteNumber}`, { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Inicio', exact: true }),
+  ).toBeVisible()
+  const longDeliveryNote = page.locator(
+    `[data-pendiente="${longDeliveryNoteId}"]`,
+  )
+  await expect(
+    longDeliveryNote.getByText(`Remito ${longDeliveryNoteNumber}`, {
+      exact: true,
+    }),
+  ).toBeVisible()
   await page.waitForFunction(() => document.fonts.status === 'loaded')
   await testInfo.attach('ancho-colas-movil', {
-    body: JSON.stringify(await page.evaluate(() => ({
-      viewportWidth: window.innerWidth,
-      documentWidth: document.documentElement.scrollWidth,
-      queues: [...document.querySelectorAll('[data-cola]')].map((queue) => ({
-        name: queue.getAttribute('data-cola'), width: queue.getBoundingClientRect().width,
+    body: JSON.stringify(
+      await page.evaluate(() => ({
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        queues: [...document.querySelectorAll('[data-cola]')].map((queue) => ({
+          name: queue.getAttribute('data-cola'),
+          width: queue.getBoundingClientRect().width,
+        })),
       })),
-    })), null, 2),
+      null,
+      2,
+    ),
     contentType: 'application/json',
   })
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('inicio-movil.png'), fullPage: true, animations: 'disabled', caret: 'initial' })
-  await page.getByRole('button', { name: 'Abrir búsqueda global', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: 'Buscar en todo el sistema', exact: true })
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true)
+  await page.screenshot({
+    path: testInfo.outputPath('inicio-movil.png'),
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'initial',
+  })
+  await page
+    .getByRole('button', { name: 'Abrir búsqueda global', exact: true })
+    .click()
+  const dialog = page.getByRole('dialog', {
+    name: 'Buscar en todo el sistema',
+    exact: true,
+  })
   await dialog.getByLabel('Buscar en todo el sistema').fill(numberInvoice)
   await dialog.getByRole('button', { name: 'Buscar', exact: true }).click()
-  await page.getByRole('region', { name: 'Facturas', exact: true }).getByRole('link', { name: new RegExp(numberInvoice) }).click()
+  await page
+    .getByRole('region', { name: 'Facturas', exact: true })
+    .getByRole('link', { name: new RegExp(numberInvoice) })
+    .click()
   await expect(page).toHaveURL(`/documentos/${invoiceId}`)
-  await expect(page.getByLabel('Número (opcional)', { exact: true })).toHaveValue(numberInvoice)
-  const longDeliveryNoteOption = page.getByRole('checkbox', { name: `Remito ${longDeliveryNoteNumber}`, exact: true })
+  await expect(
+    page.getByLabel('Número (opcional)', { exact: true }),
+  ).toHaveValue(numberInvoice)
+  const longDeliveryNoteOption = page.getByRole('checkbox', {
+    name: `Remito ${longDeliveryNoteNumber}`,
+    exact: true,
+  })
   await expect(longDeliveryNoteOption).toBeVisible()
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true)
 })
 
-test('vincula un remito pendiente desde Inicio eligiendo la factura existente', async ({ page }) => {
+test('vincula un remito pendiente desde Inicio eligiendo la factura existente', async ({
+  page,
+}) => {
   await iniciarSession(page)
   await page.goto('/?cola=para_facturar')
-  await page.locator(`[data-pendiente="${deliveryNoteId}"]`).getByRole('link', { name: /Vincular factura/ }).click()
-  const invoice = page.getByLabel('Factura existente (opcional)', { exact: true })
+  await page
+    .locator(`[data-pendiente="${deliveryNoteId}"]`)
+    .getByRole('link', { name: /Vincular factura/ })
+    .click()
+  const invoice = page.getByLabel('Factura existente (opcional)', {
+    exact: true,
+  })
   await expect(invoice).toHaveValue('')
   await invoice.selectOption(invoiceId)
-  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Guardar cambios', exact: true })
+    .click()
   await expect(page).toHaveURL(`/presupuestos/${budgetId}`)
   const notes = page.locator('[data-documento]')
-  await expect(notes.filter({ hasText: numberDeliveryNote }).getByText('Facturado', { exact: true })).toBeVisible()
+  await expect(
+    notes
+      .filter({ hasText: numberDeliveryNote })
+      .getByText('Facturado', { exact: true }),
+  ).toBeVisible()
   await page.goto('/?cola=para_facturar')
-  await expect(page.getByRole('heading', { name: 'Para facturar', exact: true })).toBeVisible()
-  await expect(page.locator(`[data-pendiente="${deliveryNoteId}"]`)).toHaveCount(0)
-  await expect(page.locator(`[data-pendiente="${longDeliveryNoteId}"]`)).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Para facturar', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.locator(`[data-pendiente="${deliveryNoteId}"]`),
+  ).toHaveCount(0)
+  await expect(
+    page.locator(`[data-pendiente="${longDeliveryNoteId}"]`),
+  ).toBeVisible()
 })

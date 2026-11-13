@@ -19,11 +19,24 @@ import { useQuoteFilters } from './use-quote-filters'
  * Ningún control se vuelve a montar al cambiar la URL (un key le sacaba el foco al que se estaba usando): los selects
  * son controlados y el buscador se actualiza a mano cuando no se tipeó nada distinto de lo que mostraba.
  */
-export function FiltersQuotes({ filters, clients }: { filters: FiltersList; clients: ClientFilter[] }) {
-  const { pending, activeFilters, search, apply, chips } = useQuoteFilters(filters, clients)
+export function FiltersQuotes({
+  filters,
+  clients,
+}: {
+  filters: FiltersList
+  clients: ClientFilter[]
+}) {
+  const { pending, activeFilters, search, apply, chips } = useQuoteFilters(
+    filters,
+    clients,
+  )
 
   return (
-    <div data-pendiente={pending ? '' : undefined} aria-busy={pending} className="space-y-3">
+    <div
+      data-pendiente={pending ? '' : undefined}
+      aria-busy={pending}
+      className="space-y-3"
+    >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 @min-[44rem]/listado:grid-cols-3 @min-[48rem]/listado:grid-cols-[minmax(0,1fr)_11rem_11.5rem_12.5rem]">
         <form
           role="search"
@@ -52,13 +65,20 @@ export function FiltersQuotes({ filters, clients }: { filters: FiltersList; clie
           </button>
         </form>
 
-        <FiltersMobile filters={activeFilters} clients={clients} active={chips.length} onApply={apply} />
+        <FiltersMobile
+          filters={activeFilters}
+          clients={clients}
+          active={chips.length}
+          onApply={apply}
+        />
 
         {/* pr-7 y no el pr-8 del select: con 160 px, "Todos los estados" se cortaba antes de la flecha. */}
         <NativeSelect
           aria-label="Estado"
           value={activeFilters.estado}
-          onChange={(event) => apply({ estado: readFilterStatus(event.target.value) })}
+          onChange={(event) =>
+            apply({ estado: readFilterStatus(event.target.value) })
+          }
           className="hidden min-w-0 w-full @min-[44rem]/listado:block [&>select]:h-10 [&>select]:truncate [&>select]:bg-background [&>select]:pr-7"
         >
           <OptionsStatus />
@@ -99,7 +119,9 @@ export function FiltersQuotes({ filters, clients }: { filters: FiltersList; clie
               type="button"
               variant="ghost"
               className="h-8 px-2 text-xs text-muted-foreground"
-              onClick={() => apply({ q: '', estado: '', cliente: '', desde: '', hasta: '' })}
+              onClick={() =>
+                apply({ q: '', estado: '', cliente: '', desde: '', hasta: '' })
+              }
             >
               Limpiar filtros
             </Button>

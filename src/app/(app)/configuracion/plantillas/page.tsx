@@ -33,7 +33,12 @@ export default async function TemplatesPage() {
 
   return (
     <>
-      <BarCrumbs crumbs={[{ texto: 'Configuración', href: '/configuracion' }, { texto: 'Plantillas' }]} />
+      <BarCrumbs
+        crumbs={[
+          { texto: 'Configuración', href: '/configuracion' },
+          { texto: 'Plantillas' },
+        ]}
+      />
       <Content>
         <HeaderPage
           titulo="Plantillas"

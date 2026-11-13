@@ -28,7 +28,12 @@ import { useRef } from 'react'
 
 import type { ActionsStatus } from './quote-actions.types'
 export { downloadFile } from './download-file'
-export type { ActionsStatus, Confirmation, ServerUpdateMode, SavedQuote } from './quote-actions.types'
+export type {
+  ActionsStatus,
+  Confirmation,
+  ServerUpdateMode,
+  SavedQuote,
+} from './quote-actions.types'
 export { useQuoteActions as useActionsStatus } from './use-quote-actions'
 
 /** Primario de cabecera; con la barra inferior a la vista (< 90rem) se ve como outline: el primario ahí es Guardar. */
@@ -54,12 +59,21 @@ function ButtonOfAction({
 }) {
   const { action, primary } = button
   const variant = primary ? 'default' : 'outline'
-  const style = primary ? (isEditable(state) ? PRIMARY_WITH_BAR : PRIMARY) : undefined
+  const style = primary
+    ? isEditable(state)
+      ? PRIMARY_WITH_BAR
+      : PRIMARY
+    : undefined
 
   if (action === 'descargar') {
     if (!state.id) return null
     return (
-      <Button asChild variant={variant} size="lg" className={cn(style, className)}>
+      <Button
+        asChild
+        variant={variant}
+        size="lg"
+        className={cn(style, className)}
+      >
         <a href={`/cotizaciones/${state.id}/pdf?descargar=1`} download>
           {LABEL_ACTION.descargar}
         </a>
@@ -77,7 +91,9 @@ function ButtonOfAction({
       disabled={actionsStatus.busy || block !== null}
       onClick={() => actionsStatus.start(action)}
     >
-      {actionsStatus.currentAction === action ? ACTION_PROGRESS_LABEL[action] : LABEL_ACTION[action]}
+      {actionsStatus.currentAction === action
+        ? ACTION_PROGRESS_LABEL[action]
+        : LABEL_ACTION[action]}
     </Button>
   )
   // Un botón deshabilitado no recibe el puntero: el motivo va en el title de un envoltorio.
@@ -109,7 +125,9 @@ export function ActionsHeader({
   /** La confirmación que eligió un ítem del menú: se abre cuando el menú terminó de cerrarse (onCloseAutoFocus). */
   const pending = useRef<ActionStatus | null>(null)
   const { buttons, menu } = layoutActions(state, context)
-  const secondary = buttons.filter((button) => !button.primary).map((button) => button.action)
+  const secondary = buttons
+    .filter((button) => !button.primary)
+    .map((button) => button.action)
   const id = state.id
   const inMenu: { action: ActionStatus; mobileOnly: boolean }[] = [
     ...secondary.map((action) => ({ action, mobileOnly: true })),
@@ -163,7 +181,11 @@ export function ActionsHeader({
           >
             {inMenu.map(({ action, mobileOnly }) =>
               action === 'descargar' ? (
-                <DropdownMenuItem key={action} asChild className={mobileOnly ? 'md:hidden' : undefined}>
+                <DropdownMenuItem
+                  key={action}
+                  asChild
+                  className={mobileOnly ? 'md:hidden' : undefined}
+                >
                   <a href={`/cotizaciones/${id}/pdf?descargar=1`} download>
                     {LABEL_ACTION.descargar}
                   </a>
@@ -177,7 +199,8 @@ export function ActionsHeader({
                   onSelect={() => {
                     // Una confirmación se abre cuando el menú se cerró del todo (ver onCloseAutoFocus). Duplicar
                     // también espera: con cambios sin guardar pregunta qué copiar.
-                    if (isConfirmable(action) || action === 'duplicar') pending.current = action
+                    if (isConfirmable(action) || action === 'duplicar')
+                      pending.current = action
                     else actionsStatus.start(action)
                   }}
                 >
@@ -193,7 +216,11 @@ export function ActionsHeader({
                 </DropdownMenuLabel>
                 {context.envios.map((delivery, index) => (
                   <DropdownMenuItem key={delivery.id} asChild>
-                    <a href={`/cotizaciones/${id}/pdf?envio=${delivery.id}`} target="_blank" rel="noopener">
+                    <a
+                      href={`/cotizaciones/${id}/pdf?envio=${delivery.id}`}
+                      target="_blank"
+                      rel="noopener"
+                    >
                       <FileText aria-hidden />
                       {formatTimestamp(delivery.enviada_at)}
                       {index === 0 ? ' · último' : ''}

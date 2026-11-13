@@ -15,13 +15,17 @@ const schema = z.object({
 
 export type StatusLogin = { error: string | null }
 
-export async function iniciarSession(_previous: StatusLogin, formData: FormData): Promise<StatusLogin> {
+export async function iniciarSession(
+  _previous: StatusLogin,
+  formData: FormData,
+): Promise<StatusLogin> {
   const datos = schema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
     next: formData.get('next') ?? undefined,
   })
-  if (!datos.success) return { error: datos.error.issues[0]?.message ?? 'Revisá los datos' }
+  if (!datos.success)
+    return { error: datos.error.issues[0]?.message ?? 'Revisá los datos' }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({

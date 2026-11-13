@@ -38,7 +38,11 @@ export function ReadOnlyQuote({
         actions={
           quote.tienePdf ? (
             <Button asChild variant="outline" size="lg">
-              <a href={`/cotizaciones/${quote.id}/pdf`} target="_blank" rel="noreferrer">
+              <a
+                href={`/cotizaciones/${quote.id}/pdf`}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <FileText aria-hidden />
                 Ver el PDF original
               </a>
@@ -49,7 +53,9 @@ export function ReadOnlyQuote({
       <div className="max-w-3xl space-y-1 rounded-lg border bg-muted px-4 py-3 text-sm">
         <p>{ORIGEN[quote.origen]}</p>
         {quote.asunto ? (
-          <p className="text-muted-foreground [overflow-wrap:anywhere]">Trabajo: {quote.asunto}</p>
+          <p className="text-muted-foreground [overflow-wrap:anywhere]">
+            Trabajo: {quote.asunto}
+          </p>
         ) : null}
       </div>
       <Link

@@ -19,12 +19,18 @@ type Upload = {
   subido?: UploadedFile
 }
 
-export type UploadPreparer = (input: { mime: string; tamano: number }) => Promise<Result<{ path: string; signedUrl: string }>>
+export type UploadPreparer = (input: {
+  mime: string
+  tamano: number
+}) => Promise<Result<{ path: string; signedUrl: string }>>
 
 type UploadFilesProps = {
   disabled?: boolean
   onChange: (files: UploadedFile[], pendingList: boolean) => void
-} & ({ clientId: string; uploadPreparer?: UploadPreparer } | { clientId?: never; uploadPreparer: UploadPreparer })
+} & (
+  | { clientId: string; uploadPreparer?: UploadPreparer }
+  | { clientId?: never; uploadPreparer: UploadPreparer }
+)
 
 export function UploadFiles({
   clientId,
@@ -46,26 +52,47 @@ export function UploadFiles({
   }, [archivos, onChange])
 
   function actualizar(id: string, changes: Partial<Upload>) {
-    setFiles((anteriores) => anteriores.map((archivo) => (archivo.id === id ? { ...archivo, ...changes } : archivo)))
+    setFiles((anteriores) =>
+      anteriores.map((archivo) =>
+        archivo.id === id ? { ...archivo, ...changes } : archivo,
+      ),
+    )
   }
   async function upload(entrada: Upload) {
-    actualizar(entrada.id, { estado: 'subiendo', progreso: 0, error: undefined })
+    actualizar(entrada.id, {
+      estado: 'subiendo',
+      progreso: 0,
+      error: undefined,
+    })
     try {
-      if (entrada.archivo.name.length > 255) throw new Error('El nombre del archivo puede tener hasta 255 caracteres')
+      if (entrada.archivo.name.length > 255)
+        throw new Error(
+          'El nombre del archivo puede tener hasta 255 caracteres',
+        )
       const archivo = await prepareFoto(entrada.archivo)
       const input = { mime: archivo.type, tamano: archivo.size }
-      const result = await (uploadPreparer ? uploadPreparer(input) : prepareFile({ ...input, clientId }))
+      const result = await (uploadPreparer
+        ? uploadPreparer(input)
+        : prepareFile({ ...input, clientId }))
       if (!result.ok) throw new Error(result.message)
-      await uploadWithProgreso(result.datos.signedUrl, archivo, (progreso) => actualizar(entrada.id, { progreso }))
+      await uploadWithProgreso(result.datos.signedUrl, archivo, (progreso) =>
+        actualizar(entrada.id, { progreso }),
+      )
       actualizar(entrada.id, {
         estado: 'listo',
         progreso: 100,
-        subido: { path: result.datos.path, nombre_original: entrada.archivo.name },
+        subido: {
+          path: result.datos.path,
+          nombre_original: entrada.archivo.name,
+        },
       })
     } catch (problema) {
       actualizar(entrada.id, {
         estado: 'error',
-        error: problema instanceof Error ? problema.message : 'No se pudo subir. Reintentá.',
+        error:
+          problema instanceof Error
+            ? problema.message
+            : 'No se pudo subir. Reintentá.',
       })
     }
   }
@@ -79,7 +106,13 @@ export function UploadFiles({
     const nuevas = Array.from(list).map((archivo): Upload => {
       const view = URL.createObjectURL(archivo)
       views.current.push(view)
-      return { id: crypto.randomUUID(), archivo, view, progreso: 0, estado: 'subiendo' }
+      return {
+        id: crypto.randomUUID(),
+        archivo,
+        view,
+        progreso: 0,
+        estado: 'subiendo',
+      }
     })
     setFiles((anteriores) => [...anteriores, ...nuevas])
     for (const archivo of nuevas) void upload(archivo)
@@ -136,7 +169,8 @@ export function UploadFiles({
         }}
       />
       <p className="text-xs text-muted-foreground">
-        PDF, JPG o PNG · hasta 10 MB por archivo. Las fotos se comprimen para facilitar la subida.
+        PDF, JPG o PNG · hasta 10 MB por archivo. Las fotos se comprimen para
+        facilitar la subida.
       </p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
@@ -146,7 +180,10 @@ export function UploadFiles({
       {archivos.length ? (
         <ul className="grid gap-3 sm:grid-cols-2">
           {archivos.map((archivo) => (
-            <li key={archivo.id} className="relative flex min-w-0 gap-3 rounded-lg border p-3">
+            <li
+              key={archivo.id}
+              className="relative flex min-w-0 gap-3 rounded-lg border p-3"
+            >
               <a
                 href={archivo.view}
                 target="_blank"
@@ -155,7 +192,11 @@ export function UploadFiles({
                 className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-md bg-muted"
               >
                 {archivo.archivo.type.startsWith('image/') ? (
-                  <img src={archivo.view} alt="" className="size-full object-cover" />
+                  <img
+                    src={archivo.view}
+                    alt=""
+                    className="size-full object-cover"
+                  />
                 ) : (
                   <FileText className="size-7 text-muted-foreground" />
                 )}
@@ -172,10 +213,14 @@ export function UploadFiles({
                       aria-label={`Subiendo ${archivo.archivo.name}`}
                       className="h-2 w-full accent-primary"
                     />
-                    <p className="text-xs text-muted-foreground">Subiendo {archivo.progreso}%</p>
+                    <p className="text-xs text-muted-foreground">
+                      Subiendo {archivo.progreso}%
+                    </p>
                   </>
                 ) : archivo.estado === 'listo' ? (
-                  <p className="text-xs text-muted-foreground">Listo para guardar</p>
+                  <p className="text-xs text-muted-foreground">
+                    Listo para guardar
+                  </p>
                 ) : (
                   <>
                     <p role="alert" className="text-xs text-destructive">
@@ -201,7 +246,11 @@ export function UploadFiles({
                 aria-label={`Quitar ${archivo.archivo.name}`}
                 className="absolute top-1 right-1"
                 disabled={disabled || archivo.estado === 'subiendo'}
-                onClick={() => setFiles((anteriores) => anteriores.filter((item) => item.id !== archivo.id))}
+                onClick={() =>
+                  setFiles((anteriores) =>
+                    anteriores.filter((item) => item.id !== archivo.id),
+                  )
+                }
               >
                 <X />
               </Button>

@@ -28,7 +28,10 @@ export function Pill({
         className,
       )}
     >
-      <span aria-hidden className="size-1.5 rounded-full bg-current opacity-80" />
+      <span
+        aria-hidden
+        className="size-1.5 rounded-full bg-current opacity-80"
+      />
       {children}
     </span>
   )

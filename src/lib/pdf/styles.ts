@@ -9,11 +9,20 @@ export const AMARILLO_VARIABLE = '#F5F1A5'
 const altoLogo = (ancho: number) => Math.round((ancho * 95) / 437)
 
 export const styles = StyleSheet.create({
-  pagina: { fontFamily: FAMILIA, fontSize: 10, paddingBottom: 64, lineHeight: 1.3 },
+  pagina: {
+    fontFamily: FAMILIA,
+    fontSize: 10,
+    paddingBottom: 64,
+    lineHeight: 1.3,
+  },
   // Márgenes medidos sobre los originales (A4 = 595 × 842 pt).
   pageMonthly: { paddingTop: 20, paddingLeft: 85, paddingRight: 25 },
   pageDaily: { paddingTop: 36, paddingHorizontal: 56 },
-  letterhead: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 18 },
+  letterhead: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 18,
+  },
   logo: { width: 175, height: 38 },
   logoMonthly: { width: 157, height: altoLogo(157) },
   // Logo bajo la firma de la por jornada: en la 112711 mide 153,5 × 33,5 pt.
@@ -32,12 +41,25 @@ export const styles = StyleSheet.create({
   markVineta2: { width: 10, marginLeft: 22 },
   textVineta: { flex: 1 },
   signature: { marginTop: 22 },
-  pie: { position: 'absolute', left: 56, right: 56, fontSize: 7.5, textAlign: 'center', color: '#333333' },
+  pie: {
+    position: 'absolute',
+    left: 56,
+    right: 56,
+    fontSize: 7.5,
+    textAlign: 'center',
+    color: '#333333',
+  },
   footerMonthly: { bottom: 24 },
   // Pie de la por jornada, calibrado sobre la 112711 (A4 = 842 pt de alto): la línea azul a 795 pt del borde
   // superior y los renglones a 807 y 817 pt. Va anclado desde arriba (top) para que la línea quede siempre en el
   // mismo lugar, sin importar cuántos renglones tenga el pie (sin web o con una dirección larga).
-  footerDaily: { top: 795, borderTopWidth: 0.75, borderTopColor: AZUL_LINK, paddingTop: 10, lineHeight: 1.25 },
+  footerDaily: {
+    top: 795,
+    borderTopWidth: 0.75,
+    borderTopColor: AZUL_LINK,
+    paddingTop: 10,
+    lineHeight: 1.25,
+  },
   // Dirección y teléfono van en peso normal aunque el cuerpo de la por jornada sea negrita (la web, no).
   footerDireccion: { fontWeight: 'normal' },
 })

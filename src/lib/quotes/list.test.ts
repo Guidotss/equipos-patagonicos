@@ -11,12 +11,25 @@ import {
 } from './list'
 
 const CLIENTE = '0b0f6a43-5d1c-4c1e-9a52-6f1f4f6a2b10'
-const VACIOS: FiltersList = { q: '', estado: '', cliente: '', desde: '', hasta: '', pagina: 1 }
+const VACIOS: FiltersList = {
+  q: '',
+  estado: '',
+  cliente: '',
+  desde: '',
+  hasta: '',
+  pagina: 1,
+}
 
 describe('constantes', () => {
   it('pagina de a 25 y filtra por los cinco estados visibles', () => {
     expect(PER_PAGE).toBe(25)
-    expect(STATUSES_FILTER).toEqual(['borrador', 'enviada', 'vencida', 'aprobada', 'rechazada'])
+    expect(STATUSES_FILTER).toEqual([
+      'borrador',
+      'enviada',
+      'vencida',
+      'aprobada',
+      'rechazada',
+    ])
   })
 })
 
@@ -26,13 +39,30 @@ describe('leerFiltros', () => {
   })
 
   it('lee todos los filtros válidos', () => {
-    const params = { q: 'grúa', estado: 'vencida', cliente: CLIENTE, desde: '2026-10-01', hasta: '2026-10-31' }
-    expect(readFilters({ ...params, pagina: '3' })).toEqual({ ...params, pagina: 3 })
+    const params = {
+      q: 'grúa',
+      estado: 'vencida',
+      cliente: CLIENTE,
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+    }
+    expect(readFilters({ ...params, pagina: '3' })).toEqual({
+      ...params,
+      pagina: 3,
+    })
   })
 
   it('con parámetros repetidos se queda con el primero', () => {
-    const repetidos = { q: ['vertice', 'milicic'], estado: ['enviada', 'borrador'], pagina: ['2', '5'] }
-    expect(readFilters(repetidos)).toMatchObject({ q: 'vertice', estado: 'enviada', pagina: 2 })
+    const repetidos = {
+      q: ['vertice', 'milicic'],
+      estado: ['enviada', 'borrador'],
+      pagina: ['2', '5'],
+    }
+    expect(readFilters(repetidos)).toMatchObject({
+      q: 'vertice',
+      estado: 'enviada',
+      pagina: 2,
+    })
   })
 
   it('recorta la búsqueda y la limita a 100 caracteres', () => {
@@ -65,63 +95,100 @@ describe('leerFiltros', () => {
   })
 
   it('las fechas mal formadas o que no existen se ignoran sin tocar las demás', () => {
-    expect(readFilters({ desde: '01/10/2026', hasta: '2026-10-31' })).toMatchObject({ desde: '', hasta: '2026-10-31' })
+    expect(
+      readFilters({ desde: '01/10/2026', hasta: '2026-10-31' }),
+    ).toMatchObject({ desde: '', hasta: '2026-10-31' })
     expect(readFilters({ desde: '2026-02-30' }).desde).toBe('')
     expect(readFilters({ hasta: '2026-13-01' }).hasta).toBe('')
     // Postgres no acepta el año 0000 (22008): la lista no puede romperse por la URL.
-    expect(readFilters({ desde: '0000-01-01', hasta: '0000-02-29' })).toMatchObject({ desde: '', hasta: '' })
+    expect(
+      readFilters({ desde: '0000-01-01', hasta: '0000-02-29' }),
+    ).toMatchObject({ desde: '', hasta: '' })
   })
 
   it('da vuelta un rango invertido', () => {
-    expect(readFilters({ desde: '2026-10-31', hasta: '2026-10-01' })).toMatchObject({
+    expect(
+      readFilters({ desde: '2026-10-31', hasta: '2026-10-01' }),
+    ).toMatchObject({
       desde: '2026-10-01',
       hasta: '2026-10-31',
     })
   })
 
-  it.each(['', 'abc', '0', '-2', '2.5', '1e3', '99999999'])('una página inválida (%j) vuelve a la 1', (pagina) => {
-    expect(readFilters({ pagina }).pagina).toBe(1)
-  })
+  it.each(['', 'abc', '0', '-2', '2.5', '1e3', '99999999'])(
+    'una página inválida (%j) vuelve a la 1',
+    (pagina) => {
+      expect(readFilters({ pagina }).pagina).toBe(1)
+    },
+  )
 
   it('un filtro inválido no arrastra a los demás', () => {
-    expect(readFilters({ q: 'vertice', estado: 'x', cliente: 'y', pagina: 'z' })).toEqual({ ...VACIOS, q: 'vertice' })
+    expect(
+      readFilters({ q: 'vertice', estado: 'x', cliente: 'y', pagina: 'z' }),
+    ).toEqual({ ...VACIOS, q: 'vertice' })
   })
 })
 
 describe('hrefConFiltros', () => {
-  const filters: FiltersList = { ...VACIOS, q: 'grúa 40', estado: 'enviada', pagina: 3 }
+  const filters: FiltersList = {
+    ...VACIOS,
+    q: 'grúa 40',
+    estado: 'enviada',
+    pagina: 3,
+  }
 
   it('sin filtros es la lista sola', () => {
     expect(hrefWithFilters(VACIOS, {})).toBe('/cotizaciones')
   })
 
   it('cambiar de página conserva los filtros', () => {
-    expect(hrefWithFilters(filters, { pagina: 4 })).toBe('/cotizaciones?q=gr%C3%BAa+40&estado=enviada&pagina=4')
+    expect(hrefWithFilters(filters, { pagina: 4 })).toBe(
+      '/cotizaciones?q=gr%C3%BAa+40&estado=enviada&pagina=4',
+    )
   })
 
   it('la página 1 no va en la URL', () => {
-    expect(hrefWithFilters(filters, { pagina: 1 })).toBe('/cotizaciones?q=gr%C3%BAa+40&estado=enviada')
+    expect(hrefWithFilters(filters, { pagina: 1 })).toBe(
+      '/cotizaciones?q=gr%C3%BAa+40&estado=enviada',
+    )
   })
 
   it('cambiar un filtro vuelve a la página 1', () => {
-    expect(hrefWithFilters(filters, { estado: 'vencida' })).toBe('/cotizaciones?q=gr%C3%BAa+40&estado=vencida')
+    expect(hrefWithFilters(filters, { estado: 'vencida' })).toBe(
+      '/cotizaciones?q=gr%C3%BAa+40&estado=vencida',
+    )
     expect(hrefWithFilters(filters, { cliente: CLIENTE })).toBe(
       `/cotizaciones?q=gr%C3%BAa+40&estado=enviada&cliente=${CLIENTE}`,
     )
   })
 
   it('sin cambios conserva la página', () => {
-    expect(hrefWithFilters(filters, {})).toBe('/cotizaciones?q=gr%C3%BAa+40&estado=enviada&pagina=3')
-  })
-
-  it('arma las fechas y saca los filtros vacíos', () => {
-    expect(hrefWithFilters(filters, { q: '', estado: '', desde: '2026-10-01', hasta: '2026-10-31' })).toBe(
-      '/cotizaciones?desde=2026-10-01&hasta=2026-10-31',
+    expect(hrefWithFilters(filters, {})).toBe(
+      '/cotizaciones?q=gr%C3%BAa+40&estado=enviada&pagina=3',
     )
   })
 
+  it('arma las fechas y saca los filtros vacíos', () => {
+    expect(
+      hrefWithFilters(filters, {
+        q: '',
+        estado: '',
+        desde: '2026-10-01',
+        hasta: '2026-10-31',
+      }),
+    ).toBe('/cotizaciones?desde=2026-10-01&hasta=2026-10-31')
+  })
+
   it('limpiar todos los filtros deja la lista sola', () => {
-    expect(hrefWithFilters(filters, { q: '', estado: '', cliente: '', desde: '', hasta: '' })).toBe('/cotizaciones')
+    expect(
+      hrefWithFilters(filters, {
+        q: '',
+        estado: '',
+        cliente: '',
+        desde: '',
+        hasta: '',
+      }),
+    ).toBe('/cotizaciones')
   })
 
   it('lo que arma se vuelve a leer igual', () => {
@@ -133,7 +200,10 @@ describe('hrefConFiltros', () => {
       hasta: '2026-12-31',
       pagina: 2,
     }
-    const url = new URL(hrefWithFilters(complete, { pagina: 2 }), 'http://localhost')
+    const url = new URL(
+      hrefWithFilters(complete, { pagina: 2 }),
+      'http://localhost',
+    )
     expect(readFilters(Object.fromEntries(url.searchParams))).toEqual(complete)
   })
 })
@@ -155,7 +225,9 @@ describe('estadoVisible', () => {
   })
 
   it('un estado desconocido es un error de programación', () => {
-    expect(() => statusVisible('anulada', false)).toThrow('Estado de cotización desconocido: anulada')
+    expect(() => statusVisible('anulada', false)).toThrow(
+      'Estado de cotización desconocido: anulada',
+    )
   })
 })
 
@@ -165,7 +237,14 @@ describe('resumenCotizacion', () => {
     'Cotización N° {{numero}} alquiler de 1 (una) Grúa Telescópica capacidad {{capacidad}} TN con operador.'
   /** Una armada en la app, sin equipo ni ubicación salvo que se pidan. */
   const app = (changes: Partial<Parameters<typeof resumenQuote>[0]> = {}) =>
-    resumenQuote({ numero: 112711, origen: 'app', asunto: '', datos: {}, equipo: null, ...changes })
+    resumenQuote({
+      numero: 112711,
+      origen: 'app',
+      asunto: '',
+      datos: {},
+      equipo: null,
+      ...changes,
+    })
 
   describe('armada en la app', () => {
     it('muestra primero el equipo y la ubicación, aunque tenga asunto', () => {
@@ -176,17 +255,25 @@ describe('resumenCotizacion', () => {
     })
 
     it('con solo el equipo o solo la ubicación, muestra lo que haya', () => {
-      expect(app({ asunto: subjectDaily, equipo: equipo40 })).toBe('Grúa telescópica XCMG QY70K-1 40 TN')
-      expect(app({ asunto: subjectDaily, datos: { ubicacion: 'Añelo' } })).toBe('Añelo')
+      expect(app({ asunto: subjectDaily, equipo: equipo40 })).toBe(
+        'Grúa telescópica XCMG QY70K-1 40 TN',
+      )
+      expect(app({ asunto: subjectDaily, datos: { ubicacion: 'Añelo' } })).toBe(
+        'Añelo',
+      )
     })
 
     it('junta los espacios y los saltos de línea del equipo y la ubicación', () => {
       const equipo = { ...equipo40, nombre: '  Grúa   XCMG 70 TN ' }
-      expect(app({ datos: { ubicacion: 'Loma Campana\nYPF' }, equipo })).toBe('Grúa XCMG 70 TN · Loma Campana YPF')
+      expect(app({ datos: { ubicacion: 'Loma Campana\nYPF' }, equipo })).toBe(
+        'Grúa XCMG 70 TN · Loma Campana YPF',
+      )
     })
 
     it('sin equipo ni ubicación, el asunto resuelto sin el prefijo "Cotización N° …" y con mayúscula', () => {
-      expect(app({ asunto: subjectDaily })).toBe('Alquiler de 1 (una) Grúa Telescópica capacidad TN con operador.')
+      expect(app({ asunto: subjectDaily })).toBe(
+        'Alquiler de 1 (una) Grúa Telescópica capacidad TN con operador.',
+      )
     })
 
     it.each([
@@ -204,21 +291,27 @@ describe('resumenCotizacion', () => {
     })
 
     it('solo quita el prefijo al comienzo', () => {
-      expect(app({ asunto: 'Alquiler de grúa (Cotización N° {{numero}})' })).toBe(
-        'Alquiler de grúa (Cotización N° 112711)',
-      )
+      expect(
+        app({ asunto: 'Alquiler de grúa (Cotización N° {{numero}})' }),
+      ).toBe('Alquiler de grúa (Cotización N° 112711)')
       expect(app({ asunto: 'Cotizaciones varias' })).toBe('Cotizaciones varias')
       // Sin "N°" el número es parte del trabajo.
-      expect(app({ asunto: 'Cotización 2 grúas para Añelo' })).toBe('Cotización 2 grúas para Añelo')
+      expect(app({ asunto: 'Cotización 2 grúas para Añelo' })).toBe(
+        'Cotización 2 grúas para Añelo',
+      )
     })
 
     it('quita las variables que no se pueden resolver y los espacios que quedan', () => {
-      expect(app({ asunto: 'Izaje en {{ubicacion}} , {{ubicación}} norte' })).toBe('Izaje en, norte')
+      expect(
+        app({ asunto: 'Izaje en {{ubicacion}} , {{ubicación}} norte' }),
+      ).toBe('Izaje en, norte')
     })
 
     it('resuelve las variables con los datos de la cotización; la capacidad, sin equipo, queda vacía', () => {
       const asunto = 'Grúa de {{capacidad}} TN, pago {{forma_pago}}.'
-      expect(app({ asunto, datos: { forma_pago: 'a 30 días F.F.' } })).toBe('Grúa de TN, pago a 30 días F.F.')
+      expect(app({ asunto, datos: { forma_pago: 'a 30 días F.F.' } })).toBe(
+        'Grúa de TN, pago a 30 días F.F.',
+      )
     })
 
     it('un asunto que solo era el prefijo, o que queda solo con signos, es una raya', () => {
@@ -229,25 +322,52 @@ describe('resumenCotizacion', () => {
 
     it('sin nada que mostrar, una raya', () => {
       expect(app({ datos: null })).toBe('—')
-      expect(app({ asunto: '   ', datos: { ubicacion: '  ' }, equipo: { ...equipo40, nombre: ' ' } })).toBe('—')
+      expect(
+        app({
+          asunto: '   ',
+          datos: { ubicacion: '  ' },
+          equipo: { ...equipo40, nombre: ' ' },
+        }),
+      ).toBe('—')
     })
   })
 
   describe('cargada o directa', () => {
     it('muestra el asunto que escribió el usuario, aunque tenga equipo y ubicación', () => {
       const asunto = '  Montaje de tanque\nen Añelo '
-      const row = { numero: 5, asunto, datos: { ubicacion: 'Añelo' }, equipo: equipo40 }
-      expect(resumenQuote({ ...row, origen: 'directa' })).toBe('Montaje de tanque en Añelo')
-      expect(resumenQuote({ ...row, origen: 'importada' })).toBe('Montaje de tanque en Añelo')
+      const row = {
+        numero: 5,
+        asunto,
+        datos: { ubicacion: 'Añelo' },
+        equipo: equipo40,
+      }
+      expect(resumenQuote({ ...row, origen: 'directa' })).toBe(
+        'Montaje de tanque en Añelo',
+      )
+      expect(resumenQuote({ ...row, origen: 'importada' })).toBe(
+        'Montaje de tanque en Añelo',
+      )
     })
 
     it('no le quita el prefijo "Cotización N°" (lo escribió así)', () => {
-      const row = { numero: 5, origen: 'importada', asunto: 'Cotización N° 5 montaje', datos: {}, equipo: null }
+      const row = {
+        numero: 5,
+        origen: 'importada',
+        asunto: 'Cotización N° 5 montaje',
+        datos: {},
+        equipo: null,
+      }
       expect(resumenQuote(row)).toBe('Cotización N° 5 montaje')
     })
 
     it('sin asunto, una raya (no cae al equipo ni a la ubicación)', () => {
-      const row = { numero: 5, origen: 'directa', asunto: '  ', datos: { ubicacion: 'Añelo' }, equipo: equipo40 }
+      const row = {
+        numero: 5,
+        origen: 'directa',
+        asunto: '  ',
+        datos: { ubicacion: 'Añelo' },
+        equipo: equipo40,
+      }
       expect(resumenQuote(row)).toBe('—')
     })
   })

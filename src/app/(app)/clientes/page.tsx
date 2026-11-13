@@ -32,10 +32,16 @@ export default async function ClientsPage({
   await requireStaff()
   const params = await searchParams
   const q = (Array.isArray(params.q) ? params.q[0] : params.q) ?? ''
-  const numberPage = Array.isArray(params.pagina) ? params.pagina[0] : params.pagina
-  const pagina = numberPage && /^[1-9]\d{0,4}$/.test(numberPage) ? Number(numberPage) : 1
+  const numberPage = Array.isArray(params.pagina)
+    ? params.pagina[0]
+    : params.pagina
+  const pagina =
+    numberPage && /^[1-9]\d{0,4}$/.test(numberPage) ? Number(numberPage) : 1
   const supabase = await createClient()
-  const { data: clientes, error } = await supabase.rpc('buscar_clientes', { texto: q, limite: LIMITE_CLIENTS })
+  const { data: clientes, error } = await supabase.rpc('buscar_clientes', {
+    texto: q,
+    limite: LIMITE_CLIENTS,
+  })
   if (error) throw error
   const pages = Math.max(1, Math.ceil(clientes.length / SIZE_PAGE))
   if (pagina > pages) redirect(hrefClients(q, pages))
@@ -51,7 +57,11 @@ export default async function ClientsPage({
           titulo="Clientes"
           extra={<Count>{clientes.length}</Count>}
           actions={
-            <Button asChild size="lg" className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20">
+            <Button
+              asChild
+              size="lg"
+              className="h-10 px-3.5 text-[15px] shadow-md shadow-primary/20"
+            >
               <Link href="/clientes/nuevo">
                 <Plus aria-hidden />
                 Nuevo cliente
@@ -62,9 +72,17 @@ export default async function ClientsPage({
 
         <FrameListing
           tools={
-            <form action="/clientes" method="get" role="search" className="flex flex-wrap items-center gap-3">
+            <form
+              action="/clientes"
+              method="get"
+              role="search"
+              className="flex flex-wrap items-center gap-3"
+            >
               <div className="relative min-w-0 flex-1 basis-64 @min-[44rem]/listado:max-w-lg">
-                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
                 <Input
                   name="q"
                   type="search"
@@ -74,9 +92,14 @@ export default async function ClientsPage({
                   className="h-10 bg-background pl-9"
                 />
               </div>
-              <Button type="submit" variant="outline" className="h-10">Buscar</Button>
+              <Button type="submit" variant="outline" className="h-10">
+                Buscar
+              </Button>
               {q ? (
-                <Link href="/clientes" className="inline-flex min-h-10 items-center text-sm text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11">
+                <Link
+                  href="/clientes"
+                  className="inline-flex min-h-10 items-center text-sm text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring max-md:min-h-11"
+                >
                   Limpiar búsqueda
                 </Link>
               ) : null}
@@ -86,7 +109,8 @@ export default async function ClientsPage({
             <>
               {clientes.length === LIMITE_CLIENTS ? (
                 <p className="border-t px-4 py-3 text-sm text-muted-foreground">
-                  Se muestran hasta 200 coincidencias. Acotá la búsqueda para encontrar un cliente.
+                  Se muestran hasta 200 coincidencias. Acotá la búsqueda para
+                  encontrar un cliente.
                 </p>
               ) : null}
               <PaginationListing
@@ -102,10 +126,14 @@ export default async function ClientsPage({
             <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
               <Users className="size-6 text-muted-foreground" aria-hidden />
               <p className="max-w-md break-words text-muted-foreground">
-                {q ? `No hay clientes que coincidan con “${q}”.` : 'Todavía no hay clientes cargados.'}
+                {q
+                  ? `No hay clientes que coincidan con “${q}”.`
+                  : 'Todavía no hay clientes cargados.'}
               </p>
               <Button asChild variant="link">
-                <Link href={q ? '/clientes' : '/clientes/nuevo'}>{q ? 'Limpiar búsqueda' : 'Crear primer cliente'}</Link>
+                <Link href={q ? '/clientes' : '/clientes/nuevo'}>
+                  {q ? 'Limpiar búsqueda' : 'Crear primer cliente'}
+                </Link>
               </Button>
             </div>
           ) : (

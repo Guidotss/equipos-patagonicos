@@ -1,6 +1,13 @@
 'use client'
 
-import { Copy, Ellipsis, FileDown, FileText, LoaderCircle, SquarePen } from 'lucide-react'
+import {
+  Copy,
+  Ellipsis,
+  FileDown,
+  FileText,
+  LoaderCircle,
+  SquarePen,
+} from 'lucide-react'
 import Link from 'next/link'
 import { unstable_rethrow, useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -16,7 +23,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { ListTransition } from '@/lib/quotes/actions-status'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 /**
  * Acciones de una fila de la lista. En la tabla: PDF (salvo un presupuesto directo) y ⋯; en el celular,
@@ -60,57 +71,84 @@ export function ActionsRow({
 
   const menu = (
     <>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className={variante === 'movil' ? 'size-11 text-muted-foreground' : 'text-muted-foreground'}
-          aria-label={`Más acciones de la ${numero}`}
-          aria-busy={duplicando}
-          disabled={duplicando}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className={
+              variante === 'movil'
+                ? 'size-11 text-muted-foreground'
+                : 'text-muted-foreground'
+            }
+            aria-label={`Más acciones de la ${numero}`}
+            aria-busy={duplicando}
+            disabled={duplicando}
+          >
+            {duplicando ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              <Ellipsis />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className={
+            variante === 'movil' ? 'w-56 [&_[role=menuitem]]:min-h-11' : 'w-56'
+          }
         >
-          {duplicando ? <LoaderCircle className="animate-spin" /> : <Ellipsis />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={variante === 'movil' ? 'w-56 [&_[role=menuitem]]:min-h-11' : 'w-56'}>
-        <DropdownMenuItem asChild>
-          <Link href={`/cotizaciones/${id}`}>
-            <SquarePen aria-hidden />
-            Abrir
-          </Link>
-        </DropdownMenuItem>
-        {tienePdf && variante === 'movil' ? (
           <DropdownMenuItem asChild>
-            <a href={pdf} target="_blank" rel="noopener noreferrer">
-              <FileText aria-hidden />
-              Ver PDF
-            </a>
+            <Link href={`/cotizaciones/${id}`}>
+              <SquarePen aria-hidden />
+              Abrir
+            </Link>
           </DropdownMenuItem>
-        ) : null}
-        {tienePdf ? (
-          <DropdownMenuItem asChild>
-            <a href={`${pdf}?descargar=1`}>
-              <FileDown aria-hidden />
-              Descargar PDF
-            </a>
+          {tienePdf && variante === 'movil' ? (
+            <DropdownMenuItem asChild>
+              <a href={pdf} target="_blank" rel="noopener noreferrer">
+                <FileText aria-hidden />
+                Ver PDF
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          {tienePdf ? (
+            <DropdownMenuItem asChild>
+              <a href={`${pdf}?descargar=1`}>
+                <FileDown aria-hidden />
+                Descargar PDF
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem disabled={duplicando} onSelect={duplicate}>
+            <Copy aria-hidden />
+            Duplicar
           </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem disabled={duplicando} onSelect={duplicate}>
-          <Copy aria-hidden />
-          Duplicar
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={duplicando} onSelect={() => setOtroClient(true)}><Copy aria-hidden />Duplicar a otro cliente</DropdownMenuItem>
-        {transiciones.length > 0 ? <DropdownMenuSeparator /> : null}
-        {transiciones.map(({ action: accion, label }) => (
-          <DropdownMenuItem key={accion} asChild variant={accion === 'borrar' ? 'destructive' : 'default'}>
-            <Link href={`/cotizaciones/${id}?accion=${accion}`}>{label}</Link>
+          <DropdownMenuItem
+            disabled={duplicando}
+            onSelect={() => setOtroClient(true)}
+          >
+            <Copy aria-hidden />
+            Duplicar a otro cliente
           </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-    <DuplicateClient id={id} open={otroClient} onCerrar={() => setOtroClient(false)} />
+          {transiciones.length > 0 ? <DropdownMenuSeparator /> : null}
+          {transiciones.map(({ action: accion, label }) => (
+            <DropdownMenuItem
+              key={accion}
+              asChild
+              variant={accion === 'borrar' ? 'destructive' : 'default'}
+            >
+              <Link href={`/cotizaciones/${id}?accion=${accion}`}>{label}</Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DuplicateClient
+        id={id}
+        open={otroClient}
+        onCerrar={() => setOtroClient(false)}
+      />
     </>
   )
 
@@ -121,8 +159,18 @@ export function ActionsRow({
       {tienePdf ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button asChild variant="ghost" size="icon-sm" className="text-muted-foreground">
-              <a href={pdf} target="_blank" rel="noopener noreferrer" aria-label={`Ver PDF de la ${numero}`}>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground"
+            >
+              <a
+                href={pdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Ver PDF de la ${numero}`}
+              >
                 <FileText />
               </a>
             </Button>

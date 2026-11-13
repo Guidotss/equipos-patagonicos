@@ -4,9 +4,14 @@ import { homeForRole, isRole, isStaffRole, ROLE_LABELS, ROLES } from './roles'
 describe('roles', () => {
   it('conserva el rol de administración e incorpora al gruista', () => {
     expect(ROLES).toEqual(['admin', 'operador', 'crane_operator'])
-    expect(ROLE_LABELS).toEqual({ admin: 'Administrador', operador: 'Administración', crane_operator: 'Gruista' })
+    expect(ROLE_LABELS).toEqual({
+      admin: 'Administrador',
+      operador: 'Administración',
+      crane_operator: 'Gruista',
+    })
     for (const role of ROLES) expect(isRole(role)).toBe(true)
-    for (const role of ['operator', 'staff', '', null, undefined, {}]) expect(isRole(role)).toBe(false)
+    for (const role of ['operator', 'staff', '', null, undefined, {}])
+      expect(isRole(role)).toBe(false)
   })
 
   it('limita la gestión comercial a administradores y administración', () => {

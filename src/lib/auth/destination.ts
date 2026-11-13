@@ -8,7 +8,9 @@ const ORIGIN_INTERNO = 'http://interno.invalid'
  * empezando con `//` se rechaza: al volver a parsearla (lo hace Next en el cliente) se lee
  * como otro host.
  */
-export function destinationSeguro(destination: string | undefined | null): string {
+export function destinationSeguro(
+  destination: string | undefined | null,
+): string {
   if (!destination?.startsWith('/')) return '/'
 
   let url: URL

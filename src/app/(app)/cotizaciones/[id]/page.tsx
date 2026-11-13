@@ -35,11 +35,18 @@ export default async function QuotePage({
   if (!isUuid(id)) notFound()
 
   const supabase = await createClient()
-  const { data: row, error } = await supabase.from('cotizaciones').select(COLUMNS).eq('id', id).maybeSingle()
+  const { data: row, error } = await supabase
+    .from('cotizaciones')
+    .select(COLUMNS)
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
   if (!row) notFound()
 
-  const crumbs = [{ texto: 'Cotizaciones', href: '/cotizaciones' }, { texto: `N° ${row.numero}` }]
+  const crumbs = [
+    { texto: 'Cotizaciones', href: '/cotizaciones' },
+    { texto: `N° ${row.numero}` },
+  ]
   const actionInitial = actionFromParam((await searchParams).accion)
 
   if (row.origen !== 'app') {
@@ -54,7 +61,9 @@ export default async function QuotePage({
             origen: row.origen === 'directa' ? 'directa' : 'importada',
             estado: row.estado,
             // Como v_cotizaciones: el día del vencimiento todavía no cuenta.
-            vencida: row.estado === 'enviada' && addDays(row.fecha, row.validez_dias) < today,
+            vencida:
+              row.estado === 'enviada' &&
+              addDays(row.fecha, row.validez_dias) < today,
             fecha: row.fecha,
             cliente: row.cliente.razon_social,
             asunto: row.asunto,
@@ -62,10 +71,35 @@ export default async function QuotePage({
           }}
         />
         <Content className="max-w-5xl pt-0">
-          <ActionsSpecials id={row.id} version={row.updated_at} estado={row.estado} origen={row.origen} today={today} actionInitial={actionInitial} />
-          {row.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto</Link></Button> : null}
-          {row.estado === 'enviada' ? <Button asChild variant="outline"><Link href={`/documentos/nuevo?cotizacion=${id}&tipo=orden_compra`}>Aprobar y cargar orden de compra</Link></Button> : null}
-          <FollowUp key={row.updated_at} id={id} version={row.updated_at} notas={row.notas} fecha={row.fecha_proxima_actualizacion} />
+          <ActionsSpecials
+            id={row.id}
+            version={row.updated_at}
+            estado={row.estado}
+            origen={row.origen}
+            today={today}
+            actionInitial={actionInitial}
+          />
+          {row.estado === 'aprobada' ? (
+            <Button asChild>
+              <Link href={`/presupuestos/${id}`}>Abrir presupuesto</Link>
+            </Button>
+          ) : null}
+          {row.estado === 'enviada' ? (
+            <Button asChild variant="outline">
+              <Link
+                href={`/documentos/nuevo?cotizacion=${id}&tipo=orden_compra`}
+              >
+                Aprobar y cargar orden de compra
+              </Link>
+            </Button>
+          ) : null}
+          <FollowUp
+            key={row.updated_at}
+            id={id}
+            version={row.updated_at}
+            notas={row.notas}
+            fecha={row.fecha_proxima_actualizacion}
+          />
         </Content>
       </>
     )
@@ -94,10 +128,26 @@ export default async function QuotePage({
         context={context}
         actionInitial={actionInitial}
       />
-      {row.estado === 'aprobada' || row.estado === 'rechazada' ? <Content className="max-w-5xl pt-0">
-        {row.estado === 'aprobada' ? <Button asChild><Link href={`/presupuestos/${id}`}>Abrir presupuesto y documentos</Link></Button> : null}
-        {row.estado === 'aprobada' || row.estado === 'rechazada' ? <FollowUp key={row.updated_at} id={id} version={row.updated_at} notas={row.notas} fecha={row.fecha_proxima_actualizacion} /> : null}
-      </Content> : null}
+      {row.estado === 'aprobada' || row.estado === 'rechazada' ? (
+        <Content className="max-w-5xl pt-0">
+          {row.estado === 'aprobada' ? (
+            <Button asChild>
+              <Link href={`/presupuestos/${id}`}>
+                Abrir presupuesto y documentos
+              </Link>
+            </Button>
+          ) : null}
+          {row.estado === 'aprobada' || row.estado === 'rechazada' ? (
+            <FollowUp
+              key={row.updated_at}
+              id={id}
+              version={row.updated_at}
+              notas={row.notas}
+              fecha={row.fecha_proxima_actualizacion}
+            />
+          ) : null}
+        </Content>
+      ) : null}
     </>
   )
 }

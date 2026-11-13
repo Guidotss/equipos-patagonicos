@@ -31,7 +31,10 @@ export function CardTexts({
   const [confirming, setConfirming] = useState(false)
   const buttonRestore = useRef<HTMLButtonElement>(null)
   const list = useRef<HTMLDivElement>(null)
-  const canRestoreAll = template !== null && blocks.length > 0 && !sameBlocks(blocks, template.bloques)
+  const canRestoreAll =
+    template !== null &&
+    blocks.length > 0 &&
+    !sameBlocks(blocks, template.bloques)
 
   /**
    * Restaurados, los bloques son otros (claves nuevas) y el botón que se tocó ya no está: el foco va al primero, a su
@@ -40,7 +43,9 @@ export function CardTexts({
   function restoreAll() {
     if (!template) return
     dispatch({ tipo: 'restaurarBloques', bloques: template.bloques })
-    requestAnimationFrame(() => list.current?.querySelector<HTMLElement>('input, button')?.focus())
+    requestAnimationFrame(() =>
+      list.current?.querySelector<HTMLElement>('input, button')?.focus(),
+    )
   }
 
   function close() {
@@ -84,10 +89,17 @@ export function CardTexts({
       ) : null}
       {blocks.length === 0 ? (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed px-4 py-6">
-          <p className="flex-1 text-[15px] text-muted-foreground">Esta cotización no tiene textos.</p>
+          <p className="flex-1 text-[15px] text-muted-foreground">
+            Esta cotización no tiene textos.
+          </p>
           {template && template.bloques.length > 0 ? (
             // Sin textos no hay nada que perder: restaura sin confirmar.
-            <Button type="button" variant="outline" size="sm" onClick={restoreAll}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={restoreAll}
+            >
               <RotateCcw aria-hidden />
               Restaurar desde la plantilla
             </Button>
@@ -101,7 +113,11 @@ export function CardTexts({
               block={block}
               index={index}
               total={blocks.length}
-              original={template ? blockOfTemplate(template.bloques, blocks, index) : null}
+              original={
+                template
+                  ? blockOfTemplate(template.bloques, blocks, index)
+                  : null
+              }
               errors={errors[block.clave] ?? WITHOUT_ERRORS}
               dispatch={dispatch}
             />

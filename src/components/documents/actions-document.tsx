@@ -8,7 +8,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useRouter } from 'next/navigation'
 
-export function ActionsDocument({ id, anulado: voided, financialVersion }: { id: string; anulado: boolean; financialVersion?: number }) {
+export function ActionsDocument({
+  id,
+  anulado: voided,
+  financialVersion,
+}: {
+  id: string
+  anulado: boolean
+  financialVersion?: number
+}) {
   const router = useRouter()
   const [reason, setReason] = useState('')
   const [confirmando, setConfirmando] = useState(false)
@@ -29,7 +37,13 @@ export function ActionsDocument({ id, anulado: voided, financialVersion }: { id:
     setError('')
     startTransition(async () => {
       try {
-        const result = await changeVoidingDocument(id, restore, financialVersion === undefined ? undefined : { expectedVersion: financialVersion, correctionReason: reason })
+        const result = await changeVoidingDocument(
+          id,
+          restore,
+          financialVersion === undefined
+            ? undefined
+            : { expectedVersion: financialVersion, correctionReason: reason },
+        )
         if (!result.ok) {
           setError(result.message)
           return
@@ -37,8 +51,12 @@ export function ActionsDocument({ id, anulado: voided, financialVersion }: { id:
         restoreFocus.current = true
         setConfirmando(false)
         if (!restore && financialVersion === undefined)
-          toast('Documento anulado', { action: { label: 'Deshacer', onClick: () => change(true) }, duration: 10000 })
-        else toast.success(restore ? 'Documento restaurado' : 'Documento anulado')
+          toast('Documento anulado', {
+            action: { label: 'Deshacer', onClick: () => change(true) },
+            duration: 10000,
+          })
+        else
+          toast.success(restore ? 'Documento restaurado' : 'Documento anulado')
         setReason('')
         router.refresh()
       } catch {
@@ -57,26 +75,50 @@ export function ActionsDocument({ id, anulado: voided, financialVersion }: { id:
           variant={voided ? 'outline' : 'ghost'}
           size="sm"
           disabled={pending}
-          onClick={() => (voided && financialVersion === undefined ? change(true) : setConfirmando(true))}
+          onClick={() =>
+            voided && financialVersion === undefined
+              ? change(true)
+              : setConfirmando(true)
+          }
         >
           {voided ? 'Restaurar' : 'Anular'}
         </Button>
       ) : (
         <InlineConfirmation
-          pregunta={voided ? '¿Restaurar este documento?' : '¿Anular este documento?'}
-          detail={voided ? 'Se volverá a incluir el documento en los saldos.' : 'Los archivos se conservan. Los importes reconocidos pueden modificar los saldos.'}
-          textConfirm={voided ? 'Confirmar restauración' : 'Confirmar anulación'}
+          pregunta={
+            voided ? '¿Restaurar este documento?' : '¿Anular este documento?'
+          }
+          detail={
+            voided
+              ? 'Se volverá a incluir el documento en los saldos.'
+              : 'Los archivos se conservan. Los importes reconocidos pueden modificar los saldos.'
+          }
+          textConfirm={
+            voided ? 'Confirmar restauración' : 'Confirmar anulación'
+          }
           textPending={voided ? 'Restaurando…' : 'Anulando…'}
           tone="peligro"
           pendiente={pending}
-          confirmDeshabilitado={financialVersion !== undefined && !reason.trim()}
+          confirmDeshabilitado={
+            financialVersion !== undefined && !reason.trim()
+          }
           onConfirm={() => change(voided)}
           onCancelar={() => {
             restoreFocus.current = true
             setConfirmando(false)
           }}
         >
-          {financialVersion !== undefined ? <label className="flex flex-col gap-1">Motivo<Input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} required /></label> : null}
+          {financialVersion !== undefined ? (
+            <label className="flex flex-col gap-1">
+              Motivo
+              <Input
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                maxLength={2000}
+                required
+              />
+            </label>
+          ) : null}
         </InlineConfirmation>
       )}
       {error ? (

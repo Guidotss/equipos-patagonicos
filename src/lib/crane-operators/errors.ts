@@ -44,9 +44,17 @@ const businessMessages = new Set([
 ])
 
 /** No convierte mensajes internos de PostgreSQL ni de Storage en errores visibles. */
-export function mapCraneOperatorRpcError(error: { code?: string; message: string }) {
-  const isProtectedAdminError = error.code === 'P0001' && error.message === 'No podés desactivarte ni quitarte el rol de administrador'
-  return isProtectedAdminError || (['22023', '42501', '23505'].includes(error.code ?? '') && businessMessages.has(error.message))
+export function mapCraneOperatorRpcError(error: {
+  code?: string
+  message: string
+}) {
+  const isProtectedAdminError =
+    error.code === 'P0001' &&
+    error.message ===
+      'No podés desactivarte ni quitarte el rol de administrador'
+  return isProtectedAdminError ||
+    (['22023', '42501', '23505'].includes(error.code ?? '') &&
+      businessMessages.has(error.message))
     ? new CraneOperatorError(error.message)
     : error
 }

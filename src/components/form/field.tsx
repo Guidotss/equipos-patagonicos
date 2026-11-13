@@ -18,16 +18,27 @@ export function Field({
   children: React.ReactNode
 }) {
   const descripcion = error ? `${id}-error` : help ? `${id}-ayuda` : undefined
-  const control = isValidElement<{ 'aria-describedby'?: string; 'aria-invalid'?: boolean }>(children)
+  const control = isValidElement<{
+    'aria-describedby'?: string
+    'aria-invalid'?: boolean
+  }>(children)
     ? cloneElement(children, {
-        'aria-describedby': [...new Set([children.props['aria-describedby'], descripcion].filter(Boolean))].join(' ') || undefined,
+        'aria-describedby':
+          [
+            ...new Set(
+              [children.props['aria-describedby'], descripcion].filter(Boolean),
+            ),
+          ].join(' ') || undefined,
         ...(error ? { 'aria-invalid': true } : {}),
       })
     : children
 
   return (
     <div className={cn('space-y-1.5 md:space-y-1', className)}>
-      <Label htmlFor={id} className="text-[13px]/none font-normal text-muted-foreground">
+      <Label
+        htmlFor={id}
+        className="text-[13px]/none font-normal text-muted-foreground"
+      >
         {label}
       </Label>
       {control}
@@ -36,7 +47,9 @@ export function Field({
           {error}
         </p>
       ) : help ? (
-        <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">{help}</p>
+        <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">
+          {help}
+        </p>
       ) : null}
     </div>
   )

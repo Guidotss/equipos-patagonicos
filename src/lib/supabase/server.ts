@@ -15,7 +15,8 @@ export async function createClient() {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {
           try {
-            for (const { name, value, options } of cookiesToSet) cookieStore.set(name, value, options)
+            for (const { name, value, options } of cookiesToSet)
+              cookieStore.set(name, value, options)
           } catch {
             // Llamado desde un Server Component: no puede escribir cookies; el proxy refresca la sesión.
           }

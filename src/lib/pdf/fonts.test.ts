@@ -17,8 +17,24 @@ function shortSource(format: 'mensual' | 'jornada'): SourceDocument {
       mostrar_total: true,
     },
     items: [
-      { orden: 1, descripcion: 'Traslado bonificado', seccion: 'Servicios', cantidad: 2, precio_unitario: 0, is_complimentary: true, unidad: 'VIAJE' },
-      { orden: 2, descripcion: 'Oficina, flota y eficiencia. Ítem, ñandú, acción y pingüino.', seccion: 'Servicios', cantidad: 2, precio_unitario: 100, unidad: 'VIAJE' },
+      {
+        orden: 1,
+        descripcion: 'Traslado bonificado',
+        seccion: 'Servicios',
+        cantidad: 2,
+        precio_unitario: 0,
+        is_complimentary: true,
+        unidad: 'VIAJE',
+      },
+      {
+        orden: 2,
+        descripcion:
+          'Oficina, flota y eficiencia. Ítem, ñandú, acción y pingüino.',
+        seccion: 'Servicios',
+        cantidad: 2,
+        precio_unitario: 100,
+        unidad: 'VIAJE',
+      },
     ],
   }
 }
@@ -37,13 +53,20 @@ it('conserva Unicode al generar una mensual breve antes de una jornada y en para
   for (const format of ['mensual', 'jornada'] as const) {
     const text = await textFor(format)
     expect(text).toContain('BONIFICADA')
-    expect(text).toContain('Oficina, flota y eficiencia. Ítem, ñandú, acción y pingüino.')
+    expect(text).toContain(
+      'Oficina, flota y eficiencia. Ítem, ñandú, acción y pingüino.',
+    )
     expect(text).toContain('VERTICE SERVICIOS INTEGRALES S.R.L.')
     expect(text).not.toContain('\u001c')
   }
-  for (const text of await Promise.all([textFor('mensual'), textFor('jornada')])) {
+  for (const text of await Promise.all([
+    textFor('mensual'),
+    textFor('jornada'),
+  ])) {
     expect(text).toContain('BONIFICADA')
-    expect(text).toContain('Oficina, flota y eficiencia. Ítem, ñandú, acción y pingüino.')
+    expect(text).toContain(
+      'Oficina, flota y eficiencia. Ítem, ñandú, acción y pingüino.',
+    )
     expect(text).not.toContain('\u001c')
   }
 })

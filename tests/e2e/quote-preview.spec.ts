@@ -8,11 +8,18 @@ import type { StatusEditor } from '@/lib/quotes/editor'
 import { iniciarSession } from './helpers'
 
 const MARCA = 'e2e-vista-previa'
-let base: { cliente: string; equipo: string; firmante: string; enviada: string }
+let base: {
+  cliente: string
+  equipo: string
+  firmante: string
+  enviada: string
+}
 
 test.beforeAll(async () => {
   base = await withBase(async (db) => {
-    const { rows: [ids] } = await db.query<{ cliente: string; equipo: string; firmante: string }>(
+    const {
+      rows: [ids],
+    } = await db.query<{ cliente: string; equipo: string; firmante: string }>(
       `select
          (select id from public.clientes where razon_social = 'VERTICE SERVICIOS INTEGRALES S.R.L.') as cliente,
          (select id from public.equipos where nombre = 'Grúa telescópica XCMG QY70K-1 40 TN') as equipo,
@@ -20,7 +27,9 @@ test.beforeAll(async () => {
     )
     // Una enviada que se corrigió después del envío. El envío apunta a un PDF que no está en Storage: sin ?actual=1
     // la ruta lo intentaría bajar; con ?actual=1 tiene que generar lo guardado ahora.
-    const { rows: [sent] } = await db.query<{ id: string }>(
+    const {
+      rows: [sent],
+    } = await db.query<{ id: string }>(
       `insert into public.cotizaciones (cliente_id, formato, equipo_id, estado, asunto, datos, notas)
        values ($1, 'jornada', $2, 'enviada', 'Asunto corregido después del envío', '{"ubicacion": "Neuquén"}', $3)
        returning id`,
@@ -31,16 +40,18 @@ test.beforeAll(async () => {
        values ($1, 1, 'Jornada', 1950000, 'JORNADA')`,
       [sent.id],
     )
-    await db.query('insert into public.cotizacion_envios (cotizacion_id, pdf_path) values ($1, $2)', [
-      sent.id,
-      `cotizaciones/${sent.id}/enviada-que-no-esta.pdf`,
-    ])
+    await db.query(
+      'insert into public.cotizacion_envios (cotizacion_id, pdf_path) values ($1, $2)',
+      [sent.id, `cotizaciones/${sent.id}/enviada-que-no-esta.pdf`],
+    )
     return { ...ids, enviada: sent.id }
   })
 })
 
 test.afterAll(async () => {
-  await withBase((db) => db.query('delete from public.cotizaciones where notas = $1', [MARCA]))
+  await withBase((db) =>
+    db.query('delete from public.cotizaciones where notas = $1', [MARCA]),
+  )
 })
 
 async function textOfPdf(pdf: Buffer): Promise<string> {
@@ -57,7 +68,11 @@ function estado(changes: Partial<StatusEditor> = {}): StatusEditor {
     numero: null,
     estado: 'borrador',
     origen: 'app',
-    cliente: { id: base.cliente, razon_social: 'Lo que diga el navegador', cuit: null },
+    cliente: {
+      id: base.cliente,
+      razon_social: 'Lo que diga el navegador',
+      cuit: null,
+    },
     contactoId: '',
     templateId: '',
     formato: 'jornada',
@@ -89,22 +104,40 @@ function estado(changes: Partial<StatusEditor> = {}): StatusEditor {
         unidad: 'JORNADA',
       },
     ],
-    bloques: [{ clave: 'b', titulo: 'Alcance', contenido: '- Horario de 8 a 17 hs.', hidden: false }],
+    bloques: [
+      {
+        clave: 'b',
+        titulo: 'Alcance',
+        contenido: '- Horario de 8 a 17 hs.',
+        hidden: false,
+      },
+    ],
     replacesA: null,
     ...changes,
   }
 }
 
-test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo válido', async ({ page, playwright, baseURL }) => {
+test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo válido', async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
   const anonymous = await playwright.request.newContext({ baseURL })
-  const withoutSession = await anonymous.post('/cotizaciones/vista-previa', { data: { estado: estado() }, maxRedirects: 0 })
+  const withoutSession = await anonymous.post('/cotizaciones/vista-previa', {
+    data: { estado: estado() },
+    maxRedirects: 0,
+  })
   expect(withoutSession.status()).toBe(307)
   await anonymous.dispose()
 
   await iniciarSession(page)
-  const broken = await page.request.post('/cotizaciones/vista-previa', { data: { estado: { ...estado(), items: 'nada' } } })
+  const broken = await page.request.post('/cotizaciones/vista-previa', {
+    data: { estado: { ...estado(), items: 'nada' } },
+  })
   expect(broken.status()).toBe(400)
-  const withoutWrapper = await page.request.post('/cotizaciones/vista-previa', { data: estado() })
+  const withoutWrapper = await page.request.post('/cotizaciones/vista-previa', {
+    data: estado(),
+  })
   expect(withoutWrapper.status()).toBe(400)
   const noJson = await page.request.post('/cotizaciones/vista-previa', {
     headers: { 'Content-Type': 'text/plain' },
@@ -112,7 +145,9 @@ test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo v
   })
   expect(noJson.status()).toBe(400)
 
-  const response = await page.request.post('/cotizaciones/vista-previa', { data: { estado: estado() } })
+  const response = await page.request.post('/cotizaciones/vista-previa', {
+    data: { estado: estado() },
+  })
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toBe('application/pdf')
   const texto = await textOfPdf(await response.body())
@@ -124,35 +159,72 @@ test('la vista previa dibuja el estado sin guardar y exige sesión y un cuerpo v
 
   // No guardó nada.
   const guardadas = await withBase((db) =>
-    db.query(`select 1 from public.cotizaciones where asunto = 'Alquiler de Grúa de {{capacidad}} TN'`),
+    db.query(
+      `select 1 from public.cotizaciones where asunto = 'Alquiler de Grúa de {{capacidad}} TN'`,
+    ),
   )
   expect(guardadas.rowCount).toBe(0)
 })
 
-test('?actual=1 muestra lo guardado ahora en una enviada, no su último envío', async ({ page }) => {
+test('?actual=1 muestra lo guardado ahora en una enviada, no su último envío', async ({
+  page,
+}) => {
   await iniciarSession(page)
-  const response = await page.request.get(`/cotizaciones/${base.enviada}/pdf?actual=1`)
+  const response = await page.request.get(
+    `/cotizaciones/${base.enviada}/pdf?actual=1`,
+  )
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toBe('application/pdf')
-  expect(await textOfPdf(await response.body())).toContain('Asunto corregido después del envío')
+  expect(await textOfPdf(await response.body())).toContain(
+    'Asunto corregido después del envío',
+  )
 })
 
-
 for (const format of ['mensual', 'jornada'] as const) {
-  test(`la vista previa ${format} normaliza una bonificada manipulada sin cobrarla`, async ({ page }) => {
+  test(`la vista previa ${format} normaliza una bonificada manipulada sin cobrarla`, async ({
+    page,
+  }) => {
     await iniciarSession(page)
-    const state = estado({ formato: format, mostrarTotal: true, items: [
-      { clave: 'normal', seccion: 'Servicios', descripcion: 'Servicio normal', cantidad: '2', precio: '100', unidad: 'HORA' },
-      { clave: 'bonus', seccion: 'Servicios', descripcion: 'Traslado sin cargo', cantidad: '3', precio: '999999', unidad: 'VIAJE', isComplimentary: true },
-    ] })
-    const response = await page.request.post('/cotizaciones/vista-previa', { data: { estado: state } })
+    const state = estado({
+      formato: format,
+      mostrarTotal: true,
+      items: [
+        {
+          clave: 'normal',
+          seccion: 'Servicios',
+          descripcion: 'Servicio normal',
+          cantidad: '2',
+          precio: '100',
+          unidad: 'HORA',
+        },
+        {
+          clave: 'bonus',
+          seccion: 'Servicios',
+          descripcion: 'Traslado sin cargo',
+          cantidad: '3',
+          precio: '999999',
+          unidad: 'VIAJE',
+          isComplimentary: true,
+        },
+      ],
+    })
+    const response = await page.request.post('/cotizaciones/vista-previa', {
+      data: { estado: state },
+    })
     expect(response.status()).toBe(200)
     const text = await textOfPdf(await response.body())
     expect(text).toContain('BONIFICADA')
     expect(text).not.toContain('BONIFICADA más IVA')
     expect(text).not.toContain('999.999')
     expect(text).toContain('200')
-    const invalid = await page.request.post('/cotizaciones/vista-previa', { data: { estado: { ...state, items: [{ ...state.items[1], isComplimentary: 'true' }] } } })
+    const invalid = await page.request.post('/cotizaciones/vista-previa', {
+      data: {
+        estado: {
+          ...state,
+          items: [{ ...state.items[1], isComplimentary: 'true' }],
+        },
+      },
+    })
     expect(invalid.status()).toBe(400)
   })
 }

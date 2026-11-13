@@ -5,21 +5,26 @@ import { flushSync } from 'react-dom'
 
 export function useSectionDrafts() {
   /** Secciones de la grilla con el nombre escrito y todavía no aplicado (borrador local de CardItems). */
-  const [sectionDrafts, setSectionDrafts] = useState<ReadonlySet<string>>(() => new Set())
+  const [sectionDrafts, setSectionDrafts] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   /** El `aplicar` de cada uno de esos borradores, por clave de sección: guardar los aplica antes de leer el estado. */
   const applyDraft = useRef(new Map<string, () => void>())
-  const onChangeDraftSection = useCallback((key: string, apply: (() => void) | null) => {
-    if (apply) applyDraft.current.set(key, apply)
-    else applyDraft.current.delete(key)
-    const has = apply !== null
-    setSectionDrafts((current) => {
-      if (current.has(key) === has) return current
-      const next = new Set(current)
-      if (has) next.add(key)
-      else next.delete(key)
-      return next
-    })
-  }, [])
+  const onChangeDraftSection = useCallback(
+    (key: string, apply: (() => void) | null) => {
+      if (apply) applyDraft.current.set(key, apply)
+      else applyDraft.current.delete(key)
+      const has = apply !== null
+      setSectionDrafts((current) => {
+        if (current.has(key) === has) return current
+        const next = new Set(current)
+        if (has) next.add(key)
+        else next.delete(key)
+        return next
+      })
+    },
+    [],
+  )
 
   /**
    * Aplica ya los nombres de sección a medio escribir (renderizados con flushSync), de forma explícita: no depende de
@@ -34,5 +39,9 @@ export function useSectionDrafts() {
     })
   }
 
-  return { hasDraftSection: sectionDrafts.size > 0, onChangeDraftSection, applySectionDrafts }
+  return {
+    hasDraftSection: sectionDrafts.size > 0,
+    onChangeDraftSection,
+    applySectionDrafts,
+  }
 }

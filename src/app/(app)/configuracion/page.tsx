@@ -2,16 +2,40 @@ import { requireStaff } from '@/lib/auth'
 import { Building2, ChevronRight, FileText, PenLine, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { BarCrumbs, Content, HeaderSection } from '@/components/app-shell/header'
+import {
+  BarCrumbs,
+  Content,
+  HeaderSection,
+} from '@/components/app-shell/header'
 import { IconCrane } from '@/components/settings/icon-crane'
 
 export const metadata: Metadata = { title: 'Configuración' }
 
 const SECCIONES = [
-  { href: '/configuracion/empresa', titulo: 'Empresa', descripcion: 'Membrete, contacto e índice de actualización vigente.', icon: Building2 },
-  { href: '/configuracion/firmantes', titulo: 'Firmantes', descripcion: 'Quiénes firman las cotizaciones.', icon: PenLine },
-  { href: '/configuracion/equipos', titulo: 'Equipos', descripcion: 'Grúas que se ofrecen en las cotizaciones.', icon: IconCrane },
-  { href: '/configuracion/plantillas', titulo: 'Plantillas', descripcion: 'Textos e ítems de las cotizaciones mensual y por jornada.', icon: FileText },
+  {
+    href: '/configuracion/empresa',
+    titulo: 'Empresa',
+    descripcion: 'Membrete, contacto e índice de actualización vigente.',
+    icon: Building2,
+  },
+  {
+    href: '/configuracion/firmantes',
+    titulo: 'Firmantes',
+    descripcion: 'Quiénes firman las cotizaciones.',
+    icon: PenLine,
+  },
+  {
+    href: '/configuracion/equipos',
+    titulo: 'Equipos',
+    descripcion: 'Grúas que se ofrecen en las cotizaciones.',
+    icon: IconCrane,
+  },
+  {
+    href: '/configuracion/plantillas',
+    titulo: 'Plantillas',
+    descripcion: 'Textos e ítems de las cotizaciones mensual y por jornada.',
+    icon: FileText,
+  },
 ]
 
 export default async function SettingsPage() {
@@ -19,10 +43,25 @@ export default async function SettingsPage() {
   return (
     <>
       <BarCrumbs crumbs={[{ texto: 'Configuración' }]} />
-      <HeaderSection titulo="Configuración" descripcion="Datos que usan las cotizaciones y sus PDF." />
+      <HeaderSection
+        titulo="Configuración"
+        descripcion="Datos que usan las cotizaciones y sus PDF."
+      />
       <Content>
         <div className="grid gap-6 lg:grid-cols-2">
-          {[...SECCIONES, ...(user.rol === 'admin' ? [{ href: '/configuracion/users', titulo: 'Usuarios', descripcion: 'Roles y acceso del personal.', icon: Users }] : [])].map(({ href, titulo: title, descripcion, icon: Icon }) => (
+          {[
+            ...SECCIONES,
+            ...(user.rol === 'admin'
+              ? [
+                  {
+                    href: '/configuracion/users',
+                    titulo: 'Usuarios',
+                    descripcion: 'Roles y acceso del personal.',
+                    icon: Users,
+                  },
+                ]
+              : []),
+          ].map(({ href, titulo: title, descripcion, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -32,10 +71,17 @@ export default async function SettingsPage() {
                 <Icon className="size-7 stroke-[1.4] sm:size-10" aria-hidden />
               </span>
               <span className="min-w-0 flex-1 space-y-1">
-                <span className="block text-lg font-medium tracking-tight sm:text-[22px]">{title}</span>
-                <span className="block text-sm leading-snug text-foreground/80 sm:text-base">{descripcion}</span>
+                <span className="block text-lg font-medium tracking-tight sm:text-[22px]">
+                  {title}
+                </span>
+                <span className="block text-sm leading-snug text-foreground/80 sm:text-base">
+                  {descripcion}
+                </span>
               </span>
-              <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:-ml-2" aria-hidden />
+              <ChevronRight
+                className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:-ml-2"
+                aria-hidden
+              />
             </Link>
           ))}
         </div>

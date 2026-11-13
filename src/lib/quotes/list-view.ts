@@ -49,14 +49,23 @@ export function rowQuote(row: RowViewList): RowQuote {
   return {
     id: row.id,
     numero: row.numero,
-    origen: row.origen === 'importada' ? 'Cargada' : row.origen === 'directa' ? 'Directa' : null,
+    origen:
+      row.origen === 'importada'
+        ? 'Cargada'
+        : row.origen === 'directa'
+          ? 'Directa'
+          : null,
     fecha: formatShortDate(row.fecha),
     cliente: row.cliente_razon_social,
     trabajo: resumenQuote(row),
-    formato: row.origen === 'app' ? (FORMATS[row.formato as Format] ?? row.formato) : '—',
+    formato:
+      row.origen === 'app'
+        ? (FORMATS[row.formato as Format] ?? row.formato)
+        : '—',
     estado: row.estado,
     vencida: row.vencida === true,
-    venceEl: withVencimiento && row.vence_el ? formatShortDate(row.vence_el) : null,
+    venceEl:
+      withVencimiento && row.vence_el ? formatShortDate(row.vence_el) : null,
     tienePdf: row.origen !== 'directa',
   }
 }
@@ -67,9 +76,15 @@ export function totalPages(total: number): number {
 }
 
 /** Primera y última posición de una página, para "Mostrando 26–29 de 29". */
-export function rowsMostradas(pagina: number, total: number): { desde: number; hasta: number } {
+export function rowsMostradas(
+  pagina: number,
+  total: number,
+): { desde: number; hasta: number } {
   if (total === 0) return { desde: 0, hasta: 0 }
-  return { desde: (pagina - 1) * PER_PAGE + 1, hasta: Math.min(pagina * PER_PAGE, total) }
+  return {
+    desde: (pagina - 1) * PER_PAGE + 1,
+    hasta: Math.min(pagina * PER_PAGE, total),
+  }
 }
 
 export type DateShortcut = { label: string; desde: string; hasta: string }
@@ -88,7 +103,11 @@ export function dateShortcuts(today: string): DateShortcut[] {
   const previousMonthEnd = addDays(firstDay(today), -1)
   return [
     { label: 'Este mes', desde: firstDay(today), hasta: lastDay(today) },
-    { label: 'Mes anterior', desde: firstDay(previousMonthEnd), hasta: previousMonthEnd },
+    {
+      label: 'Mes anterior',
+      desde: firstDay(previousMonthEnd),
+      hasta: previousMonthEnd,
+    },
     { label: 'Últimos 90 días', desde: addDays(today, -89), hasta: today },
   ]
 }

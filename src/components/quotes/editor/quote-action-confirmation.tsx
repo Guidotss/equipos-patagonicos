@@ -15,8 +15,13 @@ import { useState } from 'react'
 import type { ActionsStatus } from './quote-actions.types'
 
 /** El texto del botón mientras corre esta acción (otra acción en curso solo deshabilita). */
-function progressText(actions: ActionsStatus, action: keyof typeof ACTION_PROGRESS_LABEL): string | undefined {
-  return actions.currentAction === action ? ACTION_PROGRESS_LABEL[action] : undefined
+function progressText(
+  actions: ActionsStatus,
+  action: keyof typeof ACTION_PROGRESS_LABEL,
+): string | undefined {
+  return actions.currentAction === action
+    ? ACTION_PROGRESS_LABEL[action]
+    : undefined
 }
 
 function ConfirmApproval({
@@ -46,7 +51,11 @@ function ConfirmApproval({
   return (
     <InlineConfirmation
       tone="exito"
-      pregunta={newQuote ? '¿Guardar y aprobar la cotización?' : `¿Aprobar la cotización N° ${state.numero}?`}
+      pregunta={
+        newQuote
+          ? '¿Guardar y aprobar la cotización?'
+          : `¿Aprobar la cotización N° ${state.numero}?`
+      }
       detail={
         newQuote
           ? 'Se guarda con un número nuevo, queda como presupuesto y ya no se modifica.'
@@ -61,7 +70,10 @@ function ConfirmApproval({
     >
       <div className="basis-full space-y-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <Label htmlFor="fecha-aprobacion" className="text-[13px] font-normal text-muted-foreground">
+          <Label
+            htmlFor="fecha-aprobacion"
+            className="text-[13px] font-normal text-muted-foreground"
+          >
             Fecha de aprobación
           </Label>
           <Input
@@ -180,7 +192,10 @@ export function QuoteActionConfirmation({
           detail="«Duplicar lo guardado» copia la última versión guardada y descarta estos cambios."
           textConfirm="Guardar y duplicar"
           textPending={progressText(actions, 'duplicar')}
-          alternativa={{ texto: 'Duplicar lo guardado', onChoose: () => void actions.duplicate(false) }}
+          alternativa={{
+            texto: 'Duplicar lo guardado',
+            onChoose: () => void actions.duplicate(false),
+          }}
           pendiente={actions.busy}
           onConfirm={() => void actions.duplicate(true)}
           onCancelar={actions.cancel}
@@ -194,7 +209,9 @@ export function QuoteActionConfirmation({
           pregunta={`¿El trabajo del presupuesto N° ${confirmation.previous.numero} ya está cobrado?`}
           detail="Podés dejar pendiente el presupuesto anterior si todavía falta cobrarlo."
           textConfirm={`Finalizar el presupuesto N° ${confirmation.previous.numero}`}
-          textPending={actions.currentAction === 'finalizar' ? 'Finalizando…' : undefined}
+          textPending={
+            actions.currentAction === 'finalizar' ? 'Finalizando…' : undefined
+          }
           textCancelar="Dejarlo pendiente"
           onConfirm={() => void actions.finish()}
         />

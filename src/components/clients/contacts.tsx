@@ -12,7 +12,13 @@ export type ContactFicha = {
 }
 
 /** Contactos de la ficha de cliente; el alta y la edición tienen pantalla propia. */
-export function Contacts({ clientId, contactos }: { clientId: string; contactos: ContactFicha[] }) {
+export function Contacts({
+  clientId,
+  contactos,
+}: {
+  clientId: string
+  contactos: ContactFicha[]
+}) {
   const base = `/clientes/${clientId}/contactos`
   return (
     <section className="space-y-4">
@@ -33,7 +39,10 @@ export function Contacts({ clientId, contactos }: { clientId: string; contactos:
       ) : (
         <ul className="space-y-4">
           {contactos.map((contacto) => (
-            <li key={contacto.id} className="rounded-xl border bg-card p-4 shadow-tarjeta">
+            <li
+              key={contacto.id}
+              className="rounded-xl border bg-card p-4 shadow-tarjeta"
+            >
               <div className="flex items-start gap-3">
                 <span
                   aria-hidden
@@ -43,10 +52,22 @@ export function Contacts({ clientId, contactos }: { clientId: string; contactos:
                 </span>
                 <div className="min-w-0 flex-1 pt-0.5">
                   <p className="font-semibold break-words">{contacto.nombre}</p>
-                  {contacto.cargo ? <p className="text-sm text-muted-foreground">{contacto.cargo}</p> : null}
+                  {contacto.cargo ? (
+                    <p className="text-sm text-muted-foreground">
+                      {contacto.cargo}
+                    </p>
+                  ) : null}
                 </div>
-                <Button asChild variant="ghost" size="icon" className="-mt-1 -mr-1 text-muted-foreground">
-                  <Link href={`${base}/${contacto.id}`} aria-label={`Editar a ${contacto.nombre}`}>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="-mt-1 -mr-1 text-muted-foreground"
+                >
+                  <Link
+                    href={`${base}/${contacto.id}`}
+                    aria-label={`Editar a ${contacto.nombre}`}
+                  >
                     <Pencil />
                   </Link>
                 </Button>
@@ -54,12 +75,18 @@ export function Contacts({ clientId, contactos }: { clientId: string; contactos:
               {contacto.email || contacto.telefono ? (
                 <div className="mt-3 space-y-1 text-[15px]">
                   {contacto.email ? (
-                    <a className="block [overflow-wrap:anywhere] hover:text-primary hover:underline" href={`mailto:${contacto.email}`}>
+                    <a
+                      className="block [overflow-wrap:anywhere] hover:text-primary hover:underline"
+                      href={`mailto:${contacto.email}`}
+                    >
                       {contacto.email}
                     </a>
                   ) : null}
                   {contacto.telefono ? (
-                    <a className="block tabular-nums hover:text-primary hover:underline" href={`tel:${contacto.telefono}`}>
+                    <a
+                      className="block tabular-nums hover:text-primary hover:underline"
+                      href={`tel:${contacto.telefono}`}
+                    >
                       {contacto.telefono}
                     </a>
                   ) : null}

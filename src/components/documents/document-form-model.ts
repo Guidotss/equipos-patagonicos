@@ -1,12 +1,31 @@
 import { FIELDS_DOCUMENT } from '@/lib/documents/schemas'
-import type { DocumentContext, Document, OptionBudget } from '@/lib/documents/screens'
+import type {
+  DocumentContext,
+  Document,
+  OptionBudget,
+} from '@/lib/documents/screens'
 import { formatAmountTable } from '@/lib/format/amounts'
-import { centsToDecimal, formatFinancialAmount, parseDecimalCents, sumCents } from '@/lib/finance/amounts'
+import {
+  centsToDecimal,
+  formatFinancialAmount,
+  parseDecimalCents,
+  sumCents,
+} from '@/lib/finance/amounts'
 
 import type { DocumentFormProps } from './document-form.types'
 
-export type DocumentFormValues = Record<(typeof FIELDS_DOCUMENT)[number], string>
-export const EMPTY_DOCUMENT_CONTEXT: DocumentContext = { budgets: [], documentos: [], facturas: [], invoiceBudgetIds: {}, equipos: [], financeByDocument: {} }
+export type DocumentFormValues = Record<
+  (typeof FIELDS_DOCUMENT)[number],
+  string
+>
+export const EMPTY_DOCUMENT_CONTEXT: DocumentContext = {
+  budgets: [],
+  documentos: [],
+  facturas: [],
+  invoiceBudgetIds: {},
+  equipos: [],
+  financeByDocument: {},
+}
 const normalizeNumber = (number: string) =>
   number
     .toLowerCase()
@@ -20,16 +39,30 @@ export function initialDocumentValues({
   invoiceId,
 }: DocumentFormProps): DocumentFormValues {
   const initial = Object.fromEntries(
-    FIELDS_DOCUMENT.map((field) => [field, document?.[field] == null ? '' : String(document[field])]),
+    FIELDS_DOCUMENT.map((field) => [
+      field,
+      document?.[field] == null ? '' : String(document[field]),
+    ]),
   ) as DocumentFormValues
   initial.tipo = document?.tipo ?? type
   initial.tipo_comprobante = document?.tipo_comprobante ?? 'FA'
   const invoice = initialContext.facturas.find((item) => item.id === invoiceId)
-  if (invoice?.exact_balance && parseDecimalCents(invoice.exact_balance) !== BigInt(0)) initial.monto = formatFinancialAmount(invoice.exact_balance).slice(2)
+  if (
+    invoice?.exact_balance &&
+    parseDecimalCents(invoice.exact_balance) !== BigInt(0)
+  )
+    initial.monto = formatFinancialAmount(invoice.exact_balance).slice(2)
   else if (document?.tipo === 'factura') {
     const finance = initialContext.financeByDocument[document.id]
     const rows = finance?.invoiceAllocations
-    if (rows?.length) initial.monto = formatFinancialAmount(centsToDecimal(sumCents(rows.map((row) => parseDecimalCents(row.amount) ?? BigInt(0))))).slice(2)
+    if (rows?.length)
+      initial.monto = formatFinancialAmount(
+        centsToDecimal(
+          sumCents(
+            rows.map((row) => parseDecimalCents(row.amount) ?? BigInt(0)),
+          ),
+        ),
+      ).slice(2)
     else if (document.monto) initial.monto = formatAmountTable(document.monto)
   } else if (document?.monto) initial.monto = formatAmountTable(document.monto)
   return initial
@@ -41,20 +74,33 @@ export function initialDeliveryNotes({
   deliveryNoteId,
 }: DocumentFormProps): string[] {
   return document
-    ? initialContext.documentos.filter((item) => item.factura_id === document.id).map((item) => item.id)
+    ? initialContext.documentos
+        .filter((item) => item.factura_id === document.id)
+        .map((item) => item.id)
     : deliveryNoteId
       ? [deliveryNoteId]
       : []
 }
 
-export function invoiceCoversBudgets(context: DocumentContext, invoiceId: string, budgetIds: string[]) {
+export function invoiceCoversBudgets(
+  context: DocumentContext,
+  invoiceId: string,
+  budgetIds: string[],
+) {
   const invoiceBudgets = context.invoiceBudgetIds[invoiceId] ?? []
-  return budgetIds.length > 0 && budgetIds.every((id) => invoiceBudgets.includes(id))
+  return (
+    budgetIds.length > 0 && budgetIds.every((id) => invoiceBudgets.includes(id))
+  )
 }
 
-export function matchingDeliveryNoteInvoices(context: DocumentContext, budgetIds: string[]) {
-  return context.facturas.filter((invoice) =>
-    invoice.tipo_comprobante !== 'NC' && invoiceCoversBudgets(context, invoice.id, budgetIds),
+export function matchingDeliveryNoteInvoices(
+  context: DocumentContext,
+  budgetIds: string[],
+) {
+  return context.facturas.filter(
+    (invoice) =>
+      invoice.tipo_comprobante !== 'NC' &&
+      invoiceCoversBudgets(context, invoice.id, budgetIds),
   )
 }
 
@@ -86,7 +132,9 @@ export function documentFormSelections({
         normalizeNumber(item.numero) === normalizeNumber(values.numero),
     )
   const clientBudgets = context.budgets.filter(
-    (item) => item.presupuesto_estado !== 'anulado' || selectedBudgetIds.includes(item.id),
+    (item) =>
+      item.presupuesto_estado !== 'anulado' ||
+      selectedBudgetIds.includes(item.id),
   )
   const activeInvoices = new Set(context.facturas.map((item) => item.id))
   const availableDeliveryNotes = context.documentos.filter(
@@ -94,14 +142,16 @@ export function documentFormSelections({
       item.tipo === 'remito' &&
       (deliveryNotes.includes(item.id) ||
         (!item.deleted_at &&
-          (!item.factura_id || item.factura_id === document?.id || !activeInvoices.has(item.factura_id)))),
+          (!item.factura_id ||
+            item.factura_id === document?.id ||
+            !activeInvoices.has(item.factura_id)))),
   )
   const visibleOptions = options
     .filter((item) => item.presupuesto_estado !== 'anulado')
     .toSorted(
       (a, b) =>
-        Number(b.presupuesto_estado === 'en_curso') - Number(a.presupuesto_estado === 'en_curso') ||
-        b.numero - a.numero,
+        Number(b.presupuesto_estado === 'en_curso') -
+          Number(a.presupuesto_estado === 'en_curso') || b.numero - a.numero,
     )
   return { duplicate, clientBudgets, availableDeliveryNotes, visibleOptions }
 }

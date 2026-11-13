@@ -10,7 +10,10 @@ import { iniciarSession, type StatusLogin } from './actions'
 const statusInitial: StatusLogin = { error: null }
 
 export function LoginForm({ next }: { next?: string }) {
-  const [estado, accion, pending] = useActionState(iniciarSession, statusInitial)
+  const [estado, accion, pending] = useActionState(
+    iniciarSession,
+    statusInitial,
+  )
 
   return (
     <form action={accion} className="space-y-5">
@@ -19,7 +22,14 @@ export function LoginForm({ next }: { next?: string }) {
         <Label htmlFor="email" className="text-[17px] font-normal">
           Email
         </Label>
-        <Input id="email" name="email" type="email" autoComplete="email" required className="h-11 px-3 text-base shadow-xs md:text-base" />
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          className="h-11 px-3 text-base shadow-xs md:text-base"
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password" className="text-[17px] font-normal">

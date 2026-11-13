@@ -1,7 +1,11 @@
 'use client'
 
 import { STATUSES_QUOTE } from '@/components/quotes/status-quote'
-import { hrefWithFilters, readFilters, type FiltersList } from '@/lib/quotes/list'
+import {
+  hrefWithFilters,
+  readFilters,
+  type FiltersList,
+} from '@/lib/quotes/list'
 import { formatDateRange } from '@/lib/quotes/list-view'
 import { useRouter } from 'next/navigation'
 import { useEffect, useOptimistic, useRef, useTransition } from 'react'
@@ -15,7 +19,10 @@ export function useQuoteFilters(filters: FiltersList, clients: ClientFilter[]) {
   // que los selects siguen a la URL cuando cambia desde afuera (chips, "Limpiar filtros", atrás del navegador).
   const [activeFilters, applyOptimistic] = useOptimistic(
     filters,
-    (current: FiltersList, changes: Partial<FiltersList>): FiltersList => ({ ...current, ...changes }),
+    (current: FiltersList, changes: Partial<FiltersList>): FiltersList => ({
+      ...current,
+      ...changes,
+    }),
   )
   const search = useRef<HTMLInputElement>(null)
   // La última búsqueda de la URL que se reflejó en el buscador.
@@ -27,7 +34,8 @@ export function useQuoteFilters(filters: FiltersList, clients: ClientFilter[]) {
   useEffect(() => {
     const field = search.current
     // El texto se normaliza como el de la URL (espacios, largo máximo) para compararlo con la búsqueda que mostraba.
-    if (field && readFilters({ q: field.value }).q === reflectedQuery.current) field.value = filters.q
+    if (field && readFilters({ q: field.value }).q === reflectedQuery.current)
+      field.value = filters.q
     reflectedQuery.current = filters.q
   }, [filters.q])
 
@@ -40,16 +48,29 @@ export function useQuoteFilters(filters: FiltersList, clients: ClientFilter[]) {
   }
 
   // Los chips siguen la selección optimista mientras llega la navegación.
-  const chips: { key: string; text: string; remove: Partial<FiltersList> }[] = []
+  const chips: { key: string; text: string; remove: Partial<FiltersList> }[] =
+    []
   if (activeFilters.q) {
-    chips.push({ key: 'busqueda', text: `Búsqueda: ${activeFilters.q}`, remove: { q: '' } })
+    chips.push({
+      key: 'busqueda',
+      text: `Búsqueda: ${activeFilters.q}`,
+      remove: { q: '' },
+    })
   }
   if (activeFilters.estado) {
-    chips.push({ key: 'estado', text: STATUSES_QUOTE[activeFilters.estado].label, remove: { estado: '' } })
+    chips.push({
+      key: 'estado',
+      text: STATUSES_QUOTE[activeFilters.estado].label,
+      remove: { estado: '' },
+    })
   }
   if (activeFilters.cliente) {
     const client = clients.find((c) => c.id === activeFilters.cliente)
-    chips.push({ key: 'cliente', text: client?.razon_social ?? 'Cliente', remove: { cliente: '' } })
+    chips.push({
+      key: 'cliente',
+      text: client?.razon_social ?? 'Cliente',
+      remove: { cliente: '' },
+    })
   }
   if (activeFilters.desde || activeFilters.hasta) {
     const text = formatDateRange(activeFilters.desde, activeFilters.hasta)

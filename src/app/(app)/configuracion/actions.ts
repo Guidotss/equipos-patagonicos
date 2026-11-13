@@ -27,22 +27,37 @@ function requireUuid(id: string) {
   if (!isUuid(id)) throw new Error('Identificador inválido')
 }
 
-export async function actualizarCompany(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
+export async function actualizarCompany(
+  _previous: StatusForm,
+  formData: FormData,
+): Promise<StatusForm> {
   const user = await requireStaff()
   const values = readFields(formData, EDITABLE_COMPANY_FIELDS)
-  if (user.rol !== 'admin') return { ok: false, message: 'Solo un administrador puede cambiar estos datos', errors: {}, values }
+  if (user.rol !== 'admin')
+    return {
+      ok: false,
+      message: 'Solo un administrador puede cambiar estos datos',
+      errors: {},
+      values,
+    }
   const datos = schemaEditableCompany.safeParse(values)
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
-  const { error } = await supabase.from('empresa_config').update(datos.data).eq('id', true)
+  const { error } = await supabase
+    .from('empresa_config')
+    .update(datos.data)
+    .eq('id', true)
   if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/empresa')
   return success('Datos de la empresa guardados')
 }
 
-export async function crearSigner(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
+export async function crearSigner(
+  _previous: StatusForm,
+  formData: FormData,
+): Promise<StatusForm> {
   await requireStaff()
   const values = readFields(formData, FIELDS_SIGNER)
   const datos = schemaSigner.safeParse(values)
@@ -68,23 +83,35 @@ export async function actualizarSigner(
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
-  const { error } = await supabase.from('firmantes').update(datos.data).eq('id', id)
+  const { error } = await supabase
+    .from('firmantes')
+    .update(datos.data)
+    .eq('id', id)
   if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/firmantes')
   return success('Firmante guardado')
 }
 
-export async function changeStatusSigner(id: string, activo: boolean): Promise<void> {
+export async function changeStatusSigner(
+  id: string,
+  activo: boolean,
+): Promise<void> {
   await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
-  const { error } = await supabase.from('firmantes').update({ activo }).eq('id', id)
+  const { error } = await supabase
+    .from('firmantes')
+    .update({ activo })
+    .eq('id', id)
   if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/configuracion/firmantes')
 }
 
-export async function crearEquipment(_previous: StatusForm, formData: FormData): Promise<StatusForm> {
+export async function crearEquipment(
+  _previous: StatusForm,
+  formData: FormData,
+): Promise<StatusForm> {
   await requireStaff()
   const values = readFields(formData, FIELDS_EQUIPMENT)
   const datos = schemaEquipment.safeParse(values)
@@ -110,7 +137,10 @@ export async function actualizarEquipment(
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
-  const { error } = await supabase.from('equipos').update(datos.data).eq('id', id)
+  const { error } = await supabase
+    .from('equipos')
+    .update(datos.data)
+    .eq('id', id)
   if (error) return databaseFailure(error, values)
 
   revalidatePath('/configuracion/equipos')
@@ -118,11 +148,17 @@ export async function actualizarEquipment(
   return success('Equipo guardado')
 }
 
-export async function changeStatusEquipment(id: string, activo: boolean): Promise<void> {
+export async function changeStatusEquipment(
+  id: string,
+  activo: boolean,
+): Promise<void> {
   await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
-  const { error } = await supabase.from('equipos').update({ activo }).eq('id', id)
+  const { error } = await supabase
+    .from('equipos')
+    .update({ activo })
+    .eq('id', id)
   if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/configuracion/equipos')
   revalidatePath(EQUIPMENT_REVENUE_PATH)
@@ -140,19 +176,32 @@ export async function renameTemplate(
   if (!datos.success) return validationFailure(datos.error, values)
 
   const supabase = await createClient()
-  const { error } = await supabase.from('plantillas').update(datos.data).eq('id', id)
-  if (error) return databaseFailure(error, values, { campo: 'nombre', message: 'Ya existe una plantilla con ese nombre' })
+  const { error } = await supabase
+    .from('plantillas')
+    .update(datos.data)
+    .eq('id', id)
+  if (error)
+    return databaseFailure(error, values, {
+      campo: 'nombre',
+      message: 'Ya existe una plantilla con ese nombre',
+    })
 
   revalidatePath('/configuracion/plantillas')
   revalidatePath(`/configuracion/plantillas/${id}`)
   return success('Plantilla renombrada')
 }
 
-export async function changeStatusTemplate(id: string, activa: boolean): Promise<void> {
+export async function changeStatusTemplate(
+  id: string,
+  activa: boolean,
+): Promise<void> {
   await requireStaff()
   requireUuid(id)
   const supabase = await createClient()
-  const { error } = await supabase.from('plantillas').update({ activa }).eq('id', id)
+  const { error } = await supabase
+    .from('plantillas')
+    .update({ activa })
+    .eq('id', id)
   if (error) throw new Error(databaseErrorMessage(error))
   revalidatePath('/configuracion/plantillas')
 }

@@ -14,13 +14,21 @@ describe('errores de gruistas', () => {
   })
 
   it.each([
-    { code: '23505', message: 'duplicate key value violates unique constraint secret_index' },
+    {
+      code: '23505',
+      message: 'duplicate key value violates unique constraint secret_index',
+    },
     { code: '42501', message: 'permission denied for table internal_table' },
     { code: 'P0001', message: 'Error interno inesperado' },
     { code: 'XX000', message: 'La grúa no existe o está inactiva' },
     { message: 'Storage devolvió un error interno' },
-  ])('conserva el error inesperado para que la acción responda genéricamente', (error) => {
-    expect(mapCraneOperatorRpcError(error)).toBe(error)
-    expect(mapCraneOperatorRpcError(error)).not.toBeInstanceOf(CraneOperatorError)
-  })
+  ])(
+    'conserva el error inesperado para que la acción responda genéricamente',
+    (error) => {
+      expect(mapCraneOperatorRpcError(error)).toBe(error)
+      expect(mapCraneOperatorRpcError(error)).not.toBeInstanceOf(
+        CraneOperatorError,
+      )
+    },
+  )
 })

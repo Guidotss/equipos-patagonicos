@@ -4,7 +4,9 @@ import { destinationSeguro } from './destination'
 describe('destinoSeguro', () => {
   it('acepta rutas internas', () => {
     expect(destinationSeguro('/clientes')).toBe('/clientes')
-    expect(destinationSeguro('/cotizaciones?estado=enviada')).toBe('/cotizaciones?estado=enviada')
+    expect(destinationSeguro('/cotizaciones?estado=enviada')).toBe(
+      '/cotizaciones?estado=enviada',
+    )
   })
 
   it.each([
