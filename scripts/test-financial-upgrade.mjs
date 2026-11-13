@@ -64,7 +64,7 @@ export function createUpgradeHooks({ seed = seedLegacyFinancialData } = {}) {
 }
 
 export async function runFinancialUpgrade({ seed, ...runnerOptions } = {}) {
-  return runTests('int', ['tests/integration/financial-upgrade.test.ts'], {
+  return runTests('int', ['tests/integration/test/financial-upgrade.test.ts'], {
     ...runnerOptions,
     ...createUpgradeHooks({ seed }),
   })

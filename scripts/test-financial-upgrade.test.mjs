@@ -84,7 +84,10 @@ async function scenario(callback, failure) {
     }
     if (args.includes('--project')) {
       events.push('verify')
-      assert.equal(args.at(-1), 'tests/integration/financial-upgrade.test.ts')
+      assert.equal(
+        args.at(-1),
+        'tests/integration/test/financial-upgrade.test.ts',
+      )
       assert.deepEqual(
         JSON.parse(
           await readFile(

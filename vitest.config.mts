@@ -13,7 +13,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts'],
+          include: ['src/**/test/*.test.ts'],
           environment: 'node',
         },
       },
@@ -21,7 +21,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'integration',
-          include: ['tests/integration/**/*.test.ts'],
+          include: ['tests/integration/test/*.test.ts'],
           setupFiles: ['tests/integration/setup.ts'],
           fileParallelism: false,
           testTimeout: 30_000,
