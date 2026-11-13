@@ -11,6 +11,7 @@ import { TableBudgets } from '@/components/budgets/table-budgets'
 import { Button } from '@/components/ui/button'
 import { Count } from '@/components/ui/count'
 import { hrefBudgets, readFiltersBudgets, PER_PAGE } from '@/lib/budgets/list'
+import { searchBudgets } from '@/lib/budgets/queries'
 import { withBudgetSubjects } from '@/lib/budgets/subjects'
 import { createClient } from '@/lib/supabase/server'
 
@@ -24,17 +25,8 @@ export default async function BudgetsPage({
   await requireStaff()
   const filters = readFiltersBudgets(await searchParams)
   const supabase = await createClient()
-  const home = (filters.pagina - 1) * PER_PAGE
   const [search, clientes] = await Promise.all([
-    supabase
-      .rpc(
-        'buscar_presupuestos',
-        { texto: filters.q, estado: filters.estado, cliente: filters.cliente || undefined },
-        { count: 'exact' },
-      )
-      .select('*, exact_balance:saldo::text')
-      .order('numero', { ascending: false })
-      .range(home, home + PER_PAGE - 1),
+    searchBudgets(supabase, filters),
     supabase.from('clientes').select('id, razon_social').order('razon_social'),
   ])
   if (search.error?.code === 'PGRST103') redirect(hrefBudgets(filters))

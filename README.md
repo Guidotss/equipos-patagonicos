@@ -6,6 +6,9 @@ El CUIT de Clientes y Empresa es un dato opcional informado por el usuario: no s
 
 - Diseño: `docs/plans/2026-10-23-equipos-patagonicos-mvp-design.md`
 - Planes de implementación: `docs/superpowers/plans/`
+- Definiciones SQL vigentes: `supabase/functions/public/` y `supabase/functions/private/`
+
+Cada archivo de `supabase/functions/` muestra la definición vigente de una función. Para cambiarla, editá ese archivo y creá una migración nueva con la misma definición; las migraciones anteriores conservan el historial aplicado. `npm run db:functions:check` verifica que los archivos coincidan con las últimas definiciones migradas.
 
 ## Requisitos
 

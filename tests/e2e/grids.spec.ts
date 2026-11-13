@@ -143,3 +143,12 @@ test('Presupuestos completa el asunto de plantilla en la grilla y la ficha', asy
   )).rows)
   expect(saved.asunto).toBe(withEquipment.asunto)
 })
+
+test('Presupuestos encuentra la capacidad visible de un asunto de plantilla', async ({ page }) => {
+  const withEquipment = templateBudgets.find((item) => item.equipo_id)!
+  const withoutEquipment = templateBudgets.find((item) => !item.equipo_id)!
+  await iniciarSession(page)
+  await page.goto('/presupuestos?q=70%20TN')
+  await expect(page.getByRole('link', { name: `Abrir presupuesto ${withEquipment.numero}`, exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: `Abrir presupuesto ${withoutEquipment.numero}`, exact: true })).toHaveCount(0)
+})
